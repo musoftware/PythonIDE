@@ -273,3 +273,116 @@ python-qt; for other languages generate nothing new (ignore states) without brea
 | web-intellisense | radide/lsp.py, radide/monaco_editor.py, radide/web/editor.html, radide/web/emmet/ |
 | blend | radide/features/states.py, timeline.py, databinding.py (+ targeted edits listed in 8.7) |
 | qa (after all) | integration fixes anywhere (small edits) |
+
+## 9. Workbench layouts (Visual Studio / VS Code / Agent) and AI everywhere - round 4
+
+The user's request: one button switches the whole IDE between a **Visual Studio** look (today's), a **VS Code**
+look and an **Antigravity-style Agent** look; AI support "in all its forms", including **free AI without API keys**.
+
+"Free without API" is done with legitimate routes only:
+(a) official **CLI agents that log in with the user's own account / subscription** (Claude Code `claude`,
+Gemini CLI `gemini` - free tier with a Google login, OpenAI Codex CLI `codex` - ChatGPT login, GitHub Copilot CLI
+`copilot`, Qwen Code `qwen`, opencode `opencode`, Cursor `cursor-agent`), (b) **local models** (Ollama - installed
+here with `gemma4:e4b`, LM Studio, llama.cpp / any OpenAI-compatible local server), (c) **embedded web chats**
+(chatgpt.com, gemini.google.com, claude.ai, chat.deepseek.com, copilot.microsoft.com, perplexity.ai ...) in a
+QWebEngine tab with a persistent profile - the user logs in normally, the IDE pastes context into the page and
+reads code blocks back. API keys (OpenAI, Anthropic, Gemini API, OpenRouter, Groq, DeepSeek, Mistral, xAI, any
+OpenAI-compatible URL) are optional extras. We do NOT use reverse-engineered/unofficial web endpoints (g4f-style).
+Installed on this machine: `claude` (WinGet link), `gemini` and `opencode` (npm global), `ollama`.
+Tests must keep CLI/API usage tiny (1-2 short prompts per provider) - they spend the user's quota; prefer Ollama.
+
+### 9.1 AI core - `radide/ai/` (owner: ai-core).  Everybody else codes against THIS API.
+```python
+from radide import ai
+ai.Message(role, content)                      # role: "system" | "user" | "assistant"
+p = ai.get(provider_id)                         # ai.providers() -> list[Provider]
+p.id, p.name, p.kind                            # kind: "cli" | "local" | "api" | "web"
+p.available() -> tuple[bool, str]               # (ok, reason / install hint); must be fast (cache detection)
+p.models() -> list[str]; p.default_model
+job = p.chat(messages, model=None, system=None, temperature=None, max_tokens=None, cwd=None)
+#   job: ai.ChatJob(QObject) signals delta(str), finished(str full_text), failed(str); job.cancel(); job.text
+#   streaming on the Qt event loop (worker thread or QProcess) - never blocks the UI thread
+p.supports_fim; p.complete(prefix, suffix, language, model=None) -> ChatJob   # inline completion (FIM or prompt)
+ai.default(purpose) -> (Provider, model)        # purpose: "chat" | "complete" | "edit" | "agent" | "commit"
+ai.set_default(purpose, provider_id, model)     # stored in QSettings "ai/..."
+ai.run_sync(job, timeout=60) -> str             # tests / scripts only
+ai.extract_code_blocks(text) -> list[(lang, code)]
+```
+Provider ids: `claude-cli`, `gemini-cli`, `codex-cli`, `copilot-cli`, `qwen-cli`, `opencode-cli`, `cursor-cli`,
+`ollama`, `lmstudio`, `openai-compatible` (custom base URL), `openai`, `anthropic`, `gemini-api`, `openrouter`,
+`groq`, `deepseek`, `mistral`, `xai`. CLI providers run non-interactive modes (`claude -p --output-format
+stream-json --verbose`, `gemini -p`, `codex exec --json`, `opencode run`, ...) with the prompt on stdin where
+supported; detect with shutil.which (+ `.cmd`/`.ps1` npm shims: run `.ps1`-only shims via
+`powershell -NoProfile -File` or prefer the `.cmd`). Secrets: `keyring` if importable, else QSettings with a warning.
+Tools > Options > **AI** page: providers table (status, install hint / "Install with npm" button for npm CLIs,
+login hint e.g. "run `gemini` once in the Terminal to sign in"), API keys, base URLs, model pickers, defaults per
+purpose, "Test" button per provider. `radide/ai/context.py`: `gather(win, mentions)` builds prompt context for
+`@file:path`, `@selection`, `@problems` (Error List), `@form` (current .form JSON), `@project` (file tree),
+`@git` (diff), `@terminal` (last output) - truncated to a token budget.
+
+### 9.2 Workbench layouts - `radide/features/workbench.py` (owner: layouts)
+- **View > Layout** + a toolbar segmented button + Ctrl+K Ctrl+L: *Visual Studio* | *VS Code* | *Agent*.
+  The switch is live (no restart), remembered in QSettings `workbench/mode`; each mode keeps its own
+  `saveState()`/`saveGeometry()` so the user's dock arrangement per mode survives.
+- *Visual Studio*: today's menus, toolbars, docks.
+- *VS Code*: **Activity Bar** (left vertical icon strip: Explorer, Search, Source Control, Run and Debug,
+  Packages/Extensions, Databases, AI Chat, Agents; a click toggles one **Side Bar** that hosts the existing
+  widgets - re-parent the existing dock widgets, do not duplicate logic), editor area centre (tabs, breadcrumbs
+  bar above the editor), bottom **Panel** (Problems = Error List, Output, Terminal, Debug Console = Immediate,
+  Requests), compact toolbar hidden, menu bar kept (VS Code style "File Edit Selection View Go Run Terminal Help"
+  ordering is optional), blue status bar with language / line:col / git branch / AI provider. **Command Palette**
+  Ctrl+Shift+P (fuzzy over every QAction in the menus + extra commands), **Quick Open** Ctrl+P (fuzzy files of the
+  solution), Zen mode, toggle side bar Ctrl+B, toggle panel Ctrl+J.
+- *Agent* (Antigravity style): the **Agent Manager** (9.5) fills the left/centre, the editor/preview on the right,
+  a slim activity bar to jump back to Editor view; the chat/agent is the main surface.
+- Command Palette and Quick Open work in all modes. All themes (radide/theme.py) apply to the new chrome: use
+  `theme.color(token)` / `theme.role(widget, name)` and connect `theme.changed`.
+
+### 9.3 AI Chat - `radide/features/ai_chat.py` (owner: ai-chat)
+Dock "AI Chat" (also used by the VS Code side bar and the Agent mode): provider/model picker, streaming markdown
+answer (QTextBrowser or a QWebEngine view; code highlighted), code blocks with **Copy / Insert at cursor /
+Apply to file (diff preview, accept/reject) / New file / Run in Terminal**, `@` mention completion (9.1 context),
+attach current file/selection buttons, Stop, regenerate, new chat, history saved per project in
+`.radide/ai/chats/*.json`, "Ask about this" from editor/explorer right-click, Arabic text RTL-correct.
+
+### 9.4 AI in the editor and designers - `radide/features/ai_editor.py` (owner: ai-editor)
+- **Inline completions (ghost text)** in Monaco (`monaco.languages.registerInlineCompletionsProvider` in
+  `radide/web/editor.html`, routed through the existing `rad` QWebChannel bridge to `ai.default("complete")`),
+  debounce, Tab accept, Esc dismiss, on/off in the status bar; builtin-editor fallback optional.
+- **Ctrl+I inline edit**: prompt box over the selection -> streamed replacement shown as a diff (Monaco diff
+  editor or decorations) -> Accept / Reject.
+- Editor right-click **AI** submenu: Explain, Fix, Refactor, Add comments, Generate tests, Generate docs,
+  Translate code to another language of the IDE. Error List "Fix with AI". Git panel "Generate commit message"
+  (from the staged diff). Form designer "Generate form with AI" (description -> neutral .form JSON validated with
+  radide/model.py, then opened in the designer) and "Generate event handler".
+
+### 9.5 Agent Manager - `radide/ai/agents.py` + `radide/features/ai_agents.py` (owner: ai-agent)
+Antigravity-style: a list of agent **tasks** (title, status, provider, started), several running in parallel, each
+with a conversation view showing the plan, every step (file read/write/edit, command run, search) and its result,
+**file diffs to review** (accept/reject per file, "Undo all" via a checkpoint copy of touched files under
+`.radide/ai/checkpoints/<task>`), artifacts (plan/walkthrough markdown, screenshots of the web Preview). Two
+engines: (1) **CLI agent engine** - runs `claude -p --output-format stream-json --verbose` (parse its JSON events
+into steps), `gemini -p ... --yolo|--approval-mode`, `codex exec --json`, `opencode run` in the project folder;
+(2) **built-in agent loop** for any ai provider (Ollama/API/...) with tools read_file, list_files, search,
+write_file, edit_file, run_command (approval required for writes/commands unless "auto-approve" is on), max steps.
+Permission modes: Ask every time / Auto-approve edits / Auto-approve all. Inbox notifications when a task needs
+approval or finishes.
+
+### 9.6 Web chats - `radide/features/ai_web.py` (owner: ai-web)
+"AI Web Chats" tab/dock with a site switcher (ChatGPT, Gemini, Claude, DeepSeek, Copilot, Perplexity, Grok, Qwen,
+Mistral Le Chat, custom URL), one persistent QWebEngineProfile (`%LOCALAPPDATA%\RADIDE\webchat`, cookies kept),
+"Send context" (selection/file/problems -> filled into the page's prompt box via JS, fallback: clipboard + focus),
+"Grab last code block" (JS reads the last `<pre><code>` of the page) -> Insert / Apply via the same diff preview as
+9.3 (import it from ai_chat if present, else a local fallback), open in external browser. Also registered as
+provider kind "web" in the registry (chat() = send + wait for the answer to stop changing, best effort).
+
+### 9.7 Ownership (round 4)
+| Agent | Owns |
+|---|---|
+| ai-core | radide/ai/__init__.py, providers*.py, context.py, settings page module radide/features/ai_settings.py |
+| layouts | radide/features/workbench.py, radide/features/command_palette.py |
+| ai-chat | radide/features/ai_chat.py, radide/ai/diffview.py (shared diff accept/reject dialog) |
+| ai-editor | radide/features/ai_editor.py; targeted edits in radide/web/editor.html, radide/monaco_editor.py |
+| ai-agent | radide/ai/agents.py, radide/features/ai_agents.py |
+| ai-web | radide/features/ai_web.py |
+Until ai-core lands, other agents may stub `radide.ai` calls behind try/except but must end up using the real API.
