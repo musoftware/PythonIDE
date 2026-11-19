@@ -1,0 +1,9 @@
+{
+  "name": "HelloRing",
+  "language": "ring-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

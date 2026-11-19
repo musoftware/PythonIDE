@@ -1,0 +1,49 @@
+# ---- Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Editors / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---- RAD IDE: files generated in project folders at run/debug/build time
+.radide_backup/
+_deleted/
+_radide_run.ring
+_raddbg_run.ring
+_radmain.*
+_radapp
+_radapp.exe
+_build/
+radgui.f90
+!radide/runtimes/radgui.f90
+
+# ---- Build output (PyInstaller, ring2exe, compilers)
+build/
+dist/
+target/
+*.spec
+*.exe
+*.o
+*.obj
+*.mod
+*.class
+*.pdb
+
+# ---- Language package folders
+node_modules/
+bin/
+obj/
+vendor/
+.dart_tool/
+libs/*.jar

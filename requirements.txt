@@ -1,0 +1,6 @@
+﻿PyQt6>=6.6
+PyQt6-QScintilla>=2.14
+jedi>=0.19
+pyflakes>=3.0
+# optional: PySide6-Essentials (Python/Qt projects and importing Qt programs), pyinstaller (Build EXE), pywin32 (VB CreateObject)
+
