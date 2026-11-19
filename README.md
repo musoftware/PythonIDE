@@ -61,6 +61,32 @@ gcc/g++/gfortran/gdb (WinLibs) live in `%LOCALAPPDATA%\RADIDE\toolchains\mingw64
 (keyframe storyboards with `Begin()`/`Stop()`, AutoStart), **Data** panel (JSON/CSV sources bound to Text / Items /
 Value, sample values at design time, `Refresh`).
 
+## Layouts and AI
+
+- **View > Layout** (or the VS | Code | Agent switch top-right): Visual Studio, VS Code (Activity Bar, Side Bar,
+  Panel, Command Palette Ctrl+Shift+P, Quick Open Ctrl+P) or an Antigravity-style **Agent** layout.
+- **AI** (Tools > Options > AI): free routes first - local models (Ollama, LM Studio), CLI agents signed in with
+  your own account (Claude Code, Gemini CLI, Codex, Copilot, Qwen, opencode, Cursor), embedded web chats
+  (ChatGPT, Gemini, Claude, DeepSeek ...); API keys optional. AI Chat with apply-as-diff, ghost-text completions,
+  Ctrl+I edit, AI right-click actions, commit messages, Generate form, and the **Agent Manager** (tasks with
+  approvals, diff review and undo).
+
+## Mobile apps and games
+
+- **Mobile**: Flutter (main) and Kivy. Phone/tablet frame in the designer, Material controls (AppBar,
+  BottomNav, Card, ListView, ...), several screens with navigation, device selector (Windows, Chrome, Android
+  emulators), F5 with hot reload, Build APK / App Bundle / Windows / Web, Dart debugger. Sample `samples/HelloMobile`.
+- **Games**: pygame-ce and Godot. Scene designer with tilemap painting, sprites, sprite-sheet animations, assets
+  and behaviours (platformer, top-down, collectibles, enemies); VB-style handlers (`Player_Collide`,
+  `Scene_Update`). Sample `samples/HelloGame`.
+
+## Import a program from .exe
+
+File > Import > Program (.exe / .dll) - for programs you own or may analyse: identifies the binary and recovers
+forms and code: .NET WinForms (ILSpy) -> python-tk, PyInstaller -> Python, Java jars, Electron, VB6 forms, Win32
+dialogs/menus from native programs (+ Ghidra decompile when installed, AI translation when configured). An
+import report says what was recovered exactly and what is missing.
+
 ## Packages
 
 Project > Manage Packages: NuGet (C#), pip (Python), npm (JS/TS), Maven Central (Java), cargo (Rust),
