@@ -11,6 +11,11 @@ paged ``select`` with a row key for editing, ``insert_row`` / ``update_row`` / `
 ``execute`` (several statements, results + errors), ``create_table`` / ``add_column`` / ``drop_column`` /
 ``drop_table`` / ``rename_table``, CSV / SQL export and CSV import.
 
+Threads: an adapter (one connection) is used by one thread at a time; ``clone()`` gives a new adapter with
+its own connection for a worker thread, and ``cancel()`` - callable from any thread - stops the running
+statement (SQLite ``interrupt()``, PostgreSQL ``cancel()``, MySQL ``KILL QUERY`` from a second connection,
+else the connection is closed and re-opened on next use). Cancelled statements fail with ``CANCELLED``.
+
 Connections are stored in ``project.radproj`` under ``"databases"`` (``ConnectionInfo.to_dict``) -
 **without passwords**. ``PasswordStore`` keeps a password (only when the user asks) in the IDE settings,
 encrypted with Windows DPAPI (or obfuscated on other systems - the UI warns about that).
@@ -47,6 +52,7 @@ SQLITE_EXTS = (".db", ".sqlite", ".sqlite3", ".db3", ".sdb")
 DEFAULT_PORTS = {"mysql": 3306, "postgresql": 5432}
 KEY_ALIAS = "__radide_key__"          # hidden row key column (SQLite rowid / PostgreSQL ctid)
 MAX_RESULT_ROWS = 10000               # rows fetched per query result in the SQL window
+CANCELLED = "Cancelled by the user"   # error text of a statement stopped by Database.cancel()
 
 ADMINER_DIR = Path(__file__).resolve().parent.parent / "web" / "adminer"
 
@@ -361,6 +367,14 @@ def display_value(v) -> str:
     return str(v)
 
 
+def _remove_partial(path) -> None:
+    """Delete the half-written file of a failed / cancelled export."""
+    try:
+        Path(path).unlink()
+    except OSError:
+        pass
+
+
 def _read_text_file(path: Path) -> str:
     raw = Path(path).read_bytes()
     for enc in ("utf-8-sig", "cp1256", "latin-1"):
@@ -384,9 +398,18 @@ class Database:
     def __init__(self, info: ConnectionInfo):
         self.info = info
         self.conn = None
+        self._cancel = False                # set by cancel() (any thread), cleared by reset_cancel()
+        self.conn_lost = False              # cancel() had to close the connection: reconnect on next use
 
     # ------------------------------------------------------------------ connection
     def connect(self):
+        raise NotImplementedError
+
+    def clone(self) -> "Database":
+        """A new, not yet connected adapter for the same database (own connection / session).
+
+        The UI gives every worker its own connection: DB-API connections must not be used by two
+        threads at the same time, and a slow statement on one connection must not block the others."""
         raise NotImplementedError
 
     def close(self) -> None:
@@ -396,6 +419,54 @@ class Database:
             except Exception:  # noqa: BLE001 - closing a dead connection
                 pass
         self.conn = None
+        self.conn_lost = False
+
+    # ------------------------------------------------------------------ cancel (thread-safe)
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel
+
+    def reset_cancel(self) -> None:
+        self._cancel = False
+
+    def check_cancel(self) -> None:
+        if self._cancel:
+            raise DatabaseError(CANCELLED)
+
+    def cancel(self) -> str:
+        """Stop the statement running on this connection. Called from ANOTHER thread than the one
+        running it (the UI thread). Returns how it was done: "idle", "interrupted", "cancelled",
+        "killed" or "closed" (the connection had to be closed - it reconnects on next use)."""
+        self._cancel = True
+        conn = self.conn
+        if conn is None:
+            return "idle"
+        try:
+            return self._interrupt(conn)
+        except Exception:  # noqa: BLE001 - the driver cannot cancel: drop the connection
+            return self._force_close(conn)
+
+    def _interrupt(self, conn) -> str:
+        """Driver-specific cancel of the running statement (override)."""
+        return self._force_close(conn)
+
+    def _force_close(self, conn) -> str:
+        self.conn_lost = True
+        sock = getattr(conn, "_sock", None)            # PyMySQL
+        try:
+            if sock is not None and hasattr(sock, "shutdown"):
+                sock.shutdown(socket.SHUT_RDWR)        # wakes up a thread blocked reading the socket
+            else:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+        return "closed"
+
+    def _error(self, e: Exception) -> str:
+        """Error text of a driver exception ("Cancelled by the user" after cancel())."""
+        if self._cancel:
+            return CANCELLED
+        return self._error_text(e)
 
     @property
     def connected(self) -> bool:
@@ -410,6 +481,8 @@ class Database:
         self.close()
 
     def _cur(self):
+        if self.conn_lost:
+            self.close()
         if self.conn is None:
             self.connect()
         return self.conn.cursor()
@@ -428,7 +501,7 @@ class Database:
         except DatabaseError:
             raise
         except Exception as e:  # noqa: BLE001 - every driver has its own exception classes
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         finally:
             try:
                 cur.close()
@@ -603,7 +676,7 @@ class Database:
             cur.execute(sql, tuple(params))
             return getattr(cur, "lastrowid", None)
         except Exception as e:  # noqa: BLE001
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         finally:
             cur.close()
 
@@ -654,6 +727,10 @@ class Database:
         results: list[Result] = []
         for stmt, line in split_sql(script, self.dialect):
             r = Result(stmt, line=line)
+            if self._cancel:                            # cancelled between two statements
+                r.error = CANCELLED
+                results.append(r)
+                break
             t0 = time.perf_counter()
             cur = None
             try:
@@ -666,7 +743,7 @@ class Database:
                     r.rows = [tuple(x) for x in rows[:max_rows]]
                 r.rowcount = cur.rowcount
             except Exception as e:  # noqa: BLE001
-                r.error = self._error_text(e)
+                r.error = self._error(e)
             finally:
                 if cur is not None:
                     try:
@@ -755,26 +832,33 @@ class Database:
         try:
             cur.execute(sql)
             while True:
+                self.check_cancel()
                 chunk = cur.fetchmany(batch)
                 if not chunk:
                     break
                 yield from chunk
+        except DatabaseError:
+            raise
         except Exception as e:  # noqa: BLE001
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         finally:
             cur.close()
 
     def export_csv(self, table: str, path: Path, delimiter: str = ",", header: bool = True) -> int:
         cols = [c.name for c in self.columns(table)]
         n = 0
-        with open(path, "w", newline="", encoding="utf-8-sig") as f:     # BOM: Excel shows Arabic correctly
-            w = csv.writer(f, delimiter=delimiter)
-            if header:
-                w.writerow(cols)
-            for row in self._all_rows(table):
-                w.writerow(["" if v is None else (bytes(v).hex() if isinstance(v, (bytes, bytearray, memoryview))
-                                                  else v) for v in row])
-                n += 1
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as f:     # BOM: Excel shows Arabic correctly
+                w = csv.writer(f, delimiter=delimiter)
+                if header:
+                    w.writerow(cols)
+                for row in self._all_rows(table):
+                    w.writerow(["" if v is None else (bytes(v).hex() if isinstance(v, (bytes, bytearray, memoryview))
+                                                      else v) for v in row])
+                    n += 1
+        except DatabaseError:
+            _remove_partial(path)
+            raise
         return n
 
     def dump_table_sql(self, table: str, schema: bool = True, data: bool = True) -> Iterable[str]:
@@ -796,12 +880,17 @@ class Database:
     def export_sql(self, table: str | None, path: Path, schema: bool = True, data: bool = True) -> int:
         """Write ``table`` (or every table and view when None) as SQL. Returns the number of tables."""
         tables = [table] if table else self.tables() + self.views()
-        with open(path, "w", encoding="utf-8", newline="\n") as f:
-            f.write(f"-- Exported by RAD IDE from {self.info.describe()} on "
-                    f"{_dt.datetime.now().isoformat(sep=' ', timespec='seconds')}\n\n")
-            for t in tables:
-                for chunk in self.dump_table_sql(t, schema, data):
-                    f.write(chunk)
+        try:
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(f"-- Exported by RAD IDE from {self.info.describe()} on "
+                        f"{_dt.datetime.now().isoformat(sep=' ', timespec='seconds')}\n\n")
+                for t in tables:
+                    self.check_cancel()
+                    for chunk in self.dump_table_sql(t, schema, data):
+                        f.write(chunk)
+        except DatabaseError:
+            _remove_partial(path)
+            raise
         return len(tables)
 
     def import_csv(self, table: str, path: Path, header: bool = True, create: bool = False,
@@ -844,6 +933,7 @@ class Database:
             r = (r + [""] * len(targets))[:len(targets)]
             data.append(tuple(None if (empty_as_null and v == "") else self.coerce(cols.get(t), v)
                               for t, v in zip(targets, r)))
+        self.check_cancel()
         cur = self._cur()
         self.begin()
         try:
@@ -851,7 +941,7 @@ class Database:
             self.commit()
         except Exception as e:  # noqa: BLE001
             self.rollback()
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         finally:
             cur.close()
         return len(data)
@@ -885,6 +975,15 @@ class SQLiteDatabase(Database):
             self.conn = None
             raise DatabaseError(f"{self.path}: {e}") from e
         return self
+
+    def clone(self) -> "SQLiteDatabase":
+        c = SQLiteDatabase(self.info, None, self.create)
+        c.path = self.path
+        return c
+
+    def _interrupt(self, conn) -> str:
+        conn.interrupt()                    # documented as safe to call from another thread
+        return "interrupted"
 
     def server_version(self) -> str:
         return "SQLite " + sqlite3.sqlite_version
@@ -935,7 +1034,7 @@ class SQLiteDatabase(Database):
         try:
             return self.conn.execute(sql, params).lastrowid
         except Exception as e:  # noqa: BLE001
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
 
     def _sql_type(self, generic: str) -> str:
         return generic
@@ -954,6 +1053,9 @@ class _ServerDatabase(Database):
         super().__init__(info)
         self.password = password or ""
         self._driver = driver
+
+    def clone(self) -> "_ServerDatabase":
+        return type(self)(self.info, self.password, self._driver)
 
     def driver(self):
         if self._driver is None:
@@ -986,8 +1088,19 @@ class MySQLDatabase(_ServerDatabase):
             self.conn = drv.connect(**kw)
         except Exception as e:  # noqa: BLE001
             self.conn = None
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         return self
+
+    def _interrupt(self, conn) -> str:
+        """PyMySQL cannot cancel by itself: KILL QUERY <thread id> from a second connection."""
+        tid = int(conn.thread_id())
+        killer = self.clone()
+        try:
+            killer.connect()
+            killer._run(f"KILL QUERY {tid}")
+        finally:
+            killer.close()
+        return "killed"
 
     def server_version(self) -> str:
         rows = self._rows("SELECT VERSION()")
@@ -1127,10 +1240,16 @@ class PostgresDatabase(_ServerDatabase):
             self.conn = drv.connect(**kw)
         except Exception as e:  # noqa: BLE001
             self.conn = None
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         if self.info.schema:
             self._run(f"SET search_path TO {self.q(self.info.schema)}, public")
         return self
+
+    def _interrupt(self, conn) -> str:
+        """psycopg 3: cancel_safe() (3.2+) / cancel() send a cancel request on a separate channel."""
+        fn = getattr(conn, "cancel_safe", None) or getattr(conn, "cancel")
+        fn()
+        return "cancelled"
 
     def server_version(self) -> str:
         rows = self._rows("SELECT version()")
@@ -1257,7 +1376,7 @@ class PostgresDatabase(_ServerDatabase):
             cur.execute(sql, tuple(params))
             return None
         except Exception as e:  # noqa: BLE001
-            raise DatabaseError(self._error_text(e)) from e
+            raise DatabaseError(self._error(e)) from e
         finally:
             cur.close()
 

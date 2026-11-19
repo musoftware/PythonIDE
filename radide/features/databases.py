@@ -10,6 +10,12 @@
 * **Open in Adminer**: the bundled Adminer (radide/web/adminer/) served by ``php -S`` on a private port and
   logged in automatically - shown in the web Preview dock when there is one, else in a tab.
 
+Threads: no SQL runs on the UI thread. Every document tab has a ``DbWorker`` with its own connection
+(``db.clone()``), the tree/DDL of a connection use the connection's worker, exports/imports get a connection
+of their own. A ``BusyBar`` shows the job, the elapsed time and a Cancel button (``Database.cancel``). Methods
+take ``wait``: True (default, for code and tests) returns the result after a local event loop (the IDE keeps
+painting); toolbar/menu actions pass False and the result is shown when it arrives.
+
 Engine (no Qt): ``radide/web_site/databases.py``. Other features can use ``win.databases`` (DatabasesPanel):
 ``add_sqlite(path, project=None)``, ``open_table(conn, table)``, ``open_query(conn, sql="")``,
 ``open_adminer(conn)``, ``connection(name)``.
@@ -18,14 +24,18 @@ from __future__ import annotations
 
 import atexit
 import re
+import threading
+import time
+import traceback
 from pathlib import Path
 
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, QRegularExpression, Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import (QAbstractTableModel, QEventLoop, QModelIndex, QObject, QRegularExpression, Qt, QTimer, QUrl,
+                          pyqtSignal)
 from PyQt6.QtGui import (QAction, QBrush, QColor, QCursor, QDesktopServices, QFont, QKeySequence, QSyntaxHighlighter,
                          QTextCharFormat)
 from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                              QDockWidget, QFileDialog, QFormLayout, QHBoxLayout, QHeaderView, QInputDialog,
-                             QLabel, QLineEdit, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QSpinBox,
+                             QLabel, QLineEdit, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
                              QSplitter, QStackedWidget, QStyle, QTableView, QTableWidget, QTableWidgetItem,
                              QTabWidget, QToolBar, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
@@ -45,6 +55,15 @@ def _std_icon(w, name):
     return w.style().standardIcon(getattr(QStyle.StandardPixmap, name))
 
 
+def _role_clear(w):
+    """Back to the normal text colour (undo _role)."""
+    w.setProperty("radRole", None)
+    st = w.style()
+    if st is not None:
+        st.unpolish(w)
+        st.polish(w)
+
+
 def _wait_cursor():
     class _W:
         def __enter__(self):
@@ -53,6 +72,298 @@ def _wait_cursor():
         def __exit__(self, *a):
             QApplication.restoreOverrideCursor()
     return _W()
+
+
+# =============================================================================== background work
+class Task:
+    """One database job run by a ``DbWorker``: ``fn(session)`` in a worker thread; ``on_ok(value)`` or
+    ``on_err(exception)`` on the UI thread afterwards."""
+
+    def __init__(self, fn, on_ok=None, on_err=None, label: str = "Working"):
+        self.fn, self.on_ok, self.on_err, self.label = fn, on_ok, on_err, label
+        self.value = None
+        self.error: BaseException | None = None
+        self.done = False
+        self.cancelled = False
+        self.waiting = False                 # a caller blocks in call(wait=True): it runs the callbacks
+        self.t0 = 0.0
+        self.elapsed = 0.0
+        self.loop: QEventLoop | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.done and self.error is None
+
+    @property
+    def message(self) -> str:
+        return "" if self.error is None else _task_error(self.error)
+
+
+def _task_error(e: BaseException) -> str:
+    """Text to show for an exception of a job."""
+    if isinstance(e, (D.DatabaseError, OSError)):
+        return str(e) or type(e).__name__
+    return f"{type(e).__name__}: {e}"
+
+
+class DbWorker(QObject):
+    """Runs database jobs one at a time in a background thread, on its own adapter (``session``).
+
+    * ``call(fn, on_ok, on_err, wait=False)`` - asynchronous: returns at once, callbacks run later on the
+      UI thread (a job started while another runs is queued).
+    * ``call(..., wait=True)`` - for code that needs the result: spins a local event loop until the job
+      is done (the IDE keeps painting, timers tick, Cancel works) and returns the finished ``Task``.
+    * ``cancel()`` stops the running statement (``Database.cancel``), ``shutdown()`` cancels and closes.
+
+    The session is only ever used by one thread at a time; give each worker its own adapter
+    (``db.clone()``) so a slow statement never blocks another tab or the tree.
+    """
+    busy_changed = pyqtSignal(bool)
+    _finished = pyqtSignal(object)           # Task - emitted from the worker thread (queued to the UI)
+
+    def __init__(self, session: D.Database | None, owns: bool = True, name: str = ""):
+        super().__init__()
+        self.session = session
+        self.owns = owns                     # close the session on shutdown()
+        self.name = name
+        self.task: Task | None = None
+        self.queue: list[Task] = []
+        self.last: Task | None = None
+        self._closing = False
+        self._idle_loops: list[QEventLoop] = []
+        self._finished.connect(self._on_finished)
+
+    @property
+    def busy(self) -> bool:
+        return self.task is not None
+
+    def call(self, fn, on_ok=None, on_err=None, wait: bool = True, label: str = "Working") -> Task:
+        t = Task(fn, on_ok, on_err, label)
+        if self._closing:
+            t.error, t.done = D.DatabaseError("The connection is closed"), True
+            if not wait:
+                self._callbacks(t)
+            return t
+        t.waiting = wait
+        if self.task is not None:
+            if not wait:
+                self.queue.append(t)
+                return t
+            self.wait_idle()
+        self._start(t)
+        if wait:
+            if not t.done:
+                t.loop = QEventLoop()
+                t.loop.exec()
+                t.loop = None
+            self._callbacks(t, raise_errors=True)
+        return t
+
+    def _start(self, t: Task):
+        self.task = t
+        if self.session is not None:
+            self.session.reset_cancel()
+        t.t0 = time.perf_counter()
+        self.busy_changed.emit(True)
+        threading.Thread(target=self._work, args=(t,), name=f"radide-db-{self.name}", daemon=True).start()
+
+    def _work(self, t: Task):                # worker thread
+        try:
+            t.value = t.fn(self.session)
+        except BaseException as e:  # noqa: BLE001 - delivered to the UI thread
+            t.error = e
+        s = self.session
+        t.cancelled = bool(s is not None and s.cancel_requested)
+        t.elapsed = time.perf_counter() - t.t0
+        if self._closing and self.owns and s is not None:
+            s.close()                        # closed by the thread that used it
+        try:
+            self._finished.emit(t)
+        except RuntimeError:                 # the worker was deleted meanwhile
+            pass
+
+    def _on_finished(self, t: Task):         # UI thread
+        t.done = True
+        self.task = None
+        self.last = t
+        if t.loop is not None:
+            t.loop.quit()
+        if not t.waiting:
+            self._callbacks(t)
+        if self.queue and not self._closing:
+            self._start(self.queue.pop(0))
+        else:
+            for q in self.queue:             # closing: refuse what is still queued
+                q.error, q.done = D.DatabaseError("The connection is closed"), True
+                self._callbacks(q)
+            self.queue.clear()
+            for lp in self._idle_loops:
+                lp.quit()
+            self.busy_changed.emit(False)
+
+    @staticmethod
+    def _callbacks(t: Task, raise_errors: bool = False):
+        cb = t.on_ok if t.error is None else t.on_err
+        if cb is None:
+            return
+        arg = t.value if t.error is None else t.error
+        if raise_errors:
+            cb(arg)
+            return
+        try:
+            cb(arg)
+        except Exception:  # noqa: BLE001 - never kill the event loop from a callback
+            traceback.print_exc()
+
+    def wait_idle(self):
+        """Block (with a local event loop) until no job is running or queued."""
+        while self.task is not None:
+            lp = QEventLoop()
+            self._idle_loops.append(lp)
+            try:
+                lp.exec()
+            finally:
+                self._idle_loops.remove(lp)
+
+    def cancel(self) -> str:
+        self.queue_cancel()
+        if self.task is None or self.session is None:
+            return "idle"
+        return self.session.cancel()
+
+    def queue_cancel(self):
+        for q in self.queue:
+            q.error, q.done, q.cancelled = D.DatabaseError(D.CANCELLED), True, True
+            self._callbacks(q)
+        self.queue.clear()
+
+    def shutdown(self, close: bool | None = None):
+        """Cancel what runs, then close the session (now if idle, else in the worker thread when done)."""
+        if close is not None:
+            self.owns = close
+        self._closing = True
+        if self.task is not None:
+            self.cancel()
+        elif self.owns and self.session is not None:
+            self.session.close()
+
+
+class BusyBar(QWidget):
+    """Busy indicator for one or more workers: moving bar + "Loading Products... 3.2 s" + Cancel.
+
+    Hidden while idle; with ``keep_last`` it then shows how long the last job took."""
+
+    def __init__(self, parent=None, keep_last: bool = False, delay: int = 150):
+        super().__init__(parent)
+        self.keep_last = keep_last
+        self.delay = delay
+        self.workers: list[DbWorker] = []
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        self.progress.setTextVisible(False)
+        self.progress.setMaximumWidth(110)
+        self.progress.setMaximumHeight(12)
+        self.label = QLabel()
+        _role(self.label, "muted")
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setToolTip("Stop the running statement")
+        self.cancel_button.clicked.connect(self.cancel)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(6, 2, 6, 2)
+        lay.addWidget(self.progress)
+        lay.addWidget(self.label, 1)
+        lay.addWidget(self.cancel_button)
+        self.timer = QTimer(self)
+        self.timer.setInterval(100)
+        self.timer.timeout.connect(self._tick)
+        self.setVisible(False)
+
+    def attach(self, w: DbWorker) -> DbWorker:
+        if w not in self.workers:
+            self.workers.append(w)
+            w.busy_changed.connect(self._changed)
+        return w
+
+    def detach(self, w: DbWorker):
+        if w in self.workers:
+            self.workers.remove(w)
+            try:
+                w.busy_changed.disconnect(self._changed)
+            except (TypeError, RuntimeError):
+                pass
+            self._changed()
+
+    def _running(self) -> DbWorker | None:
+        return next((w for w in self.workers if w.busy), None)
+
+    @property
+    def busy(self) -> bool:
+        return self._running() is not None
+
+    def _changed(self, *_):
+        if self.busy:
+            self.progress.show()
+            self.cancel_button.show()
+            self.cancel_button.setEnabled(True)
+            self._tick()
+            if not self.timer.isActive():
+                self.timer.start()
+            if not self.isVisible():
+                QTimer.singleShot(self.delay, self._show_if_busy)
+            return
+        self.timer.stop()
+        last = max((w.last for w in self.workers if w.last is not None), key=lambda t: t.t0, default=None)
+        if self.keep_last and last is not None:
+            self.progress.hide()
+            self.cancel_button.hide()
+            what = "Cancelled after" if last.cancelled else ("Failed after" if last.error else "Done in")
+            self.label.setText(f"{what} {_seconds(last.elapsed)}")
+            self.show()
+        else:
+            self.hide()
+
+    def _show_if_busy(self):
+        if self.busy:
+            self.show()
+
+    def _tick(self):
+        w = self._running()
+        if w is None or w.task is None:
+            return
+        t = w.task
+        more = sum(len(x.queue) for x in self.workers)
+        extra = f"  (+{more} queued)" if more else ""
+        state = "Cancelling" if w.session is not None and w.session.cancel_requested else t.label
+        self.label.setText(f"{state}...  {_seconds(time.perf_counter() - t.t0)}{extra}")
+
+    def cancel(self):
+        for w in list(self.workers):
+            if w.busy:
+                w.cancel()
+        self.cancel_button.setEnabled(False)
+        self._tick()
+
+
+def _seconds(s: float) -> str:
+    if s < 60:
+        return f"{s:.1f} s"
+    m, s = divmod(int(s), 60)
+    return f"{m}:{s:02d} min"
+
+
+def run_in_thread(fn, label: str = "Working", bar: BusyBar | None = None):
+    """Run ``fn()`` in a thread and return its value (raises its exception); the UI stays responsive."""
+    w = DbWorker(None, owns=False, name="oneoff")
+    if bar is not None:
+        bar.attach(w)
+    try:
+        t = w.call(lambda _s: fn(), wait=True, label=label)
+    finally:
+        if bar is not None:
+            bar.detach(w)
+    if t.error is not None:
+        raise t.error
+    return t.value
 
 
 # =============================================================================== SQL highlighter
@@ -111,13 +422,19 @@ class SqlHighlighter(QSyntaxHighlighter):
 # =============================================================================== grid model
 class TableModel(QAbstractTableModel):
     """One page of a table, editable in place: setData = UPDATE, insert_row = INSERT, delete_rows = DELETE.
-    Errors go to the ``error`` signal (and the edit is refused)."""
+    Errors go to the ``error`` signal (and the edit is refused).
+
+    The SQL runs in ``worker`` (a background thread on its own connection). Methods take ``wait``:
+    True (the default, for code) = return when done, with the result; False (for buttons) = return at
+    once, the grid updates when the data arrives."""
     error = pyqtSignal(str)
     loaded = pyqtSignal()
 
-    def __init__(self, db: D.Database, table: str, page_size: int = 200, parent=None):
+    def __init__(self, db: D.Database, table: str, page_size: int = 200, parent=None,
+                 worker: DbWorker | None = None):
         super().__init__(parent)
-        self.db = db
+        self.db = db                        # helpers (quoting, coerce); the SQL runs on worker.session
+        self.worker = worker or DbWorker(db, owns=False, name=table)
         self.table = table
         self.page_size = page_size
         self.offset = 0
@@ -127,17 +444,31 @@ class TableModel(QAbstractTableModel):
         self.data_: D.TableData | None = None
 
     # ------------------------------------------------------------------ loading
-    def load(self) -> bool:
-        try:
-            data = self.db.select(self.table, self.page_size, self.offset, self.order_by, self.descending, self.where)
-        except D.DatabaseError as e:
-            self.error.emit(str(e))
-            return False
+    def _select(self, s: D.Database, offset: int, last_page: bool = False) -> D.TableData:
+        """Worker thread: one page (``last_page``: the last one, or the page before when ``offset`` is past
+        the end)."""
+        data = s.select(self.table, self.page_size, offset, self.order_by, self.descending, self.where)
+        if last_page and data.total and data.total > offset + self.page_size or (offset and offset >= data.total):
+            last = max(0, (max(1, data.total) - 1) // self.page_size * self.page_size)
+            if last != offset:
+                data = s.select(self.table, self.page_size, last, self.order_by, self.descending, self.where)
+        return data
+
+    def _apply(self, data: D.TableData):
         self.beginResetModel()
         self.data_ = data
+        self.offset = data.offset
         self.endResetModel()
         self.loaded.emit()
-        return True
+
+    def _failed(self, e: BaseException):
+        self.error.emit(str(e) if isinstance(e, D.DatabaseError) else f"{type(e).__name__}: {e}")
+
+    def load(self, wait: bool = True) -> bool:
+        offset = self.offset
+        t = self.worker.call(lambda s: self._select(s, offset), self._apply, self._failed, wait=wait,
+                             label=f"Loading {self.table}")
+        return t.ok if wait else not t.done
 
     @property
     def columns(self) -> list[D.Column]:
@@ -157,10 +488,10 @@ class TableModel(QAbstractTableModel):
     def page(self) -> int:
         return self.offset // self.page_size + 1
 
-    def go_page(self, page: int) -> None:
+    def go_page(self, page: int, wait: bool = True) -> None:
         page = max(1, min(page, self.page_count()))
         self.offset = (page - 1) * self.page_size
-        self.load()
+        self.load(wait)
 
     # ------------------------------------------------------------------ Qt model
     def rowCount(self, parent=QModelIndex()):
@@ -248,67 +579,84 @@ class TableModel(QAbstractTableModel):
         return self._update(index.row(), {col.name: None})
 
     def _update(self, r: int, values: dict) -> bool:
-        key = self.data_.keys[r]
-        try:
-            self.db.update_row(self.table, key, values)
-        except D.DatabaseError as e:
-            self.error.emit(str(e))
+        """UPDATE one row (waits: the grid editor needs the answer) and show the stored values."""
+        if self.worker.busy:
+            self.error.emit("Busy - wait until the current operation has finished (or cancel it)")
             return False
-        self._refresh_row(r, key, values)
-        return True
-
-    def _refresh_row(self, r: int, key: dict, values: dict) -> None:
-        """Show the stored values (types/defaults/triggers applied by the database) without moving rows."""
-        names = self.data_.column_names
+        data = self.data_
+        key = data.keys[r]
+        names = data.column_names
         new_key = {k: values.get(k, v) for k, v in key.items()} if D.KEY_ALIAS not in key else key
-        try:
-            where, params = self.db._key_where(new_key)
-            cols = ", ".join(self.db.q(n) for n in names)
-            rows = self.db._rows(f"SELECT {cols} FROM {self.db.q(self.table)} WHERE {where}", params)
-        except D.DatabaseError:
-            rows = []
+
+        def work(s: D.Database):
+            s.update_row(self.table, key, values)
+            # read the row back: types/defaults/triggers applied by the database
+            try:
+                where, params = s._key_where(new_key)
+                cols = ", ".join(s.q(n) for n in names)
+                return s._rows(f"SELECT {cols} FROM {s.q(self.table)} WHERE {where}", params)
+            except D.DatabaseError:
+                return []
+        t = self.worker.call(work, wait=True, label=f"Saving {self.table}")
+        if not t.ok:
+            self.error.emit(t.message)
+            return False
+        if self.data_ is not data:          # reloaded meanwhile
+            return True
+        rows = t.value
         if rows and D.KEY_ALIAS not in key:
-            self.data_.rows[r] = list(rows[0])
-            pk = [k for k in key]
-            self.data_.keys[r] = {k: self.data_.rows[r][names.index(k)] for k in pk if k in names}
+            data.rows[r] = list(rows[0])
+            data.keys[r] = {k: data.rows[r][names.index(k)] for k in key if k in names}
             self.dataChanged.emit(self.index(r, 0), self.index(r, len(names) - 1))
         else:
             self.load()                         # ctid changes after an update: read the page again
-
-    def insert_row(self, values: dict) -> bool:
-        try:
-            self.db.insert_row(self.table, values)
-        except D.DatabaseError as e:
-            self.error.emit(str(e))
-            return False
-        # show the last page (where a new row normally is)
-        self.load()
-        if self.total > self.offset + self.page_size and not self.order_by:
-            self.go_page(self.page_count())
         return True
 
-    def delete_rows(self, rows: list[int]) -> int:
+    def insert_row(self, values: dict, wait: bool = True) -> bool:
+        """INSERT, then show the last page (where a new row normally is)."""
+        offset, last = self.offset, not self.order_by
+
+        def work(s: D.Database):
+            s.insert_row(self.table, values)
+            return self._select(s, offset, last_page=last)
+        t = self.worker.call(work, self._apply, self._failed, wait=wait, label=f"Inserting into {self.table}")
+        return t.ok if wait else not t.done
+
+    def delete_rows(self, rows: list[int], wait: bool = True, then=None) -> int:
+        """DELETE the rows (by their keys) and reload; ``then(n)`` is called when done (n = rows deleted)."""
         keys = [self.data_.keys[r] for r in sorted(set(rows)) if 0 <= r < len(self.data_.keys)]
         if not keys:
             return 0
-        try:
-            n = self.db.delete_rows(self.table, keys)
-        except D.DatabaseError as e:
-            self.error.emit(str(e))
-            self.load()
-            return 0
-        self.load()
-        if self.offset and self.offset >= self.total:
-            self.go_page(self.page_count())
-        return n
+        offset = self.offset
+        box = {"n": 0}
+
+        def work(s: D.Database):
+            box["n"] = s.delete_rows(self.table, keys)
+            return self._select(s, offset)
+
+        def ok(data):
+            self._apply(data)
+            if then is not None:
+                then(box["n"])
+
+        def err(e):
+            self._failed(e)
+            self.load(wait=False)
+            if then is not None:
+                then(0)
+        t = self.worker.call(work, ok, err, wait=wait, label=f"Deleting from {self.table}")
+        return box["n"] if wait and t.ok else 0
 
     def sort(self, column, order=Qt.SortOrder.AscendingOrder):
+        self.sort_by(column, order)
+
+    def sort_by(self, column, order=Qt.SortOrder.AscendingOrder, wait: bool = True):
         if not self.data_ or column < 0:
             return
         self.order_by = self.data_.columns[column].name
         self.descending = order == Qt.SortOrder.DescendingOrder
         self.offset = 0
-        self.load()
+        self.load(wait)
 
 
 # =============================================================================== row dialog
@@ -362,17 +710,22 @@ class RowDialog(QDialog):
 class TableDataView(QWidget):
     """Document tab with the data of one table (WebMatrix "Data" view)."""
 
-    def __init__(self, panel: "DatabasesPanel", conn: str, db: D.Database, table: str):
+    def __init__(self, panel: "DatabasesPanel", conn: str, db: D.Database, table: str, wait: bool = True):
         super().__init__()
         self.panel, self.conn, self.db, self.table = panel, conn, db, table
-        self.model = TableModel(db, table, int(panel.settings_value("databases/page_size", 200) or 200), self)
+        self.worker = DbWorker(db.clone(), name=f"data-{table}")      # own connection for this tab
+        self.destroyed.connect(lambda *_a, w=self.worker: w.shutdown())
+        self.model = TableModel(db, table, int(panel.settings_value("databases/page_size", 200) or 200), self,
+                                worker=self.worker)
         self.model.error.connect(self._error)
         self.model.loaded.connect(self._update_status)
+        self.model.loaded.connect(self._first_load)
+        self._sized = False
         self.view = QTableView()
         self.view.setModel(self.model)
         self.view.setSortingEnabled(False)
         self.view.horizontalHeader().setSectionsClickable(True)
-        self.view.horizontalHeader().sectionClicked.connect(self._sort_by)
+        self.view.horizontalHeader().sectionClicked.connect(lambda c: self._sort_by(c, wait=False))
         self.view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.view.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked
                                   | QAbstractItemView.EditTrigger.EditKeyPressed
@@ -384,88 +737,120 @@ class TableDataView(QWidget):
 
         tb = QToolBar()
         tb.setIconSize(tb.iconSize() * 0.8)
-        self.a_refresh = tb.addAction(_std_icon(self, "SP_BrowserReload"), "Refresh", self.refresh)
+        self.a_refresh = tb.addAction(_std_icon(self, "SP_BrowserReload"), "Refresh", lambda: self.refresh(wait=False))
         self.a_refresh.setShortcut(QKeySequence("F5"))
         self.a_refresh.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.addAction(self.a_refresh)
         tb.addSeparator()
-        self.a_new = tb.addAction(_std_icon(self, "SP_FileDialogNewFolder"), "New Row", self.new_row)
-        self.a_del = tb.addAction(_std_icon(self, "SP_TrashIcon"), "Delete", self.delete_selected)
+        self.a_new = tb.addAction(_std_icon(self, "SP_FileDialogNewFolder"), "New Row",
+                                  lambda: self.new_row(wait=False))
+        self.a_del = tb.addAction(_std_icon(self, "SP_TrashIcon"), "Delete", lambda: self.delete_selected(wait=False))
         self.a_del.setShortcut(QKeySequence("Ctrl+Delete"))
         self.a_del.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.addAction(self.a_del)
-        self.a_null = tb.addAction("Set NULL", self.set_null)
+        self.a_null = tb.addAction("Set NULL", lambda: self.set_null())
         tb.addSeparator()
-        tb.addAction("Schema", lambda: panel.open_schema(conn, table))
+        tb.addAction("Schema", lambda: panel.open_schema(conn, table, wait=False))
         tb.addAction("Query", lambda: panel.open_query(conn, f"SELECT * FROM {db.q(table)}"))
-        tb.addAction("Export CSV...", lambda: panel.export_csv(conn, table))
+        tb.addAction("Export CSV...", lambda: panel.export_csv(conn, table, wait=False))
         tb.addSeparator()
         tb.addWidget(QLabel(" Filter (WHERE): "))
         self.filter = QLineEdit()
         self.filter.setPlaceholderText("e.g. Price > 10 AND Name LIKE 'A%'  (Enter)")
         self.filter.setMinimumWidth(220)
-        self.filter.returnPressed.connect(self.apply_filter)
+        self.filter.returnPressed.connect(lambda: self.apply_filter(wait=False))
         tb.addWidget(self.filter)
         bar = QToolBar()
-        self.a_first = bar.addAction("|<", lambda: self.model.go_page(1))
-        self.a_prev = bar.addAction("<", lambda: self.model.go_page(self.model.page() - 1))
+        self.a_first = bar.addAction("|<", lambda: self.model.go_page(1, wait=False))
+        self.a_prev = bar.addAction("<", lambda: self.model.go_page(self.model.page() - 1, wait=False))
         self.page_label = QLabel()
         bar.addWidget(self.page_label)
-        self.a_next = bar.addAction(">", lambda: self.model.go_page(self.model.page() + 1))
-        self.a_last = bar.addAction(">|", lambda: self.model.go_page(self.model.page_count()))
+        self.a_next = bar.addAction(">", lambda: self.model.go_page(self.model.page() + 1, wait=False))
+        self.a_last = bar.addAction(">|", lambda: self.model.go_page(self.model.page_count(), wait=False))
         bar.addWidget(QLabel("  Rows per page: "))
         self.size = QComboBox()
         self.size.addItems(["50", "100", "200", "500", "1000"])
         self.size.setCurrentText(str(self.model.page_size))
-        self.size.currentTextChanged.connect(self._page_size)
+        self.size.currentTextChanged.connect(lambda text: self._page_size(text, wait=False))
         bar.addWidget(self.size)
         self.status = QLabel()
         self.status.setWordWrap(True)
+        self.busy = BusyBar(self)
+        self.busy.attach(self.worker)
+        self.worker.busy_changed.connect(self._busy)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         lay.addWidget(tb)
+        lay.addWidget(self.busy)
         lay.addWidget(self.view, 1)
         row = QHBoxLayout()
         row.addWidget(bar)
         row.addWidget(self.status, 1)
         lay.addLayout(row)
-        self.model.load()
+        self.status.setText("  Loading...")
+        self.model.load(wait)
+
+    def maybe_close(self) -> bool:
+        """Closing the tab cancels what is running and closes this tab's connection."""
+        return self.panel.view_closing(self)
+
+    def _first_load(self):
+        if self._sized or not self.model.columnCount():
+            return
+        self._sized = True
         self.view.resizeColumnsToContents()
         for i in range(self.model.columnCount()):
             if self.view.columnWidth(i) > 320:
                 self.view.setColumnWidth(i, 320)
 
-    def refresh(self):
-        self.model.load()
+    def _busy(self, on: bool):
+        for a in (self.a_refresh, self.a_new, self.a_del, self.a_null, self.a_first, self.a_prev, self.a_next,
+                  self.a_last):
+            a.setEnabled(not on)
+        self.filter.setEnabled(not on)
+        self.size.setEnabled(not on)
+        if not on:
+            self._update_actions()
 
-    def apply_filter(self):
+    def refresh(self, wait: bool = True):
+        self.model.load(wait)
+
+    def apply_filter(self, wait: bool = True):
         self.model.where = self.filter.text().strip()
         self.model.offset = 0
-        self.model.load()
+        self.model.load(wait)
 
-    def _page_size(self, text):
+    def _page_size(self, text, wait: bool = True):
         try:
             self.model.page_size = max(1, int(text))
         except ValueError:
             return
         self.model.offset = 0
-        self.model.load()
+        self.model.load(wait)
         self.panel.set_setting("databases/page_size", self.model.page_size)
 
-    def _sort_by(self, col):
+    def _sort_by(self, col, wait: bool = True):
         m = self.model
         name = m.columns[col].name if 0 <= col < len(m.columns) else ""
         desc = (not m.descending) if name == m.order_by else False
-        m.sort(col, Qt.SortOrder.DescendingOrder if desc else Qt.SortOrder.AscendingOrder)
+        m.sort_by(col, Qt.SortOrder.DescendingOrder if desc else Qt.SortOrder.AscendingOrder, wait)
 
     def _update_status(self):
         m = self.model
+        if m.data_ is None:
+            return
         first = m.offset + 1 if m.rowCount() else 0
         self.page_label.setText(f"  Page {m.page()} of {m.page_count()}  ")
         ro = "" if m.editable else "  (read-only view)"
-        self.status.setStyleSheet("")
+        _role_clear(self.status)
         self.status.setText(f"  Rows {first}-{m.offset + m.rowCount()} of {m.total}{ro}")
+        self._update_actions()
+
+    def _update_actions(self):
+        m = self.model
+        if self.worker.busy or m.data_ is None:
+            return
         for a in (self.a_new, self.a_del, self.a_null):
             a.setEnabled(m.editable)
         self.a_prev.setEnabled(m.page() > 1)
@@ -481,25 +866,26 @@ class TableDataView(QWidget):
     def selected_rows(self) -> list[int]:
         return sorted({i.row() for i in self.view.selectionModel().selectedIndexes()})
 
-    def new_row(self, values: dict | None = None):
+    def new_row(self, values: dict | None = None, wait: bool = True):
         if values is None:
             dlg = RowDialog(self.model.columns, self, f"New Row - {self.table}")
             if dlg.exec() != QDialog.DialogCode.Accepted:
                 return False
             values = dlg.values(self.db)
-        return self.model.insert_row(values)
+        return self.model.insert_row(values, wait)
 
-    def delete_selected(self, confirm: bool = True):
+    def delete_selected(self, confirm: bool = True, wait: bool = True):
         rows = self.selected_rows()
         if not rows:
             return 0
         if confirm and QMessageBox.question(self, "Delete rows", f"Delete {len(rows)} row(s) from {self.table}?") \
                 != QMessageBox.StandardButton.Yes:
             return 0
-        n = self.model.delete_rows(rows)
-        if n:
-            self.status.setText(f"  {n} row(s) deleted - {self.model.total} left")
-        return n
+
+        def done(n):
+            if n:
+                self.status.setText(f"  {n} row(s) deleted - {self.model.total} left")
+        return self.model.delete_rows(rows, wait, then=done)
 
     def set_null(self):
         for i in self.view.selectionModel().selectedIndexes():
@@ -508,32 +894,40 @@ class TableDataView(QWidget):
     def _menu(self, pos):
         m = QMenu(self)
         ix = self.view.indexAt(pos)
+        idle = not self.worker.busy
         if ix.isValid():
             m.addAction("Copy", lambda: QApplication.clipboard().setText(
                 "\n".join("\t".join(self.model.data(self.model.index(r, c)) or "" for c in sorted(
                     {i.column() for i in self.view.selectedIndexes()})) for r in self.selected_rows())))
-            m.addAction("Set to NULL", self.set_null).setEnabled(self.model.editable)
+            m.addAction("Set to NULL", lambda: self.set_null()).setEnabled(self.model.editable and idle)
             m.addSeparator()
-        m.addAction("New Row...", self.new_row).setEnabled(self.model.editable)
-        m.addAction("Delete Selected Rows", self.delete_selected).setEnabled(self.model.editable and ix.isValid())
+        m.addAction("New Row...", lambda: self.new_row(wait=False)).setEnabled(self.model.editable and idle)
+        m.addAction("Delete Selected Rows", lambda: self.delete_selected(wait=False)).setEnabled(
+            self.model.editable and ix.isValid() and idle)
         m.addSeparator()
-        m.addAction("Refresh", self.refresh)
+        m.addAction("Refresh", lambda: self.refresh(wait=False)).setEnabled(idle)
         m.exec(self.view.viewport().mapToGlobal(pos))
 
 
 # =============================================================================== schema view
 class SchemaView(QWidget):
-    def __init__(self, panel: "DatabasesPanel", conn: str, db: D.Database, table: str):
+    def __init__(self, panel: "DatabasesPanel", conn: str, db: D.Database, table: str, wait: bool = True):
         super().__init__()
         self.panel, self.conn, self.db, self.table = panel, conn, db, table
+        self.worker = DbWorker(db.clone(), name=f"schema-{table}")    # own connection for this tab
+        self.destroyed.connect(lambda *_a, w=self.worker: w.shutdown())
         tb = QToolBar()
-        tb.addAction(_std_icon(self, "SP_BrowserReload"), "Refresh", self.refresh)
+        self.a_refresh = tb.addAction(_std_icon(self, "SP_BrowserReload"), "Refresh", lambda: self.refresh(wait=False))
         tb.addSeparator()
-        self.a_add = tb.addAction("Add Column...", self.add_column)
-        self.a_drop = tb.addAction("Drop Column", self.drop_column)
+        self.a_add = tb.addAction("Add Column...", lambda: self.add_column(wait=False))
+        self.a_drop = tb.addAction("Drop Column", lambda: self.drop_column(wait=False))
         tb.addSeparator()
-        tb.addAction("Data", lambda: panel.open_table(conn, table))
-        tb.addAction("Export SQL...", lambda: panel.export_sql(conn, table))
+        tb.addAction("Data", lambda: panel.open_table(conn, table, wait=False))
+        tb.addAction("Export SQL...", lambda: panel.export_sql(conn, table, wait=False))
+        self.busy = BusyBar(self)
+        self.busy.attach(self.worker)
+        self.worker.busy_changed.connect(self._busy)
+        self._view = False
         self.cols = QTableWidget(0, 6)
         self.cols.setHorizontalHeaderLabels(["Column", "Type", "Primary Key", "Not Null", "Default", "Auto"])
         self.cols.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -555,19 +949,35 @@ class SchemaView(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(tb)
+        lay.addWidget(self.busy)
         lay.addWidget(split, 1)
-        self.refresh()
+        self.refresh(wait)
 
-    def refresh(self):
-        try:
-            cols = self.db.columns(self.table)
-            view = self.db.is_view(self.table)
-            ixs = [] if view else self.db.indexes(self.table)
-            fks = [] if view else self.db.foreign_keys(self.table)
-            create = self.db.create_sql(self.table)
-        except D.DatabaseError as e:
-            self.sql.setPlainText(f"-- error: {e}")
-            return
+    def maybe_close(self) -> bool:
+        """Closing the tab cancels what is running and closes this tab's connection."""
+        return self.panel.view_closing(self)
+
+    def _busy(self, on: bool):
+        self.a_refresh.setEnabled(not on)
+        self.a_add.setEnabled(not on and not self._view)
+        self.a_drop.setEnabled(not on and not self._view)
+
+    def refresh(self, wait: bool = True) -> bool:
+        table = self.table
+
+        def work(s: D.Database):
+            cols = s.columns(table)
+            view = s.is_view(table)
+            ixs = [] if view else s.indexes(table)
+            fks = [] if view else s.foreign_keys(table)
+            return cols, view, ixs, fks, s.create_sql(table)
+        t = self.worker.call(work, self._show, lambda e: self.sql.setPlainText(f"-- error: {e}"), wait=wait,
+                             label=f"Reading the schema of {table}")
+        return t.ok if wait else True
+
+    def _show(self, info):
+        cols, view, ixs, fks, create = info
+        self._view = view
         self.a_add.setEnabled(not view)
         self.a_drop.setEnabled(not view)
         self.cols.setRowCount(len(cols))
@@ -588,34 +998,30 @@ class SchemaView(QWidget):
                                           else "")])
         self.sql.setPlainText(create)
 
-    def add_column(self):
+    def _ddl(self, title: str, fn, wait: bool):
+        def ok(sql):
+            self.panel.log(f"[{self.conn}] {sql}")
+            self.refresh(wait)
+            self.panel.table_changed(self.conn, self.table, wait)
+        t = self.worker.call(fn, ok, lambda e: QMessageBox.warning(self, title, str(e)), wait=wait, label=title)
+        return t.ok if wait else None
+
+    def add_column(self, wait: bool = True):
         dlg = AddColumnDialog(self.db, self.table, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            try:
-                sql = self.db.add_column(self.table, dlg.column())
-            except D.DatabaseError as e:
-                QMessageBox.warning(self, "Add Column", str(e))
-                return
-            self.panel.log(f"[{self.conn}] {sql}")
-            self.refresh()
-            self.panel.table_changed(self.conn, self.table)
+            col, table = dlg.column(), self.table
+            return self._ddl("Add Column", lambda s: s.add_column(table, col), wait)
+        return False
 
-    def drop_column(self):
+    def drop_column(self, wait: bool = True):
         r = self.cols.currentRow()
         if r < 0:
-            return
-        name = self.cols.item(r, 0).text()
+            return False
+        name, table = self.cols.item(r, 0).text(), self.table
         if QMessageBox.question(self, "Drop Column", f"Drop column {name} from {self.table}? Its data is lost.") \
                 != QMessageBox.StandardButton.Yes:
-            return
-        try:
-            sql = self.db.drop_column(self.table, name)
-        except D.DatabaseError as e:
-            QMessageBox.warning(self, "Drop Column", str(e))
-            return
-        self.panel.log(f"[{self.conn}] {sql}")
-        self.refresh()
-        self.panel.table_changed(self.conn, self.table)
+            return False
+        return self._ddl("Drop Column", lambda s: s.drop_column(table, name), wait)
 
 
 # =============================================================================== query view
@@ -625,19 +1031,32 @@ class QueryView(QWidget):
     def __init__(self, panel: "DatabasesPanel", conn: str, db: D.Database, sql: str = ""):
         super().__init__()
         self.panel, self.conn, self.db = panel, conn, db
+        # the query window is a session of its own (like SSMS): BEGIN / temp tables / SET survive between runs
+        self.worker = DbWorker(db.clone(), name="query")
+        self.destroyed.connect(lambda *_a, w=self.worker: w.shutdown())
         self.path: Path | None = None
         self.results: list[D.Result] = []
         self.editor = QPlainTextEdit()
         self.editor.setFont(QFont("Consolas", 10))
         self.editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.editor.setPlaceholderText("Type SQL here.  F5 / Ctrl+Enter = run (the selection only, if any).")
+        self.editor.setPlaceholderText("Type SQL here.  F5 / Ctrl+Enter = run (the selection only, if any).  "
+                                       "Esc = cancel a running query.")
         self.editor.setPlainText(sql)
         SqlHighlighter(self.editor.document())
         tb = QToolBar()
-        a = tb.addAction(_std_icon(self, "SP_MediaPlay"), "Run", self.run)
+        a = tb.addAction(_std_icon(self, "SP_MediaPlay"), "Run", lambda: self.run(wait=False))
         a.setShortcuts([QKeySequence("F5"), QKeySequence("Ctrl+Return"), QKeySequence("Ctrl+Enter")])
         a.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.addAction(a)
+        self.a_run = a
+        self.a_cancel = tb.addAction(_std_icon(self, "SP_MediaStop"), "Cancel", self.cancel)
+        self.a_cancel.setShortcut(QKeySequence("Esc"))
+        self.a_cancel.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self.a_cancel.setEnabled(False)
+        self.addAction(self.a_cancel)
+        self.busy = BusyBar(self, keep_last=True)
+        self.busy.attach(self.worker)
+        self.worker.busy_changed.connect(self._busy)
         tb.addSeparator()
         tb.addAction(_std_icon(self, "SP_DialogOpenButton"), "Open .sql...", self.open_file)
         tb.addAction(_std_icon(self, "SP_DialogSaveButton"), "Save .sql...", self.save_file)
@@ -658,7 +1077,27 @@ class QueryView(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(tb)
+        lay.addWidget(self.busy)
         lay.addWidget(split, 1)
+
+    def maybe_close(self) -> bool:
+        """Closing the tab cancels what is running and closes this tab's connection."""
+        return self.panel.view_closing(self)
+
+    def _busy(self, on: bool):
+        self.a_run.setEnabled(not on)
+        self.a_cancel.setEnabled(on)
+
+    @property
+    def running(self) -> bool:
+        return self.worker.busy
+
+    def cancel(self) -> str:
+        """Stop the running query (SQLite interrupt / PostgreSQL cancel / MySQL KILL QUERY)."""
+        if not self.worker.busy:
+            return "idle"
+        self.messages.appendPlainText("Cancelling...")
+        return self.worker.cancel()
 
     def sql_to_run(self) -> tuple[str, int]:
         cur = self.editor.textCursor()
@@ -668,18 +1107,36 @@ class QueryView(QWidget):
             return cur.selectedText().replace(" ", "\n"), first
         return self.editor.toPlainText(), 0
 
-    def run(self) -> list[D.Result]:
+    def run(self, wait: bool = True) -> list[D.Result]:
+        """Run the script (or the selection) in the background. ``wait`` = return the results when done
+        (the IDE stays responsive meanwhile); False = return [] at once, the results are shown later."""
+        if self.worker.busy:
+            if not wait:
+                return []                   # one run at a time (Run is disabled meanwhile)
+            self.worker.wait_idle()
         sql, line_offset = self.sql_to_run()
         if not sql.strip():
             return []
-        with _wait_cursor():
-            results = self.db.execute(sql, stop_on_error=self.stop_on_error.isChecked())
+        stop = self.stop_on_error.isChecked()
+        out: list[D.Result] = []
+
+        def ok(results):
+            out.extend(self._ran(results, line_offset, wait))
+
+        def err(e):                         # e.g. cannot connect
+            r = D.Result(sql.strip(), line=1 + line_offset, error=str(e) or type(e).__name__)
+            out.extend(self._ran([r], 0, wait))
+        self.messages.setPlainText("Running...")
+        self.worker.call(lambda s: s.execute(sql, stop_on_error=stop), ok, err, wait=wait, label="Running the query")
+        return out
+
+    def _ran(self, results: list[D.Result], line_offset: int, wait: bool) -> list[D.Result]:
         for r in results:
             r.line += line_offset
         self.show_results(results)
         if any(not re.match(r"\s*(SELECT|PRAGMA|SHOW|EXPLAIN|WITH|DESCRIBE|VALUES)\b", r.statement, re.IGNORECASE)
                for r in results if r.ok):
-            self.panel.refresh_connection(self.conn)        # tables may have changed
+            self.panel.refresh_connection(self.conn, wait)  # tables may have changed
         return results
 
     def show_results(self, results: list[D.Result]):
@@ -1064,13 +1521,31 @@ class ConnectionDialog(QDialog):
             raise D.DatabaseError("Choose a database file")
         return D.open_database(info, self.base, self.password.text())
 
-    def test(self) -> bool:
+    def _in_thread(self, fn, label: str):
+        """Run ``fn()`` in a thread (a slow / unreachable server does not freeze the IDE)."""
+        self.status.setText(label + "...")
+        buttons = [b for b in self.findChildren(QPushButton) if b.isEnabled()]
+        for b in buttons:
+            b.setEnabled(False)
         try:
-            with _wait_cursor():
-                db = self._open()
-                ver = db.server_version()
-                n = len(db.tables())
+            return run_in_thread(fn, label)
+        finally:
+            for b in buttons:
+                b.setEnabled(True)
+
+    def test(self) -> bool:
+        info, base, pw = self.info(), self.base, self.password.text()
+
+        def work():
+            if info.kind == "sqlite" and not info.path:
+                raise D.DatabaseError("Choose a database file")
+            db = D.open_database(info, base, pw)
+            try:
+                return db.server_version(), len(db.tables())
+            finally:
                 db.close()
+        try:
+            ver, n = self._in_thread(work, "Connecting")
         except D.DatabaseError as e:
             _role(self.status, "error")
             self.status.setText(str(e))
@@ -1084,11 +1559,16 @@ class ConnectionDialog(QDialog):
         info.database = info.database if info.kind == "mysql" else (info.database or "postgres")
         if info.kind == "mysql":
             info.database = ""
-        try:
-            with _wait_cursor():
-                db = D.open_database(info, self.base, self.password.text())
-                names = db.databases()
+        base, pw = self.base, self.password.text()
+
+        def work():
+            db = D.open_database(info, base, pw)
+            try:
+                return db.databases()
+            finally:
                 db.close()
+        try:
+            names = self._in_thread(work, "Reading the databases")
         except D.DatabaseError as e:
             _role(self.status, "error")
             self.status.setText(str(e))
@@ -1097,7 +1577,7 @@ class ConnectionDialog(QDialog):
         self.database.clear()
         self.database.addItems(names)
         self.database.setCurrentText(cur or (names[0] if names else ""))
-        self.status.setStyleSheet("")
+        _role_clear(self.status)
         self.status.setText(f"{len(names)} database(s).")
 
     def _accept(self):
@@ -1109,7 +1589,7 @@ class ConnectionDialog(QDialog):
 
 
 class ImportCsvDialog(QDialog):
-    def __init__(self, db: D.Database, parent=None, table: str = "", path: str = ""):
+    def __init__(self, db: D.Database, parent=None, table: str = "", path: str = "", tables: list | None = None):
         super().__init__(parent)
         self.db = db
         self.setWindowTitle("Import CSV")
@@ -1118,10 +1598,12 @@ class ImportCsvDialog(QDialog):
         browse.clicked.connect(self._browse)
         self.table = QComboBox()
         self.table.setEditable(True)
-        try:
-            self.table.addItems(db.tables())
-        except D.DatabaseError:
-            pass
+        if tables is None:                  # (the panel reads them in its worker and passes them)
+            try:
+                tables = db.tables()
+            except D.DatabaseError:
+                tables = []
+        self.table.addItems(tables)
         self.table.setCurrentText(table)
         self.header = QCheckBox("First row has the column names")
         self.header.setChecked(True)
@@ -1204,7 +1686,7 @@ class AdminerTab(QWidget):
 
 
 # =============================================================================== the panel
-KIND_CONN, KIND_TABLE, KIND_VIEW, KIND_FOLDER, KIND_DETECTED, KIND_PROJECT = range(6)
+KIND_CONN, KIND_TABLE, KIND_VIEW, KIND_FOLDER, KIND_DETECTED, KIND_PROJECT, KIND_LOADING = range(7)
 
 
 class DatabasesPanel(QWidget):
@@ -1223,6 +1705,12 @@ class DatabasesPanel(QWidget):
         self._query_no = 0
         self.managers: dict[str, D.ConnectionManager] = {}  # project key -> manager
         self.loose: D.ConnectionManager = D.ConnectionManager(None, None)   # connections without a project
+        # threads: every open connection has a worker (tree, DDL); exports/imports get a worker with a
+        # connection of their own; every document tab has its own worker + connection too.
+        self.workers: dict[str, DbWorker] = {}            # conn id -> worker on open_dbs[cid]
+        self._jobs: set[DbWorker] = set()                 # running one-off workers (export / import)
+        self._connecting: dict[str, DbWorker] = {}
+        self.busy = BusyBar(self)
 
         tb = QToolBar()
         tb.setIconSize(tb.iconSize() * 0.8)
@@ -1237,7 +1725,7 @@ class DatabasesPanel(QWidget):
         self.a_query = tb.addAction(_std_icon(self, "SP_FileDialogDetailedView"), "New Query",
                                     lambda: self._with_conn(self.open_query))
         self.a_table = tb.addAction(_std_icon(self, "SP_FileDialogListView"), "New Table",
-                                    lambda: self._with_conn(self.create_table_dialog))
+                                    lambda: self._with_conn(lambda c: self.create_table_dialog(c, wait=False)))
         self.a_adminer = tb.addAction(_std_icon(self, "SP_ComputerIcon"), "Open in Adminer",
                                       lambda: self._with_conn(self.open_adminer))
         self.tree = QTreeWidget()
@@ -1254,6 +1742,7 @@ class DatabasesPanel(QWidget):
         lay.setSpacing(0)
         lay.addWidget(tb)
         lay.addWidget(self.tree, 1)
+        lay.addWidget(self.busy)
         lay.addWidget(self.info)
         self.refresh()
 
@@ -1382,7 +1871,7 @@ class DatabasesPanel(QWidget):
         it.setIcon(0, _std_icon(self, "SP_DriveHDIcon"))
         it.setChildIndicatorPolicy(QTreeWidgetItem.ChildIndicatorPolicy.ShowIndicator)
         if cid in self.open_dbs:
-            self._fill_conn(it)
+            self._fill_conn(it, wait=False)
         return it
 
     def _all_items(self):
@@ -1404,16 +1893,44 @@ class DatabasesPanel(QWidget):
                 return it
         return None
 
-    def _fill_conn(self, it) -> bool:
+    def worker(self, conn) -> DbWorker | None:
+        """The worker of a connection (connects first, may ask for the password)."""
+        cid = self._resolve(conn)
+        if self.db(cid) is None:
+            return None
+        return self.workers.get(cid)
+
+    def _fill_conn(self, it, wait: bool = True) -> bool:
+        """Read the tables and views of a connection (in its worker) and show them under ``it``."""
         cid = it.data(0, ROLE)[1]
-        db = self.db(cid)
-        if db is None:
+        w = self.worker(cid)
+        if w is None:
             return False
-        try:
-            tables, views = db.tables(), db.views()
-        except D.DatabaseError as e:
+        if not wait and it.childCount() == 0:
+            x = QTreeWidgetItem(it, ["Loading..."])
+            x.setData(0, ROLE, (KIND_LOADING, cid))
+            x.setDisabled(True)
+
+        def work(s: D.Database):
+            return s.tables(), s.views(), s.server_version()
+
+        def failed(e):
             self.log(f"[databases] {e}")
-            return False
+            item = self.conn_item(cid)
+            if item is not None:
+                for k in reversed(range(item.childCount())):
+                    d = item.child(k).data(0, ROLE)
+                    if d and d[0] == KIND_LOADING:
+                        item.takeChild(k)
+                if item.childCount() == 0:
+                    item.setExpanded(False)
+        t = w.call(work, lambda v: self._show_tables(cid, *v), failed, wait=wait, label="Reading the tables")
+        return t.ok if wait else True
+
+    def _show_tables(self, cid: str, tables: list, views: list, version: str):
+        it = self.conn_item(cid)            # the tree may have been rebuilt meanwhile
+        if it is None:
+            return
         it.takeChildren()
         tf = QTreeWidgetItem(it, [f"Tables ({len(tables)})"])
         tf.setData(0, ROLE, (KIND_FOLDER, cid))
@@ -1431,25 +1948,24 @@ class DatabasesPanel(QWidget):
                 x.setData(0, ROLE, (KIND_VIEW, cid))
                 x.setIcon(0, _std_icon(self, "SP_FileDialogContentsView"))
         tf.setExpanded(True)
-        it.setToolTip(0, it.toolTip(0).split("\n")[0] + f"\n{db.server_version()}")
-        return True
+        it.setToolTip(0, it.toolTip(0).split("\n")[0] + f"\n{version}")
 
-    def refresh_connection(self, cid: str):
+    def refresh_connection(self, cid: str, wait: bool = True):
         it = self.conn_item(cid)
         if it is not None and cid in self.open_dbs:
-            self._fill_conn(it)
+            self._fill_conn(it, wait)
             it.setExpanded(True)
 
-    def table_changed(self, cid: str, table: str):
+    def table_changed(self, cid: str, table: str, wait: bool = True):
         v = self.views.get(("data", cid, table))
         if isinstance(v, TableDataView):
-            v.model.load()
-        self.refresh_connection(cid)
+            v.model.load(wait)
+        self.refresh_connection(cid, wait)
 
     def _expanded(self, it):
         d = it.data(0, ROLE)
         if d and d[0] == KIND_CONN and it.childCount() == 0:
-            if not self._fill_conn(it):
+            if not self._fill_conn(it, wait=False):
                 it.setExpanded(False)
 
     def _selected(self):
@@ -1478,7 +1994,7 @@ class DatabasesPanel(QWidget):
         if not d:
             return
         if d[0] in (KIND_TABLE, KIND_VIEW):
-            self.open_table(d[1], it.text(0))
+            self.open_table(d[1], it.text(0), wait=False)
         elif d[0] == KIND_DETECTED:
             self.add_detected(it)
 
@@ -1489,6 +2005,8 @@ class DatabasesPanel(QWidget):
         db = self.open_dbs.get(cid)
         if db is not None:
             return db
+        if cid in self._connecting:         # already connecting (a second double-click meanwhile): ignore
+            return None
         m, c = self._split_id(cid)
         pw = ""
         if c.needs_password:
@@ -1503,28 +2021,59 @@ class DatabasesPanel(QWidget):
                 if not ok:
                     return None
         try:
-            with _wait_cursor():
-                db = D.open_database(c, m.folder, pw)
+            db = D.open_database(c, m.folder, pw, connect=False)
         except D.DatabaseError as e:
-            self.session_passwords.pop(cid, None)
             QMessageBox.warning(self, f"Connect to {c.name}", str(e))
+            return None
+        w = DbWorker(db, name=c.name)
+        self.busy.attach(w)
+        self._connecting[cid] = w
+        try:                                # connect in the worker: a slow server does not freeze the IDE
+            t = w.call(lambda s: (s.connect(), s.server_version())[1], wait=True, label=f"Connecting to {c.name}")
+        finally:
+            self._connecting.pop(cid, None)
+        if not t.ok:
+            self.busy.detach(w)
+            w.shutdown()
+            self.session_passwords.pop(cid, None)
+            QMessageBox.warning(self, f"Connect to {c.name}", t.message)
             return None
         if c.needs_password:
             self.session_passwords[cid] = pw
         self.open_dbs[cid] = db
-        self.log(f"[databases] connected to {c.describe(m.folder)} ({db.server_version()})")
+        self.workers[cid] = w
+        self.log(f"[databases] connected to {c.describe(m.folder)} ({t.value})")
         return db
 
     def _close_db(self, cid: str):
         db = self.open_dbs.pop(cid, None)
-        if db is not None:
+        w = self.workers.pop(cid, None)
+        if w is not None:
+            self.busy.detach(w)
+            w.shutdown(close=True)           # cancels what runs; closes in the worker thread when done
+        elif db is not None:
             db.close()
         for key in [k for k in self.views if k[1] == cid]:
-            w = self.views.pop(key)
-            i = self.win.tabs.indexOf(w) if hasattr(self.win, "tabs") else -1
+            v = self.views.pop(key)
+            i = self.win.tabs.indexOf(v) if hasattr(self.win, "tabs") else -1
             if i >= 0:
                 self.win.tabs.removeTab(i)
-            w.deleteLater()
+            self._dispose_view(v)
+
+    @staticmethod
+    def _dispose_view(v):
+        w = getattr(v, "worker", None)
+        if isinstance(w, DbWorker):
+            w.shutdown()
+        v.deleteLater()
+
+    def view_closing(self, v) -> bool:
+        """A document tab is closed by the user (MainWindow._close_tab -> maybe_close): stop its query,
+        close its connection and forget it."""
+        for key in [k for k, x in self.views.items() if x is v]:
+            self.views.pop(key)
+        self._dispose_view(v)
+        return True
 
     def disconnect(self, cid: str):
         self._close_db(cid)
@@ -1577,6 +2126,8 @@ class DatabasesPanel(QWidget):
         cid = self.add_connection(D.ConnectionInfo(path.stem, "sqlite", str(path)), manager=m)
         ci = self.conn_item(cid)
         if ci is not None:
+            if ci.childCount() == 0:
+                self._fill_conn(ci)
             ci.setExpanded(True)
             self.tree.setCurrentItem(ci)
         return cid
@@ -1635,7 +2186,7 @@ class DatabasesPanel(QWidget):
         tabs = getattr(self.win, "tabs", None)
         if w is not None and tabs is not None and tabs.indexOf(w) < 0:
             self.views.pop(key, None)
-            w.deleteLater()
+            self._dispose_view(w)
             w = None
         if w is None:
             w = factory()
@@ -1652,20 +2203,21 @@ class DatabasesPanel(QWidget):
         s = self._split_id(cid)
         return s[1].name if s else cid
 
-    def open_table(self, conn, table: str):
+    def open_table(self, conn, table: str, wait: bool = True):
+        """The data tab of a table (``wait`` = return when the first page is loaded)."""
         cid = self._resolve(conn)
         db = self.db(cid)
         if db is None:
             return None
-        return self._show(("data", cid, table), lambda: TableDataView(self, cid, db, table),
+        return self._show(("data", cid, table), lambda: TableDataView(self, cid, db, table, wait),
                           f"{table} [{self._label(cid)}]")
 
-    def open_schema(self, conn, table: str):
+    def open_schema(self, conn, table: str, wait: bool = True):
         cid = self._resolve(conn)
         db = self.db(cid)
         if db is None:
             return None
-        return self._show(("schema", cid, table), lambda: SchemaView(self, cid, db, table),
+        return self._show(("schema", cid, table), lambda: SchemaView(self, cid, db, table, wait),
                           f"{table} [Schema - {self._label(cid)}]")
 
     def open_query(self, conn, sql: str = ""):
@@ -1678,7 +2230,38 @@ class DatabasesPanel(QWidget):
         return self._show(("query", cid, n), lambda: QueryView(self, cid, db, sql), f"SQLQuery{n} [{self._label(cid)}]")
 
     # ------------------------------------------------------------------ table operations
-    def create_table_dialog(self, conn, name: str = ""):
+    def _on_conn(self, cid: str, title: str, fn, on_ok, wait: bool, label: str):
+        """Run ``fn(adapter)`` in the connection's worker; errors -> warning box titled ``title``."""
+        w = self.worker(cid)
+        if w is None:
+            return None
+        return w.call(fn, on_ok, lambda e: QMessageBox.warning(self, title, _task_error(e)), wait=wait, label=label)
+
+    def _job(self, cid: str, title: str, fn, on_ok, wait: bool, label: str):
+        """Run ``fn(adapter)`` on a NEW connection of its own (exports / imports: long, cancellable, and
+        they do not block the tree or the tabs). Errors -> warning box titled ``title``."""
+        db = self.db(cid)
+        if db is None:
+            return None
+        w = DbWorker(db.clone(), name="job")
+        self._jobs.add(w)
+        self.busy.attach(w)
+
+        def end():
+            self.busy.detach(w)
+            self._jobs.discard(w)
+            w.shutdown()
+
+        def ok(v):
+            end()
+            on_ok(v)
+
+        def err(e):
+            end()
+            QMessageBox.warning(self, title, _task_error(e))
+        return w.call(fn, ok, err, wait=wait, label=label)
+
+    def create_table_dialog(self, conn, name: str = "", wait: bool = True):
         cid = self._resolve(conn)
         db = self.db(cid)
         if db is None:
@@ -1686,23 +2269,21 @@ class DatabasesPanel(QWidget):
         dlg = CreateTableDialog(db, self, name)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return None
-        table = dlg.name.text().strip()
-        try:
-            sql = db.create_table(table, dlg.columns())
-        except D.DatabaseError as e:
-            QMessageBox.warning(self, "New Table", str(e))
-            return None
-        self.log(f"[{self._label(cid)}] {sql}")
-        self.refresh_connection(cid)
-        self.open_table(cid, table)
-        return table
+        table, cols = dlg.name.text().strip(), dlg.columns()
 
-    def add_column_dialog(self, conn, table: str):
-        v = self.open_schema(conn, table)
+        def ok(sql):
+            self.log(f"[{self._label(cid)}] {sql}")
+            self.refresh_connection(cid, wait)
+            self.open_table(cid, table, wait)
+        t = self._on_conn(cid, "New Table", lambda s: s.create_table(table, cols), ok, wait, f"Creating {table}")
+        return table if t is not None and (t.ok or not wait) else None
+
+    def add_column_dialog(self, conn, table: str, wait: bool = True):
+        v = self.open_schema(conn, table, wait)
         if v is not None:
-            v.add_column()
+            v.add_column(wait)
 
-    def drop_table(self, conn, table: str, confirm: bool = True) -> bool:
+    def drop_table(self, conn, table: str, confirm: bool = True, wait: bool = True) -> bool:
         cid = self._resolve(conn)
         db = self.db(cid)
         if db is None:
@@ -1710,42 +2291,44 @@ class DatabasesPanel(QWidget):
         if confirm and QMessageBox.question(self, "Delete table", f"Delete {table} and all its data?") \
                 != QMessageBox.StandardButton.Yes:
             return False
-        try:
-            sql = db.drop_table(table)
-        except D.DatabaseError as e:
-            QMessageBox.warning(self, "Delete table", str(e))
-            return False
-        self.log(f"[{self._label(cid)}] {sql}")
-        for kind in ("data", "schema"):
-            w = self.views.pop((kind, cid, table), None)
-            if w is not None:
-                i = self.win.tabs.indexOf(w)
-                if i >= 0:
-                    self.win.tabs.removeTab(i)
-                w.deleteLater()
-        self.refresh_connection(cid)
-        return True
 
-    def rename_table(self, conn, table: str):
+        def ok(sql):
+            self.log(f"[{self._label(cid)}] {sql}")
+            for kind in ("data", "schema"):
+                v = self.views.pop((kind, cid, table), None)
+                if v is not None:
+                    i = self.win.tabs.indexOf(v)
+                    if i >= 0:
+                        self.win.tabs.removeTab(i)
+                    self._dispose_view(v)
+            self.refresh_connection(cid, wait)
+        t = self._on_conn(cid, "Delete table", lambda s: s.drop_table(table), ok, wait, f"Deleting {table}")
+        return bool(t is not None and (t.ok or not wait))
+
+    def rename_table(self, conn, table: str, new: str | None = None, wait: bool = True):
         cid = self._resolve(conn)
         db = self.db(cid)
         if db is None:
-            return
-        new, ok = QInputDialog.getText(self, "Rename table", "New name:", text=table)
-        if not ok or not new.strip() or new.strip() == table:
-            return
-        try:
-            sql = db.rename_table(table, new.strip())
-        except D.DatabaseError as e:
-            QMessageBox.warning(self, "Rename table", str(e))
-            return
-        self.log(f"[{self._label(cid)}] {sql}")
-        self.refresh_connection(cid)
+            return None
+        if new is None:
+            new, ok = QInputDialog.getText(self, "Rename table", "New name:", text=table)
+            if not ok:
+                return None
+        new = new.strip()
+        if not new or new == table:
+            return None
 
-    def export_csv(self, conn, table: str, path=None):
+        def done(sql):
+            self.log(f"[{self._label(cid)}] {sql}")
+            self.refresh_connection(cid, wait)
+        t = self._on_conn(cid, "Rename table", lambda s: s.rename_table(table, new), done, wait,
+                          f"Renaming {table}")
+        return new if t is not None and (t.ok or not wait) else None
+
+    def export_csv(self, conn, table: str, path=None, wait: bool = True):
+        """Export a table to CSV (on a connection of its own, cancellable). Returns the row count (``wait``)."""
         cid = self._resolve(conn)
-        db = self.db(cid)
-        if db is None:
+        if self.db(cid) is None:
             return 0
         if path is None:
             path, _ = QFileDialog.getSaveFileName(self, f"Export {table} to CSV",
@@ -1753,19 +2336,17 @@ class DatabasesPanel(QWidget):
                                                   "CSV (*.csv)")
             if not path:
                 return 0
-        try:
-            with _wait_cursor():
-                n = db.export_csv(table, Path(path))
-        except (D.DatabaseError, OSError) as e:
-            QMessageBox.warning(self, "Export CSV", str(e))
-            return 0
-        self.log(f"[{self._label(cid)}] exported {n} row(s) of {table} to {path}")
-        return n
+        path = Path(path)
 
-    def export_sql(self, conn, table: str | None = None, path=None):
+        def ok(n):
+            self.log(f"[{self._label(cid)}] exported {n} row(s) of {table} to {path}")
+        t = self._job(cid, "Export CSV", lambda s: s.export_csv(table, path), ok, wait, f"Exporting {table}")
+        return t.value if t is not None and wait and t.ok else 0
+
+    def export_sql(self, conn, table: str | None = None, path=None, wait: bool = True):
+        """Export a table (or the whole database) to SQL. Returns the table count (``wait``)."""
         cid = self._resolve(conn)
-        db = self.db(cid)
-        if db is None:
+        if self.db(cid) is None:
             return 0
         if path is None:
             stem = table or self._label(cid)
@@ -1773,38 +2354,38 @@ class DatabasesPanel(QWidget):
                                                   str((self.base_of(cid) or Path.cwd()) / f"{stem}.sql"), "SQL (*.sql)")
             if not path:
                 return 0
-        try:
-            with _wait_cursor():
-                n = db.export_sql(table, Path(path))
-        except (D.DatabaseError, OSError) as e:
-            QMessageBox.warning(self, "Export SQL", str(e))
-            return 0
-        self.log(f"[{self._label(cid)}] exported {n} table(s) to {path}")
-        return n
+        path = Path(path)
 
-    def import_csv_dialog(self, conn, table: str = ""):
+        def ok(n):
+            self.log(f"[{self._label(cid)}] exported {n} table(s) to {path}")
+        t = self._job(cid, "Export SQL", lambda s: s.export_sql(table, path), ok, wait,
+                      f"Exporting {table or 'the database'}")
+        return t.value if t is not None and wait and t.ok else 0
+
+    def import_csv_dialog(self, conn, table: str = "", wait: bool = True):
         cid = self._resolve(conn)
-        db = self.db(cid)
-        if db is None:
+        w = self.worker(cid)
+        if w is None:
             return 0
-        dlg = ImportCsvDialog(db, self, table)
+        t = w.call(lambda s: s.tables(), wait=True, label="Reading the tables")
+        dlg = ImportCsvDialog(self.open_dbs[cid], self, table, tables=t.value if t.ok else [])
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return 0
         o = dlg.options()
         if not o["table"] or not o["path"].is_file():
             QMessageBox.warning(self, "Import CSV", "Choose a CSV file and a table")
             return 0
-        try:
-            with _wait_cursor():
-                n = db.import_csv(o["table"], o["path"], header=o["header"], create=True,
-                                  delimiter=o["delimiter"], empty_as_null=o["empty_as_null"])
-        except (D.DatabaseError, OSError) as e:
-            QMessageBox.warning(self, "Import CSV", str(e))
-            return 0
-        self.log(f"[{self._label(cid)}] imported {n} row(s) into {o['table']}")
-        self.table_changed(cid, o["table"])
-        self.open_table(cid, o["table"])
-        return n
+
+        def ok(n):
+            self.log(f"[{self._label(cid)}] imported {n} row(s) into {o['table']}")
+            self.table_changed(cid, o["table"], wait)
+            self.open_table(cid, o["table"], wait)
+
+        def work(s: D.Database):
+            return s.import_csv(o["table"], o["path"], header=o["header"], create=True, delimiter=o["delimiter"],
+                                empty_as_null=o["empty_as_null"])
+        t = self._job(cid, "Import CSV", work, ok, wait, f"Importing into {o['table']}")
+        return t.value if t is not None and wait and t.ok else 0
 
     # ------------------------------------------------------------------ Adminer
     def adminer_server(self) -> D.AdminerServer:
@@ -1856,9 +2437,23 @@ class DatabasesPanel(QWidget):
         return self.adminer_tab
 
     def shutdown(self):
+        for v in list(self.views.values()):     # running queries of the tabs: cancel, close connections
+            w = getattr(v, "worker", None)
+            if isinstance(w, DbWorker):
+                try:
+                    w.shutdown()
+                except RuntimeError:            # already deleted with the window
+                    pass
+        for w in list(self._jobs):
+            w.shutdown()
+        self._jobs.clear()
         for cid in list(self.open_dbs):
             db = self.open_dbs.pop(cid)
-            db.close()
+            w = self.workers.pop(cid, None)
+            if w is not None:
+                w.shutdown(close=True)
+            else:
+                db.close()
         if self.adminer is not None:
             self.adminer.stop()
 
@@ -1870,30 +2465,31 @@ class DatabasesPanel(QWidget):
         kind = d[0] if d else None
         if kind in (KIND_TABLE, KIND_VIEW):
             cid, t = d[1], it.text(0)
-            m.addAction("Open Data", lambda: self.open_table(cid, t))
-            m.addAction("Schema", lambda: self.open_schema(cid, t))
+            m.addAction("Open Data", lambda: self.open_table(cid, t, wait=False))
+            m.addAction("Schema", lambda: self.open_schema(cid, t, wait=False))
             m.addAction("New Query", lambda: self.open_query(cid, f"SELECT * FROM {self.db(cid).q(t)}"))
             m.addSeparator()
             if kind == KIND_TABLE:
-                m.addAction("Add Column...", lambda: self.add_column_dialog(cid, t))
-                m.addAction("Import CSV...", lambda: self.import_csv_dialog(cid, t))
-            m.addAction("Export to CSV...", lambda: self.export_csv(cid, t))
-            m.addAction("Export to SQL...", lambda: self.export_sql(cid, t))
+                m.addAction("Add Column...", lambda: self.add_column_dialog(cid, t, wait=False))
+                m.addAction("Import CSV...", lambda: self.import_csv_dialog(cid, t, wait=False))
+            m.addAction("Export to CSV...", lambda: self.export_csv(cid, t, wait=False))
+            m.addAction("Export to SQL...", lambda: self.export_sql(cid, t, wait=False))
             m.addSeparator()
             if kind == KIND_TABLE:
-                m.addAction("Rename...", lambda: self.rename_table(cid, t))
-            m.addAction("Delete", lambda: self.drop_table(cid, t))
+                m.addAction("Rename...", lambda: self.rename_table(cid, t, wait=False))
+            m.addAction("Delete", lambda: self.drop_table(cid, t, wait=False))
         elif kind in (KIND_CONN, KIND_FOLDER):
             cid = d[1]
             m.addAction("New Query", lambda: self.open_query(cid))
-            m.addAction("New Table...", lambda: self.create_table_dialog(cid))
-            m.addAction("Import CSV into New Table...", lambda: self.import_csv_dialog(cid))
-            m.addAction("Export Database to SQL...", lambda: self.export_sql(cid))
+            m.addAction("New Table...", lambda: self.create_table_dialog(cid, wait=False))
+            m.addAction("Import CSV into New Table...", lambda: self.import_csv_dialog(cid, wait=False))
+            m.addAction("Export Database to SQL...", lambda: self.export_sql(cid, wait=False))
             m.addSeparator()
             m.addAction("Open in Adminer", lambda: self.open_adminer(cid))
             m.addAction("Open in Adminer (new tab)", lambda: self.open_adminer(cid, in_tab=True))
             m.addSeparator()
-            m.addAction("Refresh", lambda: (self.refresh_connection(cid) if cid in self.open_dbs else None))
+            m.addAction("Refresh", lambda: (self.refresh_connection(cid, wait=False) if cid in self.open_dbs
+                                            else None))
             if kind == KIND_CONN:
                 if cid in self.open_dbs:
                     m.addAction("Disconnect", lambda: self.disconnect(cid))
