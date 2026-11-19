@@ -1,0 +1,9 @@
+{
+  "name": "Proj_kivy_app",
+  "language": "kivy",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": []
+}

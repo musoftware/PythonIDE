@@ -1,0 +1,19 @@
+{
+  "name": "PyApp",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "references": [
+    "PerlLib",
+    "DartLib"
+  ],
+  "reference_files": {
+    "PerlLib": [
+      "PerlLib.py"
+    ],
+    "DartLib": [
+      "DartLib.py"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "VBLib",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "VBLib.bas"
+  ],
+  "kind": "library"
+}

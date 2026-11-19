@@ -1,0 +1,70 @@
+{
+  "name": "RevSol",
+  "projects": [
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "App_csharp_bridge",
+      "path": "App_csharp_bridge"
+    },
+    {
+      "name": "App_vb_basic",
+      "path": "App_vb_basic"
+    },
+    {
+      "name": "App_ring_qt",
+      "path": "App_ring_qt"
+    },
+    {
+      "name": "App_javascript",
+      "path": "App_javascript"
+    },
+    {
+      "name": "App_typescript",
+      "path": "App_typescript"
+    },
+    {
+      "name": "App_php",
+      "path": "App_php"
+    },
+    {
+      "name": "App_java_bridge",
+      "path": "App_java_bridge"
+    },
+    {
+      "name": "App_powershell_bridge",
+      "path": "App_powershell_bridge"
+    },
+    {
+      "name": "App_perl_bridge",
+      "path": "App_perl_bridge"
+    },
+    {
+      "name": "App_dart_bridge",
+      "path": "App_dart_bridge"
+    },
+    {
+      "name": "App_c_bridge",
+      "path": "App_c_bridge"
+    },
+    {
+      "name": "App_cpp_bridge",
+      "path": "App_cpp_bridge"
+    },
+    {
+      "name": "App_rust_bridge",
+      "path": "App_rust_bridge"
+    },
+    {
+      "name": "App_fortran_bridge",
+      "path": "App_fortran_bridge"
+    },
+    {
+      "name": "App_python_tk",
+      "path": "App_python_tk"
+    }
+  ],
+  "startup": "App_csharp_bridge"
+}

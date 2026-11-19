@@ -1,0 +1,17 @@
+{
+  "name": "RsApp",
+  "language": "rust-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "appmod.rs"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib_ref.rs"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+# RAD IDE: VB-style names (btnGo_Click, ShowForm) are allowed in Flutter projects.
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    non_constant_identifier_names: false
+    avoid_print: false
+    library_private_types_in_public_api: false
+
+analyzer:
+  errors:
+    unused_import: ignore

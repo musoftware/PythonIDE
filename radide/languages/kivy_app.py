@@ -23,7 +23,8 @@ class KivyPlugin(LanguagePlugin):
     code_ext = ".py"
     is_mobile = True
     interpreter_names = ["python", "python3", "py"]
-    supports_debug = False
+    supports_debug = True            # F5/F9: debugpy (DAP) like the Python plugins; pyagent.py fallback
+    uses_debugpy = True
     keywords = ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",
                 "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in",
                 "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with",
@@ -160,6 +161,16 @@ class KivyPlugin(LanguagePlugin):
         except Exception:  # noqa: BLE001 - run anyway
             pass
         return RunSpec(interpreter, ["-u", self.code_file(startup_form)], folder, env)
+
+    def debug_spec(self, folder, startup_form, interpreter, breakpoints) -> RunSpec:
+        """Kivy apps are plain Python: the IDE debugs them with debugpy (app._make_session, uses_debugpy);
+        without debugpy the line agent pyagent.py of the Python plugins is used."""
+        spec = self.run_spec(folder, startup_form, interpreter)
+        from .python_tk import AGENT
+        spec.env.update(RADDBG_BP=self.breakpoints_env(breakpoints), RADDBG_ROOT=str(folder))
+        # main.py imports the start-up screen as a real module (radkivy looks it up in sys.modules)
+        main = "main.py" if (Path(folder) / "main.py").exists() else self.code_file(startup_form)
+        return RunSpec(interpreter, ["-u", str(AGENT), main], folder, spec.env)
 
 
 KIVY_TEMPLATE_CODE = """    def MainScreen_Load(self):

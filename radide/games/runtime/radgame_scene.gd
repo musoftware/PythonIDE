@@ -6,7 +6,9 @@
 # Scene_MouseDown(x, y, button), <Obj>_Collide(other), <Obj>_Click(), <Obj>_Jump(), <Obj>_OutOfWorld(),
 # <Timer>_Tick(). Objects named Coin1, Coin2 ... also fire the group handler Coin_Collide(other).
 # Helpers: find("Player"), group_of(node), add_score(n), go_to_scene("Level2"), restart_scene(),
-# play_sound("coin"), show_message("text", seconds), add_timer("Timer1", ms), quit_game().
+# play_sound("coin"), show_message("text", seconds), add_timer("Timer1", ms), quit_game(),
+# spawn("Pipe", x, y) (copies a spawn template: props template=1), enable_behaviour(node, "scroll", false),
+# save_data("best", n) / load_data("best", 0). Behaviours flap and scroll work like in radgame.py.
 extends Node2D
 
 static var score := 0
@@ -31,6 +33,8 @@ var _camera: Camera2D
 var _test_keys := []
 var _test_frames := 0
 var _pending_scene := ""
+var _clicked := false
+var _spawn_n := 0
 
 const ACTORS := ["platformer", "keyboard_move", "top_down", "follow_mouse"]
 
@@ -80,6 +84,11 @@ func _collect(node: Node) -> void:
 		if child.has_meta("rad_kind"):
 			objects[String(child.name)] = child
 			child.set_meta("rad_state", {"vx": 0.0, "vy": 0.0, "on_ground": false, "alive": true})
+			var pr: Dictionary = child.get_meta("props", {})
+			if str(pr.get("template", "")).to_lower() in ["1", "true", "yes", "on"]:
+				state(child)["alive"] = false          # a spawn template: hidden, inactive (spawn() copies it)
+				state(child)["template"] = true
+				child.visible = false
 			if child is Label:
 				_labels.append(child)
 		_collect(child)
@@ -144,6 +153,57 @@ func find_group(group: String) -> Array:
 func destroy(n: Node) -> void:
 	state(n)["alive"] = false
 	n.visible = false
+	if state(n).get("spawned", false):
+		objects.erase(String(n.name))
+		n.queue_free()
+
+
+func spawn(template_name: String, x: float, y: float) -> Node:
+	# A copy of a scene object (usually a spawn template: props template=1) at (x, y).
+	var t: Node = find(template_name)
+	if t == null:
+		return null
+	var c: Node = t.duplicate()
+	_spawn_n += 1
+	c.name = "%s_%d" % [template_name, _spawn_n]
+	t.get_parent().add_child(c)
+	var bs: Array = []
+	for d in t.get_meta("behaviours", []):
+		bs.append(d.duplicate())
+	c.set_meta("behaviours", bs)
+	c.set_meta("rad_state", {"vx": 0.0, "vy": 0.0, "on_ground": false, "alive": true, "spawned": true})
+	c.set_meta("group", group_of(t))
+	c.visible = true
+	objects[String(c.name)] = c
+	set_top_left(c, Vector2(x, y))
+	return c
+
+
+func enable_behaviour(n: Node, t: String, on: bool = true) -> void:
+	for b in n.get_meta("behaviours", []):
+		if b.get("type", "") == t:
+			b["enabled"] = on
+
+
+func save_data(key: String, value) -> void:
+	# Keep a value after the game closes (user://savegame.json).
+	var data := _saved()
+	data[key] = value
+	var f := FileAccess.open("user://savegame.json", FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(data))
+
+
+func load_data(key: String, default_value = null):
+	return _saved().get(key, default_value)
+
+
+func _saved() -> Dictionary:
+	if not FileAccess.file_exists("user://savegame.json"):
+		return {}
+	var f := FileAccess.open("user://savegame.json", FileAccess.READ)
+	var d = JSON.parse_string(f.get_as_text()) if f != null else null
+	return d if d is Dictionary else {}
 
 
 # ------------------------------------------------------------------ collision
@@ -247,6 +307,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_release(_key_name(event))
 	elif event is InputEventMouseButton and event.pressed:
+		_clicked = true
 		var p: Vector2 = event.position
 		_fire_scene("MouseDown", [p.x, p.y, event.button_index])
 		var wp := p + _camera.position
@@ -305,7 +366,11 @@ func _physics_process(dt: float) -> void:
 		if not alive(n):
 			continue
 		for b in n.get_meta("behaviours", []):
+			if b.get("enabled", true) == false:
+				continue
 			match b.get("type", ""):
+				"flap": _flap(n, b, dt)
+				"scroll": _scroll(n, b, dt)
 				"platformer": _platformer(n, b, dt)
 				"keyboard_move": _keyboard_move(n, b, dt)
 				"top_down": _top_down(n, b, dt)
@@ -328,6 +393,7 @@ func _physics_process(dt: float) -> void:
 	if _message.visible and game_time > _message_until:
 		_message.visible = false
 	pressed.clear()
+	_clicked = false
 	frame += 1
 	game_time += dt
 	if _pending_scene != "":
@@ -508,6 +574,51 @@ func _platformer(n: Node, b: Dictionary, dt: float) -> void:
 		_anim(n, ["run", "walk"] if ix != 0 else ["idle"])
 	else:
 		_anim(n, ["jump", "fall"] if st["vy"] < 0 else ["fall", "jump"])
+
+
+func _flap(n: Node, b: Dictionary, dt: float) -> void:
+	var st := state(n)
+	var gravity: float = float(b.get("gravity", settings.get("gravity", 900)))
+	var kick := bool(b.get("mouse", true)) and _clicked
+	for k in String(b.get("keys", "space,up,w")).split(",", false):
+		if pressed.has(k.strip_edges().to_lower()):
+			kick = true
+	if kick:
+		st["vy"] = -float(b.get("flap", 320))
+		_fire_object(n, "Flap", [])
+	st["vy"] = min(float(st["vy"]) + gravity * dt, float(b.get("max_fall", 600)))
+	var r := rect_of(n)
+	var y: float = r.position.y + float(st["vy"]) * dt
+	if bool(b.get("ceiling", true)) and y < 0.0:
+		y = 0.0
+		st["vy"] = max(0.0, float(st["vy"]))
+	set_top_left(n, Vector2(r.position.x, y))
+	if bool(b.get("tilt", true)) and n is Node2D:
+		var target: float = clamp(float(st["vy"]) * 0.15, -25.0, 80.0)
+		n.rotation_degrees += (target - n.rotation_degrees) * min(1.0, dt * 12.0)
+
+
+func _scroll(n: Node, b: Dictionary, dt: float) -> void:
+	var dirs := {"left": Vector2(-1, 0), "right": Vector2(1, 0), "up": Vector2(0, -1), "down": Vector2(0, 1)}
+	var dir: Vector2 = dirs.get(String(b.get("direction", "left")), Vector2(-1, 0))
+	var r := rect_of(n)
+	var p: Vector2 = r.position + dir * float(b.get("speed", 120)) * dt
+	var origin: Vector2 = Vector2.ZERO if _in_ui(n) else _camera.position
+	var gone := (dir.x < 0 and p.x + r.size.x < origin.x) or (dir.x > 0 and p.x > origin.x + view_size.x) or (dir.y < 0 and p.y + r.size.y < origin.y) or (dir.y > 0 and p.y > origin.y + view_size.y)
+	if gone:
+		var wr = b.get("wrap", false)
+		if typeof(wr) != TYPE_BOOL and float(wr) > 1.0:
+			p -= dir * float(wr)
+		elif wr:
+			var dist := 0.0
+			for m in objects.values():
+				if alive(m) and m.get_parent() == n.get_parent() and group_of(m) == group_of(n):
+					dist += rect_of(m).size.x if dir.x != 0 else rect_of(m).size.y
+			p -= dir * dist
+		elif b.get("destroy", true):
+			destroy(n)
+			return
+	set_top_left(n, p)
 
 
 func _bounce(n: Node, b: Dictionary, dt: float) -> void:

@@ -26,8 +26,8 @@ LANGUAGE_GROUPS = [
     ("Web & Script", ["javascript", "typescript", "php"]),
     ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "fortran-bridge", "go-bridge"]),
     ("Scripting", ["lua-bridge", "ruby-bridge", "perl-bridge", "dart-bridge"]),
-    ("Mobile", ["flutter", "kivy"]),                           # mobile apps (CONTRACTS 10.1)
-    ("Games", ["pygame", "godot"]),                            # game projects (CONTRACTS 10.2)
+    ("Mobile", ["flutter", "kivy", "expo"]),                   # mobile apps (CONTRACTS 10.1)
+    ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game"]),   # game projects (CONTRACTS 10.2)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
          "ring-qt": ("Rg", "#2C3E50"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
@@ -37,7 +37,8 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "lua-bridge": ("Lua", "#000080"), "ruby-bridge": ("Rb", "#CC342D"), "perl-bridge": ("Pl", "#0298C3"),
          "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
          "node-web": ("N", "#3C873A"), "pygame": ("Pg", "#2E7D32"), "godot": ("Gd", "#478CBF"),
-         "flutter": ("Fl", "#02569B"), "kivy": ("Kv", "#5A7D2E")}
+         "flutter": ("Fl", "#02569B"), "kivy": ("Kv", "#5A7D2E"), "expo": ("RN", "#087EA4"),
+         "html5-game": ("H5", "#F16529"), "python-arcade": ("Ar", "#7B3FA0"), "ring-game": ("RG", "#2C3E50")}
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
                   "data": "SP_FileDialogDetailedView", "console": "rad:console",
                   "library": "SP_DriveHDIcon"}
@@ -275,9 +276,10 @@ class NewProjectDialog(QDialog):
         if web and _re.fullmatch(r"[A-Za-z]*(Application|Entry|Library)\d*|WebSite\d*", cur or "WebSite1"):
             self.name.setText(self._unique_name("WebSite"))
         elif own and _re.fullmatch(r"[A-Za-z]*(Application|Entry|Library)\d*|WebSite\d*|Game\d*|"
-                                   r"FlutterApp\d*|KivyApp\d*", cur or "Game1"):
+                                   r"FlutterApp\d*|KivyApp\d*|ExpoApp\d*", cur or "Game1"):
             self.name.setText(self._unique_name(getattr(plugin, "project_name_base", "Game")))
-        elif not web and not own and was_web and _re.fullmatch(r"WebSite\d*|Game\d*|FlutterApp\d*|KivyApp\d*", cur):
+        elif not web and not own and was_web and _re.fullmatch(r"WebSite\d*|Game\d*|FlutterApp\d*|KivyApp\d*|ExpoApp\d*",
+                                                                     cur):
             self.name.setText(self._unique_name("WindowsApplication"))
 
     def _unique_name(self, base: str) -> str:

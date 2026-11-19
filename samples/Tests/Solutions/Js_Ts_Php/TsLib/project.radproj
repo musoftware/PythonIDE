@@ -1,0 +1,10 @@
+{
+  "name": "TsLib",
+  "language": "typescript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "TsMath.ts"
+  ],
+  "kind": "library"
+}

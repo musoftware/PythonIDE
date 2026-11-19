@@ -1,0 +1,20 @@
+{
+  "name": "App_c_bridge",
+  "language": "c-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CCons.c"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.h",
+      "PyLib.ref.c"
+    ]
+  }
+}

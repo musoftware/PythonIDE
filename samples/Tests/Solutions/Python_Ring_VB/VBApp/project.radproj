@@ -1,0 +1,25 @@
+{
+  "name": "VBApp",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Main",
+  "modules": [
+    "Main.bas"
+  ],
+  "references": [
+    "PyLib",
+    "RingLib",
+    "VBLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.bas"
+    ],
+    "RingLib": [
+      "RingLib.ref.bas"
+    ],
+    "VBLib": [
+      "VBLib.ref.bas"
+    ]
+  }
+}

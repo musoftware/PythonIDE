@@ -1,0 +1,91 @@
+{
+  "name": "App",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "pymain.py"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib",
+    "PyQtLib",
+    "GoLib",
+    "LuaLib",
+    "RubyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.py"
+    ],
+    "VbLib": [
+      "VbLib.py"
+    ],
+    "RingLib": [
+      "RingLib.py"
+    ],
+    "JsLib": [
+      "JsLib.py"
+    ],
+    "TsLib": [
+      "TsLib.py"
+    ],
+    "CLib": [
+      "CLib.py"
+    ],
+    "CppLib": [
+      "CppLib.py"
+    ],
+    "RustLib": [
+      "RustLib.py"
+    ],
+    "FortLib": [
+      "FortLib.py"
+    ],
+    "PerlLib": [
+      "PerlLib.py"
+    ],
+    "DartLib": [
+      "DartLib.py"
+    ],
+    "JavaLib": [
+      "JavaLib.py"
+    ],
+    "PhpLib": [
+      "PhpLib.py"
+    ],
+    "PsLib": [
+      "PsLib.py"
+    ],
+    "PyLib": [
+      "PyLib.py"
+    ],
+    "PyQtLib": [
+      "PyQtLib.py"
+    ],
+    "GoLib": [
+      "GoLib.py"
+    ],
+    "LuaLib": [
+      "LuaLib.py"
+    ],
+    "RubyLib": [
+      "RubyLib.py"
+    ]
+  }
+}

@@ -46,7 +46,9 @@ class GoBridgePlugin(ScriptBridgePlugin):
     tool_names = ["go"]
     tool_hints = [r"C:\Program Files\Go\bin\go.exe", r"C:\Go\bin\go.exe",
                   str(Path.home() / "go/bin/go.exe"), str(Path.home() / "sdk/go/bin/go.exe")]
-    install_hint = "Install Go (winget install GoLang.Go) and add it to PATH."
+    toolchain_bins = ["go/bin"]
+    install_hint = ("Install Go (winget install GoLang.Go) and add it to PATH, or extract the official zip "
+                    "into %LOCALAPPDATA%\\RADIDE\\toolchains\\go.")
     handler_regex = r"^func\s+(\w+_\w+)\s*\("
     client_subdir = "go"
     client_names = ["radlib.go"]
@@ -69,7 +71,8 @@ class GoBridgePlugin(ScriptBridgePlugin):
         go = self.tool() or "go"
         return PackageManager(
             name="Go modules", tool=go,
-            list_cmd=[go, "list", "-m", "all"],
+            # dependencies only ("path version"), not the project module itself
+            list_cmd=[go, "list", "-m", "-f", "{{if not .Main}}{{.Path}} {{.Version}}{{end}}", "all"],
             search_cmd=None,
             install_cmd=[go, "get", "{name}@{version}"],
             uninstall_cmd=[go, "get", "{name}@none"],

@@ -1,0 +1,23 @@
+{
+  "name": "PerlApp",
+  "language": "perl-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "DartLib",
+    "PerlLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLibRef.pm"
+    ],
+    "DartLib": [
+      "DartLibRef.pm"
+    ],
+    "PerlLib": [
+      "PerlLibRef.pm"
+    ]
+  }
+}

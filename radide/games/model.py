@@ -54,16 +54,24 @@ BEHAVIOURS: dict[str, tuple[str, dict, str]] = {
                     "Disappears when the player touches it and adds score (plays the sound id)."),
     "enemy_patrol": ("Enemy patrol", {"speed": 80, "distance": 160, "axis": "x", "turn_at_edges": True},
                      "Walks back and forth over distance pixels along axis x or y (turns at ledges)."),
+    "flap": ("Flap (tap to fly up)", {"gravity": 1100, "flap": 340, "max_fall": 600, "keys": "space,up,w",
+                                      "mouse": True, "tilt": True, "ceiling": True},
+             "Falls with gravity; Space / Up / W or a mouse click kicks it upwards (fires <Sprite>_Flap). "
+             "tilt turns it nose-up / nose-down with its speed; ceiling stops it at the top of the window."),
+    "scroll": ("Scroll (move at a constant speed)", {"speed": 120, "direction": "left", "wrap": False},
+               "Moves left/right/up/down at speed pixels per second: obstacles, ground, parallax scenery. "
+               "wrap = endless: copies of the same group placed side by side leapfrog each other (or a "
+               "distance in pixels); without wrap the object is destroyed when it leaves the window."),
 }
 
 SCENE_EVENTS = ["Load", "Update", "KeyDown", "KeyUp", "MouseDown", "MouseUp", "Draw"]
-OBJECT_EVENTS = {"sprite": ["Collide", "Click", "AnimationEnd", "OutOfWorld", "Jump", "Bounce"],
+OBJECT_EVENTS = {"sprite": ["Collide", "Click", "AnimationEnd", "OutOfWorld", "Jump", "Bounce", "Flap"],
                  "text": ["Click"],
                  "area": ["Collide", "Click"]}
 # handler arguments (Python code) per event
 EVENT_ARGS = {"Load": "", "Update": "dt", "KeyDown": "key", "KeyUp": "key", "MouseDown": "x, y, button",
               "MouseUp": "x, y, button", "Draw": "screen", "Collide": "other", "Click": "", "Tick": "",
-              "AnimationEnd": "", "OutOfWorld": "", "Jump": "", "Bounce": ""}
+              "AnimationEnd": "", "OutOfWorld": "", "Jump": "", "Bounce": "", "Flap": ""}
 try:      # one list of events for the designer and the code generator (radide/games/codegen.py)
     from .codegen import EVENT_ARGS as _GEN_ARGS, OBJECT_EVENTS as _GEN_OBJ, SCENE_EVENTS as _GEN_SCENE
     EVENT_ARGS = {**EVENT_ARGS, **_GEN_ARGS}

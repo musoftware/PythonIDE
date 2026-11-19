@@ -1,0 +1,10 @@
+{
+  "name": "JsLib",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "JsLib.js"
+  ],
+  "kind": "library"
+}

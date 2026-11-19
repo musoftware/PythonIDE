@@ -15,12 +15,13 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/products.php';
 
-if (!extension_loaded('pdo_sqlite')) {
+$pdoExt = db_driver() === 'mysql' ? 'pdo_mysql' : 'pdo_sqlite';
+if (!extension_loaded($pdoExt)) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
-    exit("The PHP extension pdo_sqlite is not enabled.\n"
-        . "Enable it in php.ini (extension=pdo_sqlite) or start the server with\n"
-        . "php -d extension=pdo_sqlite -S 127.0.0.1:8080 -t public");
+    exit("The PHP extension $pdoExt is not enabled.\n"
+        . "Enable it in php.ini (extension=$pdoExt) or start the server with\n"
+        . "php -d extension=$pdoExt -S 127.0.0.1:8080 -t public");
 }
 
 error_reporting(E_ALL);

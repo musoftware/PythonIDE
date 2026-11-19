@@ -376,6 +376,9 @@ class DevServer(QObject):
         threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.25}, daemon=True,
                          name="radide-devserver").start()
         spec = self.plugin.backend(self) if self.plugin is not None and hasattr(self.plugin, "backend") else None
+        hook = getattr(self, "backend_hook", None)       # debug runs: Xdebug / --inspect (web_site/debug.py)
+        if spec is not None and callable(hook):
+            spec = hook(self, spec)
         self._backend_spec = spec
         self._snapshot = self._scan()
         threading.Thread(target=self._watch_loop, daemon=True, name="radide-devserver-watch").start()

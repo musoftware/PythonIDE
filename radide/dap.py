@@ -103,7 +103,8 @@ class DapSession(QObject):
         self.proc.start(self.argv[0], self.argv[1:])
         self._request("initialize", {"clientID": "radide", "adapterID": self.adapter, "linesStartAt1": True,
                                      "columnsStartAt1": True, "pathFormat": "path",
-                                     "supportsRunInTerminalRequest": False}, self._on_initialize)
+                                     "supportsRunInTerminalRequest": False, "supportsVariableType": True},
+                      self._on_initialize)
 
     def running(self) -> bool:
         return self.proc.state() != QProcess.ProcessState.NotRunning
@@ -140,7 +141,7 @@ class DapSession(QObject):
         t = msg.get("type")
         if t == "response":
             cb = self._callbacks.pop(msg.get("request_seq"), None)
-            if not msg.get("success", True) and msg.get("command") in ("launch", "initialize"):
+            if not msg.get("success", True) and msg.get("command") in ("launch", "attach", "initialize"):
                 self.failed.emit(msg.get("message", "debug adapter error"))
             if cb is not None:
                 cb(msg.get("body") or {}, msg)

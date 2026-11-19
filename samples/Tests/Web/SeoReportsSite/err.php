@@ -1,0 +1,1 @@
+<?php echo $undefinedVar; http_response_code(200); ?><html><head><title>Err page title</title></head><body><h1>x</h1></body></html>

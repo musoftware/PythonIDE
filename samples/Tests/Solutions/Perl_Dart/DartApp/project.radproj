@@ -1,0 +1,23 @@
+{
+  "name": "DartApp",
+  "language": "dart-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "PerlLib",
+    "DartLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "pylib_ref.dart"
+    ],
+    "PerlLib": [
+      "perllib_ref.dart"
+    ],
+    "DartLib": [
+      "dartlib_ref.dart"
+    ]
+  }
+}

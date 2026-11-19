@@ -1,0 +1,19 @@
+{
+  "name": "App_cpp_bridge",
+  "language": "cpp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CppCons.cpp"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.hpp"
+    ]
+  }
+}

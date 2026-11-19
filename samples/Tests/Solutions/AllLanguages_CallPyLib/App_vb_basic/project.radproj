@@ -1,0 +1,19 @@
+{
+  "name": "App_vb_basic",
+  "language": "vb-basic",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "VbCons.bas"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.bas"
+    ]
+  }
+}

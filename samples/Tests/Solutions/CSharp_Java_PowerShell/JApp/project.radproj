@@ -1,0 +1,27 @@
+{
+  "name": "JApp",
+  "language": "java-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "JMain.java"
+  ],
+  "references": [
+    "CsLib",
+    "PyLib",
+    "PsLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.java"
+    ],
+    "PyLib": [
+      "PyLib.ref.java"
+    ],
+    "PsLib": [
+      "PsLib.ref.java"
+    ]
+  }
+}

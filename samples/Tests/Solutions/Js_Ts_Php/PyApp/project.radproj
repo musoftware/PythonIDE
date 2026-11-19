@@ -1,0 +1,25 @@
+{
+  "name": "PyApp",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "check.py"
+  ],
+  "references": [
+    "JsLib",
+    "PhpLib",
+    "TsLib"
+  ],
+  "reference_files": {
+    "JsLib": [
+      "JsLib.py"
+    ],
+    "PhpLib": [
+      "PhpLib.py"
+    ],
+    "TsLib": [
+      "TsLib.py"
+    ]
+  }
+}

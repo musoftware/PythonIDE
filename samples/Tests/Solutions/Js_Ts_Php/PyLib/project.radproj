@@ -1,0 +1,10 @@
+{
+  "name": "PyLib",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "PyMath.py"
+  ],
+  "kind": "library"
+}

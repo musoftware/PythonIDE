@@ -1,0 +1,17 @@
+{
+  "name": "FApp",
+  "language": "fortran-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "appf.f90"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib_ref.f90"
+    ]
+  }
+}

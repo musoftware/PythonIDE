@@ -10,6 +10,7 @@ worker script) and implements the templates and ``main_source``.
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import sys
@@ -95,7 +96,10 @@ class ScriptBridgePlugin(BridgeLanguagePlugin):
             return found
         t = self.tool()
         if t and Path(t).is_absolute():
-            for ext in ("", ".exe", ".bat", ".cmd"):
+            # Windows: an extension-less file (RubyInstaller's bin\gem) is a script that
+            # CreateProcess cannot start - prefer gem.cmd / luarocks.exe
+            exts = (".exe", ".bat", ".cmd", "") if os.name == "nt" else ("", ".exe", ".bat", ".cmd")
+            for ext in exts:
                 p = Path(t).parent / f"{name}{ext}"
                 if p.is_file():
                     return str(p)

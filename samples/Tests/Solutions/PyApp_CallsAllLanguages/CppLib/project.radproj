@@ -1,0 +1,10 @@
+{
+  "name": "CppLib",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "CppLib.cpp"
+  ],
+  "kind": "library"
+}

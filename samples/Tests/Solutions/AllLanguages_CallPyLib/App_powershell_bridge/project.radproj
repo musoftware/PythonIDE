@@ -1,0 +1,19 @@
+{
+  "name": "App_powershell_bridge",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PsCons.ps1"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.ps1"
+    ]
+  }
+}

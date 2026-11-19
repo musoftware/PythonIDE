@@ -1,0 +1,30 @@
+{
+  "name": "Sol1",
+  "projects": [
+    {
+      "name": "PerlLib",
+      "path": "PerlLib"
+    },
+    {
+      "name": "DartLib",
+      "path": "DartLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "PerlApp",
+      "path": "PerlApp"
+    },
+    {
+      "name": "DartApp",
+      "path": "DartApp"
+    }
+  ],
+  "startup": "PyApp"
+}

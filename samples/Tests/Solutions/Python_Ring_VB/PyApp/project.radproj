@@ -1,0 +1,25 @@
+{
+  "name": "PyApp",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "main.py"
+  ],
+  "references": [
+    "PyLib",
+    "RingLib",
+    "VBLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.py"
+    ],
+    "RingLib": [
+      "RingLib.py"
+    ],
+    "VBLib": [
+      "VBLib.py"
+    ]
+  }
+}

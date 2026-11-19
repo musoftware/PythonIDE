@@ -534,10 +534,21 @@ class OptionsPage(QWizardPage):
         self.ai.setEnabled(ok)
         self.ai.setChecked(False)
         self.ai_status.setText(label)
-        from ..importers.exe.native import find_ghidra
-        g = find_ghidra()
-        self.tools.setText(("Ghidra: " + (g if g else "not installed (optional - full pseudo-C decompilation; "
-                                          "put it in %LOCALAPPDATA%\\RADIDE\\tools or set GHIDRA_HOME)")))
+        kind = self.wiz.info.kind if self.wiz.info is not None else ""
+        if kind in ("pyinstaller", "py2exe", "cxfreeze"):
+            from ..importers.exe.base import find_tool
+            p = find_tool("pycdc")
+            self.tools.setText("pycdc: " + (p if p else "not installed (optional - Python 3.9 / 3.10 programs; put "
+                                                         "pycdc.exe in %LOCALAPPDATA%\\RADIDE\\tools\\pycdc)"))
+        else:
+            from ..importers.exe.native import _ghidra_java_min, find_ghidra, find_jdk
+            g = find_ghidra()
+            jdk = find_jdk(_ghidra_java_min(g)) if g else None
+            self.tools.setText(("Ghidra: " + (g if g else "not installed (optional - full pseudo-C decompilation; "
+                                              "put it in %LOCALAPPDATA%\\RADIDE\\tools or set GHIDRA_HOME)"))
+                               + ((f"\nJava for Ghidra: {jdk}" if jdk else
+                                   f"\nJava for Ghidra: no JDK {_ghidra_java_min(g)}+ found (Ghidra cannot run)")
+                                  if g else ""))
         self._check()
 
     def _check(self):

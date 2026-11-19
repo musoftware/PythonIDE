@@ -283,10 +283,12 @@ class CommandRunner(QObject):
     def busy(self) -> bool:
         return self.proc is not None
 
-    def run(self, argv: list[str], cwd: str, done=None, quiet: bool = False) -> None:
+    def run(self, argv: list[str], cwd: str, done=None, quiet: bool = False,
+            env: dict[str, str] | None = None) -> None:
         """done(exit_code, full_output) is called when the command ends. *quiet*: the output is
-        not streamed to the log (listings) - only the command line and a failure are shown."""
-        self.queue.append((argv, cwd, done, quiet))
+        not streamed to the log (listings) - only the command line and a failure are shown.
+        *env*: extra environment variables (PackageManager.env)."""
+        self.queue.append((argv, cwd, done, quiet, env))
         if self.proc is None:
             self._next()
 
@@ -294,7 +296,7 @@ class CommandRunner(QObject):
         if not self.queue:
             self.busyChanged.emit(False)
             return
-        argv, cwd, done, quiet = self.queue.pop(0)
+        argv, cwd, done, quiet, extra_env = self.queue.pop(0)
         self._quiet = quiet
         self._buf = b""
         p = QProcess(self)
@@ -303,6 +305,8 @@ class CommandRunner(QObject):
         env = QProcessEnvironment.systemEnvironment()
         for k, v in (("PYTHONIOENCODING", "utf-8"), ("PIP_DISABLE_PIP_VERSION_CHECK", "1"),
                      ("NO_COLOR", "1"), ("PIP_NO_INPUT", "1"), ("DOTNET_CLI_TELEMETRY_OPTOUT", "1")):
+            env.insert(k, v)
+        for k, v in (extra_env or {}).items():
             env.insert(k, v)
         p.setProcessEnvironment(env)
         p.readyReadStandardOutput.connect(self._read)
@@ -666,7 +670,7 @@ class PackagesDialog(QDialog):
         argv = self._argv(cmd, **kw)
         if not argv:
             return
-        self.runner.run(argv, str(self.folder()), done, quiet)
+        self.runner.run(argv, str(self.folder()), done, quiet, env=getattr(self.pm, "env", None))
 
     def ensure_venv(self, then) -> None:
         """Create <project>/.venv with the chosen Python when it is missing, then call *then*."""

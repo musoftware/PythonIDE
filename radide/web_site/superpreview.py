@@ -54,7 +54,9 @@ _EXE = {"Chrome": "chrome.exe", "Edge": "msedge.exe", "Firefox": "firefox.exe", 
 _WIN_PATHS = {
     "Chrome": [r"Google\Chrome\Application\chrome.exe"],
     "Edge": [r"Microsoft\Edge\Application\msedge.exe"],
-    "Firefox": [r"Mozilla Firefox\firefox.exe", r"Firefox Developer Edition\firefox.exe"],
+    # RADIDE\tools\firefox = the per-user copy the IDE installs (under %LOCALAPPDATA%)
+    "Firefox": [r"Mozilla Firefox\firefox.exe", r"Firefox Developer Edition\firefox.exe",
+                r"RADIDE\tools\firefox\firefox.exe"],
     "Brave": [r"BraveSoftware\Brave-Browser\Application\brave.exe"],
 }
 _UNIX = {"Chrome": ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"],

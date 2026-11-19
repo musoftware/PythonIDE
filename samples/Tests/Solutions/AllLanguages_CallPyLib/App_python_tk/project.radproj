@@ -1,0 +1,19 @@
+{
+  "name": "App_python_tk",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "pycons.py"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.py"
+    ]
+  }
+}

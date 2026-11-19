@@ -1,0 +1,25 @@
+{
+  "name": "PhpApp",
+  "language": "php",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "JsLib",
+    "TsLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.php"
+    ],
+    "JsLib": [
+      "JsLib.ref.php"
+    ],
+    "TsLib": [
+      "TsLib.ref.php"
+    ]
+  }
+}

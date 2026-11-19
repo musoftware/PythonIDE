@@ -20,6 +20,13 @@
 require "json"
 require "socket"
 
+# gems installed into the project by the IDE (Manage Packages: GEM_HOME=vendor/gems)
+_rad_gems = File.join(__dir__, "vendor", "gems")
+if File.directory?(_rad_gems)
+  Gem.paths = { "GEM_HOME" => _rad_gems,
+                "GEM_PATH" => ([_rad_gems] + Gem.path).uniq.join(File::PATH_SEPARATOR) }
+end
+
 STDIN.set_encoding(Encoding::UTF_8) rescue nil
 STDOUT.set_encoding(Encoding::UTF_8) rescue nil
 STDOUT.sync = true

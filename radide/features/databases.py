@@ -1728,6 +1728,15 @@ class DatabasesPanel(QWidget):
                                     lambda: self._with_conn(lambda c: self.create_table_dialog(c, wait=False)))
         self.a_adminer = tb.addAction(_std_icon(self, "SP_ComputerIcon"), "Open in Adminer",
                                       lambda: self._with_conn(self.open_adminer))
+        # local MariaDB / PostgreSQL servers started on demand (radide/web_site/dbservers.py)
+        self._local_servers: dict | None = None
+        self.a_servers = QAction(_std_icon(self, "SP_DriveNetIcon"), "Local Servers", self)
+        self.a_servers.setToolTip("Start / stop a local MariaDB (MySQL) or PostgreSQL server (no Windows service)")
+        self.servers_menu = QMenu("Local Servers", self)
+        self.servers_menu.aboutToShow.connect(lambda: self.fill_servers_menu(self.servers_menu))
+        self.a_servers.setMenu(self.servers_menu)
+        self.a_servers.triggered.connect(lambda: self.servers_menu.exec(QCursor.pos()))
+        tb.addAction(self.a_servers)
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
         self.tree.setTextElideMode(Qt.TextElideMode.ElideMiddle)     # long names keep their extension
@@ -2511,6 +2520,117 @@ class DatabasesPanel(QWidget):
         self.win._show_tab(self.adminer_tab, "Adminer")
         return self.adminer_tab
 
+    # ------------------------------------------------------------------ local servers (on demand, no services)
+    LOCAL_LABELS = {"mysql": "MariaDB/MySQL", "postgresql": "PostgreSQL"}
+
+    def local_servers(self) -> dict:
+        """{"mysql": MariaDBServer, "postgresql": PostgresServer} (radide/web_site/dbservers.py)."""
+        if self._local_servers is None:
+            from ..web_site import dbservers
+            self._local_servers = dbservers.servers(log=self.log)
+            atexit.register(self._stop_local_servers)
+        return self._local_servers
+
+    def local_server(self, kind: str):
+        kind = {"mariadb": "mysql", "postgres": "postgresql", "pgsql": "postgresql"}.get(kind.lower(), kind.lower())
+        return self.local_servers()[kind]
+
+    def fill_servers_menu(self, menu: QMenu) -> QMenu:
+        menu.clear()
+        for kind, label in self.LOCAL_LABELS.items():
+            srv = self.local_server(kind)
+            if not srv.available:
+                menu.addAction(f"Start local {label} (not installed)...",
+                               lambda s=srv: QMessageBox.information(self, "Local Servers", s.install_hint))
+                menu.addSeparator()
+                continue
+            running = srv.is_running()
+            menu.addAction(f"Start local {label}", lambda k=kind: self.start_local_server(k)).setEnabled(not running)
+            menu.addAction(f"Stop local {label}", lambda k=kind: self.stop_local_server(k)).setEnabled(running)
+            menu.addAction(f"Copy {label} Password", lambda k=kind: self.copy_local_password(k)).setEnabled(
+                srv.initialized)
+            menu.addSeparator()
+        menu.addAction("Server Status...", self.show_servers_status)
+        return menu
+
+    def local_connection(self, kind: str) -> str | None:
+        """The id of an existing connection to the local server of ``kind`` (any open project or loose)."""
+        from ..web_site import dbservers
+        srv = self.local_server(kind)
+        for m in list(self.managers.values()) + [self.loose]:
+            for c in m.connections:
+                if (c.kind == srv.kind and c.host in ("127.0.0.1", "localhost") and c.user == dbservers.USER
+                        and c.effective_port() == srv.port):
+                    return self.conn_id(m, c.name)
+        return None
+
+    def start_local_server(self, kind: str, add_connection: bool = True) -> str | None:
+        """Start (first time: initialize) the local server and add / refresh its connection; returns its id."""
+        srv = self.local_server(kind)
+        try:
+            run_in_thread(srv.start, label=f"Starting local {srv.title}", bar=self.busy)
+            pw = srv.password()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"[databases] local {srv.title}: {e}")
+            QMessageBox.warning(self, f"Local {srv.title}", str(e))
+            return None
+        if not add_connection:
+            return ""
+        cid = self.local_connection(kind)
+        if cid is None:
+            cid = self.add_connection(srv.connection_info(), pw)
+        else:
+            m, c = self._split_id(cid)
+            self.session_passwords[cid] = pw
+            if c.remember_password:
+                self.passwords.set(c, pw, self.key_folder(m.folder))
+            self.refresh()
+        self.log(f"[databases] {srv.status()}")
+        return cid
+
+    def stop_local_server(self, kind: str) -> bool:
+        srv = self.local_server(kind)
+        for cid in list(self.open_dbs):         # close our connections to it first
+            s = self._split_id(cid)
+            if s and s[1].kind == srv.kind and s[1].host in ("127.0.0.1", "localhost") and \
+                    s[1].effective_port() == srv.port:
+                self.disconnect(cid)
+        try:
+            return bool(run_in_thread(srv.stop, label=f"Stopping local {srv.title}", bar=self.busy))
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, f"Local {srv.title}", str(e))
+            return False
+
+    def copy_local_password(self, kind: str) -> str:
+        srv = self.local_server(kind)
+        try:
+            pw = srv.password()
+        except D.DatabaseError as e:
+            QMessageBox.warning(self, f"Local {srv.title}", str(e))
+            return ""
+        QApplication.clipboard().setText(pw)
+        self.log(f"[databases] the password of the local {srv.title} user '{srv.connection_info().user}' "
+                 "was copied to the clipboard")
+        return pw
+
+    def servers_status(self) -> str:
+        lines = []
+        for kind in self.LOCAL_LABELS:
+            srv = self.local_server(kind)
+            lines.append(srv.status())
+            if srv.initialized:
+                lines.append(f"    data: {srv.data_dir}")
+        return "\n".join(lines)
+
+    def show_servers_status(self):
+        QMessageBox.information(self, "Local Database Servers", self.servers_status() +
+                                "\n\nThe servers listen on 127.0.0.1 only and are stopped when RAD IDE exits. "
+                                "Login: user 'radide', database 'radide' (password: Copy ... Password).")
+
+    def _stop_local_servers(self):
+        for srv in (self._local_servers or {}).values():
+            srv.stop_if_started_here()
+
     def shutdown(self):
         for v in list(self.views.values()):     # running queries of the tabs: cancel, close connections
             w = getattr(v, "worker", None)
@@ -2531,6 +2651,7 @@ class DatabasesPanel(QWidget):
                 db.close()
         if self.adminer is not None:
             self.adminer.stop()
+        self._stop_local_servers()               # only servers this IDE started
 
     # ------------------------------------------------------------------ context menu
     def _menu(self, pos):
@@ -2576,6 +2697,7 @@ class DatabasesPanel(QWidget):
             m.addAction("New SQLite Database...", self.new_sqlite_dialog)
             m.addAction("Add Connection...", self.add_connection_dialog)
             m.addAction("Adminer (login page)", lambda: self.open_adminer(None))
+            self.fill_servers_menu(m.addMenu("Local Servers"))
             m.addAction("Refresh", self.refresh)
         m.exec(self.tree.viewport().mapToGlobal(pos))
 
@@ -2628,6 +2750,11 @@ def install(win) -> None:
         sub.addAction("Add Connection...", lambda: (show_databases(), panel.add_connection_dialog()))
         sub.addAction("New Query", lambda: panel._with_conn(panel.open_query))
         sub.addAction("Open in Adminer", lambda: panel._with_conn(panel.open_adminer))
+        sub.addSeparator()
+        sub.addAction("Start local MariaDB/MySQL", lambda: (show_databases(), panel.start_local_server("mysql")))
+        sub.addAction("Start local PostgreSQL", lambda: (show_databases(), panel.start_local_server("postgresql")))
+        srv_menu = sub.addMenu("Local Servers")
+        srv_menu.aboutToShow.connect(lambda: panel.fill_servers_menu(srv_menu))
 
     # the web workspace (installed after us) creates win.site_menu: add our entries there too
     def add_to_site_menu():

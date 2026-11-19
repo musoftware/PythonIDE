@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "props": {
+    "Name": "Form1",
+    "Text": "Form1",
+    "Width": 400,
+    "Height": 300,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button1",
+        "Text": "Buy",
+        "Left": 20,
+        "Top": 20,
+        "Width": 75,
+        "Height": 23,
+        "BackColor": "#cccccc",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      },
+      "states": {
+        "MouseOver": {
+          "BackColor": "#00aa00",
+          "Text": "Buy now!"
+        }
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "ListBox1",
+        "Left": 20,
+        "Top": 70,
+        "Width": 160,
+        "Height": 100,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "Parent": ""
+      }
+    }
+  ],
+  "datasources": [
+    {
+      "name": "Products",
+      "file": "products.json",
+      "root": "items"
+    }
+  ],
+  "bindings": [
+    {
+      "control": "ListBox1",
+      "property": "Items",
+      "source": "Products",
+      "field": "title"
+    }
+  ],
+  "storyboards": [
+    {
+      "name": "Slide",
+      "autostart": false,
+      "tracks": [
+        {
+          "target": "Button1",
+          "property": "Left",
+          "keys": [
+            [
+              0,
+              20
+            ],
+            [
+              500,
+              220
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

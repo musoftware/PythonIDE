@@ -1,0 +1,17 @@
+{
+  "name": "Ttopdown",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Room1.py"
+  ],
+  "scenes": [
+    "Room1"
+  ],
+  "game": {
+    "title": "Ttopdown",
+    "start_scene": "Room1"
+  }
+}

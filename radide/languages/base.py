@@ -38,6 +38,7 @@ class PackageManager:
     init_cmd: list[str] | None = None           # create the manifest (package.json, .csproj, Cargo.toml...)
     manifest: str = ""                          # file that records dependencies (requirements.txt, ...)
     search_url: str = ""                        # website to browse packages ({query})
+    env: dict[str, str] | None = None           # extra environment variables for every command
 
 
 @dataclass

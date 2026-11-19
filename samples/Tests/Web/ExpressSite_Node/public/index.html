@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Express Site</title>
+    <meta name="description" content="Express Site - an Express web site">
+    <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<header><h1>Express Site</h1><p>Express + a JSON API. Server time: <span id="time">...</span></p></header>
+<main>
+    <h2>Notes</h2>
+    <form id="note-form">
+        <input id="note-text" maxlength="500" placeholder="Write a note" required aria-label="Note">
+        <button type="submit">Add</button>
+    </form>
+    <ul id="notes"></ul>
+</main>
+<script src="/js/app.js"></script>
+</body>
+</html>

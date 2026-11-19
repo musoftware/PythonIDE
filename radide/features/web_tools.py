@@ -771,7 +771,7 @@ class ReportsPanel(QWidget):
             url, server = self.tools.site_url(purpose="report")
             if not url:
                 return
-        if rep.npx_path() is None:
+        if not rep.lighthouse_available():
             QMessageBox.information(self, "Lighthouse", "Lighthouse needs Node.js (npx was not found).\n"
                                     "Install Node.js from nodejs.org, then try again.")
             return

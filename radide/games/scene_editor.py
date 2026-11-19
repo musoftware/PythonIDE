@@ -37,9 +37,9 @@ ZOOMS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0]
 
 # ====================================================================== handlers in <Scene>.py
 def find_handler_line(code: str, name: str) -> int:
-    """0-based line of `def name(` / `func name(` in the scene code, or -1."""
+    """0-based line of `def name(` / `func name(` / `function name(` (JS) / `func name args` (Ring), or -1."""
     for i, line in enumerate(code.splitlines()):
-        if re.match(rf"^\s*(def|func)\s+{re.escape(name)}\s*\(", line):
+        if re.match(rf"^\s*(def|func|function)\s+{re.escape(name)}\s*(\(|\s|$)", line, re.I):
             return i
     return -1
 
@@ -57,6 +57,11 @@ def ensure_handler(code: str, name: str, args: str = "", ext: str = ".py",
     if ext == ".gd":
         lines += ["", "", f"func {name}({args}):", "\tpass"]
         return "\n".join(lines) + "\n", len(lines) - 1, True
+    if ext in (".js", ".ring"):         # HTML5 Canvas (radide/games/html5.py) / Ring (radide/games/ring_game.py)
+        from . import html5, ring_game
+        mod = html5 if ext == ".js" else ring_game
+        new, body = mod.add_handler(code, name, mod.EVENT_ARGS.get(name.rpartition("_")[2], ""))
+        return new, body, True
     cls = None
     if scene_class:
         cls = next((k for k, ln in enumerate(lines) if re.match(rf"^class\s+{re.escape(scene_class)}\b.*:\s*$", ln)),
@@ -73,6 +78,13 @@ def ensure_handler(code: str, name: str, args: str = "", ext: str = ".py",
     # module level: above a trailing `if __name__ == "__main__":` block when there is one
     main = next((k for k, ln in enumerate(lines) if re.match(r"^if\s+__name__\s*==", ln)), None)
     stub = [f"def {name}({args}):", "    pass"]
+    try:            # the same "# Player: touches another object (other)" line as the generated handlers
+        from .codegen import EVENT_DOCS
+        owner, _, event = name.rpartition("_")
+        if EVENT_DOCS.get(event):
+            stub.insert(0, f"# {owner if owner != 'Scene' else 'the scene'}: {EVENT_DOCS[event]}")
+    except ImportError:
+        pass
     if main is None:
         lines += ["", ""] + stub
         return "\n".join(lines) + "\n", len(lines) - 1, True
@@ -80,7 +92,7 @@ def ensure_handler(code: str, name: str, args: str = "", ext: str = ".py",
     while at > 0 and not lines[at - 1].strip():
         at -= 1
     lines[at:at] = ["", ""] + stub + [""]
-    return "\n".join(lines) + "\n", at + 3, True
+    return "\n".join(lines) + "\n", at + 1 + len(stub), True
 
 
 class FileHost:

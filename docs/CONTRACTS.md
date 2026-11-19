@@ -61,7 +61,9 @@ Client libraries live in `radide/runtimes/clients/<lang>/` and are copied into t
 ## 3. Package managers (owner of the UI: ide-shell; each language agent fills its plugin)
 
 `radide.languages.base.PackageManager(name, tool, list_cmd, search_cmd, install_cmd, uninstall_cmd, init_cmd,
-manifest, search_url)` - argv lists with `{name}`, `{query}`, `{version}` placeholders, run in the project folder.
+manifest, search_url, env)` - argv lists with `{name}`, `{query}`, `{version}` placeholders, run in the project folder
+(`env`: optional extra environment variables for every command, e.g. LuaRocks' `LUAROCKS_CONFIG`, RubyGems'
+`GEM_HOME`=`vendor/gems` so gems go into the project).
 Set `package_manager = PackageManager(...)` on your plugin class. Examples: Python pip
 (`[python, -m, pip, install, {name}]`, manifest `requirements.txt`), C# NuGet (`dotnet add package {name}`),
 JavaScript npm, Java Maven/Gradle (or a `libs/` jar download), Rust cargo (`cargo add`), PHP composer,
@@ -222,6 +224,12 @@ delete rows), schema view, SQL query window with results; SQLite via `sqlite3`, 
 psycopg if installed (pip into the IDE venv is allowed: `.venv\Scripts\python.exe -m pip install pymysql`).
 Also bundle **Adminer** (single PHP file, download from the official GitHub release into `radide/web/adminer/`)
 and offer "Open in Adminer" served by `php -S` in the Preview dock.
+**Local servers** (`radide/web_site/dbservers.py`, no Windows services): "Local Servers" in the Databases toolbar /
+Tools > Databases starts MariaDB (portable zip in `%LOCALAPPDATA%\RADIDE\toolchains\mariadb`) or PostgreSQL (EDB
+binaries zip, `...\toolchains\pgsql`) on demand; data in `%LOCALAPPDATA%\RADIDE\db\<mariadb|pgsql>\data`
+(initialized on the first start), 127.0.0.1 only, user/database `radide`, random password DPAPI-encrypted in
+`...\db\<engine>\radide-server.json`; the connection is added to the project; servers this IDE started are stopped
+on exit. The PHP Data App template also runs on MySQL (`'db_driver' => 'mysql'` in app/config.php).
 
 ### 8.4 Publish, Reports, SuperPreview (owner: web-tools)
 - `radide/web_site/publish.py`: publish profiles (FTP, FTPS, SFTP via paramiko if installed, local folder copy);
@@ -465,7 +473,9 @@ notice in the wizard).
   "tileset", "data": [[tile index or -1 ...]...], "collision": bool, "objects": [{"name", "kind":
   "sprite"|"text"|"area", "x", "y", "w", "h", "image"|"spritesheet", "animation", "scale", "rotation", "z",
   "visible", "text", "behaviours": [{"type": "keyboard_move"|"platformer"|"top_down"|"bounce"|"follow_mouse"|
-  "solid"|"collectible"|"enemy_patrol", ...params}], "props": {}}]}]}`. Game project: plugin ids
+  "solid"|"collectible"|"enemy_patrol"|"flap"|"scroll", ...params}], "props": {}}]}]}` (a behaviour with
+  `"enabled": false` is paused; object props `template=1` = a hidden spawn template copied at run time by
+  `Spawn(name, x, y)` / GDScript `spawn()`, `hitbox=n` = collide n px inside the picture). Game project: plugin ids
   `pygame` and `godot`; `is_game = True` tells the IDE to open `.scene` files in the scene designer; user code in
   `<Scene>.py` with VB-style handlers `Scene_Load`, `Scene_Update(dt)`, `Scene_KeyDown(key)`,
   `<Sprite>_Collide(other)`, `<Sprite>_Click`, `Timer` events; the runtime module `radgame.py` is copied into

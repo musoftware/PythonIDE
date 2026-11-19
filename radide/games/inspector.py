@@ -22,6 +22,12 @@ TEXT_KEYS = ("ForeColor", "FontSize", "color")
 def _parse(text: str, like):
     t = text.strip()
     if isinstance(like, bool):
+        if t not in ("0", "1"):            # a number where a flag was: keep it (scroll wrap = 800 px)
+            try:
+                v = float(t)
+                return int(v) if v.is_integer() else v
+            except ValueError:
+                pass
         return t.lower() in ("1", "true", "yes", "on")
     if isinstance(like, int):
         try:

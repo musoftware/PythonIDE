@@ -1,0 +1,19 @@
+{
+  "name": "App_typescript",
+  "language": "typescript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "TsCons.ts"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.ts"
+    ]
+  }
+}

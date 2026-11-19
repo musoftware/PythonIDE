@@ -1,0 +1,10 @@
+{
+  "name": "TextCpp",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "textcpp.cpp"
+  ],
+  "kind": "library"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "GoLib",
+  "language": "go-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "GoLib.go"
+  ],
+  "kind": "library"
+}

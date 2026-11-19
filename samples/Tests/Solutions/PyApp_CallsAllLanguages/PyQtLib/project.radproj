@@ -1,0 +1,10 @@
+{
+  "name": "PyQtLib",
+  "language": "python-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "PyQtLib.py"
+  ],
+  "kind": "library"
+}

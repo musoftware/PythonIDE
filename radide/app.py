@@ -1321,6 +1321,9 @@ class MainWindow(QMainWindow):
             if mod.lower() == base:
                 self.open_module(mod)
                 return self.modviews[mod].editor
+        if getattr(self.project, "kind", "") == "website" and Path(file).is_absolute() and \
+                Path(file).is_file() and callable(getattr(self, "open_file", None)):
+            return self.open_file(Path(file))       # web site debugging: .php / .js files of the site
         return None
 
     @staticmethod
@@ -1855,7 +1858,7 @@ class MainWindow(QMainWindow):
             self.log("No interpreter configured (Tools > Interpreter Path...)")
             return
         rp = self.run_plugin()
-        if rp.id.startswith("python"):
+        if rp.id.startswith("python") or getattr(rp, "uses_debugpy", False):
             interp = real_python(interp)        # not the Windows Store alias
         debug = debug and rp.supports_debug
         try:
@@ -1891,7 +1894,8 @@ class MainWindow(QMainWindow):
         """Python debugging uses debugpy (DAP) when installed: conditional breakpoints and
         break on exception come ready-made. Everything else uses the plugin's own agent."""
         import importlib.util
-        if debug and plugin.id.startswith("python") and importlib.util.find_spec("debugpy") is not None \
+        if debug and (plugin.id.startswith("python") or getattr(plugin, "uses_debugpy", False)) \
+                and importlib.util.find_spec("debugpy") is not None \
                 and self.settings.value("debug/python_engine", "debugpy") == "debugpy":
             from .dap import DapSession
             program = str(self.project.folder / plugin.code_file(self.project.startup))
@@ -1900,6 +1904,11 @@ class MainWindow(QMainWindow):
             s.launch_args["python"] = [real_python(interp)]
             s.break_on_exception = self.settings.value("debug/break_on_exception", True) in (True, "true")
             return s
+        from .languages.bridgebase import BridgeLanguagePlugin
+        if debug and isinstance(plugin, BridgeLanguagePlugin):
+            from .bridgedebug import BridgeDebugSession, engine_for
+            if engine_for(plugin):        # GUI Bridge program: attach gdb / netcoredbg / js-debug / dart
+                return BridgeDebugSession(spec, plugin, self._all_breakpoints(), self)
         return Session(spec, debug, self)
 
     # ---------------------------------------------------------- RAD Hub (cross-language calls)

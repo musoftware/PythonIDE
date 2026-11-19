@@ -1,0 +1,9 @@
+{
+  "name": "Imported",
+  "language": "python-tk",
+  "forms": [
+    "MainFrame"
+  ],
+  "startup": "MainFrame",
+  "modules": []
+}

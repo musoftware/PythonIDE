@@ -1,0 +1,11 @@
+{
+  "name": "EvDemo",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Helpers.py"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "RingApp",
+  "language": "ring-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "App.ring",
+    "Calc.ring"
+  ],
+  "references": [
+    "PyLib",
+    "RingLib",
+    "VBLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.ring"
+    ],
+    "RingLib": [
+      "RingLib.ref.ring"
+    ],
+    "VBLib": [
+      "VBLib.ref.ring"
+    ]
+  }
+}

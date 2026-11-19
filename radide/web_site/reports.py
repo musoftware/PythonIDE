@@ -535,13 +535,37 @@ def chromium_for_lighthouse() -> str | None:
     return b.get("Chrome") or b.get("Edge") or b.get("Brave")
 
 
+def private_lighthouse() -> tuple[str, str] | None:
+    """(node.exe, lighthouse cli/index.js) of the private install made with
+    `npm install --prefix %LOCALAPPDATA%\\RADIDE\\tools\\lighthouse lighthouse` (no download per run,
+    works offline), or None."""
+    base = os.environ.get("RADIDE_LIGHTHOUSE_DIR") or (
+        str(Path(os.environ["LOCALAPPDATA"]) / "RADIDE" / "tools" / "lighthouse")
+        if os.environ.get("LOCALAPPDATA") else str(Path.home() / ".radide" / "tools" / "lighthouse"))
+    cli = Path(base) / "node_modules" / "lighthouse" / "cli" / "index.js"
+    node = shutil.which("node.exe") or shutil.which("node")
+    if cli.is_file() and node:
+        return node, str(cli)
+    return None
+
+
+def lighthouse_available() -> bool:
+    return private_lighthouse() is not None or npx_path() is not None
+
+
 def lighthouse_command(url: str, out_html: Path, categories: str = "") -> tuple[list[str], dict] | None:
-    """argv + env for running Lighthouse through npx, or None when npx is not installed."""
-    npx = npx_path()
-    if not npx:
-        return None
-    argv = [npx, "--yes", "lighthouse@12", url, "--output=html", f"--output-path={out_html}", "--quiet",
-            "--chrome-flags=--headless=new --no-first-run --disable-gpu"]
+    """argv + env for running Lighthouse - the private install (private_lighthouse) when present,
+    else through npx (downloaded on first use); None when Node.js is not installed."""
+    local = private_lighthouse()
+    if local:
+        head = [local[0], local[1]]
+    else:
+        npx = npx_path()
+        if not npx:
+            return None
+        head = [npx, "--yes", "lighthouse@12"]
+    argv = head + [url, "--output=html", f"--output-path={out_html}", "--quiet",
+                   "--chrome-flags=--headless=new --no-first-run --disable-gpu"]
     if categories:
         argv.append(f"--only-categories={categories}")
     env = dict(os.environ)

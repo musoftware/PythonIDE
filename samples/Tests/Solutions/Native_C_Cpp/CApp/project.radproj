@@ -1,0 +1,16 @@
+{
+  "name": "CApp",
+  "language": "c-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.h",
+      "PyLib.ref.c"
+    ]
+  }
+}

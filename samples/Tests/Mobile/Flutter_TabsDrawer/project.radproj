@@ -1,0 +1,13 @@
+{
+  "name": "Proj_flutter_tabs",
+  "language": "flutter",
+  "forms": [
+    "MainScreen",
+    "DetailsScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "mobile": {
+    "device": "windows"
+  }
+}

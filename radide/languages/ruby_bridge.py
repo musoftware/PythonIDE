@@ -24,6 +24,7 @@ API = {
     "radcall": "radcall(\"Module.func\", *args) -> value - call a function of any project module (RAD Hub)",
 }
 MEMBERS = {k.split(".", 1)[1]: v for k, v in API.items() if k.startswith("Rad.")}
+GEM_DIR = "vendor/gems"             # project gems (Tools > Manage Packages), see rad.rb
 
 
 class RubyBridgePlugin(ScriptBridgePlugin):
@@ -33,7 +34,9 @@ class RubyBridgePlugin(ScriptBridgePlugin):
     tool_names = ["ruby"]
     tool_hints = [rf"C:\Ruby{v}-x64\bin\ruby.exe" for v in ("40", "34", "33", "32", "31", "30")] + \
                  [r"C:\tools\ruby34\bin\ruby.exe", r"C:\tools\ruby33\bin\ruby.exe"]
-    install_hint = "Install Ruby (winget install RubyInstallerTeam.Ruby.3.4) and add it to PATH."
+    toolchain_bins = ["ruby/bin"]
+    install_hint = ("Install Ruby (winget install RubyInstallerTeam.Ruby.3.4) and add it to PATH, or extract the "
+                    "RubyInstaller 7z archive into %LOCALAPPDATA%\\RADIDE\\toolchains\\ruby.")
     handler_regex = r"^\s*def\s+(\w+_\w+)\b"
     client_subdir = "ruby"
     client_names = ["rad.rb", "radworker.rb"]
@@ -51,15 +54,21 @@ class RubyBridgePlugin(ScriptBridgePlugin):
                 "String", "Array", "Hash"]
     @property
     def package_manager(self) -> PackageManager:
+        """RubyGems installing into the project (vendor/gems, GEM_HOME relative to the project
+        folder); rad.rb puts vendor/gems on the gem path of the program and of the RAD Hub workers."""
         gem = self.sibling_tool("gem")
         return PackageManager(
             name="RubyGems", tool=gem,
-            list_cmd=[gem, "list"],
+            # the project's gems only (`gem list` would add Ruby's ~50 default gems)
+            list_cmd=[self.tool() or "ruby", "-e",
+                      f"Dir.glob('{GEM_DIR}/specifications/*.gemspec').sort.each {{ |f| "
+                      "s = Gem::Specification.load(f); puts s.name + ' (' + s.version.to_s + ')' if s }"],
             search_cmd=[gem, "search", "{query}"],
-            install_cmd=[gem, "install", "{name}", "-v", "{version}"],
-            uninstall_cmd=[gem, "uninstall", "-x", "{name}"],
-            init_cmd=[self.sibling_tool("bundle"), "init"], manifest="Gemfile",
-            search_url="https://rubygems.org/search?query={query}")
+            install_cmd=[gem, "install", "{name}", "-v", "{version}", "--no-document"],
+            uninstall_cmd=[gem, "uninstall", "-x", "-a", "{name}"],
+            init_cmd=None, manifest="",
+            search_url="https://rubygems.org/search?query={query}",
+            env={"GEM_HOME": GEM_DIR, "GEM_PATH": GEM_DIR})
 
     # ------------------------------------------------------------ templates
     def new_code(self, form: Form, is_startup: bool) -> str:

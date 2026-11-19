@@ -1,0 +1,19 @@
+{
+  "name": "App_php",
+  "language": "php",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PhpCons.php"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.php"
+    ]
+  }
+}

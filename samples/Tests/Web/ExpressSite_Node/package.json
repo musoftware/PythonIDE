@@ -1,0 +1,13 @@
+{
+  "name": "express-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Express Site - Express web site created by the RAD IDE App Gallery",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

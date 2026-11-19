@@ -1,0 +1,2 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Home - Test Site Example</title></head>
+<body><h1>About</h1><h1>Second</h1><h3>skip</h3><a href="index.php">home</a></body></html>

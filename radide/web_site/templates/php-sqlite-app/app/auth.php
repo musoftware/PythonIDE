@@ -106,8 +106,9 @@ function validate_registration(string $username, string $email, string $password
     }
     $errors += validate_new_password($password, $confirm);
     if (!$errors) {
-        $stmt = db()->prepare('SELECT username = :u COLLATE NOCASE AS same_name FROM users
-                               WHERE username = :u OR email = :e LIMIT 1');
+        $nocase = db_driver() === 'mysql' ? '' : ' COLLATE NOCASE';    // MySQL: the column is case-insensitive
+        $stmt = db()->prepare("SELECT username = :u$nocase AS same_name FROM users
+                               WHERE username = :u OR email = :e LIMIT 1");
         $stmt->execute([':u' => $username, ':e' => $email]);
         $row = $stmt->fetch();
         if ($row) {

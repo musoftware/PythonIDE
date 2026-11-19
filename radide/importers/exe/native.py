@@ -1023,7 +1023,10 @@ def find_ghidra() -> str | None:
             cands.append(Path(os.environ[env]))
     root = tools_dir()
     if root.is_dir():
-        cands += sorted(root.glob("ghidra*"), reverse=True)
+        # %LOCALAPPDATA%\RADIDE\tools\ghidra_12.2_PUBLIC  or  ...\tools\ghidra\ghidra_12.2_PUBLIC (zip extracted)
+        for c in sorted(root.glob("ghidra*"), reverse=True):
+            cands.append(c)
+            cands += sorted((d for d in c.glob("ghidra*") if d.is_dir()), reverse=True)
     for c in cands:
         for name in ("analyzeHeadless.bat", "analyzeHeadless"):
             p = c / "support" / name
@@ -1033,38 +1036,129 @@ def find_ghidra() -> str | None:
     return shutil.which("analyzeHeadless")
 
 
+def _ghidra_java_min(headless: str) -> int:
+    """The Java major version this Ghidra needs (Ghidra/application.properties: application.java.min)."""
+    try:
+        props = (Path(headless).parent.parent / "Ghidra" / "application.properties").read_text(errors="replace")
+        m = re.search(r"^application\.java\.min=(\d+)", props, re.M)
+        return int(m.group(1)) if m else 17
+    except OSError:
+        return 17
+
+
+def _jdk_version(home: Path) -> int:
+    try:
+        m = re.search(r'JAVA_VERSION="(\d+)(?:\.(\d+))?', (home / "release").read_text(errors="replace"))
+    except OSError:
+        return 0
+    if not m:
+        return 0
+    major = int(m.group(1))
+    return int(m.group(2) or 0) if major == 1 else major       # "1.8.0" -> 8
+
+
+def find_jdk(min_version: int = 17) -> str | None:
+    """Home folder of the newest JDK >= *min_version*: JAVA_HOME, %LOCALAPPDATA%\\RADIDE\\tools\\jdk*,
+    the usual per-user / per-machine install folders, then the java on PATH."""
+    import shutil
+    homes: list[Path] = []
+    if os.environ.get("JAVA_HOME"):
+        homes.append(Path(os.environ["JAVA_HOME"]))
+    roots = [tools_dir()]
+    local = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    roots += [Path(local) / "Java", Path(local) / "Programs" / "Eclipse Adoptium"]
+    for pf in (os.environ.get("ProgramFiles"), os.environ.get("ProgramW6432")):
+        if pf:
+            roots += [Path(pf) / "Java", Path(pf) / "Eclipse Adoptium", Path(pf) / "Microsoft",
+                      Path(pf) / "Zulu", Path(pf) / "BellSoft"]
+    for r in roots:
+        if r.is_dir():
+            for d in r.glob("*jdk*"):
+                homes += [d, *d.glob("*jdk*")]
+    java = shutil.which("java")
+    if java:
+        homes.append(Path(java).resolve().parent.parent)
+    best, best_v = None, 0
+    for h in homes:
+        if (h / "bin" / "java.exe").is_file() or (h / "bin" / "java").is_file():
+            v = _jdk_version(h)
+            if v >= min_version and v > best_v:
+                best, best_v = h, v
+    return str(best) if best else None
+
+
+def _ghidra_name(name: str) -> str:
+    """Ghidra's FUN_140001660 -> sub_140001660 (the name the capstone analysis gives the same function)."""
+    m = re.fullmatch(r"FUN_([0-9a-fA-F]+)", name)
+    return f"sub_{int(m.group(1), 16):X}" if m else name
+
+
+class GhidraFunctions(dict):
+    """{function name: pseudo-C}; ``addr`` maps entry address -> name and ``error`` says why it is empty."""
+    def __init__(self):
+        super().__init__()
+        self.addr: dict = {}
+        self.error = ""
+
+    def for_func(self, f) -> str | None:
+        return self.get(f.name) or self.get(self.addr.get(f.addr, ""))
+
+
 def ghidra_decompile(path: Path, workdir: Path, progress, timeout: int = 1800) -> dict:
     """{function name: pseudo-C} from Ghidra headless (empty when Ghidra is missing or fails)."""
+    funcs = GhidraFunctions()
     exe = find_ghidra()
     if not exe:
-        return {}
+        funcs.error = "Ghidra is not installed"
+        return funcs
+    need = _ghidra_java_min(exe)
+    jdk = find_jdk(need)
+    if not jdk:
+        funcs.error = (f"Ghidra needs a JDK {need} or newer (none found: put one in %LOCALAPPDATA%\\RADIDE\\tools"
+                       f"\\jdk{need} or set JAVA_HOME)")
+        progress(funcs.error)
+        return funcs
     work = Path(workdir) / "ghidra"
     work.mkdir(parents=True, exist_ok=True)
     (work / "RadExportDecomp.java").write_text(GHIDRA_SCRIPT, encoding="utf-8")
     out = work / "decompiled.c"
+    out.unlink(missing_ok=True)
     progress("Running Ghidra headless analysis (this can take several minutes) ...")
     cmd = [exe, str(work), "radimport", "-import", str(path), "-scriptPath", str(work),
            "-postScript", "RadExportDecomp.java", str(out), "-deleteProject", "-overwrite"]
+    env = dict(os.environ, JAVA_HOME=jdk)
+    env["PATH"] = str(Path(jdk) / "bin") + os.pathsep + env.get("PATH", "")
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        cp = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env,
+                            stdin=subprocess.DEVNULL, errors="replace",       # never wait on a "JDK path?" prompt
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.TimeoutExpired) as e:
-        progress(f"Ghidra failed: {e}")
-        return {}
+        funcs.error = f"Ghidra failed: {e}"
+        progress(funcs.error)
+        return funcs
     if not out.is_file():
-        return {}
-    funcs: dict = {}
+        tail = [ln for ln in ((cp.stdout or "") + (cp.stderr or "")).splitlines() if ln.strip()][-3:]
+        funcs.error = "Ghidra produced no output" + (": " + " | ".join(tail) if tail else "")
+        progress(funcs.error)
+        return funcs
     cur, buf = None, []
+
+    def flush():
+        if cur:
+            funcs[cur] = re.sub(r"\bFUN_([0-9a-fA-F]+)\b", lambda m: _ghidra_name(m.group(0)),
+                                "\n".join(buf).strip())
     for line in out.read_text(encoding="utf-8", errors="replace").splitlines():
         if line.startswith("//@@FUNCTION "):
-            if cur:
-                funcs[cur] = "\n".join(buf).strip()
+            flush()
             parts = line.split()
-            cur, buf = (parts[1] if len(parts) > 1 else f"f{len(funcs)}"), []
+            cur, buf = (_ghidra_name(parts[1]) if len(parts) > 1 else f"f{len(funcs)}"), []
+            try:
+                funcs.addr[int(parts[2].split(":")[-1], 16)] = cur
+            except (IndexError, ValueError):
+                pass
         else:
             buf.append(line)
-    if cur:
-        funcs[cur] = "\n".join(buf).strip()
+    flush()
     return funcs
 
 
@@ -1105,12 +1199,26 @@ def user_functions(an: NativeAnalysis) -> list:
     return sorted(out, key=lambda f: f.addr)
 
 
+def _hex_id(k) -> str:
+    try:
+        return hex(int(k))
+    except (TypeError, ValueError):
+        return str(k)
+
+
+def _decomp_for(decomp: dict, f) -> str | None:
+    """Ghidra pseudo-C of *f*: by name, else by entry address (Ghidra and capstone may name it differently)."""
+    if hasattr(decomp, "for_func"):
+        return decomp.for_func(f)
+    return decomp.get(f.name)
+
+
 def stubs_module(an: NativeAnalysis, funcs: list, decomp: dict, translated: dict, program: str) -> str:
     L = [f'"""Functions recovered from {program} (native machine code).',
          "",
          "Each function below documents what the original code calls and which strings it uses.",
          "Bodies translated by AI are marked; the others are stubs to complete by hand.",
-         '"""', ""]
+         '"""', "from __future__ import annotations   # AI signatures may name tkinter types", ""]
     for f in funcs:
         name = re.sub(r"\W", "_", f.name)
         if name[:1].isdigit():
@@ -1123,9 +1231,13 @@ def stubs_module(an: NativeAnalysis, funcs: list, decomp: dict, translated: dict
         if f.strings:
             doc.append("Strings: " + "; ".join(repr(s)[:60] for s in f.strings[:8]))
         code = translated.get(f.name)
-        L.append(f"def {name}(*args):")
+        sig = "*args"
+        if code and code.startswith("#@signature ("):
+            first, _nl, code = code.partition("\n")
+            sig = first[len("#@signature ("):].rstrip().removesuffix(")") or "*args"
+        L.append(f"def {name}({sig}):")
         L.append('    """' + "\n    ".join(d.replace('"""', "'''") for d in doc) + '\n    """')
-        pc = decomp.get(f.name)
+        pc = _decomp_for(decomp, f)
         if pc and not code:
             L += ["    # pseudo-C from Ghidra:"] + [f"    # {ln}" for ln in pc.splitlines()[:80]]
         if code:
@@ -1227,6 +1339,8 @@ def run(path, info, workdir, progress, ai_translate: bool = False) -> ImportResu
         if decomp:
             result.add("exact", f"Ghidra decompiled {len(decomp)} function(s) to pseudo-C (kept in decompiled.c)")
             result.modules.append(("decompiled.c", "\n\n".join(f"// {n}\n{c}" for n, c in decomp.items()), "c"))
+        else:
+            result.add("warn", getattr(decomp, "error", "") or "Ghidra did not decompile any function")
     else:
         result.add("info", "Ghidra is not installed: no pseudo-C (install it into %LOCALAPPDATA%\\RADIDE\\tools "
                            "or set GHIDRA_HOME for full decompilation)")
@@ -1317,32 +1431,70 @@ def _ahk_script(res, result: ImportResult) -> None:
 
 
 def _ai_functions(an: NativeAnalysis, funcs: list, decomp: dict, result: ImportResult, progress,
-                  max_funcs: int = 8) -> dict:
+                  max_funcs: int = 8, max_chars: int = 2500) -> dict:
     """Translate the most relevant functions with the user's AI provider."""
     procs = {int(k, 16) for k in result.resources.get("event_procs", {})}
     order = sorted(funcs, key=lambda f: (f.addr not in procs, -len(f.calls)))[:max_funcs]
     out: dict = {}
     for f in order:
-        src = decomp.get(f.name)
+        src = _decomp_for(decomp, f)
         if src:
             lang = "decompiled C (Ghidra pseudo-C)"
+            if len(src) > max_chars:      # small prompts: local models time out on whole pseudo-C files
+                src = src[:max_chars].rsplit("\n", 1)[0] + "\n  /* ... rest of the function cut ... */"
         else:
             lang = "summary of a native function (Win32 API calls in order, with arguments)"
             src = "\n".join([f"function {f.name}:", *(f"  call {c.target}({', '.join(_fmt_arg(x) for x in c.args)})"
                                                       for c in f.calls[:80]),
                              *(f"  uses string {s!r}" for s in f.strings[:20])])
-        ctx = "Write the body of a Python function (no def line) using tkinter for any UI."
+        ctx = ("Write ONE Python function using tkinter for any UI; keep the C parameters as its parameters. "
+               "Win32 messages: 0x110 = WM_INITDIALOG (the form loads), 0x111 = WM_COMMAND (the low word of "
+               "wParam is the id of the clicked control or menu item).")
         ids = result.resources.get("dialog_ids") or {}
         if ids:
-            ctx += " Control ids of the program's dialogs (id: name): " + "; ".join(
-                f"{form}: " + ", ".join(f"{k}={v}" for k, v in list(d.get("controls", {}).items())[:30])
+            ctx += " Control and menu ids of the program's dialogs (decimal/hex = name): " + "; ".join(
+                f"{form}: " + ", ".join(f"{k}/{_hex_id(k)}={v}" for k, v in list(d.get("controls", {}).items())[:30])
                 for form, d in list(ids.items())[:4])
-        code, who = _ai_translate(src, lang, "Python", ctx, progress, timeout=180)
+        # local models on a CPU-only machine need several minutes for one function
+        code, who = _ai_translate(src, lang, "Python", ctx, progress, timeout=360)
         if code is None:
             result.add("warn", who)
             break
-        m = re.match(r"\s*def\s+\w+\s*\([^)]*\)\s*(->[^:]*)?:[ \t]*\n", code)
-        body = textwrap.dedent(code[m.end():] if m else code)
+        body = _ai_body(code)
+        if body is None:
+            result.add("warn", f"{f.name}: the AI answer is not a valid Python function - kept as a stub")
+            continue
         out[f.name] = body
         result.add("ai", f"{f.name}: translated to Python by AI ({who})")
     return out
+
+
+def _ai_body(code: str) -> str | None:
+    """Body of the AI's function (+ its parameters as a ``#@signature`` marker read by stubs_module).
+    The answer may carry imports, helper code or an ``if __name__`` block around the first top-level def;
+    the imports move into the body, the rest is dropped.  None when the result does not compile."""
+    lines = code.splitlines()
+    at = next((i for i, ln in enumerate(lines) if re.match(r"(async\s+)?def\s+\w+\s*\(", ln)), None)
+    sig = ""
+    if at is None:
+        body = textwrap.dedent(code)
+    else:
+        end = at                                   # a signature can span several lines
+        while end < len(lines) - 1 and not lines[end].rstrip().endswith(":"):
+            end += 1
+        m = re.match(r"(?:async\s+)?def\s+\w+\s*\(([^)]*)\)\s*(->[^:]*)?:\s*$", " ".join(lines[at:end + 1]))
+        sig = " ".join(m.group(1).split()) if m else ""
+        inner = []
+        for ln in lines[end + 1:]:
+            if ln.strip() and not ln[:1].isspace():
+                break
+            inner.append(ln)
+        imports = [ln for ln in lines[:at] if re.match(r"(import|from)\s+\w", ln)]
+        body = "\n".join(imports + [textwrap.dedent("\n".join(inner))])
+    if not body.strip():
+        return None
+    try:
+        compile(f"def _f({sig or '*args'}):\n" + textwrap.indent(body, "    ") + "\n", "<ai>", "exec")
+    except (SyntaxError, ValueError):
+        return None
+    return (f"#@signature ({sig})\n" if sig else "") + body

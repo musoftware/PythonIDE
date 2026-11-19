@@ -1,0 +1,16 @@
+#define IDD_MAIN 101
+#define IDD_ABOUT 102
+#define IDR_MENU 201
+#define IDC_NAME 1001
+#define IDC_GREET 1002
+#define IDC_RESULT 1003
+#define IDC_UPPER 1004
+#define IDC_LIST 1005
+#define IDC_COLOR 1006
+#define IDC_RED 1007
+#define IDC_BLUE 1008
+#define IDM_EXIT 40001
+#define IDM_ABOUT 40002
+#define IDM_CLEAR 40003
+#define IDS_HELLO 3001
+#define IDS_BYE 3002

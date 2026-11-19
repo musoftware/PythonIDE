@@ -1,0 +1,19 @@
+{
+  "name": "App_dart_bridge",
+  "language": "dart-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "DartCons.dart"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "pylib_ref.dart"
+    ]
+  }
+}

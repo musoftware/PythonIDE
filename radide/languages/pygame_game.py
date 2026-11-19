@@ -25,6 +25,7 @@ class PygamePlugin(PythonTkPlugin):
     code_ext = ".py"
     is_game = True
     supports_debug = True
+    uses_debugpy = True          # F5 debugs the game with debugpy like other Python projects (app._make_session)
     scene_ext = ".scene"
 
     # ------------------------------------------------------------ interpreter

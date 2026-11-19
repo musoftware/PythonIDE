@@ -24,9 +24,16 @@ Every object of the scene is a global of ``<Scene>.py`` by its name (``Player.x 
 ``<Obj>_OutOfWorld()`` and ``<Timer>_Tick()`` (``Game_`` and ``<SceneName>_`` work like ``Scene_``).
 Objects called Coin1, Coin2 ... also fire ``Coin_Collide(other)`` (the group handler).
 
+Endless games: give an object props ``template=1`` (it is not drawn and never collides) and make copies
+with ``Spawn("Pipe", x, y)``; ``Destroy(obj)`` / the ``scroll`` behaviour remove them again.
+``SaveData("best", n)`` / ``LoadData("best", 0)`` keep values after the game closes (savegame.json),
+``EnableBehaviour("scroll", False)`` or ``obj.enable("flap", False)`` pause behaviours, props
+``hitbox=6`` makes the collision box 6 px smaller than the picture on every side.
+
 Run: ``python main.py`` (main.py calls ``radgame.run("Level1")``).  Environment variables for tests:
 RADGAME_FRAMES=n quits after n frames, RADGAME_SCREENSHOT=file.png saves the last frame,
-RADGAME_FIXED_DT=1 uses a fixed time step of 1/fps.
+RADGAME_FIXED_DT=1 uses a fixed time step of 1/fps, RADGAME_KEYS="space:30-32" holds keys between frames,
+RADGAME_SHOTS="60:a.png,200:b.png" saves screenshots at those frames, RADGAME_SAVE=file for SaveData.
 """
 from __future__ import annotations
 
@@ -81,6 +88,7 @@ class Input:
         self.released: set[str] = set()
         self.mouse = (0, 0)
         self.buttons: set[int] = set()
+        self.clicked = False             # a mouse button went down this frame
         self._queue: list[tuple[str, tuple]] = []
 
     # scripted input
@@ -100,6 +108,7 @@ class Input:
 
     def click(self, x: int, y: int, button: int = 1):
         self.mouse = (int(x), int(y))
+        self.clicked = True
         self._queue.append(("MouseDown", (int(x), int(y), button)))
         self._queue.append(("MouseUp", (int(x), int(y), button)))
 
@@ -119,6 +128,7 @@ class Input:
     def _new_frame(self):
         self.pressed.clear()
         self.released.clear()
+        self.clicked = False
 
     @staticmethod
     def key_name(key: int) -> str:
@@ -155,6 +165,10 @@ class GameObject:
         self.start = (self.x, self.y)
         self.data: dict = {}             # your own values: Player.data["lives"] = 3
         self._state: dict = {}
+        # props "template=1": a spawn template - not drawn, not moved, never collides; Spawn(name) copies it
+        self.template = str(self.props.get("template", "")).lower() in ("1", "true", "yes", "on")
+        self.spawned = False             # made at run time by Spawn / Clone (removed when destroyed)
+        self.hitbox = _num(self.props.get("hitbox"), 0)    # props "hitbox=6": collide 6 px inside the edges
 
     # ---- geometry
     @property
@@ -181,8 +195,17 @@ class GameObject:
     def bottom(self) -> float:
         return self.y + self.height
 
+    @property
+    def hit_rect(self) -> pygame.Rect:
+        """The rectangle used for collisions: ``rect`` shrunk by props ``hitbox`` pixels on every side."""
+        r = self.rect
+        k = int(self.hitbox)
+        if k > 0 and r.width > 2 * k and r.height > 2 * k:
+            r = r.inflate(-2 * k, -2 * k)
+        return r
+
     def overlaps(self, other: "GameObject") -> bool:
-        return self.alive and other.alive and self.rect.colliderect(other.rect)
+        return self.alive and other.alive and self.hit_rect.colliderect(other.hit_rect)
 
     def contains(self, x: float, y: float) -> bool:
         return self.rect.collidepoint(x, y)
@@ -201,9 +224,19 @@ class GameObject:
     def behaviour(self, behaviour: str) -> dict | None:
         return next((b for b in self.behaviours if b.get("type") == behaviour), None)
 
+    def enable(self, behaviour: str, on: bool = True):
+        """Switch a behaviour on or off (``Player.enable("flap", False)``) without removing it."""
+        for b in self.behaviours:
+            if b.get("type") == behaviour:
+                b["enabled"] = bool(on)
+
+    def enabled(self, behaviour: str) -> bool:
+        b = self.behaviour(behaviour)
+        return b is not None and b.get("enabled", True) is not False
+
     @property
     def solid(self) -> bool:
-        return self.alive and self.has("solid")
+        return self.alive and not self.template and self.has("solid")
 
     def destroy(self):
         """Remove the object from the scene (a collected coin, a defeated enemy)."""
@@ -380,6 +413,13 @@ class TextObject(GameObject):
             x += (self.width - img.get_width()) / 2
         elif self.align in ("right", "middleright", "topright"):
             x += self.width - img.get_width()
+        shadow = self.props.get("Shadow")           # props "Shadow=#000000": a drop shadow (readable on any sky)
+        if shadow:
+            key = ("shadow", img.get_size(), self._rendered[0], str(shadow))
+            if getattr(self, "_shadow", (None,))[0] != key:
+                self._shadow = (key, self._font.render(self.display_text(), True, _color(shadow, (0, 0, 0))))
+            d = max(1, round(self.font_size / 12))
+            surf.blit(self._shadow[1], (round(x) + d, round(self.y - oy) + d))
         surf.blit(img, (round(x), round(self.y - oy)))
 
 
@@ -481,7 +521,7 @@ class Layer:
         if self.screen_space:
             ox = oy = 0
         for o in sorted(self.objects, key=lambda o: o.z):
-            if o.visible and o.alive:
+            if o.visible and o.alive and not o.template:
                 o.draw(surf, ox, oy)
 
 
@@ -619,7 +659,23 @@ class Scene:
             yield from ly.objects
 
     def live_objects(self):
-        return [o for o in self.all_objects() if o.alive]
+        """Objects taking part in the game (not destroyed, not spawn templates)."""
+        return [o for o in self.all_objects() if o.alive and not o.template]
+
+    def remove_object(self, obj: GameObject):
+        """Take *obj* out of the scene for good (spawned objects are removed like this when destroyed)."""
+        obj.alive = obj.visible = False
+        if obj in obj.layer.objects:
+            obj.layer.objects.remove(obj)
+        if self.objects.get(obj.name) is obj:
+            del self.objects[obj.name]
+
+    def purge(self):
+        """Remove destroyed run-time objects (Spawn / Clone) so endless games do not slow down."""
+        for ly in self.layers:
+            if any(o.spawned and not o.alive for o in ly.objects):
+                for o in [o for o in ly.objects if o.spawned and not o.alive]:
+                    self.remove_object(o)
 
     def solid_tile_layers(self) -> list[Layer]:
         return [ly for ly in self.layers if ly.type == "tiles" and ly.collision]
@@ -864,6 +920,57 @@ class Behaviours:
         o.vx = st["dir"] * speed if axis == "x" else 0.0
 
     @staticmethod
+    def flap(g: "Game", o: GameObject, b: dict, dt: float):
+        """Falls with gravity; a key (default Space / Up / W) or a mouse click gives an upward kick
+        (fires ``<Obj>_Flap()``). ``tilt`` turns the sprite with its speed (nose up / nose down)."""
+        gravity = _num(b.get("gravity", g.scene.gravity or 900), 900)
+        kick = _num(b.get("flap", 320), 320)
+        max_fall = _num(b.get("max_fall", 600), 600)
+        keys = tuple(k.strip().lower() for k in str(b.get("keys", "space,up,w")).split(",") if k.strip())
+        if g.input.hit(*keys) or (b.get("mouse", True) and g.input.clicked):
+            o.vy = -kick
+            g._fire_object(o, "Flap")
+        o.vy = min(o.vy + gravity * dt, max_fall)
+        o.y += o.vy * dt
+        if b.get("ceiling", True) and o.y < 0:
+            o.y, o.vy = 0.0, max(0.0, o.vy)
+        if b.get("tilt", True):
+            target = max(-25.0, min(80.0, o.vy * 0.15))
+            o.rotation += (target - o.rotation) * min(1.0, dt * 12)
+
+    @staticmethod
+    def scroll(g: "Game", o: GameObject, b: dict, dt: float):
+        """Moves at a constant speed (default to the left) - obstacles, ground strips, parallax scenery.
+        ``wrap``: when it has left the window it jumps ahead by the width of all the objects of its group
+        (put 2 or more copies side by side for an endless strip); otherwise it is destroyed off screen."""
+        speed = _num(b.get("speed", 120), 120)
+        direction = str(b.get("direction", "left")).lower()
+        dx, dy = {"left": (-1, 0), "right": (1, 0), "up": (0, -1), "down": (0, 1)}.get(direction, (-1, 0))
+        o.x += dx * speed * dt
+        o.y += dy * speed * dt
+        cam = g.scene.camera
+        vw, vh = g.scene.view_size
+        if o.layer.screen_space:
+            left, top = 0.0, 0.0
+        else:
+            left, top = cam.x, cam.y
+        gone = (dx < 0 and o.right < left) or (dx > 0 and o.x > left + vw) or \
+            (dy < 0 and o.bottom < top) or (dy > 0 and o.y > top + vh)
+        if not gone:
+            return
+        wrap = b.get("wrap")
+        if wrap:
+            if not isinstance(wrap, bool) and _num(wrap, 0) > 1:      # wrap = a distance in pixels
+                dist = _num(wrap)
+            else:
+                mates = [m for m in o.layer.objects if m.alive and not m.template and m.group == o.group]
+                dist = sum(m.width if dx else m.height for m in mates)
+            o.x -= dx * dist
+            o.y -= dy * dist
+        elif b.get("destroy", True):
+            o.destroy()
+
+    @staticmethod
     def solid(g, o, b, dt):          # blocking is handled by Scene.blockers
         pass
 
@@ -1020,8 +1127,10 @@ class Game:
                     self._fire_object_name(t.name, "Tick")
         for o in scene.live_objects():
             for b in o.behaviours:
+                if b.get("enabled", True) is False:
+                    continue
                 fn = getattr(Behaviours, str(b.get("type", "")), None)
-                if fn is not None:
+                if fn is not None and o.alive:
                     fn(self, o, b, dt)
             o.update_animation(dt)
             if o.y > scene.world_size[1] + 200 and o.alive and not o.layer.screen_space:
@@ -1032,6 +1141,7 @@ class Game:
                         o.destroy()
         self._collisions()
         self._fire_scene("Update", dt)
+        scene.purge()
         if self._pending_scene is not None:
             name, self._pending_scene = self._pending_scene, None
             self.load_scene(name)
@@ -1059,6 +1169,7 @@ class Game:
             elif ev.type == pygame.MOUSEBUTTONDOWN:
                 self.input.mouse = ev.pos
                 self.input.buttons.add(ev.button)
+                self.input.clicked = True
                 self.input._queue.append(("MouseDown", (ev.pos[0], ev.pos[1], ev.button)))
             elif ev.type == pygame.MOUSEBUTTONUP:
                 self.input.buttons.discard(ev.button)
@@ -1083,10 +1194,12 @@ class Game:
         objs = [o for o in self.scene.live_objects() if not o.layer.screen_space and
                 (o.kind != "text")]
         now: set[tuple[str, str]] = set()
+        rects = [o.hit_rect for o in objs]
         for i, a in enumerate(objs):
-            ra = a.rect
-            for b in objs[i + 1:]:
-                if ra.colliderect(b.rect):
+            ra = rects[i]
+            for j in range(i + 1, len(objs)):
+                b = objs[j]
+                if ra.colliderect(rects[j]):
                     now.add((a.name, b.name))
         objects = self.scene.objects
         for pair in sorted(now - self._touching):
@@ -1149,6 +1262,11 @@ class Game:
             a, _, b = span.partition("-")
             if a.isdigit() and b.isdigit():
                 script.append((key.strip().lower(), int(a), int(b)))
+        shots = {}                      # RADGAME_SHOTS="60:start.png,200:play.png" (screenshots at frames)
+        for part in filter(None, os.environ.get("RADGAME_SHOTS", "").split(",")):
+            n, _, f = part.partition(":")
+            if n.strip().isdigit() and f.strip():
+                shots[int(n)] = f.strip()
         while self.running:
             ms = clock.tick(self.scene.fps)
             dt = 1.0 / self.scene.fps if fixed else min(ms / 1000.0, 0.05)
@@ -1158,6 +1276,8 @@ class Game:
                 elif self.frame == b:
                     self.input.release(key)
             self.step(dt)
+            if self.frame in shots and self.screen is not None:
+                pygame.image.save(self.screen, shots[self.frame])
             if frames and self.frame >= frames:
                 break
         if shot and self.screen is not None:
@@ -1197,6 +1317,29 @@ class Game:
 
     def show_message(self, text: str, seconds: float = 2.0):
         self._message = (str(text), self.time + seconds)
+
+    # ---- saved values (best score, settings): savegame.json next to main.py (RADGAME_SAVE = another file)
+    @property
+    def save_file(self) -> Path:
+        return Path(os.environ.get("RADGAME_SAVE") or (self.folder / "savegame.json"))
+
+    def _saved(self) -> dict:
+        try:
+            data = json.loads(self.save_file.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def save_value(self, key: str, value):
+        data = self._saved()
+        data[str(key)] = value
+        try:
+            self.save_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except OSError as e:
+            print(f"radgame: cannot save {self.save_file}: {e}", file=sys.stderr)
+
+    def load_value(self, key: str, default=None):
+        return self._saved().get(str(key), default)
 
 
 def _main_folder() -> Path:
@@ -1279,17 +1422,55 @@ def FindGroup(group: str) -> list[GameObject]:
 
 
 def Clone(obj: GameObject, x: float | None = None, y: float | None = None) -> GameObject:
-    """A copy of a scene object (spawn bullets, enemies ...)."""
+    """A copy of a scene object (spawn bullets, enemies ...). The copy is a normal, visible object even
+    when *obj* is a hidden spawn template; destroy() removes it from the scene for good."""
+    props = {k: v for k, v in obj.props.items() if k != "template"}
     d = {"name": obj.name, "kind": obj.kind, "x": obj.x if x is None else x, "y": obj.y if y is None else y,
          "w": obj.w, "h": obj.h, "scale": obj.scale, "rotation": obj.rotation, "z": obj.z,
-         "props": dict(obj.props), "behaviours": [dict(b) for b in obj.behaviours]}
+         "props": props, "behaviours": [dict(b) for b in obj.behaviours]}
     if isinstance(obj, Sprite):
         d.update(image=obj.image_id, spritesheet=obj.sheet_id, animation=obj.animation)
     if isinstance(obj, TextObject):
         d["text"] = obj.text
     new = game.scene.add_object(d, obj.layer)
     new.group = obj.group
+    new.spawned = True
+    if not obj.template:
+        new.visible = obj.visible
     return new
+
+
+def Spawn(template, x: float | None = None, y: float | None = None) -> GameObject:
+    """A new object made from a scene object (usually a spawn template: props ``template=1``) by name
+    or by object: ``gate = Spawn("PillarTop", 420, -200)``."""
+    obj = Find(template) if isinstance(template, str) else template
+    if isinstance(obj, ObjRef):
+        obj = obj._obj()
+    if obj is None:
+        raise NameError(f"no object named {template!r} to spawn")
+    return Clone(obj, x, y)
+
+
+def Destroy(obj: GameObject):
+    """Remove an object from the game (spawned objects are deleted, scene objects are hidden)."""
+    (obj._obj() if isinstance(obj, ObjRef) else obj).destroy()
+
+
+def EnableBehaviour(behaviour: str, on: bool = True, objects=None):
+    """Switch a behaviour on/off for every object that has it (or only *objects*):
+    ``EnableBehaviour("scroll", False)`` stops all scrolling scenery at game over."""
+    for o in (objects if objects is not None else game.scene.live_objects()):
+        o.enable(behaviour, on)
+
+
+def SaveData(key: str, value):
+    """Keep a value after the game closes (best score, settings): ``SaveData("best", 12)``."""
+    game.save_value(key, value)
+
+
+def LoadData(key: str, default=None):
+    """A value kept by SaveData (``best = LoadData("best", 0)``)."""
+    return game.load_value(key, default)
 
 
 def AddTimer(name: str, interval: float = 1000, enabled: bool = True) -> Timer:
@@ -1314,9 +1495,12 @@ class ObjRef:
         object.__setattr__(self, "_name", name)
 
     def _obj(self):
-        if _current is None or _current.scene is None or self._name not in _current.scene.objects:
-            raise NameError(f"no object named {self._name!r} in the running scene")
-        return _current.scene.objects[self._name]
+        scene = _current.scene if _current is not None else None
+        if scene is not None and self._name in scene.objects:
+            return scene.objects[self._name]
+        if scene is not None and self._name in scene.timers:          # timers are named in the designer too
+            return scene.timers[self._name]
+        raise NameError(f"no object named {self._name!r} in the running scene")
 
     def __getattr__(self, item):
         return getattr(self._obj(), item)
@@ -1348,4 +1532,5 @@ def run(scene: str, title: str = "", width: int | None = None, height: int | Non
 
 __all__ = ["game", "Game", "Scene", "Sprite", "TextObject", "Area", "GameObject", "Layer", "Timer", "Input",
            "GoToScene", "RestartScene", "Quit", "AddScore", "PlaySound", "PlayMusic", "StopMusic", "ShowMessage",
-           "IsKeyDown", "Find", "FindGroup", "Clone", "AddTimer", "Random", "objref", "run", "move_and_collide"]
+           "IsKeyDown", "Find", "FindGroup", "Clone", "Spawn", "Destroy", "EnableBehaviour", "SaveData", "LoadData",
+           "AddTimer", "Random", "objref", "run", "move_and_collide"]

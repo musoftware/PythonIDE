@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 from ..model import Form, Project
 from .base import Completion, PackageManager
+from .bridgebase import toolchains_root
 from .scripting_common import CONTROL_METHODS, ScriptBridgePlugin, _property_names
 from .scripting_refs import doc_above, header, is_public, make_export, proxy_params, valid_ident
 
@@ -42,7 +44,9 @@ class LuaBridgePlugin(ScriptBridgePlugin):
     tool_hints = [r"C:\Program Files (x86)\Lua\5.4\lua.exe", r"C:\Program Files\Lua\5.4\lua.exe",
                   r"C:\Program Files (x86)\Lua\5.1\lua.exe", r"C:\Lua\lua.exe", r"C:\Lua\lua54.exe",
                   str(Path.home() / "AppData/Local/Programs/Lua/bin/lua.exe")]
-    install_hint = "Install Lua (winget install DEVCOM.Lua) and add it to PATH."
+    toolchain_bins = ["lua/bin", "lua"]
+    install_hint = ("Install Lua (winget install DEVCOM.Lua) and add it to PATH, or extract the LuaBinaries "
+                    "Win64 zip (+ luarocks.exe) into %LOCALAPPDATA%\\RADIDE\\toolchains\\lua\\bin.")
     handler_regex = r"^\s*function\s+(\w+_\w+)\s*\("
     client_subdir = "lua"
     client_names = ["rad.lua", "radworker.lua", "radcall_helper.py"]
@@ -57,18 +61,66 @@ class LuaBridgePlugin(ScriptBridgePlugin):
     builtins = ["print", "pairs", "ipairs", "tostring", "tonumber", "type", "select", "error", "pcall",
                 "xpcall", "require", "setmetatable", "getmetatable", "rawget", "rawset", "next", "assert",
                 "string", "table", "math", "os", "io", "utf8", "coroutine", "rad", "ui", "radcall", "msgbox"]
+    _lua_versions: dict[str, str] = {}
+
+    def lua_version(self, tool: str) -> str:
+        """"5.4"-style version of the Lua interpreter *tool* ("" when it cannot be run)."""
+        if tool not in LuaBridgePlugin._lua_versions:
+            ver = ""
+            try:
+                r = subprocess.run([tool, "-v"], capture_output=True, text=True, timeout=15)
+                out = r.stdout + r.stderr
+                m = re.search(r"\bLua (\d+\.\d+)", out)
+                ver = m.group(1) if m else ("5.1" if "LuaJIT" in out else "")
+            except (OSError, subprocess.SubprocessError):
+                pass
+            LuaBridgePlugin._lua_versions[tool] = ver
+        return LuaBridgePlugin._lua_versions[tool]
+
+    def luarocks_flags(self) -> list[str]:
+        """``--lua-dir <prefix> --lua-version <x.y>`` for the interpreter RAD IDE uses, so LuaRocks
+        finds it even when it is not on PATH (e.g. %LOCALAPPDATA%\\RADIDE\\toolchains\\lua\\bin\\lua54.exe)."""
+        lua = self.tool()
+        if not lua or not Path(lua).is_absolute():
+            return []
+        exe = Path(lua)
+        prefix = exe.parent.parent if exe.parent.name.lower() == "bin" else exe.parent
+        ver = self.lua_version(lua)
+        return ["--lua-dir", str(prefix)] + (["--lua-version", ver] if ver else [])
+
+    @staticmethod
+    def luarocks_env(rocks: str) -> dict[str, str] | None:
+        """The stand-alone luarocks.exe from the toolchains folder needs its built-in archive modules
+        (no 7z/unzip on Windows): LUAROCKS_CONFIG points to a small config written by RAD IDE."""
+        try:
+            Path(rocks).resolve().relative_to(toolchains_root().resolve())
+        except (ValueError, OSError):
+            return None
+        cfg = toolchains_root().parent / "luarocks" / "config.lua"
+        text = ("-- written by RAD IDE for the stand-alone luarocks.exe in %LOCALAPPDATA%\\RADIDE\\toolchains\n"
+                "fs_use_modules = true\n")
+        try:
+            if not cfg.is_file() or cfg.read_text(encoding="utf-8") != text:
+                cfg.parent.mkdir(parents=True, exist_ok=True)
+                cfg.write_text(text, encoding="utf-8")
+        except OSError:
+            return None
+        return {"LUAROCKS_CONFIG": str(cfg)}
+
     @property
     def package_manager(self) -> PackageManager:
         """LuaRocks, installing into the project's lua_modules tree (on the run-time search path)."""
         rocks = self.sibling_tool("luarocks")
+        lr = [rocks] + self.luarocks_flags()
         return PackageManager(
             name="LuaRocks", tool=rocks,
-            list_cmd=[rocks, "list", "--porcelain", "--tree", "lua_modules"],
-            search_cmd=[rocks, "search", "--porcelain", "{query}"],
-            install_cmd=[rocks, "install", "--tree", "lua_modules", "{name}", "{version}"],
-            uninstall_cmd=[rocks, "remove", "--tree", "lua_modules", "{name}"],
+            list_cmd=lr + ["list", "--porcelain", "--tree", "lua_modules"],
+            search_cmd=lr + ["search", "--porcelain", "{query}"],
+            install_cmd=lr + ["install", "--tree", "lua_modules", "{name}", "{version}"],
+            uninstall_cmd=lr + ["remove", "--tree", "lua_modules", "{name}"],
             init_cmd=None, manifest="",
-            search_url="https://luarocks.org/search?q={query}")
+            search_url="https://luarocks.org/search?q={query}",
+            env=self.luarocks_env(rocks))
 
     # ------------------------------------------------------------ templates
     def new_code(self, form: Form, is_startup: bool) -> str:

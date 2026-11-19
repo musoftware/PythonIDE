@@ -1,0 +1,284 @@
+{
+  "version": 1,
+  "props": {
+    "Name": "Form1",
+    "Text": "Blend Test",
+    "Width": 420,
+    "Height": 320,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button1",
+        "Text": "Hover me",
+        "Left": 10,
+        "Top": 10,
+        "Width": 75,
+        "Height": 23,
+        "BackColor": "#dddddd",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      },
+      "states": {
+        "MouseOver": {
+          "BackColor": "#ff0000"
+        },
+        "Pressed": {
+          "Text": "Down"
+        },
+        "Focused": {
+          "FontBold": true
+        },
+        "Big": {
+          "Width": 200
+        }
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button2",
+        "Text": "Two",
+        "Left": 10,
+        "Top": 50,
+        "Width": 75,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      },
+      "states": {
+        "Disabled": {
+          "Text": "Off",
+          "ForeColor": "#888888"
+        }
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "ListBox1",
+        "Left": 10,
+        "Top": 90,
+        "Width": 150,
+        "Height": 120,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "Label1",
+        "Text": "Label1",
+        "Left": 200,
+        "Top": 90,
+        "Width": 150,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "NumericUpDown",
+      "props": {
+        "Name": "NumericUpDown1",
+        "Left": 200,
+        "Top": 130,
+        "Width": 120,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ComboBox",
+      "props": {
+        "Name": "ComboBox1",
+        "Left": 200,
+        "Top": 200,
+        "Width": 120,
+        "Height": 21,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "DropDownStyle": "DropDownList",
+        "Parent": ""
+      }
+    }
+  ],
+  "states": {
+    "Big": {
+      "Text": "Big form"
+    }
+  },
+  "storyboards": [
+    {
+      "name": "Storyboard1",
+      "autostart": false,
+      "repeat": false,
+      "autoreverse": false,
+      "tracks": [
+        {
+          "target": "Button1",
+          "property": "Left",
+          "keys": [
+            [
+              0,
+              10
+            ],
+            [
+              600,
+              210
+            ]
+          ]
+        },
+        {
+          "target": "Label1",
+          "property": "BackColor",
+          "keys": [
+            [
+              0,
+              "#000000"
+            ],
+            [
+              600,
+              "#ffffff"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Intro",
+      "autostart": true,
+      "tracks": [
+        {
+          "target": "NumericUpDown1",
+          "property": "Top",
+          "keys": [
+            [
+              300,
+              170,
+              "out"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "datasources": [
+    {
+      "name": "People",
+      "file": "people.json"
+    },
+    {
+      "name": "Cities",
+      "file": "cities.csv"
+    }
+  ],
+  "bindings": [
+    {
+      "control": "ListBox1",
+      "property": "Items",
+      "source": "People",
+      "field": "name"
+    },
+    {
+      "control": "Label1",
+      "property": "Text",
+      "source": "People",
+      "field": "name"
+    },
+    {
+      "control": "NumericUpDown1",
+      "property": "Value",
+      "source": "People",
+      "field": "age"
+    },
+    {
+      "control": "ComboBox1",
+      "property": "Items",
+      "source": "Cities",
+      "field": "city"
+    }
+  ]
+}

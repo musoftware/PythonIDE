@@ -237,6 +237,10 @@ function radcall(name, ...args) {
 function stripTypes(code, file) {
   const mod = require('module');
   if (typeof mod.stripTypeScriptTypes === 'function') {
+    if (process.env.RAD_BRIDGE_DEBUG) {
+      // IDE debugger: plain stripping keeps every line/column, so breakpoints in the .ts file match
+      try { return mod.stripTypeScriptTypes(code, { mode: 'strip' }); } catch (e) { /* enum etc.: transform */ }
+    }
     try {
       return mod.stripTypeScriptTypes(code, { mode: 'transform', sourceUrl: file });
     } catch (e) {

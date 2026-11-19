@@ -3,10 +3,11 @@
 1. Extraction - PyInstaller CArchive + PYZ (the pyinstxtractor-ng algorithm, implemented here), py2exe
    PYTHONSCRIPT resource + embedded library, cx_Freeze library.zip.  Entry scripts get a valid .pyc header.
 2. Decompilation of the main script, matching the program's Python version:
-   pycdc (Decompyle++, when present in %LOCALAPPDATA%\\RADIDE\\tools or on PATH), decompyle3 / uncompyle6
-   (Python <= 3.8, when installed), otherwise the built-in bytecode decompiler below (CPython 3.11 - 3.13:
-   straight-line code, if/elif/else, for/while, break/continue, lambdas, f-strings, imports, functions,
-   classes).  It must run on the same Python version as the bytecode: another installed interpreter of that
+   decompyle3 / uncompyle6 first for Python <= 3.8 (when pip-installed), pycdc (Decompyle++, when present in
+   %LOCALAPPDATA%\\RADIDE\\tools\\pycdc or on PATH; accepted only when its output is complete and compiles) for
+   the versions the built-in decompiler does not cover, and the built-in bytecode decompiler below
+   (CPython 3.11 - 3.13: straight-line code, if/elif/else, for/while, break/continue, lambdas, f-strings,
+   imports, functions, classes).  It must run on the same Python version as the bytecode: another installed interpreter of that
    version is used through ``py -X.Y`` when needed.  Functions it cannot rebuild keep a disassembly in
    comments (and are rewritten by AI when allowed).
 3. The recovered source goes through the existing Python importer (radide/importers/python_import.py):
@@ -20,6 +21,7 @@ from __future__ import annotations
 
 import dis
 import marshal
+import os
 import re
 import shutil
 import struct
@@ -297,46 +299,160 @@ def decompile_pyc(pyc: Path, version, out_py: Path, progress=None) -> tuple[str 
     """(source or None, tool used, notes)."""
     notes: list[str] = []
     pycdc = find_tool("pycdc")
-    if pycdc:
+    builtin_ok = bool(version) and (3, 11) <= tuple(version) <= (3, 13)
+
+    def try_pycdc():
+        # pycdc's output can compile and still be wrong or cut ("# WARNING: Decompyle incomplete") on new
+        # Python versions, so it is accepted only when complete; for 3.11 - 3.13 the built-in decompiler goes first
         say(progress, f"Decompiling {pyc.name} with pycdc ...")
         rc, out = run_tool([pycdc, str(pyc)], timeout=300)
-        if rc == 0 and out.strip() and _compiles(out):
-            return out, "pycdc", notes
-        notes.append("pycdc could not decompile it completely" + (f": {out.strip()[-200:]}" if out else ""))
+        if rc == 0 and out.strip() and "Decompyle incomplete" not in out and _compiles(out):
+            out = _fix_pycdc_kwargs(out)
+            if version and tuple(version) >= (3, 9):
+                notes.append(f"pycdc's support for Python {version[0]}.{version[1]} is partial: it can drop "
+                             "statements (e.g. a final return) - compare the code with the program's behaviour")
+            return out
+        why = (out or "").strip().splitlines()
+        why = [ln for ln in why if "Unsupported" in ln or "Bad MAGIC" in ln or "Error" in ln or "error" in ln][:3]
+        notes.append("pycdc could not decompile it completely" + (": " + "; ".join(why) if why else ""))
+        if "Source Generated with Decompyle++" in (out or ""):
+            try:      # its partial output still shows most of the program: keep it for reading
+                raw = out_py.with_suffix(".pycdc.txt")
+                raw.parent.mkdir(parents=True, exist_ok=True)
+                raw.write_text(out, encoding="utf-8")
+                notes.append(f"pycdc's partial output (not valid Python, for reading only) is in {raw}")
+            except OSError:
+                pass
+        return None
+
     if version and tuple(version) <= (3, 8):
-        for mod in ("decompyle3", "uncompyle6"):
-            interp = interpreter_for(version) or sys.executable
-            rc, out = run_tool([sys.executable, "-m", mod, str(pyc)], timeout=300)
-            if rc == 0 and _compiles(out):
-                return out, mod, notes
+        # decompyle3 (3.7 - 3.8) / uncompyle6 (<= 3.8): their "python -m" entry points are broken, so their
+        # decompile_file() is called directly, with the grammar trace off
+        for mod in (("decompyle3", "uncompyle6") if tuple(version) >= (3, 7) else ("uncompyle6",)):
+            code = (f"import sys; from {mod}.main import decompile_file; "
+                    "decompile_file(sys.argv[1], sys.stdout, showgrammar={})")
+            rc, out = run_tool([sys.executable, "-W", "ignore", "-c", code, str(pyc)], timeout=300,
+                               env=dict(os.environ, PYTHONIOENCODING="utf-8"))
             if "No module named" in out:
                 notes.append(f"{mod} is not installed (pip install {mod}) - it decompiles Python {version[0]}."
                              f"{version[1]} programs")
-            del interp
-    if version and (3, 11) <= tuple(version) <= (3, 13):
-        interp = interpreter_for(version)
-        if interp is None:
-            notes.append(f"Python {version[0]}.{version[1]} is not installed - the built-in decompiler must run "
-                         "on the program's Python version (install it from python.org, then retry)")
-            return None, "", notes
-        say(progress, f"Decompiling {pyc.name} (built-in decompiler, Python {version[0]}.{version[1]}) ...")
-        if Path(interp).resolve() == Path(sys.executable).resolve():
-            try:
-                src, failed = decompile_file(pyc)
-            except Exception as e:  # noqa: BLE001
-                return None, "", notes + [f"built-in decompiler failed: {e}"]
-        else:
-            rc, log = run_tool([interp, "-I", __file__, "--decompile", str(pyc), str(out_py)], timeout=300)
-            if rc != 0 or not out_py.exists():
-                return None, "", notes + [f"built-in decompiler failed: {log[-300:]}"]
-            src = out_py.read_text(encoding="utf-8")
+                continue
+            if rc == 0 and "::=" not in out and _compiles(out):
+                return out, mod, notes
+            fixed, failed = _repair_uncompyle(out)
+            if failed and _compiles(fixed):
+                notes.append(f"{mod}: functions it could not rebuild are stubs: " + ", ".join(failed))
+                return fixed, mod, notes
+            notes.append(f"{mod} could not decompile it completely")
+    if pycdc and not builtin_ok:
+        out = try_pycdc()
+        if out:
+            return out, "pycdc", notes
+    if builtin_ok:
+        src = _builtin_decompile(pyc, version, out_py, progress, notes)
+        if src is not None:
             failed = re.findall(r"^\s*# DECOMPILE-FAILED: (\S+)", src, re.M)
-        if failed:
-            notes.append("functions kept as disassembly: " + ", ".join(failed))
-        return src, "built-in decompiler", notes
-    notes.append(f"no decompiler for Python {version[0]}.{version[1]} here - put pycdc.exe (Decompyle++) in "
-                 "%LOCALAPPDATA%\\RADIDE\\tools" if version else "unknown Python version")
+            if failed:
+                notes.append("functions kept as disassembly: " + ", ".join(failed))
+            return src, "built-in decompiler", notes
+        if pycdc:
+            out = try_pycdc()
+            if out:
+                return out, "pycdc", notes
+        return None, "", notes
+    if not version:
+        notes.append("unknown Python version")
+    elif pycdc and tuple(version) >= (3, 14):
+        notes.append(f"Python {version[0]}.{version[1]} is too new: pycdc reads up to 3.13 and the built-in "
+                     "decompiler covers 3.11 - 3.13")
+    elif not pycdc:
+        notes.append(f"no decompiler for Python {version[0]}.{version[1]} here - put pycdc.exe (Decompyle++) in "
+                     "%LOCALAPPDATA%\\RADIDE\\tools")
     return None, "", notes
+
+
+def _fix_pycdc_kwargs(src: str) -> str:
+    """pycdc writes keyword calls of Python 3.6+ bytecode as ``f(a, 1, 2, **('x', 'y'))``: the last
+    positional arguments are the values of the named keywords -> ``f(a, x=1, y=2)``."""
+    if "**(" not in src:
+        return src
+    import ast
+
+    class Fix(ast.NodeTransformer):
+        changed = False
+
+        def visit_Call(self, node):  # noqa: N802 - ast API
+            self.generic_visit(node)
+            for kw in list(node.keywords):
+                v = kw.value
+                if (kw.arg is None and isinstance(v, ast.Tuple) and v.elts and len(v.elts) <= len(node.args)
+                        and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in v.elts)
+                        and not any(isinstance(a, ast.Starred) for a in node.args[-len(v.elts):])):
+                    vals = node.args[-len(v.elts):]
+                    node.args = node.args[:-len(v.elts)]
+                    i = node.keywords.index(kw)
+                    node.keywords[i:i + 1] = [ast.keyword(arg=e.value, value=a) for e, a in zip(v.elts, vals)]
+                    self.changed = True
+            return node
+    try:
+        tree = ast.parse(src)
+        fx = Fix()
+        tree = fx.visit(tree)
+        if not fx.changed:
+            return src
+        head = []                        # keep pycdc's "# Source Generated with Decompyle++" header
+        for ln in src.splitlines():
+            if not ln.startswith("#"):
+                break
+            head.append(ln + "\n")
+        return "".join(head) + "\n" + ast.unparse(ast.fix_missing_locations(tree)) + "\n"
+    except (SyntaxError, ValueError, RecursionError):
+        return src
+
+
+_UNC_TRACE = re.compile(r"::=|^-- Stacks of completed symbols|^Instruction context:|^-> ?$|^\s+L\.\s+\d+\s")
+_UNC_FAILED = re.compile(r"^(\s*)def (\w+)Parse error at or near .*$")
+
+
+def _repair_uncompyle(out: str) -> tuple[str, list[str]]:
+    """decompyle3 / uncompyle6 stop on one function, dump their parser trace and write the rest: drop the
+    trace and turn ``def nameParse error at ...`` into a stub (marked DECOMPILE-FAILED like the built-in)."""
+    lines, failed = [], []
+    out = out.split("Traceback (most recent call last):", 1)[0]      # stderr comes after stdout
+    for ln in out.splitlines():
+        if _UNC_TRACE.search(ln):
+            continue
+        m = _UNC_FAILED.match(ln)
+        if m:
+            ind, name = m.groups()
+            failed.append(name)
+            lines += [f"{ind}def {name}(*args, **kwargs):",
+                      f"{ind}    # DECOMPILE-FAILED: {name} - {ln.strip()[len('def ' + name):]}",
+                      f"{ind}    raise NotImplementedError({name + ' could not be decompiled'!r})"]
+            continue
+        lines.append(ln)
+    return "\n".join(lines) + "\n", failed
+
+
+def _builtin_decompile(pyc: Path, version, out_py: Path, progress, notes: list) -> str | None:
+    """The built-in decompiler (CPython 3.11 - 3.13), run on an interpreter of the bytecode's version."""
+    interp = interpreter_for(version)
+    if interp is None:
+        notes.append(f"Python {version[0]}.{version[1]} is not installed - the built-in decompiler must run "
+                     "on the program's Python version (install it from python.org, then retry)")
+        return None
+    say(progress, f"Decompiling {pyc.name} (built-in decompiler, Python {version[0]}.{version[1]}) ...")
+    if Path(interp).resolve() == Path(sys.executable).resolve():
+        try:
+            return decompile_file(pyc)[0]
+        except Exception as e:  # noqa: BLE001
+            notes.append(f"built-in decompiler failed: {e}")
+            return None
+    rc, log = run_tool([interp, "-I", __file__, "--decompile", str(pyc), str(out_py)], timeout=300)
+    if rc != 0 or not out_py.exists():
+        notes.append(f"built-in decompiler failed: {log[-300:]}")
+        return None
+    return out_py.read_text(encoding="utf-8")
 
 
 def _compiles(src: str) -> bool:
@@ -1297,7 +1413,9 @@ def can_handle(info) -> bool:
 
 
 def _user_modules(ex: Extracted) -> list[str]:
-    std = set(getattr(sys, "stdlib_module_names", ()))
+    # + modules added to the standard library after the Python this IDE runs on (3.13 / 3.14)
+    std = set(getattr(sys, "stdlib_module_names", ())) | {"annotationlib", "compression", "_pyrepl", "_colorize",
+                                                           "_interpreters", "_interpqueues", "_zstd"}
     out = []
     for name in ex.modules:
         top = name.split(".")[0]

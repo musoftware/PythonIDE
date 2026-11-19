@@ -1,0 +1,19 @@
+{
+  "name": "App_rust_bridge",
+  "language": "rust-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "RustCons.rs"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib_ref.rs"
+    ]
+  }
+}

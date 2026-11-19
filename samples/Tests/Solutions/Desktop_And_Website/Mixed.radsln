@@ -1,0 +1,14 @@
+{
+  "name": "Mixed",
+  "projects": [
+    {
+      "name": "App",
+      "path": "App"
+    },
+    {
+      "name": "Web",
+      "path": "Web"
+    }
+  ],
+  "startup": "Web"
+}

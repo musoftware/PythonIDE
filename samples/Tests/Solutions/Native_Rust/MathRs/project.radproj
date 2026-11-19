@@ -1,0 +1,10 @@
+{
+  "name": "MathRs",
+  "language": "rust-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "mathrs.rs"
+  ],
+  "kind": "library"
+}

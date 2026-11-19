@@ -1,0 +1,19 @@
+{
+  "name": "App_java_bridge",
+  "language": "java-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "JCons.java"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.java"
+    ]
+  }
+}

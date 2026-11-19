@@ -1,0 +1,19 @@
+{
+  "name": "App_fortran_bridge",
+  "language": "fortran-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "FCons.f90"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib_ref.f90"
+    ]
+  }
+}

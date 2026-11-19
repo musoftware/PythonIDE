@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home | Web</title>
+    <meta name="description" content="Web - a responsive Bootstrap site">
+    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body class="d-flex flex-column min-vh-100">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="index.html">Web</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="about.html">About</a></li>
+                <li class="nav-item"><a class="nav-link" href="contact.html">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<header class="hero text-center text-white">
+    <div class="container py-5">
+        <h1 class="display-4 fw-bold">Web</h1>
+        <p class="lead mb-4">A responsive HTML / CSS / JavaScript site built on Bootstrap 5.</p>
+        <a class="btn btn-light btn-lg me-2" href="about.html">Learn more</a>
+        <a class="btn btn-outline-light btn-lg" href="contact.html">Contact</a>
+    </div>
+</header>
+<main class="container my-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <h2 class="h5 card-title">Responsive</h2>
+                <p class="card-text">The grid, navbar and cards adapt from phones to desktops.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <h2 class="h5 card-title">Offline</h2>
+                <p class="card-text">Bootstrap is bundled in <code>assets/vendor/bootstrap</code> - no CDN needed.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <h2 class="h5 card-title">Design View</h2>
+                <p class="card-text">Open the pages in Design View to edit them visually.</p>
+            </div></div>
+        </div>
+    </div>
+</main>
+<footer class="mt-auto py-3 bg-light border-top">
+    <div class="container text-muted small">&copy; <span id="year"></span> Web &middot; Bootstrap 5.3</div>
+</footer>
+<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

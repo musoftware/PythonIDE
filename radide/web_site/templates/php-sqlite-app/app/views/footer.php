@@ -2,7 +2,7 @@
 </main>
 <footer class="site-footer">
     <div class="container">
-        &copy; <?= date('Y') ?> <?= e(config('app_name')) ?> &middot; PHP <?= e(PHP_VERSION) ?> + SQLite
+        &copy; <?= date('Y') ?> <?= e(config('app_name')) ?> &middot; PHP <?= e(PHP_VERSION) ?> + <?= db_driver() === 'mysql' ? 'MySQL' : 'SQLite' ?>
         &middot; made with RAD IDE
     </div>
 </footer>

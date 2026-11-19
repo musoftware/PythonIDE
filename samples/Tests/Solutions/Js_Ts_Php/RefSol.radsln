@@ -1,0 +1,38 @@
+{
+  "name": "RefSol",
+  "projects": [
+    {
+      "name": "PhpLib",
+      "path": "PhpLib"
+    },
+    {
+      "name": "JsLib",
+      "path": "JsLib"
+    },
+    {
+      "name": "TsLib",
+      "path": "TsLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "JsApp",
+      "path": "JsApp"
+    },
+    {
+      "name": "TsApp",
+      "path": "TsApp"
+    },
+    {
+      "name": "PhpApp",
+      "path": "PhpApp"
+    }
+  ],
+  "startup": "PyApp"
+}

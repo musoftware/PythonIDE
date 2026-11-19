@@ -78,7 +78,9 @@ Value, sample values at design time, `Refresh`).
   emulators), F5 with hot reload, Build APK / App Bundle / Windows / Web, Dart debugger. Sample `samples/HelloMobile`.
 - **Games**: pygame-ce and Godot. Scene designer with tilemap painting, sprites, sprite-sheet animations, assets
   and behaviours (platformer, top-down, collectibles, enemies); VB-style handlers (`Player_Collide`,
-  `Scene_Update`). Sample `samples/HelloGame`.
+  `Scene_Update`). Sample `samples/HelloGame`; `samples/SkyHopper` (an endless "hop through the gates"
+  game built entirely through the IDE: spawn templates, flap / scroll behaviours, parallax, best score
+  with `SaveData`). Game > Export to Godot makes a Godot 4 project from a pygame game.
 
 ## Import a program from .exe
 

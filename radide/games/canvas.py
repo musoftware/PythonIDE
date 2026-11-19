@@ -196,9 +196,20 @@ class ObjectItem(QGraphicsItem):
         elif o.kind == "text":
             f = QFont(str(o.props.get("FontName") or "Segoe UI"))
             f.setPixelSize(max(4, int(o.props.get("FontSize") or 24)))
+            f.setBold(bool(o.props.get("FontBold")))
             p.setFont(f)
+            # same placement as the runtime (radgame TextObject): top of the box, props Align left/center/right
+            align = str(o.props.get("Align") or o.props.get("TextAlign") or "left").lower()
+            h = Qt.AlignmentFlag.AlignHCenter if align in ("center", "middlecenter", "topcenter") else \
+                Qt.AlignmentFlag.AlignRight if align in ("right", "middleright", "topright") else \
+                Qt.AlignmentFlag.AlignLeft
+            flags = h | Qt.AlignmentFlag.AlignTop
+            if o.props.get("Shadow"):
+                d = max(1.0, int(o.props.get("FontSize") or 24) / 12)
+                p.setPen(QColor(str(o.props.get("Shadow"))))
+                p.drawText(r.translated(d, d), flags, o.text or o.name)
             p.setPen(QColor(str(o.props.get("ForeColor") or o.props.get("color") or "#FFFFFF")))
-            p.drawText(r, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, o.text or o.name)
+            p.drawText(r, flags, o.text or o.name)
             if not self.isSelected():
                 pen = QPen(QColor(255, 255, 255, 90), 0, Qt.PenStyle.DotLine)
                 p.setPen(pen)

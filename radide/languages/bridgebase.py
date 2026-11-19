@@ -29,20 +29,52 @@ IDE_ROOT = Path(__file__).resolve().parent.parent.parent
 CLIENTS = Path(__file__).resolve().parent.parent / "runtimes" / "clients"
 
 
+def toolchains_root() -> Path:
+    """%LOCALAPPDATA%\\RADIDE\\toolchains - private folder of downloaded language toolchains."""
+    return Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")) / "RADIDE" / "toolchains"
+
+
+def find_in_toolchains(subdirs: list[str], names: list[str]) -> str:
+    """First ``<toolchains>/<subdir>/<name>[.exe|.cmd|.bat]`` that exists, or ""."""
+    root = toolchains_root()
+    exts = ("", ".exe", ".cmd", ".bat") if os.name == "nt" else ("",)
+    for sub in subdirs:
+        d = root / sub
+        if not d.is_dir():
+            continue
+        for n in names:
+            for ext in exts:
+                p = d / (n + ext)
+                if p.is_file():
+                    return str(p)
+    return ""
+
+
 class BridgeLanguagePlugin(LanguagePlugin):
     """GUI-Bridge language. Handler names are neutral: <Control>_<Event>, <Form>_Load ..."""
 
-    supports_debug = False
+    @property
+    def supports_debug(self) -> bool:
+        """F5/F9 debugging through radide/bridgedebug.py (gdb, netcoredbg, js-debug, dart DAP)."""
+        from ..bridgedebug import engine_for
+        return engine_for(self) is not None
+
     # regex with one group = handler name, used to find which events the program handles
     handler_regex = r"^\s*(?:function|def|sub|subroutine|void|static\s+void|public\s+static\s+void)\s+(\w+_\w+)\s*\("
     tool_names: list[str] = []          # executables looked up for build/run (first found wins)
     tool_hints: list[str] = []
+    # bin folders under %LOCALAPPDATA%\RADIDE\toolchains searched after PATH (e.g. "go/bin")
+    toolchain_bins: list[str] = []
     install_hint = ""                   # shown when the tool is missing
 
     # ------------------------------------------------------------ tools
     def tool(self) -> str:
         for n in self.tool_names:
             p = shutil.which(n)
+            if p:
+                return p
+        if self.toolchain_bins:
+            p = find_in_toolchains(self.toolchain_bins, list(self.tool_names))
             if p:
                 return p
         for h in self.tool_hints:
@@ -123,6 +155,10 @@ class BridgeLanguagePlugin(LanguagePlugin):
         env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1",
                    RAD_HANDLERS=",".join(self.handlers_in_project(folder, project)))
         return RunSpec(sys.executable, args, folder, env)
+
+    def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:
+        """The run spec; radide.bridgedebug.BridgeDebugSession adds the debug build/attach parts."""
+        return self.run_spec(folder, startup_form, interpreter)
 
     # ------------------------------------------------------------ IntelliSense (basic)
     def completions(self, code, line, col, path, names=None):

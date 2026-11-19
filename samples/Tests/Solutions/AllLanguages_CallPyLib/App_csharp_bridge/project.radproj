@@ -1,0 +1,19 @@
+{
+  "name": "App_csharp_bridge",
+  "language": "csharp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CsCons.cs"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.cs"
+    ]
+  }
+}

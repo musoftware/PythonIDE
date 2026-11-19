@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -192,6 +193,24 @@ LSP_TO_MONACO = {1: 18, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 7, 9: 8, 10: 9, 1
                  14: 17, 15: 27, 16: 19, 17: 20, 18: 21, 19: 23, 20: 16, 21: 14, 22: 6, 23: 10, 24: 11, 25: 24}
 
 
+_STAR_USED = re.compile(r"^'from (\w+) import \*' used; unable to detect undefined names")
+_STAR_MAYBE = re.compile(r"may be undefined, or defined from star imports: ([\w, .]+)$")
+
+
+def _rad_star_import_noise(message: str) -> bool:
+    """pyflakes warnings caused only by the star imports RAD IDE itself generates (game scenes:
+    ``from radgame import *`` / ``from Level1_designer import *``, like VB's implicit form names):
+    every helper call would be underlined. Star imports of other modules keep their warnings."""
+    def ours(mod: str) -> bool:
+        mod = mod.strip()
+        return mod in ("radgame", "radcall") or mod.endswith("_designer")
+    m = _STAR_USED.match(message)
+    if m:
+        return ours(m.group(1))
+    m = _STAR_MAYBE.search(message)
+    return bool(m) and all(ours(x) for x in m.group(1).split(","))
+
+
 def path_uri(p: Path) -> str:
     return Path(p).resolve().as_uri()
 
@@ -315,6 +334,8 @@ class LspClient(QObject):
             p = msg["params"]
             out = []
             for d in p.get("diagnostics", []):
+                if _rad_star_import_noise(d.get("message", "")):
+                    continue
                 r = d["range"]
                 out.append({"line": r["start"]["line"], "col": r["start"]["character"],
                             "endLine": r["end"]["line"], "endCol": r["end"]["character"],

@@ -1,0 +1,10 @@
+{
+  "name": "PhpLib",
+  "language": "php",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "Tools.php"
+  ],
+  "kind": "library"
+}

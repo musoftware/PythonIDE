@@ -29,11 +29,15 @@ function product_search(string $query, int $page, int $perPage, string $sort = '
     $params = [];
     if ($query !== '') {
         // escape the LIKE wildcards so "%" or "_" typed by the user match literally
-        $like = '%' . strtr($query, ['\\' => '\\\\', '%' => '\\%', '_' => '\\_']) . '%';
-        $where = "WHERE name LIKE :q ESCAPE '\\' OR sku LIKE :q ESCAPE '\\' OR description LIKE :q ESCAPE '\\'";
+        // ("!" as the escape character works the same in SQLite and MySQL / MariaDB)
+        $like = '%' . strtr($query, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+        $where = "WHERE name LIKE :q ESCAPE '!' OR sku LIKE :q ESCAPE '!' OR description LIKE :q ESCAPE '!'";
         $params[':q'] = $like;
     }
     $order = PRODUCT_SORTS[$sort] ?? PRODUCT_SORTS['updated'];    // whitelist - never user text in ORDER BY
+    if (db_driver() === 'mysql') {                                // MySQL columns are case-insensitive already
+        $order = str_replace(' COLLATE NOCASE', '', $order);
+    }
 
     $count = db()->prepare("SELECT COUNT(*) FROM products $where");
     $count->execute($params);
@@ -116,7 +120,7 @@ function product_create(array $data, int $userId): int
 function product_update(int $id, array $data): void
 {
     $stmt = db()->prepare("UPDATE products SET name = :name, sku = :sku, price_cents = :price, quantity = :qty,
-                           description = :descr, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = :id");
+                           description = :descr, updated_at = " . db_now() . " WHERE id = :id");
     $stmt->execute([
         ':name' => $data['name'], ':sku' => $data['sku'], ':price' => $data['price_cents'],
         ':qty' => $data['quantity'], ':descr' => $data['description'], ':id' => $id,

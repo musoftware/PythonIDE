@@ -1,0 +1,19 @@
+{
+  "name": "App_ring_qt",
+  "language": "ring-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "RingCons.ring"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.ring"
+    ]
+  }
+}

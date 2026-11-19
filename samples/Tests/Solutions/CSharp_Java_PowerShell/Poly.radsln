@@ -1,0 +1,38 @@
+{
+  "name": "Poly",
+  "projects": [
+    {
+      "name": "CsLib",
+      "path": "CsLib"
+    },
+    {
+      "name": "JLib",
+      "path": "JLib"
+    },
+    {
+      "name": "PsLib",
+      "path": "PsLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "CsApp",
+      "path": "CsApp"
+    },
+    {
+      "name": "JApp",
+      "path": "JApp"
+    },
+    {
+      "name": "PsApp",
+      "path": "PsApp"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    }
+  ],
+  "startup": "CsApp"
+}

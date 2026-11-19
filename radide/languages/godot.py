@@ -30,7 +30,10 @@ GD_HELPERS = {"find": "find(name) -> Node - a scene object by name", "group_of":
               "add_timer": "add_timer(name, ms)", "stop_timer": "stop_timer(name)", "destroy": "destroy(node)",
               "rect_of": "rect_of(node) -> Rect2", "velocity": "velocity(node) -> Vector2",
               "set_velocity": "set_velocity(node, v)", "key_down": "key_down(key) -> bool",
-              "score": "score (int, kept between scenes)", "lives": "lives (int)", "vars": "vars (Dictionary)"}
+              "score": "score (int, kept between scenes)", "lives": "lives (int)", "vars": "vars (Dictionary)",
+              "spawn": "spawn(template_name, x, y) -> Node - a copy of a spawn template (props template=1)",
+              "enable_behaviour": "enable_behaviour(node, type, on)", "save_data": "save_data(key, value)",
+              "load_data": "load_data(key, default) - a value kept by save_data"}
 
 
 class GodotPlugin(LanguagePlugin):
@@ -39,6 +42,8 @@ class GodotPlugin(LanguagePlugin):
     code_ext = ".gd"
     is_game = True
     scene_ext = ".scene"
+    # F9 / F5: radide/features/game_runtimes.py debugs through Godot's debug adapter (radide/games/godot_dap.py)
+    supports_debug = True
     interpreter_names = list(godot_export.GODOT_NAMES)
     keywords = GD_KEYWORDS
     builtins = GD_BUILTINS
@@ -117,6 +122,10 @@ class GodotPlugin(LanguagePlugin):
         if godot_export.needs_import(folder):
             godot_export.import_assets(folder, exe)
         return RunSpec(exe, ["--path", str(folder)], folder)
+
+    def debug_spec(self, folder, startup_form, interpreter, breakpoints) -> RunSpec:
+        """Without the IDE's Godot debug adapter session (features/game_runtimes.py) F5 just runs the game."""
+        return self.run_spec(folder, startup_form, interpreter)
 
     # ------------------------------------------------------------ completion
     def completions(self, code, line, col, path, names=None):

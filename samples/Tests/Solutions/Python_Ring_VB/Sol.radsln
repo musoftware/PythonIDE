@@ -1,0 +1,30 @@
+{
+  "name": "Sol",
+  "projects": [
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "RingLib",
+      "path": "RingLib"
+    },
+    {
+      "name": "VBLib",
+      "path": "VBLib"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "RingApp",
+      "path": "RingApp"
+    },
+    {
+      "name": "VBApp",
+      "path": "VBApp"
+    }
+  ],
+  "startup": "PyApp"
+}

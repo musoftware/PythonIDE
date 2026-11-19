@@ -21,6 +21,15 @@ enabled, add `extension=pdo_sqlite` to php.ini or run
 The database `data/app.sqlite` and its tables are created on the first request.
 Open it in the IDE's **Databases** workspace (SQLite file) to browse the tables.
 
+### MySQL / MariaDB instead of SQLite
+
+Set `'db_driver' => 'mysql'` in `app/config.php` and fill in the `'mysql'` block (or set the
+environment variables `APP_DB_DRIVER=mysql`, `APP_DB_PASSWORD=...`). The tables are created on the
+first request (the database itself must exist); PHP needs the `pdo_mysql` extension.
+In RAD IDE: **Databases** dock > **Local Servers** > **Start local MariaDB/MySQL** starts a local
+server (user `radide`, database `radide`, port 3306) and adds its connection; **Copy MariaDB/MySQL
+Password** puts the password on the clipboard for `config.php`.
+
 ## Folders
 
 | Path | What |

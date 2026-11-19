@@ -199,6 +199,10 @@ class GameDesigner:
         m.addSeparator()
         m.addAction("Game Assets Window", self.show_assets)
         m.addAction("Check Scene", self.check_scene)
+        m.addSeparator()
+        self.a_export_godot = m.addAction("Export to Godot...", lambda: self.export_godot())
+        self.a_export_godot.setToolTip("Make a Godot 4 project from this pygame game (scenes, art, behaviours; "
+                                       "the Python handlers become GDScript funcs to translate)")
         m.aboutToShow.connect(self._update_menu)
         self.menu.menuAction().setVisible(False)
 
@@ -209,6 +213,8 @@ class GameDesigner:
             if t.startswith(("Play", "Import Tileset", "Sprite Sheet", "Add Sprite", "Import Sound", "Check")):
                 a.setEnabled(cur)
         self.open_menu.setEnabled(self.win.project is not None)
+        self.a_export_godot.setEnabled(self.win.project is not None and is_game_project(self.win) and
+                                       getattr(_plugin_of(self.win), "id", "") != "godot")
 
     def _fill_open_menu(self) -> None:
         self.open_menu.clear()
@@ -231,6 +237,44 @@ class GameDesigner:
     def show_assets(self) -> None:
         self.dock.show()
         self.dock.raise_()
+
+    def export_godot(self, dest=None):
+        """Game > Export to Godot...: a Godot 4 project next to this one (<Name>_Godot), imported once with
+        Godot when it is installed. Returns the folder (None = not exported)."""
+        win = self.win
+        p = win.project
+        if p is None or not is_game_project(win) or getattr(_plugin_of(win), "id", "") == "godot":
+            return None
+        win.save_all()
+        from PyQt6.QtGui import QGuiApplication
+        from ..games import godot_export
+        QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            out, report = godot_export.export_from_pygame(Path(p.folder), dest)
+            exe = godot_export.godot_exe()
+            if exe:
+                r = godot_export.import_assets(out, exe)
+                text = (r.stdout or "") + (r.stderr or "")
+                errs = [ln.strip() for ln in text.splitlines() if "ERROR" in ln]
+                report.append(f"Godot imported the project: {len(errs) or 'no'} error line(s)")
+                report += errs[:20]
+            else:
+                report.append("Godot was not found: open the folder with Godot 4 (it imports the assets)")
+        except Exception as e:  # noqa: BLE001
+            win.log(f"*** Export to Godot failed: {e}")
+            return None
+        finally:
+            QGuiApplication.restoreOverrideCursor()
+        win.log(f"------ Export to Godot: {out} ------")
+        for line in report:
+            win.log("  " + line)
+        win.log("  Open it with File > Open Project (project.radproj) or in Godot (project.godot).")
+        try:
+            win.dock_output.show()
+            win.dock_output.raise_()
+        except Exception:  # noqa: BLE001
+            pass
+        return out
 
     def check_scene(self) -> None:
         ed = self.current()

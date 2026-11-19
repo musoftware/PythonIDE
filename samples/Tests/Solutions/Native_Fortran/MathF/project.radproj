@@ -1,0 +1,10 @@
+{
+  "name": "MathF",
+  "language": "fortran-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "mathf.f90"
+  ],
+  "kind": "library"
+}

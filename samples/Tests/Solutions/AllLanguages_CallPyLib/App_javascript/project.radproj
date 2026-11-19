@@ -1,0 +1,19 @@
+{
+  "name": "App_javascript",
+  "language": "javascript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "JsCons.js"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.js"
+    ]
+  }
+}

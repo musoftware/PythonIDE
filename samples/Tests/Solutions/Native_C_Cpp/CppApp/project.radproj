@@ -1,0 +1,11 @@
+{
+  "name": "CppApp",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "MathC"
+  ]
+}

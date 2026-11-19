@@ -1,0 +1,13 @@
+{
+  "name": "Greeter",
+  "language": "python-tk",
+  "forms": [
+    "frmGreeter",
+    "frmAboutGreeter"
+  ],
+  "startup": "frmGreeter",
+  "modules": [
+    "Greeter_native.py",
+    "strings.py"
+  ]
+}

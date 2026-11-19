@@ -1,0 +1,25 @@
+{
+  "name": "JsApp",
+  "language": "javascript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "JsLib",
+    "PhpLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.js"
+    ],
+    "JsLib": [
+      "JsLib.ref.js"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.js"
+    ]
+  }
+}

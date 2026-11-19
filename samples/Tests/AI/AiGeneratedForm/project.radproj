@@ -1,0 +1,10 @@
+{
+  "name": "HelloPython",
+  "language": "python-tk",
+  "forms": [
+    "Form1",
+    "LoginForm"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

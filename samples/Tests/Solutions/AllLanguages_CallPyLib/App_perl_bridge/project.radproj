@@ -1,0 +1,19 @@
+{
+  "name": "App_perl_bridge",
+  "language": "perl-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PlCons.pl"
+  ],
+  "references": [
+    "PyLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLibRef.pm"
+    ]
+  }
+}

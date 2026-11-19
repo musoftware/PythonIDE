@@ -277,8 +277,11 @@ def _object_node(o: dict, parent: str, sheets: dict, images: dict, folder: Path,
         if o.get("rotation"):
             lines.append(f"rotation = {float(o['rotation']) * 3.141592653589793 / 180:.5f}")
         meta.append("metadata/rad_centered = true")
-    if not o.get("visible", True):
+    template = str(props.get("template", "")).lower() in ("1", "true", "yes", "on")
+    if not o.get("visible", True) or template:          # spawn templates are hidden (spawn() copies them)
         lines.append("visible = false")
+    if props:
+        meta.append(f"metadata/props = {var(props)}")
     group = props.get("group") or re.sub(r"\d+$", "", o.get("name") or "") or name
     meta += [f"metadata/rad_kind = {var(kind)}", f"metadata/rad_size = Vector2({w * scale:.1f}, {h * scale:.1f})",
              f"metadata/behaviours = {var(o.get('behaviours') or [])}", f"metadata/group = {var(group)}"]
@@ -299,7 +302,7 @@ def _color(c) -> str:
 GD_DOCS = codegen.EVENT_DOCS
 GD_ARGS = {"Load": "", "Update": "dt", "KeyDown": "key", "KeyUp": "key", "MouseDown": "x, y, button",
            "Collide": "other", "Click": "", "Tick": "", "OutOfWorld": "", "Jump": "", "Bounce": "",
-           "AnimationEnd": "", "Draw": ""}
+           "AnimationEnd": "", "Draw": "", "Flap": ""}
 
 
 def gd_handler(name: str, body: list[str] | None = None) -> str:
@@ -368,6 +371,120 @@ def find_gd_handler(code: str, name: str) -> int:
 def add_gd_handler(code: str, name: str) -> tuple[str, int]:
     text = code.rstrip("\n") + "\n\n\n" + gd_handler(name)
     return text, find_gd_handler(text, name) + 1
+
+
+# ====================================================================== pygame project -> Godot project
+def runtime_names() -> set[str]:
+    """Members (var / const / func / signal) of radgame_scene.gd and of Node2D that matter."""
+    try:
+        text = RUNTIME_GD.read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    names = set(re.findall(r"^(?:static\s+)?(?:var|const|func|signal)\s+(\w+)", text, re.M))
+    return names | {"name", "position", "rotation", "scale", "visible", "owner", "process_mode", "transform"}
+
+
+def gd_from_python(scene_name: str, code: str) -> str:
+    """A ``<Scene>.gd`` for a scene whose code is Python (a pygame project exported to Godot): every
+    handler / function becomes a GDScript ``func`` with the same name and arguments; its Python body is kept
+    as comments to translate (the runtime helpers have GDScript twins: Spawn -> spawn, SaveData -> save_data
+    ...). The scene, the behaviours and the art work in Godot as they are."""
+    import ast
+    head = user_script(scene_name).split('extends "res://radgame/radgame_scene.gd"')[0]
+    out = [head.rstrip("\n"),
+           "# Exported from the pygame version: translate the Python lines (comments) under each func.",
+           'extends "res://radgame/radgame_scene.gd"', ""]
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return "\n".join(out + [f"# the Python code has a syntax error ({e}); nothing was converted", ""])
+    lines = code.splitlines()
+    taken = runtime_names()          # names of radgame_scene.gd: a script that extends it cannot reuse them
+
+    def gd_name(name: str) -> str:
+        return f"{name}_" if name in taken else name
+    glob = [n for n in tree.body if isinstance(n, (ast.Assign, ast.AnnAssign))]
+    for n in glob:
+        for ln in lines[n.lineno - 1:n.end_lineno]:
+            out.append("# " + ln)
+        targets = n.targets if isinstance(n, ast.Assign) else [n.target]
+        for t in targets:
+            for nm in ([t] if isinstance(t, ast.Name) else getattr(t, "elts", [])):
+                if isinstance(nm, ast.Name):
+                    out.append(f"var {gd_name(nm.id)}" + (f"   # renamed: '{nm.id}' is a name of the runtime"
+                                                          if nm.id in taken else ""))
+    for n in tree.body:
+        if not isinstance(n, ast.FunctionDef):
+            continue
+        event = n.name.rpartition("_")[2]
+        if "_" in n.name and event in GD_ARGS:
+            args = GD_ARGS[event]
+        else:
+            args = ", ".join(a.arg for a in n.args.args)
+        out += ["", ""]
+        doc = GD_DOCS.get(event) if "_" in n.name else None
+        if doc:
+            owner = n.name.rpartition("_")[0]
+            out.append(f"# {owner if owner != 'Scene' else 'the scene'}: {doc}")
+        if n.name in taken:
+            out.append(f"# renamed: '{n.name}' is a name of the runtime")
+        out.append(f"func {gd_name(n.name)}({', '.join(gd_name(a.strip()) for a in args.split(',') if a.strip())}):")
+        start = n.body[0].lineno if n.body else n.lineno + 1
+        for ln in lines[start - 1:n.end_lineno]:
+            out.append("\t# " + ln[4:] if ln.startswith("    ") else "\t# " + ln)
+        out.append("\tpass")
+    return "\n".join(out) + "\n"
+
+
+def export_from_pygame(src: Path, dest: Path | None = None, title: str = "") -> tuple[Path, list[str]]:
+    """Export a pygame game project to a Godot 4 project in *dest* (default: ``<project>_Godot`` next to
+    it): the scenes, the assets, project.godot, the .tscn scenes and a ``<Scene>.gd`` per scene made from
+    the Python code (see gd_from_python - existing .gd files are kept). Returns (dest, report lines)."""
+    src = Path(src)
+    try:
+        pd = json.loads((src / "project.radproj").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pd = {}
+    name = pd.get("name") or src.name
+    dest = Path(dest) if dest else src.parent / f"{name}_Godot"
+    dest.mkdir(parents=True, exist_ok=True)
+    scenes = codegen.project_scenes(src)
+    if not scenes:
+        raise FileNotFoundError("the project has no .scene file")
+    report = []
+    files: set[str] = set()
+    for s in scenes:
+        d = codegen.scene_dict(src / f"{s}.scene")
+        for kind, items in (d.get("assets") or {}).items():
+            for v in (items or {}).values():
+                rel = v if isinstance(v, str) else (v or {}).get("image", "")
+                if rel and not Path(rel).is_absolute():
+                    files.add(rel)
+        shutil.copy2(src / f"{s}.scene", dest / f"{s}.scene")
+    if (src / "assets").is_dir():
+        files.update(p.relative_to(src).as_posix() for p in (src / "assets").rglob("*") if p.is_file())
+    for rel in sorted(files):
+        if (src / rel).is_file():
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src / rel, dest / rel)
+    report.append(f"{len(scenes)} scene(s) and {len(files)} asset file(s) copied")
+    for s in scenes:
+        gd = dest / f"{s}.gd"
+        py = src / f"{s}.py"
+        if gd.exists():
+            report.append(f"{gd.name} kept (already exists)")
+        elif py.exists():
+            gd.write_text(gd_from_python(s, py.read_text(encoding="utf-8")), encoding="utf-8")
+            report.append(f"{gd.name}: handlers made from {py.name} (the Python code is in comments - translate it)")
+    game = dict(pd.get("game") or {})
+    game.setdefault("start_scene", scenes[0])
+    game.setdefault("title", title or name)
+    proj = {"name": f"{name}_Godot", "language": "godot", "forms": [], "startup": game["start_scene"],
+            "modules": [f"{s}.gd" for s in scenes], "scenes": scenes, "game": game}
+    (dest / "project.radproj").write_text(json.dumps(proj, indent=2) + "\n", encoding="utf-8")
+    export_project(dest, title or game.get("title") or name)
+    report.append("project.godot, radgame/radgame_scene.gd and the .tscn scenes written")
+    return dest, report
 
 
 # ====================================================================== project
@@ -447,5 +564,5 @@ def import_assets(folder: Path, godot: str = "", timeout: int = 180) -> subproce
     return r
 
 
-__all__ = ["export_project", "export_scene", "godot_exe", "import_assets", "needs_import", "user_script",
+__all__ = ["export_project", "export_from_pygame", "gd_from_python", "export_scene", "godot_exe", "import_assets", "needs_import", "user_script",
            "write_user_scripts", "find_gd_handler", "add_gd_handler", "gd_handler", "project_godot", "var"]

@@ -721,6 +721,11 @@ def open_file(win, path, line: int | None = None):
         mv.editor.setModified(False)
         mv.editor.modificationChanged.connect(lambda _m, k=key: win._update_module_title(k))
         mv.editor.contextMenuAboutToShow.connect(lambda m, f=p: _editor_menu(win, m, f))
+        # F9 / debugging (web_site/debug.py): breakpoints of this file reach a running debug session
+        mv.editor.set_breakpoints(sorted(win.breakpoints.get(key, set())))
+        mv.editor.breakpointToggled.connect(lambda ln, on, k=key: win._on_bp_toggled(k, ln, on))
+        if hasattr(win, "_hover"):
+            mv.editor.hoverWord.connect(lambda w, pos, ed=mv.editor: win._hover(ed, w, pos))
         mv.setToolTip(str(p))
         win.modviews[key] = mv
     win.open_module(key)                     # shows the tab (and lets features attach to the editor)
@@ -769,13 +774,22 @@ def server_interpreter(win, plugin) -> str:
     return plugin.find_interpreter(configured)
 
 
-def run_website(win, project=None, debug: bool = False, open_preview: bool = True, path=None):
-    """Start the DevServer of a website project and show it in the Preview dock. Returns the server."""
+def run_website(win, project=None, debug: bool = False, open_preview: bool = True, path=None,
+                backend_hook=None):
+    """Start the DevServer of a website project and show it in the Preview dock. Returns the server.
+    debug=True (F5): PHP / Node.js sites start under the debugger (radide/web_site/debug.py)."""
     from ..languages import get_plugin
     from ..web_site.server import DevServer
     project = _site_project(win, project)
     if project is None or not is_website(project):
         return None
+    if debug and backend_hook is None:
+        try:
+            from ..web_site import debug as web_debug
+            if web_debug.start(win, project, path=path) is not None:
+                return getattr(win, "web_server", None)
+        except Exception as e:  # noqa: BLE001 - never lose Run because of the debugger
+            win.log(f"*** Web debugger: {e}; running without it")
     srv = getattr(win, "web_server", None)
     if srv is not None and Path(srv.folder) == Path(project.folder).resolve() and srv.running:
         if open_preview:
@@ -796,6 +810,7 @@ def run_website(win, project=None, debug: bool = False, open_preview: bool = Tru
         if not interp:
             return None
     srv = DevServer(project.folder, plugin, project=project, interpreter=interp, parent=win)
+    srv.backend_hook = backend_hook
     srv.request.connect(win.web_requests.add)
     srv.request.connect(win.web_signals.request.emit)
     srv.reloaded.connect(win.web_signals.reloaded.emit)

@@ -1,0 +1,21 @@
+{
+  "name": "TsApp",
+  "language": "typescript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "references": [
+    "PyLib",
+    "TsLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.ts"
+    ],
+    "TsLib": [
+      "TsLib.ref.ts"
+    ]
+  }
+}

@@ -143,6 +143,8 @@ class PropertiesPanel(QWidget):
     # ------------------------------------------------------------ binding
     def set_document(self, doc: FormDocument | None, plugin) -> None:
         if self.doc is doc:
+            if doc is None:
+                self.help.setText("")     # e.g. a game scene tab after a form: no stale description
             return
         if self.doc is not None:
             for sig, slot in self._connections():
@@ -220,6 +222,7 @@ class PropertiesPanel(QWidget):
         self.events.setRowCount(0)
         if not self.doc:
             self._updating = False
+            self.help.setText("")         # no stale description (game scene / web page tabs have no form)
             return
         rows: list = []
         last_cat = None

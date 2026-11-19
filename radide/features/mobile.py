@@ -102,6 +102,33 @@ def kill_tree(pid: int) -> None:
             pass
 
 
+BROWSER_DEVICES = {"chrome": "chrome", "edge": "msedge"}     # flutter web devices that launch a browser
+
+
+def browser_marker(device_id: str) -> str:
+    """A harmless extra browser switch (``--web-browser-flag``) that tags the browser this run launches,
+    so it can be closed when flutter ends without closing it (compile error, crash). "" = no browser."""
+    if device_id not in BROWSER_DEVICES:
+        return ""
+    import uuid
+    return f"--radide-run={uuid.uuid4().hex[:12]}"
+
+
+def kill_marked_browser(marker: str) -> None:
+    """End the browser process tree(s) whose command line carries *marker* (only the one this run started)."""
+    if not marker or os.name != "nt" or not re.fullmatch(r"--radide-run=[0-9a-f]+", marker):
+        return
+    script = ("Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' or Name='msedge.exe'\" | "
+              f"Where-Object {{ $_.CommandLine -like '*{marker}*' }} | "
+              "ForEach-Object { taskkill /PID $_.ProcessId /T /F | Out-Null }")
+    try:          # in the background: the IDE does not wait for PowerShell
+        subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except OSError:
+        pass
+
+
 def startup_size(project) -> tuple[int, int] | None:
     """Window size for the desktop run: the start-up form's safe area plus the title bar."""
     try:
@@ -246,6 +273,7 @@ class FlutterSession(QObject):
         self._boot_timer: QTimer | None = None
         self._buf = ""
         self._done = False
+        self.browser_marker = browser_marker(device.get("id", ""))
 
     # -------------------------------------------------------------- lifecycle
     def start(self):
@@ -275,6 +303,8 @@ class FlutterSession(QObject):
         args = ["run", "-d", self.device["id"], "--target", "lib/main.dart", *self.extra_args]
         if self.device["id"] == "web-server":
             args += ["--web-port", str(self.device.get("port", 8765))]
+        if self.browser_marker:
+            args.append(f"--web-browser-flag={self.browser_marker}")
         self.output.emit(f"> flutter {' '.join(args)}\n")
         self.proc = QProcess(self)
         self.proc.setWorkingDirectory(str(self.folder))
@@ -313,6 +343,8 @@ class FlutterSession(QObject):
         self._done = True
         if self._boot_timer is not None:
             self._boot_timer.stop()
+        # flutter leaves the browser it launched open when it ends on a compile error: close that one
+        kill_marked_browser(self.browser_marker)
         self.finished.emit(int(code))
 
     def running(self) -> bool:
@@ -726,9 +758,13 @@ class MobileFeature(QObject):
         win.log(f"------ Debug {win.project.name} on {dev['name']} (Dart debugger) ------")
         s = DapSession("dart", str(folder / "lib" / "main.dart"), [], folder, None, win._all_breakpoints(), win)
         s.argv = [flutter_exe(), "debug_adapter"]
+        marker = browser_marker(dev["id"])
+        tool_args = ["-d", dev["id"]] + ([f"--web-browser-flag={marker}"] if marker else [])
         s.launch_args.update({"program": str(folder / "lib" / "main.dart"), "cwd": str(folder),
-                              "deviceId": dev["id"], "toolArgs": ["-d", dev["id"]]})
+                              "deviceId": dev["id"], "toolArgs": tool_args})
         s._radide_flutter_dap = True
+        if marker:           # close the browser flutter started when the session ends (also on compile errors)
+            s.finished.connect(lambda _c: kill_marked_browser(marker))
 
         def stop():                      # flutter.bat -> flutter tool -> the app: end the whole tree
             if not s.running():

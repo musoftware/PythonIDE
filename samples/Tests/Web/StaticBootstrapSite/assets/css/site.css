@@ -1,0 +1,3 @@
+/* Boot Site - your styles (loaded after Bootstrap) */
+.hero { background: linear-gradient(135deg, #0d6efd, #6f42c1); }
+.card-title { color: #0d6efd; }

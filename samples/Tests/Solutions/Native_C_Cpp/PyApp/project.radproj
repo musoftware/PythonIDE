@@ -1,0 +1,13 @@
+{
+  "name": "PyApp",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "main.py"
+  ],
+  "references": [
+    "MathC",
+    "TextCpp"
+  ]
+}

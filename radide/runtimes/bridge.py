@@ -33,6 +33,8 @@ from ..model import Form
 from .vbinterp import to_str
 from .vbrun import Runtime, VBForm
 
+DEBUG = bool(os.environ.get("RAD_BRIDGE_DEBUG"))      # started by the IDE debugger (radide/bridgedebug.py)
+
 
 class BridgeRuntime(Runtime):
     def __init__(self, folder: Path, program: list[str], handlers: set[str]):
@@ -48,6 +50,28 @@ class BridgeRuntime(Runtime):
                                      stdout=subprocess.PIPE, stderr=None, text=True, encoding="utf-8",
                                      errors="replace", bufsize=1)
         threading.Thread(target=self._reader, daemon=True).start()
+        if DEBUG:
+            # IDE debugger (radide/bridgedebug.py): tell it the pid, wait until it has attached and
+            # set the breakpoints ("go"), then keep reading control lines ("EVENT obj ev" = simulate)
+            print(f"@@RADBRIDGE@@pid|{self.proc.pid}", flush=True)
+            sys.stdin.readline()
+            self.control: queue.Queue = queue.Queue()
+
+            def ctl():
+                for line in sys.stdin:
+                    self.control.put(line.strip())
+            threading.Thread(target=ctl, daemon=True).start()
+
+    def _poll_control(self):
+        try:
+            while True:
+                cmd, *rest = (self.control.get_nowait().split() or [""])
+                if cmd.upper() == "EVENT" and len(rest) >= 2:
+                    self.event(rest[0], rest[1])
+        except queue.Empty:
+            pass
+        if self.root is not None:
+            self.root.after(100, self._poll_control)
 
     def _reader(self):
         for line in self.proc.stdout:
@@ -123,7 +147,7 @@ class BridgeRuntime(Runtime):
         """Handle commands until the program says DONE (or exits)."""
         while True:
             try:
-                line = self.lines.get(timeout=30)
+                line = self.lines.get(timeout=None if DEBUG else 30)     # paused at a breakpoint: wait
             except queue.Empty:
                 print("[bridge] the program did not answer within 30 s", file=sys.stderr, flush=True)
                 return None
@@ -194,6 +218,8 @@ class BridgeRuntime(Runtime):
         self.startup_form = start
         start.load()
         start.vb_call("show", [])     # Load was sent by VBForm.load()
+        if DEBUG:
+            self._poll_control()
         self.root.mainloop()
 
 

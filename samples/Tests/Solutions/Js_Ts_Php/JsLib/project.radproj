@@ -1,0 +1,18 @@
+{
+  "name": "JsLib",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "MathJs.js"
+  ],
+  "kind": "library",
+  "references": [
+    "PhpLib"
+  ],
+  "reference_files": {
+    "PhpLib": [
+      "PhpLib.ref.js"
+    ]
+  }
+}
