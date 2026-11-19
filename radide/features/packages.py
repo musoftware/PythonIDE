@@ -175,12 +175,10 @@ def build_argv(cmd: list[str], pm, interpreter: str, name: str = "", version: st
         arg = (arg.replace("{name}", name).replace("{version}", version).replace("{query}", query)
                .replace("{interpreter}", interpreter).replace("{python}", interpreter))
         out.append(arg)
-    if out:
-        tool_name = Path(cmd[0]).stem.lower() if cmd else ""
-        if cmd[0] == pm.tool or not os.path.isabs(out[0]) or tool_name == Path(pm.tool).stem.lower():
-            resolved = resolve_tool(cmd[0] if cmd[0] != "{interpreter}" else "{interpreter}", interpreter)
-            if resolved:
-                out[0] = resolved
+    if out and cmd[0] not in ("{interpreter}", "{python}") and not os.path.isabs(out[0]):
+        resolved = resolve_tool(out[0], interpreter)
+        if resolved:
+            out[0] = resolved
     if out and out[0].lower().endswith((".cmd", ".bat")):
         out = ["cmd.exe", "/c"] + out
     return out
