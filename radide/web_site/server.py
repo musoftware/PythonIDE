@@ -7,7 +7,10 @@ with a small threaded front server written in Python that
   (``php -S 127.0.0.1:<backend> -t <root>`` for ``php-web``, ``node <start>`` with ``PORT`` for ``node-web``),
   passing cookies, redirects, uploads, streaming responses and WebSocket upgrades through;
 - measures each request and emits ``request(dict)`` with method, path, status, ms, size, type, time, url
-  (the WebMatrix *Requests* view);
+  (the WebMatrix *Requests* view) plus the details: ``id``, ``remote``, ``req_headers`` / ``resp_headers``
+  ([[name, value], ...]), ``req_body`` (text, at most MAX_BODY bytes; ``req_body_size`` = the real size,
+  ``req_body_binary``), ``resp_preview`` (text responses, at most MAX_PREVIEW bytes) and ``reason``;
+  the last MAX_REQUESTS of them are kept in ``DevServer.requests``;
 - **live reload**: a file watcher bumps a version after every change (or ``notify_change()`` / ``check_now()``
   after a save); HTML pages get ``<script src="/__radide/livereload.js">`` injected, which long-polls
   ``/__radide/poll`` and reloads the page (CSS-only changes swap the stylesheets without a reload);
@@ -18,6 +21,7 @@ Signals: request(dict), log(str), reloaded(int), started(str url), stopped(), ba
 from __future__ import annotations
 
 import atexit
+import collections
 import http.client
 import json
 import mimetypes
@@ -48,6 +52,10 @@ MIME = {".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8",
         ".mp4": "video/mp4", ".webm": "video/webm", ".mp3": "audio/mpeg", ".pdf": "application/pdf"}
 PHP_ACCESS = re.compile(r"^\[[^\]]+\]\s+(?:\[?[\d.:a-fA-F]+\]?):\d+\s+(?:Accepted|Closing|Closed without sending|\[\d{3}\]:\s)")
 PHP_STARTED = re.compile(r"Development Server \(http://[^)]*\) started")
+MAX_BODY = 64 * 1024           # request body kept for the Requests details (per request)
+MAX_PREVIEW = 16 * 1024        # response body preview kept per request
+MAX_REQUESTS = 500             # requests kept in DevServer.requests
+TEXT_TYPES = ("text/", "json", "javascript", "xml", "svg", "x-www-form-urlencoded", "csv", "yaml", "graphql")
 SERVER_JS_EXT = {".js", ".cjs", ".mjs", ".ts", ".json"}
 CLIENT_DIRS = {"public", "static", "assets", "www", "wwwroot", "client", "views", "templates"}
 
@@ -101,6 +109,24 @@ def inject_livereload(data: bytes, version: int) -> bytes:
     if head.startswith((b"<!doctype html", b"<html")) or b"<body" in head:
         return data + tag
     return data
+
+
+def is_text_type(ctype: str) -> bool:
+    c = (ctype or "").lower()
+    return any(t in c for t in TEXT_TYPES)
+
+
+def body_text(data: bytes, ctype: str = "") -> tuple[str, bool]:
+    """(text, binary) of a captured body: text bodies decoded as UTF-8 (or the charset of the type)."""
+    if not data:
+        return "", False
+    m = re.search(r"charset=([\w.-]+)", ctype or "", re.I)
+    if not is_text_type(ctype) and not (ctype or "").lower().startswith("multipart/") and b"\0" in data[:1024]:
+        return "", True
+    try:
+        return data.decode(m.group(1) if m else "utf-8", errors="replace"), False
+    except LookupError:
+        return data.decode("utf-8", errors="replace"), False
 
 
 def kill_tree(proc: subprocess.Popen) -> None:
@@ -187,6 +213,7 @@ class DevServer(QObject):
         self._backend_spec: dict | None = None
         self.backend_error = ""
         self.request_count = 0
+        self.requests: collections.deque[dict] = collections.deque(maxlen=MAX_REQUESTS)
 
     # ------------------------------------------------------------ public API
     @property
@@ -488,10 +515,13 @@ class DevServer(QObject):
         path = h.path
         info = {"method": h.command, "path": path, "status": 0, "ms": 0.0, "size": 0, "type": "",
                 "time": time.strftime("%H:%M:%S"), "url": self.url.rstrip("/") + path,
-                "remote": h.client_address[0] if h.client_address else ""}
+                "remote": h.client_address[0] if h.client_address else "",
+                "req_headers": [[k, v] for k, v in h.headers.items()], "req_body": "", "req_body_size": 0,
+                "req_body_binary": False, "resp_headers": [], "resp_preview": "", "reason": ""}
         if path.startswith("/__radide/"):
             self._internal(h, path)
             return
+        h._radide_info = info
         try:
             if self._backend_spec is None:
                 status, size, ctype = self._static(h)
@@ -510,11 +540,40 @@ class DevServer(QObject):
                 pass
         info.update(status=status, size=size, type=ctype.split(";")[0].strip(),
                     ms=round((time.perf_counter() - t0) * 1000, 1))
+        if not info["req_body_size"] and h.command not in ("GET", "HEAD", "OPTIONS"):
+            n = int(h.headers.get("Content-Length") or 0)       # a body the handler did not need (static)
+            if 0 < n <= MAX_BODY and not h.headers.get("Transfer-Encoding"):
+                try:
+                    h.connection.settimeout(2)
+                    self._capture_request_body(h, h.rfile.read(n))
+                except OSError:
+                    pass
         self.request_count += 1
+        info["id"] = self.request_count
+        self.requests.append(info)
         try:
             self.request.emit(info)
         except RuntimeError:
             pass
+
+    # --- request details (the Requests dock)
+    @staticmethod
+    def _capture_request_body(h, body: bytes | None) -> None:
+        info = getattr(h, "_radide_info", None)
+        if info is None or not body:
+            return
+        info["req_body_size"] = len(body)
+        info["req_body"], info["req_body_binary"] = body_text(body[:MAX_BODY], h.headers.get("Content-Type", ""))
+
+    @staticmethod
+    def _capture_response(h, status: int, reason: str, headers, ctype: str, data: bytes = b"") -> None:
+        info = getattr(h, "_radide_info", None)
+        if info is None:
+            return
+        info["reason"] = reason or ""
+        info["resp_headers"] = [[str(k), str(v)] for k, v in headers]
+        if data and is_text_type(ctype):
+            info["resp_preview"] = data[:MAX_PREVIEW].decode("utf-8", errors="replace")
 
     # --- internal endpoints
     def _internal(self, h, path: str) -> None:
@@ -549,13 +608,12 @@ class DevServer(QObject):
     # --- responses
     def _send_bytes(self, h, status: int, body: bytes, ctype: str, headers: dict | None = None) -> None:
         h.send_response_only(status)
-        h.send_header("Server", h.server_version)
-        h.send_header("Date", h.date_time_string())
-        h.send_header("Content-Type", ctype)
-        h.send_header("Content-Length", str(len(body)))
-        for k, v in (headers or {}).items():
+        sent = [("Server", h.server_version), ("Date", h.date_time_string()), ("Content-Type", ctype),
+                ("Content-Length", str(len(body)))] + list((headers or {}).items())
+        for k, v in sent:
             h.send_header(k, v)
         h.end_headers()
+        self._capture_response(h, status, h.responses.get(status, ("",))[0], sent, ctype, body)
         if h.command != "HEAD":
             h.wfile.write(body)
 
@@ -668,6 +726,7 @@ class DevServer(QObject):
         if early is not None:
             return early
         body = self._read_body(h)
+        self._capture_request_body(h, body)
         conn = http.client.HTTPConnection(self.backend_host, self.backend_port, timeout=600)
         try:
             conn.putrequest(h.command, h.path, skip_host=True, skip_accept_encoding=True)
@@ -686,28 +745,37 @@ class DevServer(QObject):
             inject = (self.live_reload and "text/html" in ctype.lower() and h.command != "HEAD" and
                       status not in (204, 304) and not resp.getheader("Content-Encoding"))
             h.send_response_only(status, resp.reason)
+            headers = [(k, self._rewrite_location(v) if k.lower() in ("location", "refresh") else v)
+                       for k, v in headers]
             if inject:
                 data = inject_livereload(resp.read(), self.version)
+                headers = [(k, v) for k, v in headers if k.lower() != "content-length"]
+                headers.append(("Content-Length", str(len(data))))
                 for k, v in headers:
-                    if k.lower() == "content-length":
-                        continue
-                    h.send_header(k, self._rewrite_location(v) if k.lower() in ("location", "refresh") else v)
-                h.send_header("Content-Length", str(len(data)))
+                    h.send_header(k, v)
                 h.end_headers()
                 h.wfile.write(data)
+                self._capture_response(h, status, resp.reason, headers, ctype, data)
                 return status, len(data), ctype
             for k, v in headers:
-                h.send_header(k, self._rewrite_location(v) if k.lower() in ("location", "refresh") else v)
+                h.send_header(k, v)
             h.end_headers()
             size = 0
-            if h.command != "HEAD" and status not in (204, 304):
-                while True:
-                    chunk = resp.read1(65536)
-                    if not chunk:
-                        break
-                    h.wfile.write(chunk)
-                    h.wfile.flush()
-                    size += len(chunk)
+            preview = bytearray()
+            want_preview = is_text_type(ctype)
+            try:
+                if h.command != "HEAD" and status not in (204, 304):
+                    while True:
+                        chunk = resp.read1(65536)
+                        if not chunk:
+                            break
+                        if want_preview and len(preview) < MAX_PREVIEW:
+                            preview += chunk[:MAX_PREVIEW - len(preview)]
+                        h.wfile.write(chunk)
+                        h.wfile.flush()
+                        size += len(chunk)
+            finally:
+                self._capture_response(h, status, resp.reason, headers, ctype, bytes(preview))
             return status, size, ctype
         finally:
             conn.close()
@@ -748,4 +816,5 @@ class DevServer(QObject):
         return 101, 0, "websocket"
 
 
-__all__ = ["DevServer", "free_port", "inject_livereload", "kill_tree", "port_open"]
+__all__ = ["DevServer", "MAX_BODY", "MAX_PREVIEW", "MAX_REQUESTS", "body_text", "free_port", "inject_livereload",
+           "is_text_type", "kill_tree", "port_open"]

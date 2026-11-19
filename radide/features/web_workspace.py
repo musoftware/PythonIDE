@@ -232,24 +232,87 @@ class PreviewPane(QWidget):
 
 
 # ============================================================================ Requests dock
+def _size_text(n) -> str:
+    n = int(n or 0)
+    return f"{n / 1024:.1f} KB" if n >= 1024 else f"{n} B"
+
+
+def _header(headers, name: str) -> str:
+    low = name.lower()
+    return next((str(v) for k, v in headers or [] if str(k).lower() == low), "")
+
+
+def decode_form(ctype: str, body: str) -> list[tuple[str, str]] | None:
+    """Fields of a form body (urlencoded or multipart/form-data); None for other bodies."""
+    from urllib.parse import parse_qsl
+    c = (ctype or "").lower()
+    if "application/x-www-form-urlencoded" in c:
+        return parse_qsl(body, keep_blank_values=True)
+    if c.startswith("multipart/form-data"):
+        import re
+        m = re.search(r'boundary="?([^";]+)"?', ctype, re.I)
+        if not m:
+            return None
+        out = []
+        for part in body.split("--" + m.group(1))[1:]:
+            if part.startswith("--"):
+                break
+            head, _, value = part.lstrip("\r\n").partition("\r\n\r\n")
+            if not _:
+                head, _, value = part.lstrip("\n").partition("\n\n")
+            disp = next((ln for ln in head.splitlines() if ln.lower().startswith("content-disposition")), "")
+            name = re.search(r'\bname="([^"]*)"', disp)
+            fname = re.search(r'\bfilename="([^"]*)"', disp)
+            value = value[:-2] if value.endswith("\r\n") else value.rstrip("\n")
+            if fname is not None:
+                ptype = next((ln.split(":", 1)[1].strip() for ln in head.splitlines()
+                              if ln.lower().startswith("content-type")), "")
+                value = f"(file '{fname.group(1)}', {ptype or 'unknown type'}, {_size_text(len(value.encode()))})"
+            out.append((name.group(1) if name else "?", value))
+        return out
+    return None
+
+
+def curl_command(info: dict) -> str:
+    """The request as a curl command line (bash quoting)."""
+    def q(t: str) -> str:
+        return "'" + str(t).replace("'", "'\\''") + "'"
+    method = str(info.get("method") or "GET")
+    parts = ["curl"]
+    if method not in ("GET", "POST") or (method == "POST" and not info.get("req_body")):
+        parts += ["-X", method]
+    parts.append(q(info.get("url", "")))
+    for k, v in info.get("req_headers") or []:
+        if str(k).lower() not in ("host", "content-length", "connection", "accept-encoding"):
+            parts += ["-H", q(f"{k}: {v}")]
+    body = info.get("req_body") or ""
+    if body and not info.get("req_body_binary"):
+        parts += ["--data-raw", q(body)]
+    return " ".join(parts)
+
+
 class RequestsPane(QWidget):
-    """WebMatrix's Requests view: every request the site answered."""
+    """WebMatrix's Requests view: every request the site answered, with its details
+    (general, request headers / body, response headers / preview) for the selected row."""
     COLUMNS = ["Time", "Method", "Path", "Status", "ms", "Size", "Type"]
-    LIMIT = 3000
+    LIMIT = 500
 
     def __init__(self, win):
         super().__init__()
+        from PyQt6.QtWidgets import QPlainTextEdit, QSplitter, QTabWidget
         self.win = win
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(self.COLUMNS)
         self.tree.setRootIsDecorated(False)
         self.tree.setUniformRowHeights(True)
         self.tree.setAlternatingRowColors(True)
-        for i, w in enumerate((64, 56, 320, 52, 60, 70, 140)):
+        for i, w in enumerate((64, 56, 260, 52, 50, 64, 120)):
             self.tree.setColumnWidth(i, w)
         self.tree.itemDoubleClicked.connect(lambda it, _c: self._open(it))
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._menu)
+        self.tree.currentItemChanged.connect(lambda cur, _prev: self.show_details(
+            cur.data(0, ROLE) if cur is not None else None))
         tb = QToolBar()
         tb.setIconSize(QSize(16, 16))
         tb.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton), "Clear", self.clear)
@@ -262,25 +325,69 @@ class RequestsPane(QWidget):
         self.summary = QLabel("")
         self.summary.setProperty("radRole", "muted")
         tb.addWidget(self.summary)
+        # details
+        mono = QFont("Consolas", 9)
+
+        def kv_tree():
+            t = QTreeWidget()
+            t.setHeaderLabels(["Name", "Value"])
+            t.setRootIsDecorated(False)
+            t.setColumnWidth(0, 150)
+            t.setAlternatingRowColors(True)
+            t.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            t.customContextMenuRequested.connect(lambda pos, w=t: self._kv_menu(w, pos))
+            return t
+
+        def text_box():
+            e = QPlainTextEdit()
+            e.setReadOnly(True)
+            e.setFont(mono)
+            e.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+            return e
+        self.details = QTabWidget()
+        self.details.setDocumentMode(True)
+        self.general = kv_tree()
+        self.req_headers = kv_tree()
+        self.form_fields = kv_tree()
+        self.req_raw = text_box()
+        body = QSplitter(Qt.Orientation.Vertical)
+        body.addWidget(self.form_fields)
+        body.addWidget(self.req_raw)
+        self.req_body = body
+        self.resp_headers = kv_tree()
+        self.preview = text_box()
+        self.preview.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        for w, title in ((self.general, "General"), (self.req_headers, "Request Headers"),
+                         (body, "Request Body"), (self.resp_headers, "Response Headers"),
+                         (self.preview, "Response")):
+            self.details.addTab(w, title)
+        split = QSplitter(Qt.Orientation.Horizontal)
+        split.addWidget(self.tree)
+        split.addWidget(self.details)
+        split.setStretchFactor(0, 3)
+        split.setStretchFactor(1, 2)
+        split.setChildrenCollapsible(False)
+        self.splitter = split
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         lay.addWidget(tb)
-        lay.addWidget(self.tree, 1)
+        lay.addWidget(split, 1)
         self.entries: list[dict] = []
+        self.current: dict | None = None
+        self.show_details(None)
 
     def clear(self):
         self.tree.clear()
         self.entries.clear()
         self.summary.setText("")
+        self.show_details(None)
 
     def add(self, info: dict) -> None:
         self.entries.append(info)
-        size = int(info.get("size") or 0)
-        size_text = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
         it = QTreeWidgetItem([str(info.get("time", "")), str(info.get("method", "")), str(info.get("path", "")),
-                              str(info.get("status", "")), f"{float(info.get('ms') or 0):.0f}", size_text,
-                              str(info.get("type", ""))])
+                              str(info.get("status", "")), f"{float(info.get('ms') or 0):.0f}",
+                              _size_text(info.get("size")), str(info.get("type", ""))])
         it.setData(0, ROLE, info)
         status = int(info.get("status") or 0)
         if status >= 400:
@@ -296,10 +403,77 @@ class RequestsPane(QWidget):
         while self.tree.topLevelItemCount() > self.LIMIT:
             self.tree.takeTopLevelItem(0)
             self.entries.pop(0)
-        if not it.isHidden():
+        if not it.isHidden() and self.tree.currentItem() is None:
             self.tree.scrollToItem(it)
         errors = sum(1 for e in self.entries if int(e.get("status") or 0) >= 400)
         self.summary.setText(f"{len(self.entries)} requests" + (f", {errors} errors" if errors else ""))
+
+    # ------------------------------------------------------------ details
+    @staticmethod
+    def _fill_kv(tree, rows) -> None:
+        tree.clear()
+        for k, v in rows:
+            it = QTreeWidgetItem([str(k), str(v)])
+            it.setToolTip(1, str(v)[:2000])
+            tree.addTopLevelItem(it)
+
+    def show_details(self, info: dict | None) -> None:
+        """Show the details of a request (None clears the details pane)."""
+        from urllib.parse import parse_qsl, urlsplit
+        self.current = info
+        if not info:
+            self._fill_kv(self.general, [("", "Select a request to see its details.")])
+            for t in (self.req_headers, self.form_fields, self.resp_headers):
+                t.clear()
+            self.req_raw.setPlainText("")
+            self.preview.setPlainText("")
+            return
+        rh = info.get("req_headers") or []
+        sh = info.get("resp_headers") or []
+        status = f"{info.get('status', '')} {info.get('reason') or ''}".strip()
+        general = [("URL", info.get("url", "")), ("Method", info.get("method", "")), ("Status", status),
+                   ("Time", info.get("time", "")), ("Duration", f"{float(info.get('ms') or 0):.1f} ms"),
+                   ("Size", f"{_size_text(info.get('size'))} ({int(info.get('size') or 0):,} bytes)"),
+                   ("Content type", _header(sh, "Content-Type") or info.get("type", "")),
+                   ("Remote address", info.get("remote", ""))]
+        query = urlsplit(str(info.get("path", ""))).query
+        for k, v in parse_qsl(query, keep_blank_values=True):
+            general.append((f"Query: {k}", v))
+        self._fill_kv(self.general, general)
+        self._fill_kv(self.req_headers, rh)
+        self._fill_kv(self.resp_headers, sh)
+        body = info.get("req_body") or ""
+        size = int(info.get("req_body_size") or 0)
+        ctype = _header(rh, "Content-Type")
+        fields = decode_form(ctype, body) if body else None
+        self._fill_kv(self.form_fields, fields or [])
+        self.form_fields.setVisible(bool(fields))
+        if info.get("req_body_binary"):
+            raw = f"(binary body, {size:,} bytes)"
+        elif not size:
+            raw = "(no request body)"
+        else:
+            raw = body
+            if size > len(body.encode("utf-8", errors="replace")):
+                raw += f"\n\n... (truncated - the body is {size:,} bytes)"
+        self.req_raw.setPlainText(raw)
+        preview = info.get("resp_preview") or ""
+        if not preview:
+            preview = "(no preview - binary or empty response)" if int(info.get("size") or 0) else "(empty response)"
+        elif int(info.get("size") or 0) > len(preview.encode("utf-8", errors="replace")):
+            preview += f"\n\n... (preview truncated - the response is {_size_text(info.get('size'))})"
+        self.preview.setPlainText(preview)
+
+    def _kv_menu(self, tree, pos):
+        it = tree.itemAt(pos)
+        m = QMenu(self)
+        if it is not None:
+            m.addAction("Copy Value", lambda: QApplication.clipboard().setText(it.text(1)))
+            m.addAction("Copy Name: Value", lambda: QApplication.clipboard().setText(f"{it.text(0)}: {it.text(1)}"))
+        m.addAction("Copy All", lambda: QApplication.clipboard().setText("\n".join(
+            f"{tree.topLevelItem(i).text(0)}: {tree.topLevelItem(i).text(1)}"
+            for i in range(tree.topLevelItemCount()))))
+        m.exec(tree.viewport().mapToGlobal(pos))
 
     def _hidden(self, info: dict) -> bool:
         if self.errors_only.isChecked() and int(info.get("status") or 0) < 400:
@@ -315,15 +489,25 @@ class RequestsPane(QWidget):
         info = it.data(0, ROLE) or {}
         open_request_file(self.win, info.get("path", ""))
 
+    def copy_url(self, info: dict) -> None:
+        QApplication.clipboard().setText(info.get("url", ""))
+
+    def copy_curl(self, info: dict) -> str:
+        cmd = curl_command(info)
+        QApplication.clipboard().setText(cmd)
+        return cmd
+
     def _menu(self, pos):
         it = self.tree.itemAt(pos)
         m = QMenu(self)
         if it is not None:
             info = it.data(0, ROLE) or {}
-            m.addAction("Open File", lambda: open_request_file(self.win, info.get("path", "")))
-            m.addAction("View in Preview", lambda: self.win.web_preview.open_url(info.get("url", "")))
+            m.addAction("Copy URL", lambda: self.copy_url(info))
+            m.addAction("Copy as curl", lambda: self.copy_curl(info))
+            m.addSeparator()
+            m.addAction("Open in Preview", lambda: self.win.web_preview.open_url(info.get("url", "")))
             m.addAction("Open in Browser", lambda: QDesktopServices.openUrl(QUrl(info.get("url", ""))))
-            m.addAction("Copy URL", lambda: QApplication.clipboard().setText(info.get("url", "")))
+            m.addAction("Open File", lambda: open_request_file(self.win, info.get("path", "")))
             m.addSeparator()
         m.addAction("Clear", self.clear)
         m.exec(self.tree.viewport().mapToGlobal(pos))
@@ -1129,6 +1313,27 @@ def site_settings(win, project=None, exec_: bool = True):
     return dlg
 
 
+# ============================================================================ designer docks
+def update_designer_docks(win) -> None:
+    """A solution made only of web sites has no forms: hide the Toolbox and Properties docks (and show them
+    again - as they were - when a solution with a normal project is opened)."""
+    projects = win.projects() if hasattr(win, "projects") else []
+    web_only = bool(projects) and all(is_website(p) for p in projects)
+    if web_only == bool(getattr(win, "_web_docks_hidden", None)):
+        return
+    docks = [d for d in (getattr(win, "dock_toolbox", None), getattr(win, "dock_props", None)) if d is not None]
+    if web_only:
+        win._web_docks_hidden = {d.objectName(): not d.isHidden() for d in docks}
+        for d in docks:
+            d.hide()
+    else:
+        saved = win._web_docks_hidden or {}
+        win._web_docks_hidden = None
+        for d in docks:
+            if saved.get(d.objectName(), True):
+                d.show()
+
+
 # ============================================================================ install
 def _menu(win, title: str):
     return next((a for a in win.menuBar().actions() if a.text().replace("&", "") == title), None)
@@ -1163,6 +1368,18 @@ def install(win) -> None:
     # Solution Explorer: lazy folders + remembered expansion
     win.solution.itemExpanded.connect(lambda it: _on_expanded(win, it))
     win.solution.itemCollapsed.connect(lambda it: _on_collapsed(win, it))
+    # Toolbox / Properties follow the kind of the open solution (web sites only -> hidden)
+    win._web_docks_hidden = None
+    orig_fill = win._fill_solution
+
+    def fill_solution(*args, **kw):
+        r = orig_fill(*args, **kw)
+        try:
+            update_designer_docks(win)
+        except Exception as e:  # noqa: BLE001 - never break Solution Explorer
+            win.log(f"[web] {e}")
+        return r
+    win._fill_solution = fill_solution
     # live reload right after Save All (the watcher would see it a moment later anyway)
     win.a_save.triggered.connect(lambda: win.web_server is not None and QTimer.singleShot(
         0, lambda: win.web_server is not None and win.web_server.check_now()))
@@ -1221,5 +1438,6 @@ def install(win) -> None:
 
 __all__ = ["ImageView", "NewFileDialog", "PreviewPane", "RequestsPane", "WebSignals", "add_existing_files",
            "after_fill", "build_site_menu", "create_file", "create_folder", "delete_path", "fill_site",
-           "on_tree_activate", "open_design", "open_file", "open_in_browser", "project_of_path", "rename_path",
-           "restart_website", "run_website", "set_start_page", "site_settings", "stop_website", "view_in_preview"]
+           "curl_command", "decode_form", "on_tree_activate", "open_design", "open_file", "open_in_browser",
+           "project_of_path", "rename_path", "restart_website", "run_website", "set_start_page", "site_settings",
+           "stop_website", "update_designer_docks", "view_in_preview"]
