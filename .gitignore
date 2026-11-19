@@ -45,6 +45,7 @@ node_modules/
 bin/
 obj/
 vendor/
+!radide/web_site/templates/**/vendor/
 .dart_tool/
 libs/*.jar
 
@@ -53,4 +54,57 @@ _radw_*
 _radworker*
 _radqt.ri*
 __radhub_*
+
+# ---- RAD IDE: per-project IDE state (AI chats, agent checkpoints, local settings)
+.radide/
+.radide_deleted/
+
+# ---- Build output (more toolchains)
+*.dll
+*.lib
+*.exp
+*.ilk
+*.apk
+*.aab
+*.ipa
+*.jar
+!radide/**/*.jar
+
+# ---- Mobile: Flutter / Dart / React Native (Expo) / Kivy
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.gradle/
+local.properties
+.expo/
+.expo-shared/
+web-build/
+.buildozer/
+
+# ---- Games: Godot import cache (the *.import files themselves are kept), run-time saves
+.godot/
+.import/
+savegame.json
+
+# ---- Web sites: run-time data written by the dev server / apps
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+sessions/
+*.log
+.phpunit.result.cache
+
+# ---- Exe import: extracted / decompiled working folders
+_extracted/
+*_extracted/
+_exeimport_work/
+
+# ---- Local database servers started by the IDE (data dirs live under %LOCALAPPDATA%, never in a project)
+mysql-data/
+pgdata/
 
