@@ -383,7 +383,7 @@ class DataPanel(QWidget):
         lay.setContentsMargins(4, 4, 4, 4)
         self.note = QLabel("")
         self.note.setWordWrap(True)
-        self.note.setStyleSheet("color:#806000;")
+        self.note.setProperty("radRole", "note")
         lay.addWidget(self.note)
         lay.addWidget(QLabel("<b>Data sources</b>"))
         self.sources = QListWidget()

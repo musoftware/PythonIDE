@@ -246,7 +246,11 @@ require(['vs/editor/editor.main'], function () {
       startLineNumber: d.line + 1, startColumn: (d.col || 0) + 1, endLineNumber: (d.endLine ?? d.line) + 1,
       endColumn: (d.endCol ?? 1000) + 1, message: d.message,
       severity: d.severity === 'error' ? 8 : d.severity === 'warning' ? 4 : 2 })));
-    window.radSetTheme = dark => monaco.editor.setTheme(dark ? 'vs-dark' : 'vs');
+    window.radSetTheme = t => {
+      const name = (t === true) ? 'vs-dark' : (t === false || !t) ? 'vs' : String(t);
+      monaco.editor.setTheme(name);
+      document.body.style.background = name === 'vs' ? '#ffffff' : name === 'hc-black' ? '#000000' : '#1e1e1e';
+    };
     window.radSetFont = (family, size) => editor.updateOptions({ fontFamily: family, fontSize: size });
     rad.jsReady();
   });

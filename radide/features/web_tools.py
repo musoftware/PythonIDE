@@ -161,7 +161,7 @@ class PublishDialog(QDialog):
         form.addRow("Exclude:", self.f_excl)
         self.pw_note = QLabel()
         self.pw_note.setWordWrap(True)
-        self.pw_note.setStyleSheet("color: #8a6d00")
+        self.pw_note.setProperty("radRole", "note")
         form.addRow("", self.pw_note)
 
         # ---------- preview / progress

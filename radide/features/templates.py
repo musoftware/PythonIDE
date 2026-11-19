@@ -694,7 +694,7 @@ def extend_new_project_dialog(dlg) -> None:
         win._template_preselect = None
     info = QLabel()
     info.setWordWrap(True)
-    info.setStyleSheet("color:#555;")
+    info.setProperty("radRole", "muted")
 
     def changed(_i=0):
         tid = combo.currentData()

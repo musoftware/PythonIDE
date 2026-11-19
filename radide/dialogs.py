@@ -133,7 +133,7 @@ class NewProjectDialog(QDialog):
         self.desc.setWordWrap(True)
         self.desc.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.desc.setMinimumWidth(200)
-        self.desc.setStyleSheet("padding:8px; background:#F7F8FA; border:1px solid #D6DAE0;")
+        self.desc.setProperty("radRole", "info")
 
         split = QSplitter()
         split.addWidget(self.langs)
@@ -183,7 +183,7 @@ class NewProjectDialog(QDialog):
                       "language, then right-click your project > Add > Reference... and call its functions "
                       "as normal code (e.g. MathLib.Add(2, 3)).")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color:#555;")
+        hint.setProperty("radRole", "muted")
         lay.addWidget(hint)
         lay.addWidget(buttons)
 
@@ -429,7 +429,7 @@ class AddItemDialog(QDialog):
             idx = next((i for i, p in enumerate(plugins) if p.code_ext == ext), 0)
         self.lang.setCurrentIndex(max(idx, 0))
         self.hint = QLabel("Code in other languages is called with radcall(\"Module.function\", ...).")
-        self.hint.setStyleSheet("color: #555;")
+        self.hint.setProperty("radRole", "muted")
         self.hint.setWordWrap(True)
         form = QFormLayout()
         form.addRow("Name:", self.name_edit)

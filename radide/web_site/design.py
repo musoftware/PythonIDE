@@ -840,12 +840,12 @@ if _HAVE_QT:
             self.a_save = tb.addAction("Save", self.save)
             tb.addSeparator()
             self.css_label = QLabel()
-            self.css_label.setStyleSheet("color:#555; padding: 0 6px;")
+            self.css_label.setProperty("radRole", "muted")
             tb.addWidget(self.css_label)
 
             self.banner = QLabel()
             self.banner.setWordWrap(True)
-            self.banner.setStyleSheet("background:#FFF4CE; color:#5c4400; padding:4px 8px; border-bottom:1px solid #E0C080;")
+            self.banner.setProperty("radRole", "banner")
             self.banner.hide()
 
             # ---------------- design surface

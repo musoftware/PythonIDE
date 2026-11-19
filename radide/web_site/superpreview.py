@@ -254,7 +254,7 @@ class PreviewPane(QWidget):
         for name in self.browsers:
             self.engine.addItem(f"{name} screenshot")
         self.info = QLabel()
-        self.info.setStyleSheet("color: #666")
+        self.info.setProperty("radRole", "muted")
         top = QHBoxLayout()
         top.setContentsMargins(4, 2, 4, 2)
         for wdg in (self.title, self.preset, self.w, self.h, self.rotate_btn, self.engine):
@@ -263,7 +263,7 @@ class PreviewPane(QWidget):
         top.addWidget(self.info)
 
         self.stage = QWidget()                     # gray backdrop with the device frame centred
-        self.stage.setStyleSheet("background: #3a3d44;")
+        self.stage.setProperty("radRole", "stage")
         self.stage.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.view = None
         self.profile = None

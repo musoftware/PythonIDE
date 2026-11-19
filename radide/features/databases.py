@@ -36,6 +36,11 @@ NULL_BRUSH = QBrush(QColor("#9A9A9A"))
 ERROR_COLOR = "#B00020"
 
 
+def _role(w, name):
+    from ..theme import role
+    role(w, name)
+
+
 def _std_icon(w, name):
     return w.style().standardIcon(getattr(QStyle.StandardPixmap, name))
 
@@ -64,6 +69,9 @@ class SqlHighlighter(QSyntaxHighlighter):
     def __init__(self, doc):
         super().__init__(doc)
 
+        from ..theme import current
+        code = current()["code"]
+
         def fmt(color, bold=False, italic=False):
             f = QTextCharFormat()
             f.setForeground(QColor(color))
@@ -73,13 +81,13 @@ class SqlHighlighter(QSyntaxHighlighter):
             return f
         self.rules = [
             (QRegularExpression(r"\b(" + "|".join(SQL_KEYWORDS) + r")\b",
-                                QRegularExpression.PatternOption.CaseInsensitiveOption), fmt("#0000FF", True)),
-            (QRegularExpression(r"\b\d+(\.\d+)?\b"), fmt("#098658")),
-            (QRegularExpression(r"'([^']|'')*'"), fmt("#A31515")),
-            (QRegularExpression(r"\"[^\"]*\"|`[^`]*`"), fmt("#795E26")),
-            (QRegularExpression(r"--[^\n]*"), fmt("#008000", italic=True)),
+                                QRegularExpression.PatternOption.CaseInsensitiveOption), fmt(code["keyword"], True)),
+            (QRegularExpression(r"\b\d+(\.\d+)?\b"), fmt(code["number"])),
+            (QRegularExpression(r"'([^']|'')*'"), fmt(code["string"])),
+            (QRegularExpression(r"\"[^\"]*\"|`[^`]*`"), fmt(code["decorator"])),
+            (QRegularExpression(r"--[^\n]*"), fmt(code["comment"], italic=True)),
         ]
-        self.comment = fmt("#008000", italic=True)
+        self.comment = fmt(code["comment"], italic=True)
 
     def highlightBlock(self, text):
         for rx, f in self.rules:
@@ -466,7 +474,7 @@ class TableDataView(QWidget):
         self.a_last.setEnabled(m.page() < m.page_count())
 
     def _error(self, text):
-        self.status.setStyleSheet(f"color: {ERROR_COLOR};")
+        _role(self.status, "error")
         self.status.setText("  " + text)
         self.panel.log(f"[{self.conn}] {self.table}: {text}")
 
@@ -754,7 +762,7 @@ class CreateTableDialog(QDialog):
         self.preview.setFont(QFont("Consolas", 9))
         SqlHighlighter(self.preview.document())
         self.error = QLabel()
-        self.error.setStyleSheet(f"color: {ERROR_COLOR};")
+        _role(self.error, "error")
         add = QPushButton("Add Column")
         add.clicked.connect(lambda: self.add_column())
         rem = QPushButton("Remove Column")
@@ -964,7 +972,7 @@ class ConnectionDialog(QDialog):
                                     "Warning: only obfuscated on this system - anyone with your settings file "
                                     "can read it.")
         self.remember_note.setWordWrap(True)
-        self.remember_note.setStyleSheet("color: #666;" if store.secure else f"color: {ERROR_COLOR};")
+        _role(self.remember_note, "muted" if store.secure else "error")
         vf.addRow("Server:", self.host)
         vf.addRow("Port:", self.port)
         vf.addRow("User:", self.user)
@@ -1064,10 +1072,10 @@ class ConnectionDialog(QDialog):
                 n = len(db.tables())
                 db.close()
         except D.DatabaseError as e:
-            self.status.setStyleSheet(f"color: {ERROR_COLOR};")
+            _role(self.status, "error")
             self.status.setText(str(e))
             return False
-        self.status.setStyleSheet("color: #087f23;")
+        _role(self.status, "success")
         self.status.setText(f"Connected: {ver}, {n} table(s).")
         return True
 
@@ -1082,7 +1090,7 @@ class ConnectionDialog(QDialog):
                 names = db.databases()
                 db.close()
         except D.DatabaseError as e:
-            self.status.setStyleSheet(f"color: {ERROR_COLOR};")
+            _role(self.status, "error")
             self.status.setText(str(e))
             return
         cur = self.database.currentText()
@@ -1240,7 +1248,7 @@ class DatabasesPanel(QWidget):
         self.tree.customContextMenuRequested.connect(self._menu)
         self.info = QLabel()
         self.info.setWordWrap(True)
-        self.info.setStyleSheet("color: #555; padding: 2px;")
+        self.info.setProperty("radRole", "muted")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)

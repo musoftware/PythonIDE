@@ -101,8 +101,10 @@ class StartPage(QWidget):
         super().__init__()
         lay = QVBoxLayout(self)
         lay.setContentsMargins(40, 30, 40, 30)
-        lay.addWidget(QLabel(f"<h1 style='color:#1F3D7A'>{APP_NAME}</h1>"
-                             "<p>Visual RAD environment for scripting languages</p>"))
+        title = QLabel(f"<h1>{APP_NAME}</h1>")
+        title.setProperty("radRole", "heading")
+        lay.addWidget(title)
+        lay.addWidget(QLabel("<p>Visual RAD environment for scripting languages</p>"))
         for text, slot in (("New Project...", win.new_project), ("Open Project...", win.open_project_dialog)):
             b = QPushButton(text)
             b.setMinimumHeight(30)
@@ -112,7 +114,7 @@ class StartPage(QWidget):
         for folder in win.recent_projects():
             b = QPushButton(folder)
             b.setFlat(True)
-            b.setStyleSheet("text-align:left; color:#0645AD;")
+            b.setProperty("radRole", "link")
             b.clicked.connect(lambda _=False, f=folder: win.open_project(Path(f)))
             lay.addWidget(b)
         lay.addStretch(1)

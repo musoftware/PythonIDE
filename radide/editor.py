@@ -176,7 +176,7 @@ class CompletionPopup(QListWidget):
         self.itemClicked.connect(lambda _i: self.accept())
         self.detail = QLabel(editor)
         self.detail.setWindowFlags(Qt.WindowType.ToolTip)
-        self.detail.setStyleSheet("background:#FFFFE1; border:1px solid #888; padding:3px;")
+        self.detail.setProperty("radRole", "calltip")
         self.detail.setFont(QFont("Consolas", 9))
         self.currentRowChanged.connect(self._show_detail)
 
@@ -310,7 +310,7 @@ class CodeEditor(QPlainTextEdit):
         self.popup = CompletionPopup(self)
         self.calltip_label = QLabel(self)
         self.calltip_label.setWindowFlags(Qt.WindowType.ToolTip)
-        self.calltip_label.setStyleSheet("background:#FFFFE1; border:1px solid #888; padding:3px;")
+        self.calltip_label.setProperty("radRole", "calltip")
         self.calltip_label.setFont(QFont("Consolas", 9))
         self._complete_timer = QTimer(self, singleShot=True, interval=120)
         self._complete_timer.timeout.connect(lambda: self.smart_complete(auto=True))

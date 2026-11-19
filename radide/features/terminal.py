@@ -155,7 +155,7 @@ class TerminalWidget(QWidget):
             self.shell.setCurrentIndex(self.shell.findText(saved))
         self.shell.currentIndexChanged.connect(lambda _i: self.restart())
         self.where = QLabel()
-        self.where.setStyleSheet("color:#666;")
+        self.where.setProperty("radRole", "muted")
 
         def btn(text, tip, slot):
             b = QToolButton(text=text)

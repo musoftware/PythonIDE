@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPalette
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
                              QFontComboBox, QFormLayout, QGridLayout, QLabel, QLineEdit,
                              QPushButton, QScrollArea, QSpinBox, QTabWidget, QVBoxLayout, QWidget)
 
@@ -79,8 +79,9 @@ def dark_palette() -> QPalette:
 
 
 def light_palette() -> QPalette:
-    app = QApplication.instance()
-    return app.style().standardPalette()
+    """An explicit light palette (Qt's standard palette follows Windows' dark mode)."""
+    from .. import theme
+    return theme.light_form_palette()
 
 
 # ===================================================================== apply
@@ -96,11 +97,12 @@ def _editors(win):
 def apply_editor(win, ed=None):
     from .. import editor as E
     family, size, tab = get(win, "editor_font"), get(win, "editor_font_size"), get(win, "tab_width")
-    theme = get(win, "theme")
+    from .. import theme as T
+    t = T.current()
     E.FONT.setFamily(family)
     E.FONT.setPointSize(size)
     E.INDENT = " " * max(1, tab)
-    code, chrome = (DARK_CODE, DARK_CHROME) if theme == "Dark" else (LIGHT_CODE, LIGHT_CHROME)
+    code, chrome = t["code"], t["chrome"]
     E.COLORS.update(code)
     if hasattr(E, "EDITOR_THEME"):
         E.EDITOR_THEME.update(chrome)
@@ -108,7 +110,7 @@ def apply_editor(win, ed=None):
         try:
             if hasattr(e, "_js") and not isinstance(e, E.CodeEditor):
                 e._js(f"radSetFont({json.dumps(family)}, {int(size) + 3});"
-                      f"radSetTheme({'true' if theme == 'Dark' else 'false'});"
+                      f"radSetTheme({json.dumps(t['monaco'])});"
                       f"radEditor.updateOptions({{tabSize: {int(tab)}}});")
                 continue
             f = QFont(E.FONT)
@@ -121,7 +123,11 @@ def apply_editor(win, ed=None):
                         fmt.setForeground(QColor(E.COLORS[name]))
                 hl.rehighlight()
             if hasattr(e, "calltip_label"):
-                e.calltip_label.setStyleSheet(CALLTIP.get(theme, CALLTIP["Light"]))
+                e.calltip_label.setStyleSheet("")
+                T.role(e.calltip_label, "calltip")
+            if hasattr(e, "detail"):
+                e.detail.setStyleSheet("")
+                T.role(e.detail, "calltip")
             if hasattr(e, "_update_margin_width"):
                 e._update_margin_width()
             if hasattr(e, "margin"):
@@ -140,17 +146,15 @@ def apply_designer(win, view=None):
     if not hasattr(D, "_rad_orig_snap"):
         D._rad_orig_snap = D.snap
     D.snap = D._rad_orig_snap if get(win, "snap") else (lambda v: int(round(v)))
-    theme = get(win, "theme")
+    from .. import theme as T
+    t = T.current()
     views = [view] if view is not None else list(win.findChildren(D.DesignerView))
     for v in views:
         try:
             content = getattr(v, "content", None)
             if content is not None:
-                if theme == "Dark":
-                    content.setObjectName("radDesignerContent")
-                    content.setStyleSheet(f"QWidget#radDesignerContent {{ background: {DESIGNER_BACK['Dark']}; }}")
-                elif content.objectName() == "radDesignerContent":
-                    content.setStyleSheet("background:#ffffff;")     # the designer's own default
+                content.setObjectName("radDesignerContent")
+                content.setStyleSheet(f"QWidget#radDesignerContent {{ background: {t['designer_back']}; }}")
             # the form itself always looks like the real (light) program
             for part in ("frame", "tray"):
                 w = getattr(v, part, None)
@@ -164,36 +168,37 @@ def apply_designer(win, view=None):
 
 
 def apply_theme(win):
-    from .. import app as A
-    app = QApplication.instance()
-    theme = get(win, "theme")
-    if theme == "Dark":
-        app.setPalette(dark_palette())
-        win.setStyleSheet(DARK_STYLE)
-        out_style = "QPlainTextEdit { background: #1E1E1E; color: #D4D4D4; }"
-    else:
-        app.setPalette(light_palette())
-        win.setStyleSheet(getattr(A, "STYLE", ""))
-        out_style = ""
+    """Palette + application style sheet + every themed part of the main window."""
+    from .. import theme as T
+    T.apply(get(win, "theme"))
+    t = T.current()
+    win.setStyleSheet("")                  # the app-wide sheet (theme.APP_STYLE) does the chrome
+    mono = f"QPlainTextEdit {{ background: {t['base']}; color: {t['text']}; }}"
     for name in ("output", "immediate"):
         w = getattr(win, name, None)
         if w is not None and hasattr(w, "setStyleSheet"):
-            w.setStyleSheet(out_style)
+            w.setStyleSheet(mono)
     try:                                   # Properties window: category rows + description box
         from .. import properties as P
         if hasattr(P, "CATEGORY_BACK"):
-            P.CATEGORY_BACK = "#3F3F46" if theme == "Dark" else "#E4E8EE"
+            P.CATEGORY_BACK = t["category_back"]
         props = getattr(win, "properties", None)
         help_box = getattr(props, "help", None)
         if help_box is not None:
-            help_box.setStyleSheet("padding:4px; background:#252526; color:#D4D4D4; border-top:1px solid #3F3F46;"
-                                   if theme == "Dark" else
-                                   "padding:4px; background:#f4f4f4; border-top:1px solid #ccc;")
+            help_box.setStyleSheet("")
+            T.role(help_box, "help")
         if props is not None and hasattr(props, "refresh"):
             props.refresh()
     except Exception as ex:  # noqa: BLE001
         win.log(f"[options] properties: {ex}")
-    win._rad_theme = theme
+    win._rad_theme = T.current_name()
+
+
+def _follow_system(win):
+    """Windows switched light/dark while the 'System' theme is chosen: re-theme editors etc."""
+    from .. import theme as T
+    if get(win, "theme") == "System" and getattr(win, "_rad_theme", None) != T.current_name():
+        apply_all(win)
 
 
 def apply_autosave(win):
@@ -250,7 +255,8 @@ class OptionsDialog(QDialog):
         env = QWidget()
         f = QFormLayout(env)
         self.theme = QComboBox()
-        self.theme.addItems(["Light", "Dark"])
+        from .. import theme as T
+        self.theme.addItems(T.THEME_NAMES)
         self.theme.setCurrentText(get(win, "theme"))
         f.addRow("Color theme:", self.theme)
         self.autosave = QSpinBox()
@@ -279,7 +285,8 @@ class OptionsDialog(QDialog):
         self.tab.setValue(get(win, "tab_width"))
         f.addRow("Tab / indent width:", self.tab)
         self.sample = QLabel("def Form1_Load(self):\n    return 42  # sample")
-        self.sample.setStyleSheet("border:1px solid #999; padding:6px;")
+        from .. import theme as T
+        T.role(self.sample, "sample")
         f.addRow("Preview:", self.sample)
         self.font.currentFontChanged.connect(lambda _f: self._preview())
         self.size.valueChanged.connect(lambda _v: self._preview())
@@ -392,9 +399,10 @@ def install(win) -> None:
         a.setMenuRole(a.MenuRole.PreferencesRole)
         win.a_options = a
     win.tabs.currentChanged.connect(lambda *_: _on_tab_changed(win))
-    # apply saved options at start-up (only when something differs from the defaults)
-    if any(win.settings.contains(KEY + k) for k in DEFAULTS):
-        apply_all(win)
+    # always apply at start-up: the theme must be explicit (never Qt's palette that follows Windows)
+    apply_all(win)
+    from .. import theme as T
+    T.changed.connect(lambda _n: _follow_system(win))
 
 
 __all__ = ["OptionsDialog", "show_options", "apply_all", "get", "dark_palette", "DEFAULTS"]

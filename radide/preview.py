@@ -119,6 +119,13 @@ def make_preview(ctrl: Control, parent: QWidget, root: Path | None = None) -> QW
     return w
 
 
+def _form_palette(w: QWidget) -> None:
+    from .theme import light_form_palette
+    pal = light_form_palette()
+    for x in [w, *w.findChildren(QWidget)]:
+        x.setPalette(pal)
+
+
 def apply_props(w: QWidget, ctrl: Control) -> None:
     p = ctrl.props
     w.setObjectName(f"rad_{ctrl.name}")
@@ -169,6 +176,7 @@ def apply_props(w: QWidget, ctrl: Control) -> None:
     if ctrl.type == "Button" and p.get("TextAlign", "Center") != "Center":
         rules.append(f"text-align:{p['TextAlign'].lower()};")
     sel = f"#{w.objectName()}"
+    _form_palette(w)       # a designed control always looks like the real (light) program, in any IDE theme
     w.setStyleSheet(f"{sel} {{{''.join(rules)}}}" if rules else "")
     w.setEnabled(bool(p.get("Enabled", True)))
     w.setToolTip(str(p.get("ToolTip", "")))

@@ -337,7 +337,7 @@ class TimelinePanel(QWidget):
         lay.setContentsMargins(4, 4, 4, 4)
         self.note = QLabel("")
         self.note.setWordWrap(True)
-        self.note.setStyleSheet("color:#806000;")
+        self.note.setProperty("radRole", "note")
         lay.addWidget(self.note)
         row = QHBoxLayout()
         self.sb_combo = QComboBox()

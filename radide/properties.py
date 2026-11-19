@@ -34,7 +34,7 @@ class AnchorEditor(QFrame):
     def __init__(self, value: str, changed, parent=None):
         super().__init__(parent, Qt.WindowType.Popup)
         self.setFrameShape(QFrame.Shape.Box)
-        self.setStyleSheet("AnchorEditor { background:#ffffff; }")
+        self.setStyleSheet("AnchorEditor { background: palette(base); }")
         self.changed = changed
         self.edges = parse_anchor(value)
         grid = QGridLayout(self)
@@ -50,14 +50,14 @@ class AnchorEditor(QFrame):
             b.setFixedSize(w, h)
             b.setToolTip(edge)
             b.setObjectName(f"anchor{edge}")
-            b.setStyleSheet("QToolButton { background:#E8E8E8; border:1px solid #C0C0C0; }"
+            b.setStyleSheet("QToolButton { background: palette(button); border:1px solid palette(mid); }"
                             "QToolButton:checked { background:#3A6FC4; border:1px solid #1E4A90; }")
             b.toggled.connect(lambda on, e=edge: self._toggle(e, on))
             grid.addWidget(b, row, col, Qt.AlignmentFlag.AlignCenter)
             self.buttons[edge] = b
         box = QLabel(self)
         box.setFixedSize(34, 34)
-        box.setStyleSheet("background:#F4F4F4; border:1px solid #808080;")
+        box.setStyleSheet("background: palette(alternate-base); border:1px solid palette(mid);")
         grid.addWidget(box, 1, 1)
 
     def _toggle(self, edge: str, on: bool) -> None:
@@ -104,7 +104,7 @@ class PropertiesPanel(QWidget):
         self.help.setWordWrap(True)
         self.help.setMinimumHeight(44)
         self.help.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.help.setStyleSheet("padding:4px; background:#f4f4f4; border-top:1px solid #ccc;")
+        self.help.setProperty("radRole", "help")
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(2, 2, 2, 2)
