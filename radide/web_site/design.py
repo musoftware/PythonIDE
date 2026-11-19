@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import html as _html
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -654,6 +655,134 @@ def canvas_styles(parts: PageParts, path: Path, site_root: Path | None = None) -
     return out
 
 
+LAYOUT_NAME = re.compile(r"(?:^|[_-])(header|head|layout|master|base|template|top|main|default)\w*\.(php|phtml|html?)$",
+                         re.I)
+_INCLUDE = re.compile(r"\b(?:include|require)(?:_once)?\s*\(?\s*(?:(?:__DIR__|dirname\s*\(\s*__(?:DIR|FILE)__\s*\))"
+                      r"\s*\.\s*)?['\"]([^'\"]+)['\"]", re.I)
+_CSS_LITERAL = re.compile(r"['\"]([^'\"<>]+?\.css(?:\?[^'\"<>]*)?)['\"]", re.I)
+
+
+def _stylesheet_hrefs(text: str) -> list[str]:
+    """hrefs of <link rel=stylesheet> in raw page / layout text; an href made by PHP
+    (``<?= url('assets/css/site.css') ?>``) gives the .css literal inside it."""
+    out = []
+    for m in re.finditer(r"<link\b(?:[^<>]|<\?[\s\S]*?\?>)*>", text, re.I):
+        tag = m.group(0)
+        if not re.search(r"\brel\s*=\s*['\"]?[^'\">]*stylesheet", tag, re.I):
+            continue
+        hm = re.search(r"\bhref\s*=\s*(\"(?:[^\"]|<\?[\s\S]*?\?>)*\"|'(?:[^']|<\?[\s\S]*?\?>)*'|[^\s>]+)", tag, re.I)
+        if not hm:
+            continue
+        href = hm.group(1).strip("'\"")
+        if "<?" in href:
+            lit = _CSS_LITERAL.search(href)
+            if not lit:
+                continue
+            href = lit.group(1)
+        out.append(href)
+    return out
+
+
+def layout_styles(path: Path, site_root: Path | None = None, project_folder: Path | None = None,
+                  max_files: int = 400) -> list[str]:
+    """Stylesheets of a page that gets its <head> from PHP includes (header.php, layout.php ...): the
+    <link rel=stylesheet> of the files the page includes and of the site's layout files, as file: URLs (or
+    http(s) URLs as written). Used when the page itself links no stylesheet."""
+    from urllib.request import pathname2url
+    path = Path(path)
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        text = ""
+    included = []
+    for m in _INCLUDE.finditer(text):           # files included with a literal path
+        f = (path.parent / m.group(1).lstrip("/" + chr(92))).resolve()
+        if f.is_file():
+            included.append(f)
+    top = Path(project_folder) if project_folder else (Path(site_root).parent if site_root else path.parent)
+    roots = [r for r in (site_root, path.parent, top) if r]
+
+    def styles_of(files) -> list[str]:
+        out: list[str] = []
+        for f in dict.fromkeys(files):
+            if f.resolve() == path.resolve():
+                continue
+            try:
+                t = f.read_text(encoding="utf-8-sig", errors="replace")
+            except OSError:
+                continue
+            for href in _stylesheet_hrefs(t):
+                url = ""
+                if re.match(r"^https?:", href, re.I):
+                    url = href
+                elif href.startswith("//"):
+                    url = "https:" + href
+                elif not re.match(r"^[a-z][a-z0-9+.-]*:", href, re.I):
+                    rel = href.split("?")[0].split("#")[0].lstrip("/")
+                    for r in roots:
+                        local = Path(r) / rel
+                        if local.is_file():
+                            url = "file:" + pathname2url(str(local.resolve()))
+                            break
+                if url and url not in out:
+                    out.append(url)
+        return out
+
+    found = styles_of(included)
+    if found:
+        return found
+    layouts: list[Path] = []                    # header.php / layout.php ... anywhere in the site
+    n = 0
+    for dirpath, dirnames, filenames in os.walk(top):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".") and d.lower() not in
+                       ("node_modules", "vendor", "data", "cache", "storage", "logs", "tmp", "dist", "build")]
+        for f in filenames:
+            n += 1
+            if LAYOUT_NAME.search(f):
+                layouts.append(Path(dirpath) / f)
+        if n > max_files:
+            break
+    return styles_of(layouts)
+
+
+def grapes_theme_css(t: dict) -> str:
+    """CSS custom properties that put the Design View chrome (designer.html + GrapesJS) in a radide.theme
+    theme: --rad-* for the page, --gjs-* for the GrapesJS panels."""
+    dark = bool(t.get("dark"))
+    shade = "255, 255, 255" if dark else "0, 0, 0"
+    panel = t["window"] if dark else t["alt_base"]
+    v = {"--rad-panel": panel, "--rad-base": t["base"], "--rad-text": t["text"], "--rad-muted": t["muted"],
+         "--rad-border": t["border"] if not dark else t.get("dark_c", t["border"]), "--rad-header": t["header"],
+         "--rad-header-text": t["header_text"], "--rad-accent": t["accent"] if dark else t["highlight"],
+         "--rad-link": t["link"], "--rad-stage": t["stage"] if dark else t["mid"],
+         "--gjs-main-color": panel, "--gjs-primary-color": panel, "--gjs-secondary-color": t["text"],
+         "--gjs-tertiary-color": t["highlight"], "--gjs-quaternary-color": t["highlight"] if not dark else t["link"],
+         "--gjs-font-color": t["text"], "--gjs-font-color-active": t["text"],
+         "--gjs-main-dark-color": f"rgba(0, 0, 0, {0.25 if dark else 0.07})",
+         "--gjs-secondary-dark-color": f"rgba(0, 0, 0, {0.12 if dark else 0.03})",
+         "--gjs-main-light-color": f"rgba({shade}, 0.1)", "--gjs-secondary-light-color": f"rgba({shade}, 0.7)",
+         "--gjs-light-border": f"rgba({shade}, 0.08)", "--gjs-arrow-color": f"rgba({shade}, 0.7)",
+         "--gjs-color-highlight": t["highlight"]}
+    body = "; ".join(f"{k}: {val}" for k, val in v.items())
+    return f":root {{ {body}; color-scheme: {'dark' if dark else 'light'}; }}"
+
+
+def rendered_styles(page_url: str, timeout: float = 3.0) -> list[str]:
+    """Stylesheets of the page as the running dev server renders it (absolute URLs)."""
+    import urllib.request
+    from urllib.parse import urljoin
+    try:
+        with urllib.request.urlopen(page_url, timeout=timeout) as r:
+            if "html" not in (r.headers.get("Content-Type") or ""):
+                return []
+            html_text = r.read(2_000_000).decode("utf-8", errors="replace")
+    except Exception:  # noqa: BLE001 - server not answering: no styles from it
+        return []
+    head = html_text.split("</head>", 1)[0] if "</head>" in html_text else html_text[:200_000]
+    return list(dict.fromkeys(urljoin(page_url, h) for h in _stylesheet_hrefs(head)
+                              if not h.startswith("/__radide/")))
+
+
 def read_text_file(path: Path) -> tuple[str, dict]:
     """Read a page keeping what is needed to write it back the same way (BOM, line ends)."""
     data = path.read_bytes()
@@ -880,6 +1009,12 @@ if _HAVE_QT:
             self._update_css_label()
             self._show_warnings()
             self.set_mode(mode if mode in self.MODES else "design")
+            self._site_styles: list[str] | None = None   # stylesheets from layout includes / the dev server
+            try:
+                from .. import theme
+                theme.changed.connect(self._apply_theme)
+            except Exception:  # noqa: BLE001 - no theme manager: GrapesJS keeps its dark default
+                pass
 
         # ------------------------------------------------------------ setup helpers
         def _make_code(self):
@@ -983,6 +1118,7 @@ if _HAVE_QT:
 
         def _on_ready(self):
             self._ready = True
+            self._apply_theme()
             self._load_design(self._text)
             for code in self._pending_js:
                 self.web.page().runJavaScript(code)
@@ -996,8 +1132,44 @@ if _HAVE_QT:
             from urllib.request import pathname2url
             p = self._parts
             base = "file:" + pathname2url(str(self.path.parent)) + "/"
-            return {"html": p.body, "css": p.css, "styles": canvas_styles(p, self.path, self.site_root),
+            return {"html": p.body, "css": p.css, "styles": self._styles(p),
                     "extraCss": p.extra_css, "base": base, "bodyClass": p.body_class}
+
+        def _styles(self, parts) -> list[str]:
+            """The page's own stylesheets; a page that gets its <head> from PHP includes (header.php) links
+            none, so take the ones of the page as the running dev server renders it, else of the layout files
+            (otherwise the canvas shows the page unstyled, in Times)."""
+            own = canvas_styles(parts, self.path, self.site_root)
+            if own:
+                return own
+            if self._site_styles:
+                return self._site_styles
+            styles = []
+            srv = getattr(self.win, "web_server", None)
+            if srv is not None and getattr(srv, "running", False) and self.path.suffix.lower() in (".php", ".phtml"):
+                try:
+                    self.path.relative_to(Path(srv.root))
+                    styles = rendered_styles(srv.url_for(self.path))
+                except (ValueError, OSError, AttributeError):
+                    styles = []
+            if not styles:
+                proj = getattr(self.win, "project", None)
+                styles = layout_styles(self.path, self.site_root, getattr(proj, "folder", None)
+                                       if self.site_root is not None else None)
+            self._site_styles = styles
+            return styles
+
+        def _apply_theme(self, *_a):
+            """GrapesJS chrome (panels, blocks, layers, fields) in the IDE theme colours."""
+            if not self._ready:
+                return
+            try:
+                from .. import theme
+                t = theme.current()
+            except Exception:  # noqa: BLE001
+                return
+            self.web.page().runJavaScript(f"radTheme({json.dumps(grapes_theme_css(t))}, {json.dumps(bool(t['dark']))});"
+                                          " void 0;")
 
         def _load_design(self, text: str):
             self._parts = parse_page(text, self.path, self.site_root)
@@ -1130,7 +1302,7 @@ if _HAVE_QT:
                 self._parts.prefix = parts.prefix
                 self._parts.links = parts.links
                 self._parts.style_span = parts.style_span
-                self._js(f"radSetStyles({json.dumps(canvas_styles(self._parts, self.path, self.site_root))}, "
+                self._js(f"radSetStyles({json.dumps(self._styles(self._parts))}, "
                          f"{json.dumps(self._parts.extra_css)});")
                 self._pull_design()
             else:

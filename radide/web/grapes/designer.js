@@ -48,7 +48,38 @@
   }
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showPane(b.dataset.pane)));
   window.radShowPane = showPane;
-  window.radToggleSide = on => document.getElementById('side').classList.toggle('hidden', !on);
+  // The panel has a fixed width; in a narrow tab it folds away by itself so the canvas keeps a usable width
+  // (the user's own choice - the strip or the Panels button - wins until the next automatic change).
+  const side = document.getElementById('side'), sideToggle = document.getElementById('side-toggle');
+  const AUTO_FOLD = 640;                 // fold the panel when the whole view is narrower than this
+  let sideWanted = true, sideAuto = false;
+  function applySide() {
+    const fold = sideWanted && sideAuto;
+    const on = sideWanted && !fold;
+    side.classList.toggle('hidden', !on);
+    sideToggle.innerHTML = on ? '&#9656;' : '&#9666;';
+    sideToggle.title = on ? 'Hide the Toolbox / Layers / CSS / Attributes panel'
+                          : 'Show the Toolbox / Layers / CSS / Attributes panel';
+    if (editor && editor.refresh) setTimeout(() => editor.refresh(), 0);
+  }
+  function checkWidth() {
+    const narrow = window.innerWidth < AUTO_FOLD;
+    if (narrow !== sideAuto) { sideAuto = narrow; applySide(); }
+  }
+  sideToggle.addEventListener('click', () => {
+    const on = !side.classList.contains('hidden');
+    sideWanted = !on; sideAuto = false; applySide();
+  });
+  window.addEventListener('resize', checkWidth);
+  window.radToggleSide = on => { sideWanted = !!on; sideAuto = false; applySide(); };
+  window.radSideVisible = () => !side.classList.contains('hidden');
+  // IDE theme: CSS custom properties (--rad-* for this page, --gjs-* for the GrapesJS panels)
+  window.radTheme = function (css, dark) {
+    document.getElementById('rad-theme').textContent = css;
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    document.body.classList.toggle('rad-dark', !!dark);
+    document.body.classList.toggle('rad-light', !dark);
+  };
 
   // ---------------------------------------------------------------- helpers
   const innerHtml = () => editor.getWrapper().getInnerHTML();
@@ -200,6 +231,7 @@
   editor.on('load', () => {
     editorLoaded = true;
     editor.runCommand('core:component-outline');
+    checkWidth();
     ready();
   });
   if (typeof QWebChannel !== 'undefined' && window.qt && qt.webChannelTransport) {

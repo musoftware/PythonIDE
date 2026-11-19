@@ -12,8 +12,10 @@ with a small threaded front server written in Python that
   ``req_body_binary``), ``resp_preview`` (text responses, at most MAX_PREVIEW bytes) and ``reason``;
   the last MAX_REQUESTS of them are kept in ``DevServer.requests``;
 - **live reload**: a file watcher bumps a version after every change (or ``notify_change()`` / ``check_now()``
-  after a save); HTML pages get ``<script src="/__radide/livereload.js">`` injected, which long-polls
-  ``/__radide/poll`` and reloads the page (CSS-only changes swap the stylesheets without a reload);
+  after a save; only source / asset files, never the files the site writes itself - data/, sessions, logs,
+  SQLite databases, or anything written while a request was running); HTML pages get
+  ``<script src="/__radide/livereload.js">`` injected, which long-polls ``/__radide/poll`` and reloads
+  the page (CSS-only changes swap the stylesheets without a reload); bursts of changes are debounced;
 - Node sites are restarted when their server code (.js/.json outside public/static) changes.
 
 Signals: request(dict), log(str), reloaded(int), started(str url), stopped(), backendReady(), backendExited(int).
@@ -58,6 +60,22 @@ MAX_REQUESTS = 500             # requests kept in DevServer.requests
 TEXT_TYPES = ("text/", "json", "javascript", "xml", "svg", "x-www-form-urlencoded", "csv", "yaml", "graphql")
 SERVER_JS_EXT = {".js", ".cjs", ".mjs", ".ts", ".json"}
 CLIENT_DIRS = {"public", "static", "assets", "www", "wwwroot", "client", "views", "templates"}
+# live reload: only edits of these (source / asset) files reload the Preview ...
+WATCH_EXT = {".php", ".phtml", ".inc", ".html", ".htm", ".shtml", ".xhtml", ".css", ".scss", ".sass", ".less",
+             ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".json", ".xml", ".svg", ".map",
+             ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp", ".ico", ".woff", ".woff2", ".ttf",
+             ".otf", ".eot", ".twig", ".tpl", ".mustache", ".hbs", ".ejs", ".pug", ".njk", ".liquid", ".yml",
+             ".yaml", ".mp4", ".webm", ".mp3", ".ogg", ".wav", ".pdf", ".wasm"}
+WATCH_NAMES = {".htaccess", ".user.ini", "web.config", ".env"}
+# ... and never files in folders a running site writes itself (SQLite databases, PHP sessions, logs, caches,
+# uploads) - otherwise every request that touches the session would reload the page, which requests the page
+# again, which writes the session again... (an endless reload loop)
+RUNTIME_DIRS = {"data", "db", "database", "sessions", "session", "logs", "log", "cache", "tmp", "temp",
+                "storage", "uploads", "upload", "var", "writable", "coverage"}
+RUNTIME_SUFFIXES = (".sqlite", ".sqlite3", ".db", ".db3", ".sqlite-journal", ".sqlite-wal", ".sqlite-shm",
+                    "-journal", "-wal", "-shm", ".log", ".lock", ".pid", ".tmp", ".swp", "~", ".bak")
+REQUEST_SLACK = 0.5            # a file written up to this long after a backend request is "written by the site"
+DEBOUNCE = 0.25                # coalesce a burst of changes (Save All, git checkout) into one reload
 
 LIVERELOAD_JS = r"""(function () {
   if (window.__radideLiveReload) return; window.__radideLiveReload = true;
@@ -150,6 +168,77 @@ def kill_tree(proc: subprocess.Popen) -> None:
         pass
 
 
+_JOB = None                    # Windows Job Object handle (0 = not available)
+
+
+def _job() -> int:
+    """A Job Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: its handle lives only in the IDE process, so when
+    the IDE exits - even when it crashes or is killed from the Task Manager - Windows closes the handle and
+    kills every php / node process of the dev server (they would otherwise keep the project folder locked)."""
+    global _JOB
+    if _JOB is not None:
+        return _JOB
+    _JOB = 0
+    if os.name != "nt":
+        return 0
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.restype = wintypes.BOOL
+        k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        k32.AssignProcessToJobObject.restype = wintypes.BOOL
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        class _Basic(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                        ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                        ("SchedulingClass", wintypes.DWORD)]
+
+        class _Io(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_uint64) for n in ("ReadOperationCount", "WriteOperationCount",
+                                                       "OtherOperationCount", "ReadTransferCount",
+                                                       "WriteTransferCount", "OtherTransferCount")]
+
+        class _Extended(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", _Basic), ("IoInfo", _Io), ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                        ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        handle = k32.CreateJobObjectW(None, None)
+        if not handle:
+            return 0
+        info = _Extended()
+        info.BasicLimitInformation.LimitFlags = 0x2000          # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            k32.CloseHandle(handle)                                # 9 = JobObjectExtendedLimitInformation
+            return 0
+        _JOB = int(handle)
+        _job.assign = k32.AssignProcessToJobObject
+    except (OSError, AttributeError, ValueError):
+        _JOB = 0
+    return _JOB
+
+
+def adopt_process(proc: subprocess.Popen) -> bool:
+    """Put a child process (and so all its future children) into the kill-on-close job (Windows only; does
+    nothing elsewhere or when it is not possible)."""
+    job = _job()
+    handle = getattr(proc, "_handle", None)
+    if not job or handle is None:
+        return False
+    try:
+        return bool(_job.assign(job, int(handle)))
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 _LIVE: "weakref.WeakSet[DevServer]" = weakref.WeakSet()
 
 
@@ -210,6 +299,10 @@ class DevServer(QObject):
         self._stop = threading.Event()
         self._restarting = False
         self._snapshot: dict[str, tuple[float, int]] = {}
+        self._inflight: dict[int, float] = {}               # backend requests running now: key -> start time
+        self._windows: collections.deque[tuple[float, float]] = collections.deque(maxlen=400)  # finished ones
+        self._suppressed: dict[str, float] = {}             # changes attributed to the site itself
+        self.ignored_changes = 0                            # (diagnostics / tests)
         self._backend_spec: dict | None = None
         self.backend_error = ""
         self.request_count = 0
@@ -282,10 +375,10 @@ class DevServer(QObject):
         self.port = httpd.server_address[1]
         threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.25}, daemon=True,
                          name="radide-devserver").start()
-        self._snapshot = self._scan()
-        threading.Thread(target=self._watch_loop, daemon=True, name="radide-devserver-watch").start()
         spec = self.plugin.backend(self) if self.plugin is not None and hasattr(self.plugin, "backend") else None
         self._backend_spec = spec
+        self._snapshot = self._scan()
+        threading.Thread(target=self._watch_loop, daemon=True, name="radide-devserver-watch").start()
         if spec is None:
             self._ready.set()
         else:
@@ -335,15 +428,34 @@ class DevServer(QObject):
         return v
 
     def check_now(self) -> list[str]:
-        """Rescan the files now (call after a save); returns the changed paths."""
-        return self._detect_changes()
+        """Rescan the files now (call after a save in the IDE); returns the changed paths. The changes are the
+        user's, so a source file written while a request was running still reloads."""
+        return self._detect_changes(trusted=True)
 
     # ------------------------------------------------------------ watcher
+    def _skip_dir(self, name: str) -> bool:
+        if name in HIDDEN_DIRS or name in HEAVY_DIRS or name.startswith(".") or name.lower().startswith(".radide"):
+            return True
+        # folders the running site writes itself (only sites with their own server write anything)
+        return self._backend_spec is not None and name.lower() in RUNTIME_DIRS
+
+    @staticmethod
+    def watched_file(name: str) -> bool:
+        """Is a file a source / asset whose edit should reload the Preview?"""
+        low = name.lower()
+        if low in WATCH_NAMES:
+            return True
+        if low.endswith(RUNTIME_SUFFIXES) or low.startswith(("sess_", "~$", ".#")) or low == "project.radproj":
+            return False
+        return os.path.splitext(low)[1] in WATCH_EXT
+
     def _scan(self) -> dict[str, tuple[float, int]]:
         out: dict[str, tuple[float, int]] = {}
         for dirpath, dirnames, filenames in os.walk(self.folder):
-            dirnames[:] = [d for d in dirnames if d not in HIDDEN_DIRS and d not in HEAVY_DIRS]
+            dirnames[:] = [d for d in dirnames if not self._skip_dir(d)]
             for f in filenames:
+                if not self.watched_file(f):
+                    continue
                 p = os.path.join(dirpath, f)
                 try:
                     st = os.stat(p)
@@ -354,14 +466,65 @@ class DevServer(QObject):
                     return out
         return out
 
-    def _detect_changes(self) -> list[str]:
+    def _diff(self) -> list[str]:
         with self._lock:
             new = self._scan()
             old = self._snapshot
             changed = [p for p, v in new.items() if old.get(p) != v] + [p for p in old if p not in new]
             self._snapshot = new
-        changed = [p for p in changed if not p.endswith(("project.radproj", ".log", "-journal", ".sqlite-wal",
-                                                         ".sqlite-shm", ".db-journal"))]
+        return changed
+
+    def _request_start(self, key: int) -> None:
+        with self._lock:
+            self._inflight[key] = time.time()
+
+    def _request_end(self, key: int) -> None:
+        with self._lock:
+            start = self._inflight.pop(key, None)
+            if start is not None:
+                self._windows.append((start, time.time()))
+
+    def _written_by_site(self, path: str) -> bool:
+        """A change made while (or just after) the site's own server handled a request was made by the site
+        (a cache file, a generated page...) - not by the user; reloading for it would loop forever."""
+        if self._backend_spec is None:
+            return False
+        try:
+            mtime = os.stat(path).st_mtime
+        except OSError:
+            return False
+        with self._lock:
+            now = time.time()
+            if any(start - 0.05 <= mtime and now - start < 30 for start in self._inflight.values()):
+                return True                     # (a long streaming response does not hide edits for ever)
+            return any(start - 0.05 <= mtime <= end + REQUEST_SLACK for start, end in self._windows)
+
+    def _detect_changes(self, trusted: bool = False) -> list[str]:
+        changed = self._diff()
+        if not changed and not (trusted and self._suppressed):
+            return []
+        # debounce: wait until the burst of writes is over, then reload once for all of them
+        deadline = time.monotonic() + 2.0
+        while changed and time.monotonic() < deadline and not trusted:
+            if self._stop.wait(DEBOUNCE):
+                return []
+            more = self._diff()
+            if not more:
+                break
+            changed += [p for p in more if p not in changed]
+        if trusted:
+            # saved in the IDE: changes the watcher attributed to a request a moment ago are the user's after all
+            now = time.time()
+            changed += [p for p, t in self._suppressed.items() if now - t < 10 and p not in changed]
+            self._suppressed.clear()
+        else:
+            site = [p for p in changed if self._written_by_site(p)]
+            if site:
+                self.ignored_changes += len(site)
+                now = time.time()
+                for p in site:
+                    self._suppressed[p] = now
+                changed = [p for p in changed if p not in site]
         if changed:
             if self._needs_restart(changed):
                 self._emit_log("Server code changed - restarting the site's server...")
@@ -412,6 +575,7 @@ class DevServer(QObject):
             try:
                 p = subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      stdin=subprocess.DEVNULL, creationflags=NO_WINDOW, shell=bool(spec.get("shell")))
+                adopt_process(p)
                 with self._lock:
                     self._proc = p
                 for raw in iter(p.stdout.readline, b""):
@@ -438,6 +602,7 @@ class DevServer(QObject):
             self._emit_log("*** " + self.backend_error)
             self._ready.set()
             return
+        adopt_process(proc)
         with self._lock:
             self._proc = proc
         threading.Thread(target=self._read_output, args=(proc,), daemon=True, name="radide-devserver-out").start()
@@ -528,7 +693,12 @@ class DevServer(QObject):
             elif h.headers.get("Upgrade", "").lower() == "websocket":
                 status, size, ctype = self._tunnel(h)
             else:
-                status, size, ctype = self._proxy(h)
+                key = id(h)
+                self._request_start(key)
+                try:
+                    status, size, ctype = self._proxy(h)
+                finally:
+                    self._request_end(key)
         except (ConnectionError, socket.timeout, BrokenPipeError):
             status, size, ctype = 499, 0, ""
         except Exception as e:  # noqa: BLE001 - one bad request must not kill the server
@@ -816,5 +986,5 @@ class DevServer(QObject):
         return 101, 0, "websocket"
 
 
-__all__ = ["DevServer", "MAX_BODY", "MAX_PREVIEW", "MAX_REQUESTS", "body_text", "free_port", "inject_livereload",
-           "is_text_type", "kill_tree", "port_open"]
+__all__ = ["DevServer", "MAX_BODY", "MAX_PREVIEW", "MAX_REQUESTS", "adopt_process", "body_text", "free_port",
+           "inject_livereload", "is_text_type", "kill_tree", "port_open"]

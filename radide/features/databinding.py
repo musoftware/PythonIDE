@@ -23,7 +23,8 @@ from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFileDialo
                              QLabel, QListWidget, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
                              QToolButton, QVBoxLayout, QWidget)
 
-from .states import COMMON_RT, RESERVED_NAMES, BlendPreview, _add_dock, follow_designer, is_python
+from .states import (COMMON_RT, RESERVED_NAMES, BlendPreview, _add_dock, compact_combo, follow_designer, is_python,
+                     section_label, set_note)
 
 BIND_PROPS = {"Items": ("ListBox", "ComboBox"), "Rows": ("DataGridView", "ListView"),
               "Value": ("NumericUpDown", "TrackBar", "ProgressBar"), "Checked": ("CheckBox", "RadioButton")}
@@ -385,29 +386,44 @@ class DataPanel(QWidget):
         self.note.setWordWrap(True)
         self.note.setProperty("radRole", "note")
         lay.addWidget(self.note)
-        lay.addWidget(QLabel("<b>Data sources</b>"))
+        self.note.hide()                        # shown only when it has something to say (no empty gap)
+        lay.addWidget(section_label("Data sources"))
+        self.no_sources = QLabel("No data sources yet. Click New Sample, or Add File... for a JSON / CSV file.")
+        self.no_sources.setWordWrap(True)
+        self.no_sources.setProperty("radRole", "note")
+        lay.addWidget(self.no_sources)
         self.sources = QListWidget()
+        self.sources.setToolTip("JSON / CSV data sources of this form")
         self.sources.setMaximumHeight(90)
         self.sources.currentRowChanged.connect(self._on_source)
         lay.addWidget(self.sources)
         row = QHBoxLayout()
-        self.btn_sample = QToolButton(text="New Sample Data")
+        self.btn_sample = QToolButton(text="New Sample")
+        self.btn_sample.setToolTip("Create a sample data source (a JSON file with example records)")
         self.btn_sample.clicked.connect(self.new_sample)
-        self.btn_file = QToolButton(text="Add JSON / CSV...")
+        self.btn_file = QToolButton(text="Add File...")
+        self.btn_file.setToolTip("Add a JSON or CSV file as a data source")
         self.btn_file.clicked.connect(self.add_file)
-        self.btn_rm_src = QToolButton(text="Remove")
+        self.btn_rm_src = QToolButton()
+        self.btn_rm_src.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DialogDiscardButton))
+        self.btn_rm_src.setToolTip("Remove the selected data source")
         self.btn_rm_src.clicked.connect(self.remove_source)
-        self.btn_reload = QToolButton(text="Reload")
+        self.btn_reload = QToolButton()
+        self.btn_reload.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_BrowserReload))
+        self.btn_reload.setToolTip("Reload the data sources from their files")
         self.btn_reload.clicked.connect(self.reload)
         for b in (self.btn_sample, self.btn_file, self.btn_rm_src, self.btn_reload):
             row.addWidget(b)
         row.addStretch(1)
         lay.addLayout(row)
+        self.records_label = section_label("Records")
+        lay.addWidget(self.records_label)
         self.records = QTableWidget(0, 0)
         self.records.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.records.setMaximumHeight(140)
+        self.records.setToolTip("The first records of the selected data source (sample values)")
         lay.addWidget(self.records)
-        lay.addWidget(QLabel("<b>Bindings</b>"))
+        lay.addWidget(section_label("Bindings"))
         self.binds = QTableWidget(0, 4)
         self.binds.setHorizontalHeaderLabels(["Control", "Property", "Source", "Field"])
         self.binds.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -417,21 +433,34 @@ class DataPanel(QWidget):
         lay.addWidget(self.binds, 1)
         row = QHBoxLayout()
         self.ctrl_label = QLabel("")
-        self.prop = QComboBox()
-        self.src = QComboBox()
+        self.prop = compact_combo(QComboBox(), 6)
+        self.prop.setPlaceholderText("Property")
+        self.prop.setToolTip("Property of the selected control")
+        self.src = compact_combo(QComboBox(), 6)
+        self.src.setPlaceholderText("Data source")
+        self.src.setToolTip("Data source")
         self.src.currentIndexChanged.connect(self._fill_fields)
-        self.field = QComboBox()
+        self.field = compact_combo(QComboBox(), 6)
         self.field.setEditable(True)
+        self.field.lineEdit().setPlaceholderText("Field")
+        self.field.setToolTip("Field of the data source")
         self.btn_bind = QPushButton("Bind")
         self.btn_bind.setToolTip("Bind the selected control's property to the field of the data source")
         self.btn_bind.clicked.connect(self.add_binding)
         self.btn_unbind = QToolButton(text="Remove")
         self.btn_unbind.clicked.connect(self.remove_binding)
         row.addWidget(self.ctrl_label)
-        row.addWidget(self.prop)
-        row.addWidget(QLabel("<-"))
+        row.addWidget(self.prop, 1)
+        lay.addLayout(row)
+        row = QHBoxLayout()                     # (own row: the panel lives in a narrow dock column)
+        eq = QLabel("=")
+        eq.setToolTip("The property shows the value of the data source's field")
+        row.addWidget(eq)
         row.addWidget(self.src)
         row.addWidget(self.field, 1)
+        lay.addLayout(row)
+        row = QHBoxLayout()                     # (own row: the panel lives in a narrow dock column)
+        row.addStretch(1)
         row.addWidget(self.btn_bind)
         row.addWidget(self.btn_unbind)
         lay.addLayout(row)
@@ -467,13 +496,14 @@ class DataPanel(QWidget):
             if w is not self.note:
                 w.setEnabled(on)
         if not on:
-            self.note.setText("Open a form designer to bind it to data.")
+            set_note(self.note, "Open a form designer to bind it to data.")
             self.sources.clear()
             self.binds.setRowCount(0)
             self.records.setRowCount(0)
+            self._show_empty()
             return
-        self.note.setText("" if is_python(self.win, self.view) else
-                          "Data bindings run in Python (Tkinter / PySide6) forms; this language ignores them.")
+        set_note(self.note, "" if is_python(self.win, self.view) else
+                 "Data bindings run in Python (Tkinter / PySide6) forms; this language ignores them.")
         self._filling = True
         row = self.sources.currentRow()
         self.sources.clear()
@@ -499,6 +529,14 @@ class DataPanel(QWidget):
         self._filling = False
         self._on_source()
         self._on_selection()
+        self._show_empty()
+
+    def _show_empty(self) -> None:
+        """No unlabeled empty boxes: without data sources show a hint instead of the list and the records."""
+        has = self.sources.count() > 0
+        self.no_sources.setVisible(not has)
+        for w in (self.sources, self.records_label, self.records):
+            w.setVisible(has)
 
     def _source(self) -> dict | None:
         r = self.sources.currentRow()

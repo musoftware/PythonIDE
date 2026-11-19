@@ -17,7 +17,7 @@ from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QColorDialog, QComboBox, QDockWidget,
                              QGraphicsOpacityEffect, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
-                             QListWidget, QListWidgetItem, QMessageBox, QPushButton, QTableWidget,
+                             QListWidget, QListWidgetItem, QMessageBox, QTableWidget,
                              QTableWidgetItem, QToolButton, QVBoxLayout, QWidget)
 
 AUTO_STATES = ("MouseOver", "Pressed", "Focused", "Disabled")
@@ -1010,6 +1010,30 @@ def is_python(win, view) -> bool:
         return True
 
 
+def set_note(label, text: str) -> None:
+    """Set a panel's note line and show it only when there is a note (an empty label left a gap)."""
+    label.setText(text)
+    label.setVisible(bool(text))
+
+
+def compact_combo(cb, chars: int = 8):
+    """A combo box that does not widen its dock to its longest item / placeholder (the Blend panels are
+    tabbed in a narrow column and got a horizontal scroll bar)."""
+    from PyQt6.QtWidgets import QComboBox as _Cb
+    cb.setSizeAdjustPolicy(_Cb.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+    cb.setMinimumContentsLength(chars)
+    return cb
+
+
+def section_label(text: str):
+    """A small bold caption above a list / table of a Blend panel."""
+    lab = QLabel(text)
+    f = lab.font()
+    f.setBold(True)
+    lab.setFont(f)
+    return lab
+
+
 class StatesPanel(QWidget):
     """Blend's States panel: Base, the automatic control states and the form's custom states.
     The overrides table lists what the selected state changes on the selected control (or the form)."""
@@ -1024,6 +1048,8 @@ class StatesPanel(QWidget):
         self.note.setWordWrap(True)
         self.note.setProperty("radRole", "note")
         lay.addWidget(self.note)
+        self.note.hide()                        # shown only when it has something to say (no empty gap)
+        lay.addWidget(section_label("Visual states"))
         self.list = QListWidget()
         self.list.setMaximumHeight(170)
         self.list.currentItemChanged.connect(self._on_state)
@@ -1053,7 +1079,10 @@ class StatesPanel(QWidget):
         lay.addWidget(self.table, 1)
         row2 = QHBoxLayout()
         self.prop = QComboBox()
-        self.btn_set = QPushButton("Override")
+        self.prop.setPlaceholderText("Property to override")
+        compact_combo(self.prop)
+        self.prop.setToolTip("Property to override in the selected state")
+        self.btn_set = QToolButton(text="Override")
         self.btn_set.setToolTip("Add an override of this property in the selected state (current value)")
         self.btn_set.clicked.connect(self.add_override)
         self.btn_color = QToolButton(text="Colour...")
@@ -1062,9 +1091,12 @@ class StatesPanel(QWidget):
         self.btn_rm.clicked.connect(self.remove_override)
         row2.addWidget(self.prop, 1)
         row2.addWidget(self.btn_set)
-        row2.addWidget(self.btn_color)
-        row2.addWidget(self.btn_rm)
         lay.addLayout(row2)
+        row3 = QHBoxLayout()                    # (own row: the panel lives in a narrow dock column)
+        row3.addStretch(1)
+        row3.addWidget(self.btn_color)
+        row3.addWidget(self.btn_rm)
+        lay.addLayout(row3)
         self._filling = False
         self.bind(None)
 
@@ -1097,12 +1129,12 @@ class StatesPanel(QWidget):
                   self.btn_rm, self.btn_color):
             w.setEnabled(enabled)
         if not enabled:
-            self.note.setText("Open a form designer to edit its visual states.")
+            set_note(self.note, "Open a form designer to edit its visual states.")
             self.table.setRowCount(0)
             self._filling = False
             return
-        self.note.setText("" if is_python(self.win, self.view) else
-                          "Visual states run in Python (Tkinter / PySide6) forms; this language ignores them.")
+        set_note(self.note, "" if is_python(self.win, self.view) else
+                 "Visual states run in Python (Tkinter / PySide6) forms; this language ignores them.")
         form = self.view.doc.form
         entries = [(BASE, "Base (designed values)")]
         entries += [(s, f"{s}  (automatic)") for s in AUTO_STATES]
@@ -1140,8 +1172,8 @@ class StatesPanel(QWidget):
             return
         self.bp.set_recording(on)
         if self.view is not None:
-            self.note.setText(f"Recording state '{self.state()}': property edits go to this state." if on
-                              else "")
+            set_note(self.note, f"Recording state '{self.state()}': property edits go to this state." if on
+                     else "")
 
     def _on_selection(self, *_a) -> None:
         self.refresh_overrides()
@@ -1158,7 +1190,7 @@ class StatesPanel(QWidget):
         state = self.state()
         form = self.view.doc.form
         name = ctrl.name if ctrl is not None else f"{form.name} (form)"
-        self.target.setText(f"<b>{name}</b> in state <b>{state}</b>")
+        self.target.setText(f"Overrides of <b>{name}</b> in state <b>{state}</b>")
         ov = overrides(form, ctrl, state)
         self.table.setRowCount(len(ov))
         for r, (k, v) in enumerate(sorted(ov.items())):
@@ -1280,7 +1312,15 @@ class StatesPanel(QWidget):
 def _add_dock(win, title: str, widget, attr: str):
     dock = QDockWidget(title, win)
     dock.setObjectName(title)
-    dock.setWidget(widget)
+    # scrollable: these panels are tall, and their minimum height must not make the main window
+    # taller than the screen when they are tabbed in the right column
+    from PyQt6.QtWidgets import QFrame, QScrollArea
+    sa = QScrollArea()
+    sa.setFrameShape(QFrame.Shape.NoFrame)
+    sa.setWidgetResizable(True)
+    sa.setWidget(widget)
+    sa.setMinimumHeight(80)
+    dock.setWidget(sa)
     win.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
     props = getattr(win, "dock_props", None)
     if props is not None:

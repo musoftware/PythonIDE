@@ -6,28 +6,43 @@
 <title>RAD IDE Design View</title>
 <link rel="stylesheet" href="grapes.min.css">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; font: 12px "Segoe UI", sans-serif; background: #444; }
+  /* colours: defaults = dark; design.py radTheme() replaces them with the IDE theme (radide/theme.py) */
+  :root { --rad-panel: #3b3b3b; --rad-base: #2f2f2f; --rad-text: #ddd; --rad-muted: #aaa; --rad-border: #222;
+          --rad-header: #333; --rad-header-text: #ccc; --rad-accent: #3d8bfd; --rad-link: #9cf;
+          --rad-stage: #444; --rad-side-width: 280px; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font: 12px "Segoe UI", sans-serif; background: var(--rad-stage); }
   #wrap { display: flex; height: 100%; }
   #gjs { flex: 1 1 auto; min-width: 0; height: 100%; }
-  #side { flex: 0 0 290px; display: flex; flex-direction: column; background: #3b3b3b; color: #ddd;
-          border-left: 1px solid #222; min-width: 0; }
+  /* the panel has a fixed width: the canvas gets the rest (it was squeezed to ~130 px in a narrow tab) */
+  #side { flex: 0 0 var(--rad-side-width); width: var(--rad-side-width); display: flex; flex-direction: column;
+          background: var(--rad-panel); color: var(--rad-text); min-width: 0; }
   #side.hidden { display: none; }
-  #tabs { display: flex; flex: 0 0 auto; border-bottom: 1px solid #222; }
-  #tabs button { flex: 1; background: #333; color: #ccc; border: 0; border-right: 1px solid #222; padding: 7px 2px;
-                 cursor: pointer; font: 12px "Segoe UI", sans-serif; }
-  #tabs button.on { background: #4a4a4a; color: #fff; box-shadow: inset 0 -2px 0 #3d8bfd; }
+  #side-toggle { flex: 0 0 12px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+                 background: var(--rad-header); color: var(--rad-header-text); border-left: 1px solid var(--rad-border);
+                 border-right: 1px solid var(--rad-border); font: 11px "Segoe UI", sans-serif; user-select: none; }
+  #side-toggle:hover { background: var(--rad-accent); color: #fff; }
+  #tabs { display: flex; flex: 0 0 auto; border-bottom: 1px solid var(--rad-border); }
+  #tabs button { flex: 1; background: var(--rad-header); color: var(--rad-header-text); border: 0;
+                 border-right: 1px solid var(--rad-border); padding: 7px 2px; cursor: pointer; font: 12px "Segoe UI", sans-serif; }
+  #tabs button.on { background: var(--rad-panel); color: var(--rad-text); box-shadow: inset 0 -2px 0 var(--rad-accent); }
   .pane { flex: 1 1 auto; overflow: auto; display: none; }
   .pane.on { display: block; }
-  #sel-info { padding: 6px 8px; color: #9cf; border-bottom: 1px solid #222; min-height: 14px; white-space: nowrap;
-              overflow: hidden; text-overflow: ellipsis; }
-  .gjs-one-bg { background-color: #3b3b3b; }
-  .gjs-cv-canvas { width: 100%; height: 100%; top: 0; }
-  .rad-empty { padding: 10px; color: #999; }
+  #sel-info { padding: 6px 8px; color: var(--rad-link); border-bottom: 1px solid var(--rad-border); min-height: 14px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gjs-one-bg { background-color: var(--rad-panel); }
+  .gjs-cv-canvas { width: 100%; height: 100%; top: 0; background: var(--rad-stage); }
+  .gjs-block { background: var(--rad-base); color: var(--rad-text); border-color: var(--rad-border); width: 44%; }
+  .gjs-block:hover { color: var(--rad-accent); }
+  .gjs-block-category .gjs-title, .gjs-sm-sector-title, .gjs-trait-category .gjs-title, .gjs-layer-item {
+    color: var(--rad-text); }
+  .rad-empty { padding: 10px; color: var(--rad-muted); }
 </style>
+<style id="rad-theme"></style>
 </head>
 <body>
 <div id="wrap">
   <div id="gjs"></div>
+  <div id="side-toggle" title="Hide / show the Toolbox, Layers, CSS and Attributes panel">&#9656;</div>
   <div id="side">
     <div id="tabs">
       <button data-pane="blocks" class="on" title="Toolbox: drag blocks onto the page">Toolbox</button>

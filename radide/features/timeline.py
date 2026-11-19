@@ -20,7 +20,8 @@ from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QHBoxLayou
                              QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QToolButton, QVBoxLayout,
                              QWidget)
 
-from .states import DESIGN, RESERVED_NAMES, BlendPreview, _add_dock, coerce, follow_designer, is_python
+from .states import (DESIGN, RESERVED_NAMES, BlendPreview, _add_dock, coerce, compact_combo, follow_designer,
+                     is_python, section_label, set_note)
 
 ANIM_PROPS = ("Left", "Top", "Width", "Height", "BackColor", "ForeColor", "Opacity", "FontSize", "Value",
               "Text", "Visible")
@@ -260,6 +261,26 @@ class TimelineRuler(QWidget):
         self.current = -1
         self.setMinimumHeight(90)
         self.setMouseTracking(False)
+        self.setToolTip("Click or drag to move the playhead; click a keyframe diamond to select it")
+        try:
+            from .. import theme
+            theme.changed.connect(lambda *_: self.update())
+        except Exception:  # noqa: BLE001 - no theme manager (tests): the default colours are used
+            pass
+
+    @staticmethod
+    def colours() -> dict:
+        """Ruler colours from the IDE theme (it was hard-coded dark even in the Light theme)."""
+        try:
+            from .. import theme
+            t = theme.current()
+        except Exception:  # noqa: BLE001
+            t = {}
+        g = lambda k, d: t.get(k) or d          # noqa: E731
+        return {"back": g("base", "#ffffff"), "tick": g("muted", "#5a5a5a"), "row": g("base", "#ffffff"),
+                "row_alt": g("alt_base", "#f5f5f0"), "row_cur": g("menu_sel", "#c1d2ee"),
+                "span": g("accent", "#316ac5"), "key_pen": g("text", "#000000"), "head": g("error", "#c42b1c"),
+                "line": g("mid", "#b8b8b0")}
 
     def set_data(self, tracks: list[dict], ms: int, current: int) -> None:
         self.tracks = tracks
@@ -278,9 +299,12 @@ class TimelineRuler(QWidget):
         return max(0, int(round(ms / 10.0) * 10))
 
     def paintEvent(self, _e):
+        c = self.colours()
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor("#2b2b30"))
-        p.setPen(QColor("#9a9aa5"))
+        p.fillRect(self.rect(), QColor(c["back"]))
+        p.setPen(QColor(c["line"]))
+        p.drawLine(0, self.HEAD, self.width(), self.HEAD)
+        p.setPen(QColor(c["tick"]))
         step = 100 if self.span <= 3000 else 500
         for t in range(0, self.span + 1, step):
             x = self.x_of(t)
@@ -291,18 +315,18 @@ class TimelineRuler(QWidget):
         for r, tr in enumerate(self.tracks):
             y = self.HEAD + r * self.ROW
             p.fillRect(QRectF(0, y, self.width(), self.ROW - 1),
-                       QColor("#3c3c48" if r == self.current else ("#323238" if r % 2 else "#2e2e34")))
+                       QColor(c["row_cur"] if r == self.current else (c["row_alt"] if r % 2 else c["row"])))
             keys = sorted(int(k[0]) for k in tr.get("keys", []))
             if len(keys) > 1:
-                p.setPen(QColor("#6d8fd8"))
+                p.setPen(QColor(c["span"]))
                 p.drawLine(int(self.x_of(keys[0])), y + self.ROW // 2, int(self.x_of(keys[-1])), y + self.ROW // 2)
-            p.setPen(QColor("#202020"))
+            p.setPen(QColor(c["key_pen"]))
             p.setBrush(QColor("#f0c040"))
             for t in keys:
                 cx, cy = self.x_of(t), y + self.ROW / 2
                 p.drawPolygon(QPolygonF([QPointF(cx, cy - 6), QPointF(cx + 6, cy), QPointF(cx, cy + 6),
                                          QPointF(cx - 6, cy)]))
-        p.setPen(QColor("#ff5050"))
+        p.setPen(QColor(c["head"]))
         x = int(self.x_of(self.ms))
         p.drawLine(x, 0, x, self.height())
         p.end()
@@ -341,8 +365,12 @@ class TimelinePanel(QWidget):
         self.note.setWordWrap(True)
         self.note.setProperty("radRole", "note")
         lay.addWidget(self.note)
+        self.note.hide()                        # shown only when it has something to say (no empty gap)
+        lay.addWidget(section_label("Storyboard"))
         row = QHBoxLayout()
         self.sb_combo = QComboBox()
+        self.sb_combo.setPlaceholderText("(none - click New)")
+        compact_combo(self.sb_combo, 6)
         self.sb_combo.currentIndexChanged.connect(self._on_storyboard)
         self.btn_new = QToolButton(text="New")
         self.btn_new.setToolTip("New storyboard")
@@ -351,10 +379,12 @@ class TimelinePanel(QWidget):
         self.btn_ren.clicked.connect(self.rename_storyboard)
         self.btn_del = QToolButton(text="Delete")
         self.btn_del.clicked.connect(self.delete_storyboard)
-        row.addWidget(QLabel("Storyboard:"))
         row.addWidget(self.sb_combo, 1)
+        lay.addLayout(row)
+        row = QHBoxLayout()                     # (own row: the panel lives in a narrow dock column)
         for b in (self.btn_new, self.btn_ren, self.btn_del):
             row.addWidget(b)
+        row.addStretch(1)
         lay.addLayout(row)
         row = QHBoxLayout()
         self.chk_auto = QCheckBox("Begin on Load")
@@ -362,13 +392,18 @@ class TimelinePanel(QWidget):
         self.chk_rev = QCheckBox("AutoReverse")
         for c, key in ((self.chk_auto, "autostart"), (self.chk_repeat, "repeat"), (self.chk_rev, "autoreverse")):
             c.toggled.connect(lambda on, k=key: self._set_flag(k, on))
+            if c is self.chk_rev:              # (two rows: the panel lives in a narrow dock column)
+                row.addStretch(1)
+                lay.addLayout(row)
+                row = QHBoxLayout()
             row.addWidget(c)
         row.addStretch(1)
         lay.addLayout(row)
         row = QHBoxLayout()
-        self.btn_play = QPushButton("Play")
+        self.btn_play = QToolButton(text="Play")
+        self.btn_play.setToolTip("Play the storyboard in the designer")
         self.btn_play.clicked.connect(self.play)
-        self.btn_stop = QPushButton("Stop")
+        self.btn_stop = QToolButton(text="Stop")
         self.btn_stop.clicked.connect(self.stop)
         self.time = QSpinBox()
         self.time.setRange(0, 600000)
@@ -381,18 +416,31 @@ class TimelinePanel(QWidget):
         for w in (self.btn_play, self.btn_stop, QLabel("Time:"), self.time):
             row.addWidget(w)
         row.addStretch(1)
+        lay.addLayout(row)
+        row = QHBoxLayout()                     # (own row: the panel lives in a narrow dock column)
         row.addWidget(self.rec)
+        row.addStretch(1)
         lay.addLayout(row)
         mid = QHBoxLayout()
         self.tracks = QListWidget()
         self.tracks.setMaximumWidth(170)
+        self.tracks.setToolTip("Animated properties (tracks) of the storyboard - add one with Add Keyframe")
         self.tracks.currentRowChanged.connect(self._on_track)
         self.ruler = TimelineRuler()
         self.ruler.scrubbed.connect(self.seek)
         self.ruler.keyClicked.connect(self._on_key_clicked)
-        mid.addWidget(self.tracks)
-        mid.addWidget(self.ruler, 1)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        col.addWidget(section_label("Tracks"))
+        col.addWidget(self.tracks, 1)
+        mid.addLayout(col)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        col.addWidget(section_label("Timeline"))
+        col.addWidget(self.ruler, 1)
+        mid.addLayout(col, 1)
         lay.addLayout(mid, 1)
+        lay.addWidget(section_label("Keyframes of the selected track"))
         self.keys = QTableWidget(0, 3)
         self.keys.setHorizontalHeaderLabels(["Time (ms)", "Value", "Easing"])
         self.keys.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -403,6 +451,9 @@ class TimelinePanel(QWidget):
         lay.addWidget(self.keys)
         row = QHBoxLayout()
         self.prop = QComboBox()
+        self.prop.setPlaceholderText("Property")
+        compact_combo(self.prop, 6)
+        self.prop.setToolTip("Property of the selected control to animate")
         self.value = QLineEdit()
         self.value.setPlaceholderText("value (empty = current)")
         self.btn_key = QPushButton("Add Keyframe")
@@ -412,6 +463,9 @@ class TimelinePanel(QWidget):
         self.btn_delkey.clicked.connect(self.delete_keyframe)
         row.addWidget(self.prop)
         row.addWidget(self.value, 1)
+        lay.addLayout(row)
+        row = QHBoxLayout()
+        row.addStretch(1)
         row.addWidget(self.btn_key)
         row.addWidget(self.btn_delkey)
         lay.addLayout(row)
@@ -457,13 +511,13 @@ class TimelinePanel(QWidget):
                   self.prop, self.value, self.btn_key, self.btn_delkey):
             w.setEnabled(on)
         if not on:
-            self.note.setText("Open a form designer to animate it.")
+            set_note(self.note, "Open a form designer to animate it.")
             self.tracks.clear()
             self.ruler.set_data([], 0, -1)
             self._filling = False
             return
-        self.note.setText("" if is_python(self.win, self.view) else
-                          "Storyboards run in Python (Tkinter / PySide6) forms; this language ignores them.")
+        set_note(self.note, "" if is_python(self.win, self.view) else
+                 "Storyboards run in Python (Tkinter / PySide6) forms; this language ignores them.")
         names = [s.get("name", "") for s in storyboards(self.view.doc.form)]
         self.sb_combo.addItems(names)
         if cur in names:

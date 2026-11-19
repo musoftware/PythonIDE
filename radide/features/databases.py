@@ -1730,6 +1730,7 @@ class DatabasesPanel(QWidget):
                                       lambda: self._with_conn(self.open_adminer))
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
+        self.tree.setTextElideMode(Qt.TextElideMode.ElideMiddle)     # long names keep their extension
         self.tree.itemDoubleClicked.connect(self._dclick)
         self.tree.itemExpanded.connect(self._expanded)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -1837,8 +1838,10 @@ class DatabasesPanel(QWidget):
         if self.loose.connections:
             groups.append((None, self.loose))
         multi = len(groups) > 1
+        found = 0
         for p, m in groups:
             m.load() if p is not None else None
+            self._auto_add_site_databases(p, m)
             parent = self.tree.invisibleRootItem()
             if multi:
                 parent = QTreeWidgetItem(self.tree, [p.name if p is not None else "Other connections"])
@@ -1851,17 +1854,83 @@ class DatabasesPanel(QWidget):
             for c in m.connections:
                 self._add_conn_item(parent, m, c)
             for path in m.detect_sqlite_files():
-                it = QTreeWidgetItem(parent, [f"{path.name}  (found in project)"])
+                found += 1
+                it = QTreeWidgetItem(parent, [path.name])
                 it.setData(0, ROLE, (KIND_DETECTED, str(path)))
-                it.setToolTip(0, f"{path}\nDouble-click to add it to the project's connections")
+                it.setToolTip(0, f"{path}\nFound in the project - double-click to add it to the project's "
+                                 "connections")
                 it.setIcon(0, _std_icon(self, "SP_FileIcon"))
+                f = it.font(0)
+                f.setItalic(True)
+                it.setFont(0, f)
                 it.setData(1, ROLE, (p.folder if p is not None else None))
         for it in self._all_items():
             if self._item_key(it) in expanded:
                 it.setExpanded(True)
         n = sum(len(m.connections) for _p, m in groups)
-        self.info.setText("No project open - connections added now are kept for this session only."
-                          if not projects else f"{n} connection(s). Double-click a table to edit its data.")
+        self.info.setText(self.status_text(n, found, bool(projects)))
+
+    @staticmethod
+    def status_text(connections: int, found: int = 0, project_open: bool = True) -> str:
+        if not project_open:
+            return "No project open - connections added now are kept for this session only."
+        parts = []
+        if connections:
+            parts.append(f"{connections} connection{'s' if connections != 1 else ''}. "
+                         "Expand one and double-click a table to edit its data.")
+        else:
+            parts.append("No connections yet - add one with New.")
+        if found:
+            parts.append(f"{found} database file{'s' if found != 1 else ''} found in the project (in italics): "
+                         "double-click to add.")
+        return " ".join(parts)
+
+    # --- WebMatrix: a web site's own database is a connection as soon as the site is open
+    DISMISSED_KEY = "databases/dismissed"
+
+    def _dismissed(self) -> set[str]:
+        v = self.settings_value(self.DISMISSED_KEY, []) or []
+        return {str(x) for x in (v if isinstance(v, (list, tuple)) else [v])}
+
+    def _auto_add_site_databases(self, project, m) -> list:
+        """SQLite files of a web site project (data/app.sqlite, App_Data/*.db ...) are added to its connections
+        automatically (once: a connection the user removes is not added again)."""
+        if project is None:
+            return []
+        try:
+            from ..web_site.project import is_website
+            if not is_website(project):
+                return []
+            found = m.detect_sqlite_files()
+        except Exception:  # noqa: BLE001 - never break the tree
+            return []
+        dismissed = self._dismissed()
+        added = []
+        for path in found:
+            try:
+                if str(Path(path).resolve()).lower() in dismissed or Path(path).stat().st_size == 0:
+                    continue
+                info = m.add(D.ConnectionInfo(Path(path).stem, "sqlite", str(path)))
+            except Exception as e:  # noqa: BLE001
+                self.log(f"[databases] cannot add {path}: {e}")
+                continue
+            added.append(info)
+            self.log(f"[databases] Web site '{project.name}': added its database {Path(path).name} as the "
+                     f"connection '{info.name}'.")
+        return added
+
+    def site_request(self, info: dict) -> None:
+        """The first page of a web site was served (its database may have just been created): look again."""
+        srv = self.sender()
+        if srv is None or getattr(srv, "_radide_db_checked", False):
+            return
+        if str(info.get("type", "")).startswith("text/html"):
+            srv._radide_db_checked = True
+            try:
+                srv.request.disconnect(self.site_request)
+            except (TypeError, RuntimeError):
+                pass
+            QTimer.singleShot(300, self.refresh)
 
     def _add_conn_item(self, parent, m: D.ConnectionManager, c: D.ConnectionInfo):
         cid = self.conn_id(m, c.name)
@@ -2177,6 +2246,12 @@ class DatabasesPanel(QWidget):
             return
         self._close_db(cid)
         self.passwords.forget(c, self.key_folder(m.folder))
+        if c.kind == "sqlite" and c.path:
+            try:            # removed on purpose: do not add it back automatically
+                key = str(c.resolved_path(m.folder).resolve()).lower()
+                self.set_setting(self.DISMISSED_KEY, sorted(self._dismissed() | {key}))
+            except Exception:  # noqa: BLE001
+                pass
         m.remove(c.name)
         self.refresh()
 
@@ -2563,6 +2638,13 @@ def install(win) -> None:
             sm.addAction(a)
             sm.addAction("Open Database in Adminer", lambda: panel._with_conn(panel.open_adminer))
     QTimer.singleShot(0, add_to_site_menu)
+
+    # a web site's database usually appears with its first request (data/app.sqlite): look again then
+    def follow_web_server():
+        sig = getattr(win, "web_signals", None)
+        if sig is not None and hasattr(sig, "serverStarted"):
+            sig.serverStarted.connect(lambda srv: srv.request.connect(panel.site_request))
+    QTimer.singleShot(0, follow_web_server)
 
     # follow the open projects (open / close / add to solution all refill Solution Explorer)
     orig_fill = win._fill_solution

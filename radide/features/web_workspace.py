@@ -1314,24 +1314,52 @@ def site_settings(win, project=None, exec_: bool = True):
 
 
 # ============================================================================ designer docks
+DESIGNER_DOCKS = ("dock_toolbox", "dock_props", "dock_data", "dock_states", "dock_timeline")
+HIDDEN_DOCKS_KEY = "web/designer_docks_hidden"     # docks hidden for a web site (survives an IDE restart)
+
+
 def update_designer_docks(win) -> None:
-    """A solution made only of web sites has no forms: hide the Toolbox and Properties docks (and show them
-    again - as they were - when a solution with a normal project is opened)."""
+    """A solution made only of web sites has no forms: hide the form-designer docks - Toolbox, Properties and
+    the Blend panels (Data, States, Objects and Timeline) - and show them again, as they were, when a solution
+    with a normal project is opened."""
     projects = win.projects() if hasattr(win, "projects") else []
     web_only = bool(projects) and all(is_website(p) for p in projects)
-    if web_only == bool(getattr(win, "_web_docks_hidden", None)):
+    settings = getattr(win, "settings", None)
+    if web_only == (getattr(win, "_web_docks_hidden", None) is not None):
+        if not web_only and projects and settings is not None:
+            # the IDE was closed while a web site was open: its saved layout has these docks hidden
+            names = settings.value(HIDDEN_DOCKS_KEY, None)
+            if names:
+                settings.remove(HIDDEN_DOCKS_KEY)
+                names = {str(n) for n in (names if isinstance(names, (list, tuple)) else [names])}
+                for n in DESIGNER_DOCKS:
+                    d = getattr(win, n, None)
+                    if d is not None and d.objectName() in names:
+                        d.show()
+                _raise_props(win)
         return
-    docks = [d for d in (getattr(win, "dock_toolbox", None), getattr(win, "dock_props", None)) if d is not None]
+    docks = [d for d in (getattr(win, n, None) for n in DESIGNER_DOCKS) if d is not None]
     if web_only:
         win._web_docks_hidden = {d.objectName(): not d.isHidden() for d in docks}
         for d in docks:
             d.hide()
+        if settings is not None:
+            settings.setValue(HIDDEN_DOCKS_KEY, [n for n, vis in win._web_docks_hidden.items() if vis])
     else:
         saved = win._web_docks_hidden or {}
         win._web_docks_hidden = None
         for d in docks:
             if saved.get(d.objectName(), True):
                 d.show()
+        if settings is not None:
+            settings.remove(HIDDEN_DOCKS_KEY)
+        _raise_props(win)
+
+
+def _raise_props(win) -> None:
+    props = getattr(win, "dock_props", None)
+    if props is not None and props.isVisible():
+        props.raise_()                      # Properties in front of the Blend panels tabbed with it
 
 
 # ============================================================================ install
