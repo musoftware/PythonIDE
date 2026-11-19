@@ -1666,6 +1666,20 @@ def main(argv=None):
     except AttributeError:
         pass
     app.setFont(QFont("Segoe UI", 9))
+    win = None
+
+    def excepthook(etype, value, tb):
+        # PyQt6 aborts the whole process on an exception escaping a slot unless a hook is set:
+        # report it (stderr + Output window) and keep the IDE running.
+        import traceback
+        text = "".join(traceback.format_exception(etype, value, tb))
+        sys.__stderr__ and sys.__stderr__.write(text)
+        try:
+            if win is not None:
+                win.log("*** Internal error (the IDE keeps running):\n" + text.rstrip())
+        except Exception:  # noqa: BLE001
+            pass
+    sys.excepthook = excepthook
     win = MainWindow()
     if len(argv) > 1 and Path(argv[1]).exists():
         win.open_project(Path(argv[1]))

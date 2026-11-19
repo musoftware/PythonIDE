@@ -78,8 +78,7 @@ class DapSession(QObject):
                 e.insert(k, v)
             self.proc.setProcessEnvironment(e)
         self.proc.readyReadStandardOutput.connect(self._read)
-        self.proc.readyReadStandardError.connect(
-            lambda: self.output.emit(bytes(self.proc.readAllStandardError()).decode("utf-8", "replace")))
+        self.proc.readyReadStandardError.connect(self._read_stderr)
         self.proc.finished.connect(lambda code, _s: self._finish(code))
         self._buf = b""
         self._seq = 0
@@ -88,6 +87,12 @@ class DapSession(QObject):
         self.frame_id = None
         self._exit_code = 0
         self._done = False
+
+    def _read_stderr(self):
+        text = bytes(self.proc.readAllStandardError()).decode("utf-8", "replace")
+        if getattr(self, "user_stopped", False):
+            return      # the adapter's own log after Stop (debugpy: "couldn't handle disconnect ...") - noise
+        self.output.emit(text)
 
     # ------------------------------------------------------------ protocol
     def start(self):

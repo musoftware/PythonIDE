@@ -761,17 +761,29 @@ def monaco_available() -> bool:
 
 
 def use_monaco() -> bool:
-    from PyQt6.QtCore import QSettings
-    engine = QSettings("RADIDE", "RADIDE").value("editor/engine", "monaco")
+    from .app import ide_settings          # test runs read their own RADIDE-TEST* settings
+    engine = ide_settings().value("editor/engine", "monaco")
     return engine == "monaco" and monaco_available()
+
+
+# callables(editor) run for every editor make_editor creates (radide/features/ai_editor.py adds
+# its AI menu and Ctrl+I there); a hook must never break the editor
+EDITOR_HOOKS: list = []
 
 
 def make_editor(plugin, path: Path, parent=None):
     """Monaco (VS Code editor) when available, else the built-in editor."""
     if use_monaco():
         from .monaco_editor import MonacoEditor
-        return MonacoEditor(plugin, path, parent)
-    return CodeEditor(plugin, path, parent)
+        ed = MonacoEditor(plugin, path, parent)
+    else:
+        ed = CodeEditor(plugin, path, parent)
+    for hook in list(EDITOR_HOOKS):
+        try:
+            hook(ed)
+        except Exception as e:  # noqa: BLE001
+            print(f"[editor] hook failed: {e}")
+    return ed
 
 
 class CodeView(QWidget):

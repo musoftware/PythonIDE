@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QF
 DEFAULTS = {"theme": "Light", "editor_font": "Consolas", "editor_font_size": 10, "tab_width": 4,
             "grid_size": 8, "snap": True, "autosave_seconds": 60}
 KEY = "options/"
+# extra Options pages added by other features: hook(dialog) -> (widget, title, apply_fn) or None
+PAGE_HOOKS: list = []
 
 LIGHT_CODE = {"keyword": "#0000FF", "builtin": "#2B91AF", "comment": "#008000", "string": "#A31515",
               "number": "#098658", "decorator": "#795E26", "defname": "#795E26", "operator": "#000000"}
@@ -197,8 +199,14 @@ def apply_theme(win):
 def _follow_system(win):
     """Windows switched light/dark while the 'System' theme is chosen: re-theme editors etc."""
     from .. import theme as T
+    if getattr(win, "_rad_following", False):      # apply_all() itself emits theme.changed: no recursion
+        return
     if get(win, "theme") == "System" and getattr(win, "_rad_theme", None) != T.current_name():
-        apply_all(win)
+        win._rad_following = True
+        try:
+            apply_all(win)
+        finally:
+            win._rad_following = False
 
 
 def apply_autosave(win):
@@ -333,6 +341,17 @@ class OptionsDialog(QDialog):
         sa.setWidget(lw)
         tabs.addTab(sa, "Languages")
 
+        self._page_applies = []
+        for hook in PAGE_HOOKS:
+            try:
+                page = hook(self)
+            except Exception as ex:  # noqa: BLE001 - a broken page must not break Options
+                win.log(f"[options] page failed: {ex}")
+                continue
+            if page:
+                tabs.addTab(page[0], page[1])
+                self._page_applies.append(page[2])
+
         box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel |
                                QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.RestoreDefaults)
         box.accepted.connect(self.accept)
@@ -378,6 +397,11 @@ class OptionsDialog(QDialog):
             else:
                 s.remove(f"interpreter/{pid}")
         s.sync()
+        for fn in getattr(self, "_page_applies", []):
+            try:
+                fn()
+            except Exception as ex:  # noqa: BLE001
+                self.win.log(f"[options] page apply failed: {ex}")
         apply_all(self.win)
 
     def accept(self):
@@ -402,7 +426,8 @@ def install(win) -> None:
     # always apply at start-up: the theme must be explicit (never Qt's palette that follows Windows)
     apply_all(win)
     from .. import theme as T
-    T.changed.connect(lambda _n: _follow_system(win))
+    from PyQt6 import sip           # a closed (deleted) window must not be re-themed
+    T.changed.connect(lambda _n: None if sip.isdeleted(win) else _follow_system(win))
 
 
 __all__ = ["OptionsDialog", "show_options", "apply_all", "get", "dark_palette", "DEFAULTS"]

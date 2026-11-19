@@ -5,6 +5,10 @@ pyflakes>=3.0
 # optional (Databases workspace: MySQL / PostgreSQL connections): pymysql>=1.1, psycopg[binary]>=3.1
 # Site > Publish over SFTP (FTP/FTPS/folder need nothing extra)
 paramiko>=3.4
+# AI (radide/ai): API keys in the OS credential store (without it they go to QSettings unencrypted)
+keyring>=25
+# AI Chat: syntax colours in code blocks (without it code is shown uncoloured)
+pygments>=2.17
 # tests of Publish only (local FTP/FTPS server): pyftpdlib>=2.0, pyopenssl>=24
 # optional: PySide6-Essentials (Python/Qt projects and importing Qt programs), pyinstaller (Build EXE), pywin32 (VB CreateObject)
 

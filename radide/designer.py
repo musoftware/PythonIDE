@@ -100,6 +100,9 @@ class Overlay(QWidget):
         self.band = QRect()
         self.recorded = False
 
+    def _on_tool_changed(self, _tool=None):
+        self.unsetCursor()
+
     # ---------------------------------------------------------------- helpers
     @property
     def form(self):
@@ -742,7 +745,9 @@ class DesignerView(QScrollArea):
         doc.structureChanged.connect(self.rebuild)
         doc.controlChanged.connect(self.on_control_changed)
         doc.selectionChanged.connect(self._on_selection)
-        TOOL_STATE.changed.connect(lambda _t: self.overlay.unsetCursor())
+        # bound method of a QObject: PyQt disconnects it when the overlay is deleted (a lambda
+        # would outlive a closed designer and raise "wrapped C/C++ object deleted" -> abort)
+        TOOL_STATE.changed.connect(self.overlay._on_tool_changed)
         self.rebuild()
 
     # ------------------------------------------------------------ Blend preview hooks

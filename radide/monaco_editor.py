@@ -137,11 +137,35 @@ class _Bridge(QObject):
     def jsDefinition(self, line, col):
         self.ed.definitionRequested.emit(line, col)
 
+    # AI (radide/features/ai_editor.py): ghost-text completions and Ctrl+I inline edit
+    @pyqtSlot(int, int, int, bool)
+    def jsInlineComplete(self, req, line, col, explicit):
+        self.ed._inline_complete(req, line, col, explicit)
+
+    @pyqtSlot(int)
+    def jsInlineCancel(self, req):
+        h = MonacoEditor.inline_cancel
+        if h is not None:
+            try:
+                h(self.ed, req)
+            except Exception:  # noqa: BLE001
+                pass
+
+    @pyqtSlot(int, int, int)
+    def jsInlineEdit(self, x, y, h):
+        self.ed.inlineEditRequested.emit(x, y, h)
+
 
 class MonacoEditor(QWebEngineView):
     # callables(editor) run once each editor's page is ready (radide/features/lsp_support.py attaches servers)
     ready_hooks: list = []
+    # AI inline completions (set by radide/features/ai_editor.py):
+    #   inline_provider(editor, req, line, col, explicit) -> later editor.resolve_inline(req, text)
+    #   inline_cancel(editor, req)
+    inline_provider = None
+    inline_cancel = None
 
+    inlineEditRequested = pyqtSignal(int, int, int)   # Ctrl+I: caret x, y, line height (editor pixels)
     breakpointToggled = pyqtSignal(int, bool)
     languageChanged = pyqtSignal(str)        # new Monaco language id ("Open as PHP", ...)
     contextMenuAboutToShow = pyqtSignal(object)
@@ -492,6 +516,32 @@ class MonacoEditor(QWebEngineView):
     def _hover(self, req: int, word: str, x: int, y: int):
         self.hoverWord.emit(word, self.mapToGlobal(QPoint(x, y)))
         self._js(f"radResolve({req}, null);")
+
+    # ------------------------------------------------------------ AI inline completions
+    def _inline_complete(self, req: int, line: int, col: int, explicit: bool):
+        h = MonacoEditor.inline_provider
+        if h is None:
+            self.resolve_inline(req, None)
+            return
+        try:
+            h(self, req, line, col, explicit)
+        except Exception as e:  # noqa: BLE001 - completion must never break typing
+            print(f"[monaco] inline completion failed: {e}")
+            self.resolve_inline(req, None)
+
+    def resolve_inline(self, req: int, text: str | None) -> None:
+        self._js(f"radResolve({req}, {json.dumps(text or None)});")
+
+    def set_inline_enabled(self, on: bool, delay_ms: int = 0) -> None:
+        self._js(f"radSetInline({json.dumps(bool(on))}, {int(delay_ms)});")
+
+    def trigger_inline_suggest(self) -> None:
+        self._js("radInlineSuggest();")
+
+    def offset_of(self, line: int, col: int) -> int:
+        lines = self._text.split("\n")
+        line = max(0, min(line, len(lines) - 1))
+        return sum(len(x) + 1 for x in lines[:line]) + min(col, len(lines[line]))
 
     def smart_complete(self, auto=False):
         self._js("radEditor.trigger('rad', 'editor.action.triggerSuggest', {});")

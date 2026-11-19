@@ -31,6 +31,7 @@ require(['vs/editor/editor.main'], function () {
       bracketPairColorization: { enabled: true }, smoothScrolling: true, mouseWheelZoom: true,
       contextmenu: false, quickSuggestions: { other: true, comments: false, strings: false },
       suggestOnTriggerCharacters: true, wordBasedSuggestions: 'off', tabSize: 4, insertSpaces: true,
+      inlineSuggest: { enabled: true, showToolbar: 'onHover' },
     });
     window.radEditor = editor;
     let muted = false;
@@ -149,7 +150,7 @@ require(['vs/editor/editor.main'], function () {
       return false;
     };
     editor.addCommand(monaco.KeyCode.Tab, () => { if (!radEmmetExpand(false)) editor.trigger('keyboard', 'tab', null); },
-      'radEmmetLang && editorTextFocus && !editorReadonly && !editorHasSelection && !suggestWidgetVisible && !inSnippetMode && !hasOtherSuggestions');
+      'radEmmetLang && editorTextFocus && !editorReadonly && !editorHasSelection && !suggestWidgetVisible && !inSnippetMode && !hasOtherSuggestions && !inlineSuggestionVisible');
     editor.addAction({ id: 'rad.emmet.expand', label: 'Emmet: Expand Abbreviation',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
       run: () => { if (!radEmmetExpand(true)) editor.trigger('rad', 'tab', null); } });
@@ -190,6 +191,48 @@ require(['vs/editor/editor.main'], function () {
                            ...spec.quotes.map(q => ({ open: q, close: q }))],
       });
     };
+
+    // ---------------- AI (docs/CONTRACTS.md 9.4, Python side: radide/features/ai_editor.py)
+    // Inline completions (ghost text): debounced, Tab accepts, Esc dismisses (Monaco's own keys).
+    const inline = { on: false, delay: 450 };
+    window.radSetInline = (on, delay) => { inline.on = !!on; if (delay) inline.delay = delay;
+      if (!inline.on) editor.trigger('rad', 'editor.action.inlineSuggest.hide', {}); };
+    monaco.languages.registerInlineCompletionsProvider('*', {
+      provideInlineCompletions: async (model, pos, ctx, token) => {
+        const explicit = ctx && ctx.triggerKind === 1;
+        if (!inline.on && !explicit || model !== editor.getModel() || editor.getOption(monaco.editor.EditorOption.readOnly))
+          return { items: [] };
+        if (!explicit) {
+          const after = model.getLineContent(pos.lineNumber).substring(pos.column - 1);
+          if (/^\s*[\w$]/.test(after)) return { items: [] };       // in the middle of a word / statement
+          await new Promise(r => setTimeout(r, inline.delay));
+          if (token.isCancellationRequested) return { items: [] };
+        }
+        const id = nextId++;
+        const res = new Promise(r => waiting.set(id, r));
+        const sub = token.onCancellationRequested(() => { rad.jsInlineCancel(id); radResolve(id, null); });
+        rad.jsInlineComplete(id, pos.lineNumber - 1, pos.column - 1, !!explicit);
+        const text = await res;
+        sub.dispose();
+        if (!text || token.isCancellationRequested) return { items: [] };
+        return { items: [{ insertText: text, range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column) }] };
+      },
+      freeInlineCompletions() {},
+      disposeInlineCompletions() {},
+    });
+    editor.addAction({ id: 'rad.ai.inlineSuggest', label: 'AI: Suggest Inline Completion',
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.Backslash],
+      run: ed => ed.trigger('rad', 'editor.action.inlineSuggest.trigger', {}) });
+    // Ctrl+I: inline edit (the prompt box is a Qt widget placed at the selection)
+    editor.addAction({ id: 'rad.ai.inlineEdit', label: 'AI: Edit Selection with AI...',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI],
+      run: ed => { const s = ed.getSelection(); const p = s ? s.getStartPosition() : ed.getPosition();
+        const c = ed.getScrolledVisiblePosition(p) || { left: 0, top: 0, height: 18 };
+        rad.jsInlineEdit(Math.round(c.left), Math.round(c.top), Math.round(c.height || 18)); } });
+    window.radCaretPoint = () => { const c = editor.getScrolledVisiblePosition(editor.getPosition());
+      return c ? [Math.round(c.left), Math.round(c.top), Math.round(c.height)] : [0, 0, 18]; };
+    window.radInlineSuggest = () => { editor.focus(); editor.trigger('rad', 'editor.action.inlineSuggest.trigger', {}); };
+    window.radInlineAccept = () => editor.trigger('rad', 'editor.action.inlineSuggest.commit', {});
 
     // ---------------- events to Python
     editor.onDidChangeModelContent(() => { if (!muted) rad.jsTextChanged(editor.getValue()); });
