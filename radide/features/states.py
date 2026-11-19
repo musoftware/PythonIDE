@@ -243,6 +243,8 @@ class _VisualStates:
         for key in [k for k in self._applied if k[0] == name and k[1] not in want]:
             del self._applied[key]
             self._io.set(name, key[1], self._saved.pop(key, None))
+            if key[1] in ("Left", "Top", "Width", "Height"):
+                self._io.release(name, key[1])      # Anchor / Dock take the control back
         for prop, value in want.items():
             key = (name, prop)
             if key not in self._applied:
@@ -287,9 +289,29 @@ TK_IO = r'''
 class _RadIO:
     """Reads / writes neutral properties of the Tk widgets (visual states, storyboards, bindings)."""
     GEO = {"Left": "x", "Top": "y", "Width": "width", "Height": "height"}
+    REL = {"Left": "relx", "Top": "rely", "Width": "relwidth", "Height": "relheight"}
 
     def __init__(self, owner):
         self.o = owner
+        self._anchored = {}     # (name, prop) -> (offset, rel) of Anchor / Dock before a state / storyboard
+
+    def release(self, name, prop=None):
+        """A state / storyboard gave the geometry back: Anchor / Dock place the control again."""
+        props = [prop] if prop else list(self.GEO)
+        new = {}
+        for p in props:
+            orig = self._anchored.pop((name, p), None)
+            if orig is not None:
+                new[self.GEO[p]], new[self.REL[p]] = orig
+        if not new:
+            return
+        self.o._places.setdefault(name, {}).update(new)
+        try:
+            w = self.w(name)
+            if w.winfo_manager() == "place":
+                w.place_configure(**new)
+        except (tk.TclError, AttributeError):
+            pass
 
     def w(self, name):
         return self.o.root if not name else getattr(self.o, name)
@@ -318,7 +340,7 @@ class _RadIO:
             if prop in self.GEO:
                 info = w.place_info() or self.o._places.get(name, {})
                 v = info.get(self.GEO[prop])
-                if v in (None, ""):
+                if v in (None, "") or float(info.get(self.REL[prop]) or 0):   # anchored: the real value
                     w.update_idletasks()
                     return {"Left": w.winfo_x, "Top": w.winfo_y, "Width": w.winfo_width,
                             "Height": w.winfo_height}[prop]()
@@ -382,10 +404,16 @@ class _RadIO:
                 else:
                     w.configure(text=str(v))
             elif prop in self.GEO:
-                key = self.GEO[prop]
-                self.o._places.setdefault(name, {})[key] = int(v)
+                key, rel = self.GEO[prop], self.REL[prop]
+                opts = self.o._places.setdefault(name, {})
+                new = {key: int(v)}
+                if float(opts.get(rel) or 0):     # Anchor / Dock: the animated value is absolute
+                    self._anchored.setdefault((name, prop), (opts.get(key, 0), opts[rel]))
+                    opts.pop(rel, None)
+                    new[rel] = 0
+                opts[key] = int(v)
                 if w.winfo_manager() == "place":
-                    w.place_configure(**{key: int(v)})
+                    w.place_configure(**new)
             elif prop == "BackColor":
                 w.configure(bg=v)
             elif prop == "ForeColor":
@@ -577,6 +605,36 @@ class _RadIO:
         client = self.o.__dict__.get("_client")
         return self.o.height() - client.height() if client is not None else 0
 
+    @staticmethod
+    def _hold(name, w, prop):
+        """A state / storyboard sets this geometry: Anchor / Dock leave it alone until release()."""
+        if name:
+            held = getattr(w, "_rad_held", None)
+            if held is None:
+                held = set()
+                w._rad_held = held
+            held.add(prop)
+
+    def release(self, name, prop=None):
+        """A state / storyboard gave the geometry back: Anchor / Dock place the control again."""
+        if not name:
+            return
+        try:
+            w = self.w(name)
+            held = getattr(w, "_rad_held", None)
+            if not held:
+                return
+            if prop is None:
+                held.clear()
+            else:
+                held.discard(prop)
+            host = w.parentWidget()
+            for lay in (host.children() if host is not None else []):
+                if type(lay).__name__ == "_Layout" and any(it[0] is w for it in lay.items):
+                    lay.apply()
+        except (AttributeError, RuntimeError):
+            pass
+
     def set(self, name, prop, v):
         if v is None:
             return
@@ -597,8 +655,10 @@ class _RadIO:
                 elif hasattr(w, "setText"):
                     w.setText(str(v))
             elif prop in ("Left", "Top"):
+                self._hold(name, w, prop)
                 w.move(int(v) if prop == "Left" else w.x(), int(v) if prop == "Top" else w.y())
             elif prop in ("Width", "Height"):
+                self._hold(name, w, prop)
                 top = 0 if name else self._top()
                 w.resize(int(v) if prop == "Width" else w.width(), int(v) + top if prop == "Height" else w.height())
             elif prop in ("BackColor", "ForeColor"):
@@ -815,6 +875,30 @@ class BlendPreview(QObject):
             props.update(timeline.props_at(sb, ctrl.name, ms, props))
         return props
 
+    def design_props(self, ctrl) -> dict:
+        """Properties the designer should use for ctrl's selection outline / hit testing (the previewed
+        state / timeline geometry; sample data is left out - it never changes the geometry).
+        ctrl None = the form (its custom state and storyboard tracks with target "")."""
+        from . import timeline
+        form = self.doc.form
+        base = form.props if ctrl is None else ctrl.props
+        if not self.state and self.timeline is None:
+            return base
+        props = dict(base)
+        if self.state and not (ctrl is None and self.state in AUTO_STATES):
+            props.update(overrides(form, ctrl, self.state))
+        if self.timeline is not None:
+            sb, ms = self.timeline
+            if sb is not None:
+                props.update(timeline.props_at(sb, "" if ctrl is None else ctrl.name, ms, props))
+        for k in ("Left", "Top", "Width", "Height"):
+            if k in props:
+                try:
+                    props[k] = int(props[k])
+                except (TypeError, ValueError):
+                    props[k] = base.get(k, 0)
+        return props
+
     def apply(self, ctrl) -> None:
         from ..model import Control
         from ..preview import apply_props
@@ -847,6 +931,11 @@ class BlendPreview(QObject):
         self._dirty &= live
         for c in self.doc.form.visual():
             self.apply(c)
+        # the form's own previewed values (Text / BackColor / size) and the selection outline
+        if hasattr(self.view, "layout_form"):
+            self.view.layout_form()
+            self.view.frame.update()
+            self.view.overlay.update()
 
     # ------------------------------------------------------------ state recording
     def set_state(self, state: str) -> None:

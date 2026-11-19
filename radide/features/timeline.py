@@ -89,6 +89,8 @@ class _Storyboard:
         self.IsPlaying, self._paused, self.Position = False, None, 0
         for (t, p), v in self._saved.items():
             self._io.set(t, p, v)
+            if p in ("Left", "Top", "Width", "Height"):
+                self._io.release(t, p)          # Anchor / Dock take the control back
         self._saved = {}
 
     def Pause(self):
@@ -672,7 +674,8 @@ class TimelinePanel(QWidget):
         sb, bp = self.sb(), self.bp
         if bp is None:
             return
-        bp.timeline = (sb, self.ms) if sb is not None and (self.ms > 0 or self.timer.isActive()) else None
+        live = self.ms > 0 or self.timer.isActive() or self.rec.isChecked()   # recording at 0 ms too
+        bp.timeline = (sb, self.ms) if sb is not None and live else None
         bp.refresh()
 
     def play(self) -> None:
@@ -735,6 +738,7 @@ class TimelinePanel(QWidget):
             bp.key_recorder = self._record
         else:
             bp.key_recorder = None
+        self._preview()
 
     def _record(self, ctrl) -> None:
         sb = self.sb()

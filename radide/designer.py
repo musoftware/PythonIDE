@@ -75,7 +75,7 @@ class Surface(QWidget):
 
     def paintEvent(self, _e):
         p = QPainter(self)
-        back = self.view.doc.form.props.get("BackColor") or FORM_BACK
+        back = self.view.form_props().get("BackColor") or FORM_BACK
         p.fillRect(self.rect(), QColor(back))
         p.setPen(QColor(0, 0, 0, 140))
         for x in range(0, self.width(), GRID):
@@ -106,8 +106,25 @@ class Overlay(QWidget):
         return self.doc.form
 
     def abs_rect(self, c: Control) -> QRect:
-        x, y = self.form.abs_pos(c)
-        return QRect(x, y, int(c.props["Width"]), int(c.props["Height"]))
+        """Where c is drawn - the previewed visual state / timeline geometry when one is shown."""
+        dp = self.view.design_props
+        p = dp(c)
+        x, y = int(p["Left"]), int(p["Top"])
+        seen = set()
+        parent = self.form.find(c.parent) if c.parent else None
+        while parent is not None and parent.name not in seen:
+            seen.add(parent.name)
+            pp = dp(parent)
+            ox, oy = self.form.client_offset(parent)
+            x += int(pp["Left"]) + ox
+            y += int(pp["Top"]) + oy
+            parent = self.form.find(parent.parent) if parent.parent else None
+        return QRect(x, y, int(p["Width"]), int(p["Height"]))
+
+    def start_rect(self, c: Control) -> QRect:
+        """Geometry a move / resize starts from (what the designer shows for c)."""
+        p = self.view.design_props(c)
+        return QRect(int(p["Left"]), int(p["Top"]), int(p["Width"]), int(p["Height"]))
 
     def shown(self) -> list[Control]:
         """Visual controls the designer currently shows (z-order, containers first)."""
@@ -189,8 +206,7 @@ class Overlay(QWidget):
         if self.handle >= 0:
             self.mode = "resize"
             c = self.doc.selected
-            self.starts = {id(c): QRect(int(c.props["Left"]), int(c.props["Top"]),
-                                        int(c.props["Width"]), int(c.props["Height"]))}
+            self.starts = {id(c): self.start_rect(c)}
             return
         hit = self.control_at(pos)
         if hit is None:
@@ -213,9 +229,7 @@ class Overlay(QWidget):
             self.mode = None
             return
         self.mode = "move"
-        self.starts = {id(c): QRect(int(c.props["Left"]), int(c.props["Top"]),
-                                    int(c.props["Width"]), int(c.props["Height"]))
-                       for c in self._movable()}
+        self.starts = {id(c): self.start_rect(c) for c in self._movable()}
 
     def _click_tab(self, tc: Control, pos: QPoint) -> bool:
         """A click on the tab bar of a TabControl shows that page (VS behaviour)."""
@@ -244,8 +258,9 @@ class Overlay(QWidget):
             self._record()
             for c in self._movable():
                 s = self.starts.get(id(c))
-                if s is not None:
-                    self.doc.set_geometry(c, snap(s.x() + dx), snap(s.y() + dy), s.width(), s.height())
+                if s is not None:     # size: the base value (a previewed state / keyframe size stays as is)
+                    self.doc.set_geometry(c, snap(s.x() + dx), snap(s.y() + dy),
+                                          int(c.props["Width"]), int(c.props["Height"]))
             return
         if self.mode == "resize":
             c = self.doc.selected
@@ -260,7 +275,11 @@ class Overlay(QWidget):
             if mt: top = min(snap(top + dy), bottom - MIN_SIZE)
             if mr: right = max(snap(right + dx), left + MIN_SIZE)
             if mb: bottom = max(snap(bottom + dy), top + MIN_SIZE)
-            self.doc.set_geometry(c, left, top, right - left, bottom - top)
+            new = (left, top, right - left, bottom - top)
+            old = (s.left(), s.top(), s.width(), s.height())
+            base = [int(c.props[k]) for k in ("Left", "Top", "Width", "Height")]
+            # edges the gesture did not move keep their base value (matters while previewing a state)
+            self.doc.set_geometry(c, *[n if n != o else b for n, o, b in zip(new, old, base)])
             return
         if TOOL_STATE.current:
             self.setCursor(Qt.CursorShape.CrossCursor)
@@ -284,7 +303,7 @@ class Overlay(QWidget):
                     hits = self.doc.selection + [c for c in hits if c not in self.doc.selection]
                 self.doc.select_many(hits)
             self.update()
-        elif mode == "move" and self.recorded:
+        elif mode == "move" and self.recorded and not self.view.blend_recording():
             moved = self._movable()
             for c in moved:                    # drop into / out of containers
                 r = self.abs_rect(c)
@@ -329,12 +348,12 @@ class Overlay(QWidget):
         if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
             c = self.doc.selected
             if c is not None and not c.ctype.nonvisual:
-                p = c.props
+                p = self.view.design_props(c)
                 self.doc.set_geometry(c, p["Left"], p["Top"], max(MIN_SIZE, p["Width"] + step[0]),
                                       max(MIN_SIZE, p["Height"] + step[1]))
         else:
             for c in self._movable():
-                p = c.props
+                p = self.view.design_props(c)
                 self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], p["Width"], p["Height"])
 
     # ------------------------------------------------------------ drag & drop
@@ -479,7 +498,7 @@ class FormFrame(QWidget):
         doc.select(None)
         self._resizing = self._edge(pos)
         self._press = pos
-        fp = doc.form.props
+        fp = self.view.form_props()
         self._start = (int(fp["Width"]), int(fp["Height"]))
         if self._resizing:
             doc.checkpoint()
@@ -536,7 +555,7 @@ class FormFrame(QWidget):
         p.setPen(QColor("#ffffff"))
         p.setFont(QFont("Trebuchet MS", 9, QFont.Weight.Bold))
         p.drawText(QRect(10, BORDER, r.width() - 90, CAPTION), Qt.AlignmentFlag.AlignVCenter,
-                   str(doc.form.props.get("Text", "")))
+                   str(self.view.form_props().get("Text", "")))
         for i, colour in enumerate(("#2E6BEA", "#2E6BEA", "#D9542B")):
             x = r.width() - BORDER - 22 * (3 - i)
             br = QRect(x, BORDER + 3, 20, 20)
@@ -726,9 +745,35 @@ class DesignerView(QScrollArea):
         TOOL_STATE.changed.connect(lambda _t: self.overlay.unsetCursor())
         self.rebuild()
 
+    # ------------------------------------------------------------ Blend preview hooks
+    def design_props(self, c: Control) -> dict:
+        """c's properties as previewed (selected visual state / timeline position), else c.props."""
+        bp = getattr(self, "_blend_preview", None)
+        if bp is not None:
+            try:
+                return bp.design_props(c)
+            except (TypeError, ValueError, KeyError, AttributeError):
+                pass
+        return c.props
+
+    def form_props(self) -> dict:
+        """The form's properties as previewed (a custom state's Text / BackColor / size ...)."""
+        bp = getattr(self, "_blend_preview", None)
+        if bp is not None:
+            try:
+                return bp.design_props(None)
+            except (TypeError, ValueError, KeyError, AttributeError):
+                pass
+        return self.doc.form.props
+
+    def blend_recording(self) -> bool:
+        """True while edits are recorded into a visual state or as timeline keyframes."""
+        bp = getattr(self, "_blend_preview", None)
+        return bool(bp is not None and (bp.recording or bp.key_recorder is not None))
+
     # ------------------------------------------------------------ layout
     def layout_form(self) -> None:
-        fp = self.doc.form.props
+        fp = self.form_props()
         w, h = int(fp["Width"]), int(fp["Height"])
         mh = self.frame.menu_height()
         fw, fh = w + 2 * BORDER, h + CAPTION + mh + 2 * BORDER

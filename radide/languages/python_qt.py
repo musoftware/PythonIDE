@@ -115,8 +115,14 @@ class _Layout(QObject):
     def apply(self):
         cw, ch = self.host.width(), self.host.height()
         for w, (x, y, ww, hh, rx, ry, rw, rh) in self.items:
-            w.setGeometry(round(x + rx * cw), round(y + ry * ch),
-                          max(0, round(ww + rw * cw)), max(0, round(hh + rh * ch)))
+            g = [round(x + rx * cw), round(y + ry * ch), max(0, round(ww + rw * cw)), max(0, round(hh + rh * ch))]
+            held = getattr(w, "_rad_held", None)    # geometry a visual state / storyboard is animating
+            if held:
+                for i, (prop, cur) in enumerate((("Left", w.x()), ("Top", w.y()), ("Width", w.width()),
+                                                 ("Height", w.height()))):
+                    if prop in held:
+                        g[i] = cur
+            w.setGeometry(*g)
 
 
 def _place(widget, host, spec):
