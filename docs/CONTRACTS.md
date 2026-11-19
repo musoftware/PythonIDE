@@ -386,3 +386,105 @@ provider kind "web" in the registry (chat() = send + wait for the answer to stop
 | ai-agent | radide/ai/agents.py, radide/features/ai_agents.py |
 | ai-web | radide/features/ai_web.py |
 Until ai-core lands, other agents may stub `radide.ai` calls behind try/except but must end up using the real API.
+
+## 10. Mobile apps, games, and importing programs from .exe - round 5
+
+The user's requests: "now the most important part: mobile applications and games" and "the last thing: use a
+source that reads the assembly from the exe and converts any program to simple Python".
+Installed here: Flutter (C:\flutter, Dart), Android SDK (%LOCALAPPDATA%\Android\Sdk: adb, emulator, AVDs
+`Medium_Phone_API_36`, `ZA_Screens`), JDK 17, Godot 4.2.2 (`godot`), .NET 9 SDK, Node 22. pip/npm/dotnet-tool
+installs into the venv / private folders are allowed (pygame-ce, kivy, pefile, capstone, ilspycmd ...).
+
+### 10.1 Mobile apps (owner: mobile)
+- New Project > **Mobile** group: *Flutter App* (Dart, the main path), *Python Kivy App* (desktop run + Buildozer
+  notes), *React Native / Expo* only when npx works (template + run on web/Android).
+- The **form designer gets a phone frame**: device presets (Android phone / tablet, iPhone sizes), portrait /
+  landscape, safe area, mobile-only controls in the Toolbox when the project is mobile (AppBar, BottomNavigation,
+  FloatingActionButton, Card, ListView with item template, Switch, Slider, TextField, Image, Icon, Drawer,
+  TabBar, Snackbar/Toast, WebView), layout by Column/Row/Stack/Padding (Flutter) besides absolute placement.
+- Code generation: `.form` -> Dart widget tree (`lib/<form>_designer.dart`) + user file `lib/<form>.dart` with
+  event handlers (same VB-style double-click -> handler model), several forms = screens with navigation
+  (`Navigator.push`, `ShowForm` equivalent); Kivy: .form -> KV/Python.
+- Run: **Device selector** in the toolbar (Windows desktop / Chrome / Android emulators from `flutter devices` and
+  `emulator -list-avds`, start an AVD on demand), F5 = `flutter run -d <id>` with **hot reload on save** (send `r`
+  to the process) and hot restart, logs in Output; Build menu: APK / App Bundle / Windows exe / web.
+- Debugger: Dart DAP (`dart debug_adapter` / `flutter debug_adapter`) through radide/dap.py when feasible.
+
+### 10.2 Games (owner: games)
+- New Project > **Games** group: *Python Game (pygame-ce)* main path, *Python Arcade* optional, *Godot project*
+  (opens/edits GDScript, runs `godot --path`), *Ring Game (RingRayLib / Allegro)* if available, *HTML5 Canvas game*.
+- **Scene designer** (a designer mode for game projects): scene canvas with grid/camera, **sprites** (image,
+  position, scale, rotation, z-order, visible), **tilemap editor** (tileset import, paint/erase/fill, layers,
+  collision layer), **sprite sheet / animation editor** (frames, fps, loop), sounds, text/UI layers, game
+  properties (window size, FPS, background), **Behaviours** (keyboard movement, gravity/platformer, top-down,
+  bounce, follow mouse, collide -> event) set in the Properties window, events in code like VB:
+  `Player_Collide(other)`, `Game_Update(dt)`, `Game_KeyDown(key)`, `Timer1_Tick`.
+- Code generation for pygame-ce (scene loader + game loop + behaviours in a small runtime module copied into the
+  project) and for Godot (`.tscn` + `.gd` export). F5 runs the game; asset browser dock (images/sounds preview).
+- Samples: `samples/HelloGame` (platformer with tilemap, player sprite animation, coins, score) and
+  `samples/HelloMobile` (Flutter: 2 screens, list, form, navigation). (Samples are new folders - allowed.)
+
+### 10.3 Import a program from .exe (owner: exe-import)
+File > Import > **Program (.exe / .dll)...**: a wizard that identifies the binary and uses the best open-source
+tool, producing a RAD IDE project (forms + code) - for programs the user owns or may legally analyse (show that
+notice in the wizard).
+- Identify: `pefile` - .NET (CLR header), VB6 (MSVBVM60 import / VB5! header), PyInstaller / py2exe / cx_Freeze /
+  Nuitka, Delphi, AutoIt/AHK, Electron/NW.js (app.asar), Java (jar/exe wrapper), native C/C++.
+- **.NET**: `ilspycmd` (dotnet tool, install into %LOCALAPPDATA%\RADIDE\tools) -> C# project; WinForms
+  `InitializeComponent` -> `.form` (controls, positions, text, events) + handler code translated to Python
+  (rules for common APIs: MessageBox.Show, TextBox.Text, ..., with AI (radide.ai, CONTRACTS 9.1) as the
+  translator when a provider is configured and rules otherwise leave the C# as comments).
+- **VB6 exe**: forms from the embedded VB6 form structures (open-source parsers / own parser) -> `.frm` -> the
+  existing VB6 importer; P-code / native code -> best effort (event names + strings) + AI translation.
+- **Python exes**: pyinstxtractor-ng -> .pyc -> decompile (pycdc / decompyle3 for the matching version) -> the
+  existing Python importer for forms.
+- **Native**: dialogs/menus/strings from PE resources (pefile) -> `.form`; disassembly with capstone and, when
+  available, Ghidra headless decompile (download Ghidra into %LOCALAPPDATA%\RADIDE\tools only if the user
+  confirms - it is large) -> pseudo-C -> AI translation to simple Python; without Ghidra: resources + imports +
+  strings + function list report.
+- Electron (asar extract -> JS project), Java (jar -> CFR/Vineflower decompile -> Java project or AI to Python),
+  AutoIt (resource script).
+- Output: a new project (python-tk by default, user can choose another language) + an import report (what was
+  recovered exactly, what was translated by rules, what by AI, what is missing).
+
+### 10.4 Shared formats (agree on these - agents of the same area work in parallel)
+- Mobile control types (in `.form` like any control; `props` use the usual Left/Top/Width/Height/Text/BackColor/
+  ForeColor/FontSize/Visible/Enabled + the extras listed): `AppBar` (Title, Actions="a;b"), `BottomNav`
+  (Items="Home;Search;Profile", SelectedIndex), `Fab` (Icon), `Card` (Elevation, container), `MListView`
+  (Items, ItemTemplate="title|subtitle"), `Switch` (Checked), `MSlider` (Minimum/Maximum/Value), `MTextField`
+  (Hint, Password), `MImage` (Image, Fit), `MIcon` (Icon name from Material icons), `Drawer` (Items),
+  `MTabBar` (Tabs), `MWebView` (Url), `Column`/`Row`/`Stack` containers (Spacing, Align, Padding; children are
+  laid out by the container in the designer preview too). Form props for mobile forms: `Device` (preset id),
+  `Orientation` (Portrait|Landscape), `Route` (screen route name). Events: Click/Tap, Changed, Submitted, Load.
+  Project `kind` stays "app"; plugin ids `flutter` and `kivy`. A plugin attribute `is_mobile = True` tells the
+  designer to show the phone frame and the Mobile toolbox group.
+- Game scene file `<Scene>.scene` (JSON): `{"name", "width", "height", "background", "fps", "gravity",
+  "camera": {"follow": sprite|null}, "assets": {"images": {id: path}, "sounds": {id: path},
+  "spritesheets": {id: {"image", "frame_w", "frame_h", "animations": {name: {"frames": [i...], "fps", "loop"}}}},
+  "tilesets": {id: {"image", "tile_w", "tile_h"}}}, "layers": [{"name", "type": "tiles"|"sprites"|"ui",
+  "tileset", "data": [[tile index or -1 ...]...], "collision": bool, "objects": [{"name", "kind":
+  "sprite"|"text"|"area", "x", "y", "w", "h", "image"|"spritesheet", "animation", "scale", "rotation", "z",
+  "visible", "text", "behaviours": [{"type": "keyboard_move"|"platformer"|"top_down"|"bounce"|"follow_mouse"|
+  "solid"|"collectible"|"enemy_patrol", ...params}], "props": {}}]}]}`. Game project: plugin ids
+  `pygame` and `godot`; `is_game = True` tells the IDE to open `.scene` files in the scene designer; user code in
+  `<Scene>.py` with VB-style handlers `Scene_Load`, `Scene_Update(dt)`, `Scene_KeyDown(key)`,
+  `<Sprite>_Collide(other)`, `<Sprite>_Click`, `Timer` events; the runtime module `radgame.py` is copied into
+  the project (like the GUI-bridge clients).
+- Exe import backends: `radide/importers/exe/base.py` (owner exe-core) defines
+  `identify(path) -> BinaryInfo(kind, details: dict)` and `ImportResult(forms: list[(name, form_dict)],
+  modules: list[(name, code, language)], resources: dict, report: list[(level, text)], source_dir: Path|None)`;
+  backends `dotnet.py`, `vb6.py`, `pyexe.py`, `java.py`, `electron.py` (owner exe-managed) and `native.py`,
+  `pe_resources.py` (owner exe-core) each expose `can_handle(info) -> bool` and
+  `run(path, info, workdir, progress, ai_translate: bool) -> ImportResult`. The wizard (exe-core) picks the
+  backend and turns the result into a project in the chosen language (forms via the neutral model, code via
+  rules + radide.ai when allowed).
+
+### 10.5 Ownership (round 5)
+| Agent | Owns |
+|---|---|
+| mobile-lang | radide/languages/flutter.py, kivy_app.py, radide/mobile/codegen*.py, radide/features/mobile.py (devices, run, hot reload, build), templates, samples/HelloMobile |
+| mobile-designer | radide/mobile/controls.py, radide/mobile/frame.py (phone frame, device presets, container layout), mobile rendering in the designer (targeted edits in designer.py/preview.py/toolbox.py/controls.py) |
+| game-designer | radide/games/model.py, radide/games/scene_editor.py, tilemap/animation/asset editors, radide/features/game_designer.py |
+| game-runtime | radide/languages/pygame_game.py, godot.py, radide/games/runtime/radgame.py, codegen, Godot export, templates, samples/HelloGame |
+| exe-core | radide/importers/exe/base.py, native.py, pe_resources.py, radide/features/exe_import.py (wizard + report) |
+| exe-managed | radide/importers/exe/dotnet.py, vb6.py, pyexe.py, java.py, electron.py |

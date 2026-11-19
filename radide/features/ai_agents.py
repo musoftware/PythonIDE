@@ -20,10 +20,12 @@ import time
 from pathlib import Path
 
 from PyQt6.QtCore import QRectF, QSize, Qt, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QAction, QColor, QDesktopServices, QFont, QKeySequence, QPainter, QPixmap, QShortcut
+from PyQt6.QtGui import QAction, QColor, QDesktopServices, QFont, QKeySequence, QPainter, QPalette, QPixmap, \
+    QShortcut
 from PyQt6.QtWidgets import (QApplication, QComboBox, QDockWidget, QFileDialog, QFrame, QHBoxLayout,
                              QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox, QPlainTextEdit,
-                             QPushButton, QSpinBox, QSplitter, QStackedWidget, QStyle, QStyledItemDelegate,
+                             QPushButton, QSizePolicy, QSpinBox, QSplitter, QStackedWidget, QStyle,
+                             QStyledItemDelegate, QStyleOptionComboBox, QStyleOptionFrame, QStylePainter,
                              QTabWidget, QTextBrowser, QToolButton, QVBoxLayout, QWidget)
 
 from .. import theme
@@ -437,6 +439,11 @@ class Conversation(QTextBrowser):
         return f"<p dir='ltr' style='margin:3px 0;'>{head}</p>{extra}"
 
 
+# the style's menu arrow of an InstantPopup tool button is drawn clipped over short texts ("Inbox,"):
+# the texts carry their own chevron instead
+_NO_ARROW = "QToolButton::menu-indicator { image: none; width: 0px; }"
+
+
 # ============================================================================ task view (right side)
 class TaskView(QWidget):
     def __init__(self, panel: "AgentManagerWidget"):
@@ -461,6 +468,10 @@ class TaskView(QWidget):
         self.title.setFont(f)
         self.sub = QLabel("")
         theme.role(self.sub, "muted")
+        # the long subtitle must not set the Agent Manager's minimum width (it is elided by the layout)
+        self.sub.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.sub.setWordWrap(True)
+        self.title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         col.addWidget(self.title)
         col.addWidget(self.sub)
         hl.addLayout(col, 1)
@@ -470,7 +481,9 @@ class TaskView(QWidget):
         self.b_undo.setToolTip("Restore every file this task touched from its checkpoint")
         self.b_more = QToolButton()
         self.b_more.setText("⋯")
+        self.b_more.setToolTip("More")
         self.b_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.b_more.setStyleSheet(_NO_ARROW)
         more = QMenu(self.b_more)
         more.addAction("Open task folder", self._open_folder)
         more.addAction("Open checkpoint folder", self._open_checkpoint)
@@ -930,6 +943,43 @@ class TaskView(QWidget):
 
 
 # ============================================================================ the whole panel
+class PathEdit(QLineEdit):
+    """A line edit that shows a long path elided in the middle while it does not have the focus
+    (start ... end of the path); text() is always the full path, the tooltip shows it too."""
+
+    def paintEvent(self, e):
+        txt = self.text()
+        if self.hasFocus() or not txt:
+            return super().paintEvent(e)
+        opt = QStyleOptionFrame()
+        self.initStyleOption(opt)
+        r = self.style().subElementRect(QStyle.SubElement.SE_LineEditContents, opt, self)
+        r = r.adjusted(2, 0, -2, 0)
+        if self.fontMetrics().horizontalAdvance(txt) <= r.width():
+            return super().paintEvent(e)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_PanelLineEdit, opt, p, self)
+        p.setPen(self.palette().color(QPalette.ColorRole.Text))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                   self.fontMetrics().elidedText(txt, Qt.TextElideMode.ElideMiddle, r.width()))
+        p.end()
+
+
+class ElideCombo(QComboBox):
+    """A combo box that shows "Ollama (local)  - built-in a..." instead of cutting the text off."""
+
+    def paintEvent(self, e):
+        p = QStylePainter(self)
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        r = self.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, opt,
+                                        QStyle.SubControl.SC_ComboBoxEditField, self)
+        opt.currentText = self.fontMetrics().elidedText(opt.currentText, Qt.TextElideMode.ElideRight,
+                                                        max(10, r.width() - 4))
+        p.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
+        p.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, opt)
+
+
 class Composer(QFrame):
     """New task: text, agent (provider + model), permission, max steps, folder."""
 
@@ -950,14 +1000,20 @@ class Composer(QFrame):
         self.text.textChanged.connect(self._dir)
         lay.addWidget(self.text)
         r1 = QHBoxLayout()
-        self.agent = QComboBox()
+        self.agent = ElideCombo()
         self.agent.setToolTip("Who does the work: a CLI agent signed in with your account, or any AI provider "
                               "through the built-in agent loop (Ollama works free and offline)")
         self.agent.currentIndexChanged.connect(self._agent_changed)
         self.model = QComboBox()
         self.model.setEditable(True)
-        self.model.setMinimumWidth(90)
         self.model.setToolTip("Model (\"default\" = the agent's own default)")
+        # small minimum contents: the long item texts ("Ollama (local)  - built-in agent loop") made the
+        # whole Agent layout wider than a 1280 px screen; the full texts are in the tooltips
+        for c in (self.agent, self.model):
+            c.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            c.setMinimumContentsLength(8)
+            c.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.model.currentTextChanged.connect(self._model_shown)
         r1.addWidget(self.agent, 3)
         r1.addWidget(self.model, 2)
         lay.addLayout(r1)
@@ -978,9 +1034,12 @@ class Composer(QFrame):
         r2.addWidget(self.steps, 2)
         lay.addLayout(r2)
         r3 = QHBoxLayout()
-        self.folder = QLineEdit()
+        self.folder = PathEdit()
         self.folder.setPlaceholderText("Folder (the open project)")
         self.folder.setToolTip("The folder the agent works in")
+        self.folder.textChanged.connect(
+            lambda t: self.folder.setToolTip(f"The folder the agent works in:\n{t}" if t
+                                             else "The folder the agent works in"))
         b = QToolButton()
         b.setText("...")
         b.clicked.connect(self._browse)
@@ -1097,8 +1156,20 @@ class Composer(QFrame):
         if cur and self.panel.keep_model and self.model.findText(cur) >= 0:
             self.model.setCurrentText(cur)
         self.model.blockSignals(False)
+        self._model_shown()
+        self.agent.setToolTip(f"{self.agent.currentText()}\n\nWho does the work: a CLI agent signed in with "
+                              "your account, or any AI provider through the built-in agent loop (Ollama works "
+                              "free and offline)")
         self.steps.setEnabled(p.kind != "cli")
         self._hint(pid)
+
+    def _model_shown(self, _text=None):
+        # an editable combo scrolls to the caret (the end): "gemma4:e4b" was shown as "emma4:e4b"
+        le = self.model.lineEdit()
+        if le is not None and not le.hasFocus():
+            le.setCursorPosition(0)
+        self.model.setToolTip(f"Model: {self.model.currentText() or 'default'}\n"
+                              "(\"default\" = the agent's own default)")
 
     def _hint(self, pid: str):
         from .. import ai
@@ -1145,9 +1216,11 @@ class AgentManagerWidget(QWidget):
         theme.role(cap, "muted")
         top.addWidget(cap, 1)
         self.b_inbox = QToolButton()
-        self.b_inbox.setText("Inbox")
+        self.b_inbox.setText("Inbox ▾")
         self.b_inbox.setToolTip("Notifications: tasks that need approval or finished")
         self.b_inbox.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        # the style's menu arrow was drawn clipped over the text ("Inbox,"): the text carries a chevron
+        self.b_inbox.setStyleSheet(_NO_ARROW)
         self.inbox_menu = QMenu(self.b_inbox)
         self.inbox_menu.aboutToShow.connect(self._fill_inbox)
         self.b_inbox.setMenu(self.inbox_menu)
@@ -1350,8 +1423,9 @@ class AgentManagerWidget(QWidget):
     def update_inbox(self):
         n = self.unread_count()
         waiting = len([t for t in self.mgr.tasks if t.status == "waiting"])
-        self.b_inbox.setText(f"Inbox ({n})" if n else "Inbox")
-        self.b_inbox.setStyleSheet(f"QToolButton {{ color: {_c('note')}; font-weight: 600; }}" if waiting else "")
+        self.b_inbox.setText(f"Inbox ({n}) ▾" if n else "Inbox ▾")
+        self.b_inbox.setStyleSheet(_NO_ARROW + (f"QToolButton {{ color: {_c('note')}; font-weight: 600; }}"
+                                                if waiting else ""))
         dock = getattr(self.win, "dock_agents", None)
         if dock is not None:
             run = len(self.mgr.running())

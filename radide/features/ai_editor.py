@@ -954,6 +954,13 @@ class AIEditor(QObject):
         b.setObjectName("radAiStatus")
         b.setAutoRaise(True)
         b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        # no menu arrow (it was drawn clipped over the text as "AI,"); a fixed width that fits the longest
+        # state so the status bar does not jump and nothing is cut in any theme / font
+        b.setStyleSheet("QToolButton#radAiStatus { padding: 0px 8px; }"
+                        "QToolButton#radAiStatus::menu-indicator { image: none; width: 0px; }")
+        fm = b.fontMetrics()
+        b.setMinimumWidth(max(fm.horizontalAdvance(s) for s in ("AI ✓", "AI off", "AI …")) + 22)
         menu = QMenu(b)
         self.a_inline = menu.addAction("Inline Completions (ghost text)")
         self.a_inline.setCheckable(True)
@@ -989,7 +996,7 @@ class AIEditor(QObject):
             prov, auto = "(no provider)", False
         self.a_prov.setText(f"Completions: {prov}")
         busy = getattr(self, "_busy", False)
-        b.setText("AI ..." if busy else ("AI" if on else "AI off"))
+        b.setText("AI …" if busy else ("AI ✓" if on else "AI off"))
         tip = [f"Inline AI completions: {'on' if on else 'off'}", f"Provider: {prov}"]
         if on and not auto:
             tip.append("This provider is asked only with Alt+\\ (CLI agents are slow and use your quota).")

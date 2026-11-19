@@ -551,7 +551,15 @@ def install(win) -> None:
     win.git_panel = panel
     d = QDockWidget("Git Changes", win)
     d.setObjectName("Git Changes")
-    d.setWidget(panel)
+    # in a scroll area: the panel's own minimum height (~260 px) made the tabbed bottom area - and the
+    # whole VS layout - taller than a 800 px screen; a short dock now scrolls instead
+    from PyQt6.QtWidgets import QFrame, QScrollArea
+    scroll = QScrollArea()
+    scroll.setFrameShape(QFrame.Shape.NoFrame)
+    scroll.setWidgetResizable(True)
+    scroll.setWidget(panel)
+    scroll.setMinimumHeight(60)
+    d.setWidget(scroll)
     win.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, d)
     win.tabifyDockWidget(win.dock_output, d)
     win.dock_output.raise_()

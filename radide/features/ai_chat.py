@@ -70,6 +70,25 @@ def text_dir(text: str) -> str:
     return "rtl" if m and _RTL.match(m.group(0)) else "ltr"
 
 
+LRM = "‎"
+# an @ that starts a mention (not inside a word / an e-mail address) and has no LRM before it yet
+_MENTION_AT = re.compile(r"(?<![\w‎])@(?=[\w\"]|$)", re.M)
+
+
+def ltr_mentions(text: str) -> str:
+    """Put an invisible LEFT-TO-RIGHT MARK before each @mention of a right-to-left line: '@' is a neutral
+    character, so in Arabic text "@selection" was displayed as "selection@".  Display only - strip LRM
+    (strip_lrm) before the text is sent."""
+    if not text or "@" not in text:
+        return text
+    return "\n".join(_MENTION_AT.sub(LRM + "@", ln) if "@" in ln and text_dir(ln) == "rtl" else ln
+                     for ln in text.split("\n"))
+
+
+def strip_lrm(text: str) -> str:
+    return text.replace(LRM, "")
+
+
 # ============================================================================ highlighting
 _ALIASES = {"vb": "vbnet", "vba": "vbnet", "form": "json", "ps1": "powershell", "pwsh": "powershell",
             "shell": "bash", "sh": "bash", "console": "bash", "cmd": "batch", "bat": "batch", "js": "javascript",
@@ -759,8 +778,39 @@ class ChatInput(QPlainTextEdit):
         self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.completer.activated[str].connect(self._insert_completion)
+        self.textChanged.connect(self._ltr_mentions)
         self.textChanged.connect(self._fit)
         self._fit()
+
+    def text(self) -> str:
+        """The text without the display-only LRM marks."""
+        return strip_lrm(self.toPlainText())
+
+    def _ltr_mentions(self):
+        """Keep @mentions readable inside Arabic text (see ltr_mentions): insert LRM marks in place, so
+        the caret and the undo history stay where the user expects."""
+        doc = self.document()
+        if "@" not in doc.toPlainText():
+            return
+        block = doc.begin()
+        spots = []
+        while block.isValid():
+            t = block.text()
+            if "@" in t and text_dir(t) == "rtl":
+                spots += [block.position() + m.start() for m in _MENTION_AT.finditer(t)]
+            block = block.next()
+        if not spots:
+            return
+        self.blockSignals(True)
+        try:
+            cur = QTextCursor(doc)
+            cur.beginEditBlock()
+            for pos in reversed(spots):
+                cur.setPosition(pos)
+                cur.insertText(LRM)
+            cur.endEditBlock()
+        finally:
+            self.blockSignals(False)
 
     def _fit(self):
         doc_h = int(self.document().size().height() * self.fontMetrics().lineSpacing())
@@ -899,12 +949,12 @@ class ChatPanel(QWidget):
             hl.addWidget(b)
             return b
         self.new_btn = tb("New", "New chat (Ctrl+N in the chat)", self.new_chat)
-        self.hist_btn = tb("History", "Earlier chats of this project")
+        self.hist_btn = tb("History ▾", "Earlier chats of this project")
         self.hist_menu = QMenu(self)
         self.hist_menu.aboutToShow.connect(self._fill_history)
         self.hist_btn.setMenu(self.hist_menu)
         self.hist_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.more_btn = tb("...", "More")
+        self.more_btn = tb("⋯", "More")
         more = QMenu(self)
         more.addAction("Regenerate last answer", self.regenerate)
         more.addAction("Copy whole chat as Markdown", self.copy_markdown)
@@ -915,6 +965,9 @@ class ChatPanel(QWidget):
         more.addAction("AI Settings...", self.open_settings)
         self.more_btn.setMenu(more)
         self.more_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        # the style's menu arrow was drawn clipped over the text ("History,"); the text carries a chevron
+        head.setStyleSheet("QToolButton::menu-indicator { image: none; width: 0px; }"
+                           "QToolButton { padding: 1px 5px; }")
         lay.addWidget(head)
 
         use_web = QWebEngineView is not None and not os.environ.get("RADIDE_CHAT_TEXTVIEW")
@@ -939,6 +992,9 @@ class ChatPanel(QWidget):
         self.input = ChatInput(self)
         self.input.submit.connect(self.send_input)
         bl.addWidget(self.input)
+        # two rows so nothing is cut in a narrow side bar:
+        #   [+ File] [+ Selection] [@] ............ [Send]
+        #   [provider ...................] [model ..........]
         row = QHBoxLayout()
         row.setSpacing(3)
         self.add_file_btn = QToolButton(text="+ File", toolTip="Add a file of the project as context")
@@ -953,23 +1009,32 @@ class ChatPanel(QWidget):
         self.provider = QComboBox()
         self.provider.setToolTip("AI provider (Tools > Options > AI to configure)")
         self.provider.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.provider.setMinimumContentsLength(8)
+        self.provider.setMinimumContentsLength(6)
+        self.provider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.provider.activated.connect(self._provider_chosen)
+        self.provider.currentIndexChanged.connect(
+            lambda _i: self.provider.setToolTip(f"AI provider: {self.provider.currentText()}\n"
+                                                "(Tools > Options > AI to configure)"))
         self.model = QComboBox()
         self.model.setEditable(True)
         self.model.setToolTip("Model (type any model name)")
         self.model.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.model.setMinimumContentsLength(6)
+        self.model.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.model.activated.connect(lambda _i: self._model_chosen())
         self.model.lineEdit().editingFinished.connect(self._model_chosen)
+        self.model.currentTextChanged.connect(self._model_shown)
         self.send_btn = QToolButton(text="Send", toolTip="Send (Enter)")
         self.send_btn.clicked.connect(self._send_or_stop)
         for w in (self.add_file_btn, self.add_sel_btn, self.at_btn):
             row.addWidget(w)
         row.addStretch(1)
-        row.addWidget(self.provider, 2)
-        row.addWidget(self.model, 2)
         row.addWidget(self.send_btn)
+        row2 = QHBoxLayout()
+        row2.setSpacing(3)
+        row2.addWidget(self.provider, 3)
+        row2.addWidget(self.model, 2)
+        bl.addLayout(row2)
         bl.addLayout(row)
         self.status = QLabel()
         self.status.setWordWrap(True)
@@ -1057,7 +1122,17 @@ class ChatPanel(QWidget):
             self.model.insertItem(0, model)
         self.model.setCurrentText(model or "")
         self.model.blockSignals(False)
+        self._model_shown()
         self._show_ready(p)
+        self.provider.setToolTip(f"AI provider: {self.provider.currentText()}\n(Tools > Options > AI to configure)")
+
+    def _model_shown(self, _text=None):
+        """Show the start of a long model name (an editable combo scrolls to the caret = the end, which cut
+        the first letters) and put the full name in the tooltip."""
+        le = self.model.lineEdit()
+        if le is not None and not le.hasFocus():
+            le.setCursorPosition(0)
+        self.model.setToolTip(f"Model: {self.model.currentText() or '(default)'}\n(type any model name)")
 
     def _on_models(self, pid):
         p, m = self.current_provider()
@@ -1234,7 +1309,7 @@ class ChatPanel(QWidget):
     def send_input(self):
         if self.busy():
             return
-        text = self.input.toPlainText().strip()
+        text = strip_lrm(self.input.toPlainText()).strip()
         if not text and not self.attachments:
             return
         self.input.clear()
@@ -1243,6 +1318,7 @@ class ChatPanel(QWidget):
 
     def send(self, text: str, attachments: list[dict] | None = None):
         """Ask a question (the chips are used and cleared when attachments is None)."""
+        text = strip_lrm(text)
         if self.busy():
             self.stop()
         atts = list(self.attachments if attachments is None else attachments)
@@ -1398,7 +1474,7 @@ class ChatPanel(QWidget):
         m = self.chat["messages"][i]
         tm = time.strftime("%H:%M", time.localtime(m.get("time", time.time())))
         if m["role"] == "user":
-            body, _b = render_markdown(m["content"], None)
+            body, _b = render_markdown(ltr_mentions(m["content"]), None)
             ctx = ""
             if m.get("context"):
                 ctx = '<div class="ctx">' + "".join(f"<span>{html.escape(c)}</span>" for c in m["context"]) + "</div>"
