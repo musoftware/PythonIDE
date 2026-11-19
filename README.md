@@ -6,6 +6,8 @@ Run: `run.bat` (or `.venv\Scripts\python -m radide [project-folder]`).
 Samples: `samples/HelloPolyglot` (Python + VB6 + Ring in one project), `HelloVB`, `HelloPython`, `HelloRing`,
 `HelloJavaScript`, `HelloCSharp`, `HelloFortran`, `HelloC`, `HelloDart`, `HelloPerl`, `HelloSolution`,
 `HelloPHPSite` (complete PHP + SQLite web site).
+Test projects: `samples/Tests` (curated projects from the IDE's own test runs, by area: languages, solutions, web, mobile,
+games, exe import, Blend, AI, debugger; `samples/Tests/All` holds every other test project - see `samples/Tests/README.md`).
 `tools\make_samples.py` **replaces** HelloPython/HelloRing/HelloVB.
 
 ## Languages (19)

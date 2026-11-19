@@ -394,6 +394,8 @@ class Database:
     quote_char = '"'
     hidden_key = ""                 # SQL expression of a hidden row key ("rowid", "ctid") - "" = none
     types: list[str] = []           # column types offered by the dialogs
+    dump_prologue = ""              # written before / after the tables of an SQL export
+    dump_epilogue = ""
 
     def __init__(self, info: ConnectionInfo):
         self.info = info
@@ -884,10 +886,12 @@ class Database:
             with open(path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(f"-- Exported by RAD IDE from {self.info.describe()} on "
                         f"{_dt.datetime.now().isoformat(sep=' ', timespec='seconds')}\n\n")
+                f.write(self.dump_prologue)
                 for t in tables:
                     self.check_cancel()
                     for chunk in self.dump_table_sql(t, schema, data):
                         f.write(chunk)
+                f.write(self.dump_epilogue)
         except DatabaseError:
             _remove_partial(path)
             raise
@@ -1072,6 +1076,10 @@ class MySQLDatabase(_ServerDatabase):
     kind = dialect = "mysql"
     placeholder = "%s"
     quote_char = "`"
+    # tables are dumped by name, so a parent can be dropped / filled before its children: re-importing a
+    # dump with foreign keys only works with the checks off (what mysqldump writes too)
+    dump_prologue = "SET FOREIGN_KEY_CHECKS=0;\n\n"
+    dump_epilogue = "SET FOREIGN_KEY_CHECKS=1;\n"
     types = ["INT", "BIGINT", "VARCHAR(255)", "TEXT", "LONGTEXT", "DECIMAL(10,2)", "DOUBLE", "DATE", "DATETIME",
              "TIMESTAMP", "BOOLEAN", "BLOB", "JSON"]
     driver_name = "pymysql"
