@@ -87,7 +87,8 @@ class BridgeLanguagePlugin(LanguagePlugin):
 
     # ------------------------------------------------------------ run
     def code_files(self, project: Project) -> list[str]:
-        files = [self.code_file(f) for f in project.forms]
+        forms = project.forms_in(self.id) if hasattr(project, "forms_in") else project.forms
+        files = [self.code_file(f) for f in forms]          # forms of other languages run elsewhere
         files += [m for m in project.modules if m.endswith(self.code_ext)]
         return files
 

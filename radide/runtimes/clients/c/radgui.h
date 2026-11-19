@@ -64,6 +64,12 @@ const char *rad_fail(const char *message);   /* return rad_fail("msg"); -> error
 int rad_next_event(void);
 void rad_done(void);
 void rad_init(void);
+int rad_wk_next(void);
+const char *rad_wk_func(void);
+int rad_wk_argc(void);
+const char *rad_wk_arg(int i);
+void rad_wk_reply(const char *json);
+void rad_wk_error(const char *message);
 int rad_worker_main(const char *(*dispatch)(const char *func, int argc, const char **argv, int *found));
 
 #ifdef __cplusplus

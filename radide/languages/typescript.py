@@ -8,11 +8,12 @@ shared by all files; use ``require("pkg")`` for npm packages.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ..model import Form
 from .base import PackageManager
-from .javascript import JS_BUILTINS, JS_CLIENT, JS_KEYWORDS, JavaScriptPlugin
+from .javascript import JS_BUILTINS, JS_CLIENT, JS_KEYWORDS, JavaScriptPlugin, ident, safe_params, unique_functions
 
 TS_KEYWORDS = JS_KEYWORDS + """interface type enum implements declare namespace module readonly public private
     protected abstract as is keyof any number string boolean unknown never object symbol bigint""".split()
@@ -72,6 +73,35 @@ class TypeScriptPlugin(JavaScriptPlugin):
     def module_template(self, name: str) -> str:
         return super().module_template(name).replace(
             "function add(a, b) {", "function add(a: number, b: number): number {")
+
+    # ------------------------------------------------------------ References (CONTRACTS 7.2)
+    ref_ext = ".ref.ts"
+
+    def example_function(self, name: str) -> str:
+        return (super().example_function(name)
+                .replace("function Add(a, b) {", "function Add(a: number, b: number): number {")
+                .replace("function Greet(name) {", "function Greet(name: string): string {"))
+
+    def reference_proxy(self, lib: str, functions) -> dict[str, str]:
+        """<Lib>.ref.ts: a global object <Lib> with typed (any) methods, loaded automatically by
+        the runtime (the project's .ts files are scripts sharing one global scope)."""
+        name = ident(lib)
+        functions = unique_functions(functions)
+        lines = self._ref_header(lib, functions,
+                                 f"{name}.{functions[0].name if functions else 'Func'}(...)    "
+                                 "(this file is loaded automatically; no import needed)")
+        lines += [f"var {name} = {{"]
+        for f in functions:
+            ps = safe_params(f.params, TS_KEYWORDS)
+            if f.doc:
+                lines.append(f"    /** {f.doc.replace('*/', '* /')} */")
+            ret = "void" if f.kind == "sub" else "any"
+            lines.append(f"    {f.name}({', '.join(p + ': any' for p in ps)}): {ret} {{")
+            lines.append(f"        return (globalThis as any).radcall({json.dumps(f'{f.module}.{f.name}')}, "
+                         "...Array.prototype.slice.call(arguments));")
+            lines.append("    },")
+        lines += ["};", f"(globalThis as any)[{json.dumps(name)}] = {name};", ""]
+        return {f"{name}{self.ref_ext}": "\n".join(lines)}
 
     def client_files(self) -> dict[str, Path]:
         return {"radgui.js": JS_CLIENT / "radgui.js", "radgui.d.ts": JS_CLIENT / "radgui.d.ts"}

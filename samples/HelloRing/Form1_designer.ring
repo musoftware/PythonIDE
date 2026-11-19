@@ -24,6 +24,14 @@ chkUpper = NULL
 chkUpper_Events = NULL
 lblClock = NULL
 lblClock_Events = NULL
+Button1 = NULL
+Button1_Events = NULL
+TrackBar1 = NULL
+TrackBar1_Events = NULL
+ListBox1 = NULL
+ListBox1_Events = NULL
+ProgressBar1 = NULL
+ProgressBar1_Events = NULL
 Timer1 = NULL
 Timer1_Events = NULL
 mnuFileClear = NULL
@@ -33,11 +41,11 @@ mnuHelpAbout = NULL
 func Form1_Create
     Form1 = new qWidget()
     Form1.setWindowTitle("Hello - Ring (RingQt)")
-    Form1.resize(440, 322)
+    Form1.resize(736, 322)
     Form1_Client = new qFrame(Form1, 0)
-    Form1_Client.setGeometry(0, 22, 440, 300)
+    Form1_Client.setGeometry(0, 22, 736, 300)
     Form1_MenuBar = new qMenuBar(Form1)
-    Form1_MenuBar.setGeometry(0, 0, 440, 22)
+    Form1_MenuBar.setGeometry(0, 0, 736, 22)
     oMenu1 = Form1_MenuBar.addMenu("File")
     mnuFileClear = new qAction(Form1)
     mnuFileClear.setText("Clear")
@@ -100,6 +108,29 @@ func Form1_Create
     lblClock.setGeometry(280, 192, 152, 32)
     lblClock.setStyleSheet("font-family:'Segoe UI';font-size:16pt;")
     lblClock.setAlignment(129)
+
+    Button1 = new qPushButton(Form1_Client)
+    Button1.setText("Button1")
+    Button1.setGeometry(296, 232, 75, 23)
+    Button1.setStyleSheet("font-family:'Segoe UI';font-size:9pt;text-align:left;")
+    Button1.setClickEvent("Button1_Click()")
+
+    TrackBar1 = new qSlider(Form1_Client)
+    TrackBar1.setGeometry(448, 184, 160, 45)
+    TrackBar1.setStyleSheet("font-family:'Segoe UI';font-size:9pt;")
+    TrackBar1.setOrientation(1)
+    TrackBar1.setRange(0, 100)
+    TrackBar1.setValue(0)
+
+    ListBox1 = new qListWidget(Form1_Client)
+    ListBox1.setGeometry(520, 48, 120, 95)
+    ListBox1.setStyleSheet("font-family:'Segoe UI';font-size:9pt;")
+
+    ProgressBar1 = new qProgressBar(Form1_Client)
+    ProgressBar1.setGeometry(528, 256, 100, 23)
+    ProgressBar1.setStyleSheet("font-family:'Segoe UI';font-size:9pt;")
+    ProgressBar1.setRange(0, 100)
+    ProgressBar1.setValue(8)
 
     Timer1 = new qTimer(Form1)
     Timer1.setInterval(1000)

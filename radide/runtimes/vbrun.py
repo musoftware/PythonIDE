@@ -9,6 +9,7 @@ debug protocol is spoken on stdin/stdout (breakpoints from RADDBG_BP).
 """
 from __future__ import annotations
 
+import datetime as _dt
 import os
 import sys
 import time
@@ -40,6 +41,11 @@ VB_EVENT = {
     "NumericUpDown": {"ValueChanged": "Change"},
     "TrackBar": {"ValueChanged": "Change"},
     "Timer": {"Tick": "Timer"},
+    "TabControl": {"SelectedIndexChanged": "Click", "Click": None},
+    "TreeView": {"SelectedIndexChanged": "NodeClick", "DoubleClick": "DblClick"},
+    "ListView": {"SelectedIndexChanged": "ItemClick", "DoubleClick": "DblClick"},
+    "DataGridView": {"SelectedIndexChanged": "SelChange", "CellChanged": "AfterEdit"},
+    "DateTimePicker": {"ValueChanged": "Change"},
     "Form": {"Load": "Load", "Activated": "Activate", "Deactivate": "Deactivate", "Resize": "Resize",
              "FormClosing": "Unload", "FormClosed": "Terminate"},
 }
@@ -49,7 +55,7 @@ def vb_event_name(ctype: str, event: str) -> str | None:
     table = VB_EVENT.get(ctype, {})
     if event in table:
         return table[event]
-    if ctype in ("Timer", "MenuStrip"):
+    if ctype in ("Timer", "MenuStrip", "ToolStrip", *DIALOGS):
         return None
     return VB_EVENT["*"].get(event, event)
 
@@ -68,6 +74,360 @@ def vb_to_color(v) -> str:
     return f"#{n & 0xFF:02X}{(n >> 8) & 0xFF:02X}{(n >> 16) & 0xFF:02X}"
 
 
+# ============================================================================ new controls (CONTRACTS 4)
+_NA = object()          # "not handled here" marker of VBControl._ext_get / _ext_set / _ext_call
+VB_TYPENAME = {"Button": "CommandButton", "RadioButton": "OptionButton", "GroupBox": "Frame",
+               "NumericUpDown": "UpDown", "TrackBar": "Slider", "PictureBox": "PictureBox",
+               "TabControl": "SSTab", "DataGridView": "MSFlexGrid", "DateTimePicker": "DTPicker",
+               "OpenFileDialog": "CommonDialog", "SaveFileDialog": "CommonDialog", "ColorDialog": "CommonDialog",
+               "FontDialog": "CommonDialog", "FolderBrowserDialog": "CommonDialog"}
+VB_DEFAULT = {"TabControl": "tab", "TreeView": "text", "ListView": "text", "DataGridView": "text",
+              "DateTimePicker": "value", "LinkLabel": "caption", "StatusBar": "simpletext",
+              "OpenFileDialog": "filename", "SaveFileDialog": "filename", "ColorDialog": "color",
+              "FontDialog": "fontname", "FolderBrowserDialog": "selectedpath", "ActiveX": "object"}
+DIALOGS = ("OpenFileDialog", "SaveFileDialog", "ColorDialog", "FontDialog", "FolderBrowserDialog")
+VB_EXT = {"TabControl", "TreeView", "ListView", "DataGridView", "DateTimePicker", "LinkLabel", "StatusBar",
+          "ActiveX", *DIALOGS}
+
+
+def _int(v, default=0):
+    if v is EMPTY or v is None or v == "":
+        return default
+    return int(to_num(v))
+
+
+def _given(v):
+    return v is not EMPTY and v is not None and v != ""
+
+
+class _VBNode:
+    """TreeView Node: Text, Key, Index, FullPath, Parent, Children, Child, Expanded, Selected."""
+    vb_typename = "Node"
+    vb_default = "text"
+
+    def __init__(self, ctrl, iid):
+        self.ctrl, self.iid = ctrl, iid
+
+    @property
+    def _tree(self):
+        return self.ctrl.w
+
+    def vb_get(self, name):
+        t = self._tree
+        if not t.exists(self.iid):
+            raise err(35605, "Control has been deleted")
+        if name == "text":
+            return t.item(self.iid, "text")
+        if name == "key":
+            return self.ctrl.node_key(self.iid)
+        if name == "index":
+            return t.Nodes.index(self.iid) + 1
+        if name == "fullpath":
+            parts, iid = [], self.iid
+            while iid:
+                parts.insert(0, t.item(iid, "text"))
+                iid = t.parent(iid)
+            return "\\".join(parts)
+        if name == "parent":
+            p = t.parent(self.iid)
+            return _VBNode(self.ctrl, p) if p else NOTHING
+        if name == "children":
+            return len(t.get_children(self.iid))
+        if name == "child":
+            kids = t.get_children(self.iid)
+            return _VBNode(self.ctrl, kids[0]) if kids else NOTHING
+        if name == "expanded":
+            return bool(t.item(self.iid, "open"))
+        if name == "selected":
+            return self.iid in t.selection()
+        if name == "tag":
+            return getattr(self, "_tag", "")
+        raise err(438, f"Node doesn't support '{name}'")
+
+    def vb_set(self, name, value):
+        t = self._tree
+        if name == "text":
+            t.item(self.iid, text=to_str(value))
+        elif name == "expanded":
+            t.item(self.iid, open=to_bool(value))
+        elif name == "selected":
+            if to_bool(value):
+                t.see(self.iid)
+                t.selection_set(self.iid)
+        elif name == "tag":
+            self._tag = value
+        else:
+            raise err(438, f"Node doesn't support '{name}'")
+
+    def vb_call(self, name, args):
+        if name == "ensurevisible":
+            self._tree.see(self.iid)
+            return EMPTY
+        return self.vb_get(name)
+
+
+class _VBNodes:
+    """TreeView.Nodes: Add([Relative], [Relationship], [Key], [Text]), Item, Remove, Clear, Count."""
+    vb_typename = "Nodes"
+    vb_default = "item"
+
+    def __init__(self, ctrl):
+        self.ctrl = ctrl
+
+    def vb_items(self):
+        return [_VBNode(self.ctrl, i) for i in self.ctrl.w.Nodes]
+
+    def vb_get(self, name):
+        if name == "count":
+            return len(self.ctrl.w.Nodes)
+        raise err(438, f"Nodes doesn't support '{name}'")
+
+    def vb_index(self, args):
+        return self.vb_call("item", args)
+
+    def vb_call(self, name, args):
+        c, t = self.ctrl, self.ctrl.w
+        if name == "add":
+            if len(args) == 1:                          # Nodes.Add "Text"
+                rel, relation, key, text = EMPTY, EMPTY, EMPTY, args[0]
+            else:
+                rel, relation, key, text = (list(args) + [EMPTY] * 4)[:4]
+            parent, index = "", "end"
+            if _given(rel):
+                ref = c.find_node(rel)
+                rel_kind = _int(relation, 1)            # tvwFirst 0, tvwLast 1, tvwNext 2, tvwPrevious 3, tvwChild 4
+                if rel_kind == 4:
+                    parent = ref
+                else:
+                    parent = t.parent(ref)
+                    sib = t.index(ref)
+                    index = {0: 0, 1: "end", 2: sib + 1, 3: sib}.get(rel_kind, "end")
+            if _given(key) and c.key_node(to_str(key)):
+                raise err(35602, "Key is not unique in collection")
+            label = to_str(text)
+            base = f"{parent}/{label}" if parent else label
+            iid, n = base, 2
+            while t.exists(iid):
+                iid, n = f"{base}#{n}", n + 1
+            t.insert(parent, index, iid=iid, text=label)
+            if parent:
+                t.item(parent, open=True)
+            if _given(key):
+                c.keys[to_str(key).lower()] = iid
+            return _VBNode(c, iid)
+        if name == "item":
+            return _VBNode(c, c.find_node(args[0]))
+        if name == "remove":
+            iid = c.find_node(args[0])
+            t.delete(iid)
+            c.keys = {k: v for k, v in c.keys.items() if t.exists(v)}
+            return EMPTY
+        if name == "clear":
+            t.Clear()
+            c.keys.clear()
+            return EMPTY
+        return self.vb_get(name)
+
+
+class _VBListItem:
+    """ListView ListItem: Text, SubItems(i), Key, Index, Selected."""
+    vb_typename = "ListItem"
+    vb_default = "text"
+
+    def __init__(self, ctrl, iid):
+        self.ctrl, self.iid = ctrl, iid
+
+    def _row(self):
+        lv = self.ctrl.w
+        if not lv.exists(self.iid):
+            raise err(35605, "Control has been deleted")
+        return lv.index(self.iid)
+
+    def vb_get(self, name):
+        lv = self.ctrl.w
+        if name == "text":
+            return lv.GetCell(self._row(), 0)
+        if name == "index":
+            return self._row() + 1
+        if name == "key":
+            return self.ctrl.node_key(self.iid)
+        if name == "selected":
+            return self.iid in lv.selection()
+        if name == "subitems":
+            return _IndexedProp(self, "subitems")
+        raise err(438, f"ListItem doesn't support '{name}'")
+
+    def vb_set(self, name, value):
+        lv = self.ctrl.w
+        if name == "text":
+            lv.SetCell(self._row(), 0, to_str(value))
+        elif name == "selected":
+            if to_bool(value):
+                lv.selection_set(self.iid)
+                lv.see(self.iid)
+        else:
+            raise err(438, f"ListItem doesn't support '{name}'")
+
+    def vb_call(self, name, args):
+        if name == "subitems":
+            i = _int(args[0])
+            if i < 1 or i >= len(self.ctrl.w.Columns):
+                raise err(380, "Invalid property value (SubItems index)")
+            return self.ctrl.w.GetCell(self._row(), i)
+        if name == "ensurevisible":
+            self.ctrl.w.see(self.iid)
+            return EMPTY
+        return self.vb_get(name)
+
+    def vb_setindexed(self, name, args, value):
+        if name != "subitems":
+            raise err(438, f"'{name}' cannot be indexed")
+        i = _int(args[0])
+        if i < 1 or i >= len(self.ctrl.w.Columns):
+            raise err(380, "Invalid property value (SubItems index)")
+        self.ctrl.w.SetCell(self._row(), i, to_str(value))
+
+
+class _VBListItems:
+    """ListView.ListItems: Add([Index], [Key], [Text]), Item, Remove, Clear, Count (1-based)."""
+    vb_typename = "ListItems"
+    vb_default = "item"
+
+    def __init__(self, ctrl):
+        self.ctrl = ctrl
+
+    def vb_items(self):
+        return [_VBListItem(self.ctrl, i) for i in self.ctrl.w.get_children()]
+
+    def vb_get(self, name):
+        if name == "count":
+            return self.ctrl.w.RowCount
+        raise err(438, f"ListItems doesn't support '{name}'")
+
+    def vb_index(self, args):
+        return self.vb_call("item", args)
+
+    def _iid(self, k):
+        lv = self.ctrl.w
+        if isinstance(k, str) and not k.strip().lstrip("-").isdigit():
+            iid = self.ctrl.key_node(k)
+            if iid is None:
+                raise err(35601, f"Element not found: '{k}'")
+            return iid
+        i = _int(k)
+        kids = lv.get_children()
+        if not 1 <= i <= len(kids):
+            raise err(35600, "Index out of bounds")
+        return kids[i - 1]
+
+    def vb_call(self, name, args):
+        c, lv = self.ctrl, self.ctrl.w
+        if name == "add":
+            index, key, text = (list(args) + [EMPTY] * 3)[:3]
+            if _given(key) and c.key_node(to_str(key)):
+                raise err(35602, "Key is not unique in collection")
+            pos = _int(index) - 1 if _given(index) else "end"
+            iid = lv.insert("", pos, values=[to_str(text)] + [""] * (len(lv.Columns) - 1))
+            if _given(key):
+                c.keys[to_str(key).lower()] = iid
+            return _VBListItem(c, iid)
+        if name == "item":
+            return _VBListItem(c, self._iid(args[0]))
+        if name == "remove":
+            lv.delete(self._iid(args[0]))
+            return EMPTY
+        if name == "clear":
+            lv.Clear()
+            c.keys.clear()
+            return EMPTY
+        return self.vb_get(name)
+
+
+class _VBColumns:
+    """ListView.ColumnHeaders: Add([Index], [Key], [Text], [Width]), Clear, Count, Item(i).Text."""
+    vb_typename = "ColumnHeaders"
+
+    def __init__(self, ctrl):
+        self.ctrl = ctrl
+
+    def vb_get(self, name):
+        if name == "count":
+            return len(self.ctrl.w.Columns)
+        raise err(438, f"ColumnHeaders doesn't support '{name}'")
+
+    def vb_call(self, name, args):
+        lv = self.ctrl.w
+        if name == "add":
+            index, _key, text, width = (list(args) + [EMPTY] * 4)[:4]
+            cols = list(lv.Columns) if getattr(self.ctrl, "_cols_set", True) else []
+            self.ctrl._cols_set = True
+            pos = _int(index) - 1 if _given(index) else len(cols)
+            cols.insert(pos, to_str(text))
+            lv.SetColumns(cols)
+            if _given(width):
+                lv.column(f"c{pos}", width=int(to_num(width) / self.ctrl._unit()))
+            return EMPTY
+        if name == "clear":
+            self.ctrl._cols_set = False
+            return EMPTY
+        if name == "item":
+            i = _int(args[0])
+            return lv.Columns[i - 1]
+        return self.vb_get(name)
+
+
+class VBToolButton:
+    """A ToolStrip button: Caption / Text, Enabled, ToolTipText, Visible."""
+    vb_typename = "Button"
+    vb_default = "caption"
+
+    def __init__(self, form, name, button):
+        self.form, self.vb_name, self.b = form, name, button
+
+    def vb_get(self, name):
+        if name in ("caption", "text"):
+            return self.b.cget("text")
+        if name == "enabled":
+            return str(self.b.cget("state")) != "disabled"
+        if name == "visible":
+            return bool(self.b.winfo_manager())
+        if name == "name":
+            return self.vb_name
+        raise err(438, f"Button doesn't support '{name}'")
+
+    def vb_set(self, name, value):
+        if name in ("caption", "text"):
+            self.b.configure(text=to_str(value))
+        elif name == "enabled":
+            self.b.configure(state="normal" if to_bool(value) else "disabled")
+        elif name == "visible":
+            if to_bool(value):
+                if not self.b.winfo_manager():
+                    self.b.pack(side="left", padx=1, pady=1)
+            else:
+                self.b.pack_forget()
+        elif name in ("tooltiptext", "tag", "value"):
+            pass
+        else:
+            raise err(438, f"Button doesn't support '{name}'")
+
+    def vb_call(self, name, args):
+        return self.vb_get(name)
+
+
+def _set_state(w, on):
+    try:
+        w.configure(state="normal" if on else "disabled")
+        return
+    except tk.TclError:
+        pass
+    try:
+        w.state(["!disabled"] if on else ["disabled"])
+    except (tk.TclError, AttributeError):
+        for child in w.winfo_children():
+            _set_state(child, on)
+
+
 # ============================================================================ controls
 class VBControl:
     vb_default = "text"
@@ -76,11 +436,11 @@ class VBControl:
         self.form, self.ctrl = form, ctrl
         self.name = ctrl.name
         self.type = ctrl.type
-        self.vb_typename = {"Button": "CommandButton", "RadioButton": "OptionButton",
-                            "GroupBox": "Frame", "NumericUpDown": "UpDown", "TrackBar": "Slider",
-                            "PictureBox": "PictureBox"}.get(ctrl.type, ctrl.type)
+        self.vb_typename = VB_TYPENAME.get(ctrl.type, ctrl.type)
         self.vb_name = self.name
         self.tag = ""
+        self.keys: dict[str, str] = {}          # TreeView / ListView keys -> item ids
+        self.cancel_error = False               # CommonDialog.CancelError
         if self.type in ("Label", "Button", "CheckBox", "RadioButton", "GroupBox"):
             self.vb_default = "caption" if self.type != "CheckBox" else "value"
         if self.type in ("ListBox",):
@@ -89,6 +449,8 @@ class VBControl:
             self.vb_default = "value"
         if self.type == "RadioButton":
             self.vb_default = "value"
+        if self.type in VB_DEFAULT:
+            self.vb_default = VB_DEFAULT[self.type]
 
     # -- helpers
     @property
@@ -101,15 +463,29 @@ class VBControl:
     def _unit(self):
         return self.form.unit
 
-    def _place(self, **kw):
+    def _relative(self):
         info = self.w.place_info()
-        geo = {k: int(float(info.get(k, 0) or 0)) for k in ("x", "y", "width", "height")}
+        return any(float(info.get(k) or 0) for k in ("relx", "rely", "relwidth", "relheight"))
+
+    def _place(self, **kw):
+        """Move/resize (VB Left/Top/Width/Height): the control stops following its Anchor/Dock."""
+        w = self.w
+        info = w.place_info()
+        if self._relative():
+            w.update_idletasks()
+            geo = {"x": w.winfo_x(), "y": w.winfo_y(), "width": w.winfo_width(), "height": w.winfo_height()}
+        else:
+            geo = {k: int(float(info.get(k, 0) or 0)) for k in ("x", "y", "width", "height")}
         geo.update(kw)
-        self.w.place(**geo)
+        w.place(relx=0, rely=0, relwidth="", relheight="", **geo)
 
     # -- protocol
     def vb_get(self, name):
         w, t = self.w, self.type
+        if t in VB_EXT:
+            v = self._ext_get(name)
+            if v is not _NA:
+                return v
         if t == "Timer":
             if name == "interval":
                 return w.Interval
@@ -152,13 +528,20 @@ class VBControl:
         if name in ("left", "top", "width", "height"):
             info = w.place_info()
             key = {"left": "x", "top": "y"}.get(name, name)
-            v = int(float(info.get(key, 0) or 0)) if info else getattr(w, f"winfo_{key if key in ('x', 'y') else name}")()
+            if info and not self._relative():
+                v = int(float(info.get(key, 0) or 0))
+            else:
+                w.update_idletasks()
+                v = getattr(w, f"winfo_{key}")()
             return v * self._unit()
         if name == "enabled":
             try:
                 return str(w.cget("state")) != "disabled"
             except tk.TclError:
-                return True
+                try:
+                    return not w.instate(["disabled"])
+                except (tk.TclError, AttributeError):
+                    return True
         if name == "visible":
             return bool(w.winfo_manager())
         if name == "backcolor":
@@ -217,6 +600,8 @@ class VBControl:
 
     def vb_set(self, name, value):
         w, t = self.w, self.type
+        if t in VB_EXT and self._ext_set(name, value) is not _NA:
+            return
         if t == "Timer":
             tm = self._timer()
             if name == "interval":
@@ -273,21 +658,21 @@ class VBControl:
             self._place(**{key: int(to_num(value) / self._unit())})
             return
         if name == "enabled":
-            try:
-                w.configure(state="normal" if to_bool(value) else "disabled")
-            except tk.TclError:
-                pass
+            _set_state(w, to_bool(value))
             return
         if name == "visible":
             if to_bool(value):
+                if w.winfo_manager():
+                    return
                 p = self.ctrl.props
-                info = getattr(self, "_saved_place", None) or {"x": p["Left"], "y": p["Top"],
-                                                                "width": p["Width"], "height": p["Height"]}
+                info = getattr(self, "_saved_place", None) or getattr(self.form.ui, "_places", {}).get(self.name) \
+                    or {"x": p["Left"], "y": p["Top"], "width": p["Width"], "height": p["Height"]}
                 w.place(**info)
             else:
                 info = w.place_info()
                 if info:
-                    self._saved_place = {k: info[k] for k in ("x", "y", "width", "height")}
+                    self._saved_place = {k: info[k] for k in ("x", "y", "width", "height", "relx", "rely",
+                                                             "relwidth", "relheight", "bordermode") if k in info}
                 w.place_forget()
             return
         if name in ("backcolor", "forecolor"):
@@ -349,6 +734,10 @@ class VBControl:
 
     def vb_call(self, name, args):
         w, t = self.w, self.type
+        if t in VB_EXT:
+            v = self._ext_call(name, args)
+            if v is not _NA:
+                return v
         if name == "additem":
             item = to_str(args[0])
             if t == "ListBox":
@@ -401,7 +790,329 @@ class VBControl:
             return EMPTY
         return self.vb_get(name)
 
+    # -- new controls (TabControl, TreeView, ListView, DataGridView, DateTimePicker, dialogs, ...)
+    def node_key(self, iid):
+        for k, v in self.keys.items():
+            if v == iid:
+                return k
+        return ""
+
+    def key_node(self, key):
+        iid = self.keys.get(str(key).lower())
+        return iid if iid is not None and self.w.exists(iid) else None
+
+    def find_node(self, ref):
+        """Node / ListItem object, key, 1-based index or path -> item id."""
+        if isinstance(ref, (_VBNode, _VBListItem)):
+            return ref.iid
+        t = self.w
+        if isinstance(ref, str) and not ref.strip().lstrip("-").isdigit():
+            iid = self.key_node(ref)
+            if iid is None and t.exists(ref):
+                iid = ref
+            if iid is None:
+                raise err(35601, f"Element not found: '{ref}'")
+            return iid
+        i = _int(ref)
+        items = t.Nodes if self.type == "TreeView" else list(t.get_children())
+        if not 1 <= i <= len(items):
+            raise err(35600, "Index out of bounds")
+        return items[i - 1]
+
+    def _grid_cell(self, args):
+        r, c = _int(args[0]), _int(args[1])
+        g = self.w
+        if not (0 <= r <= g.RowCount) or not (0 <= c < g.ColumnCount):
+            raise err(381, "Subscript out of range (TextMatrix)")
+        return r, c
+
+    def _grid_resize(self, rows=None, cols=None):
+        g = self.w
+        if cols is not None:
+            cols = max(1, cols)
+            names = list(g.Columns[:cols]) + [f"Column{i + 1}" for i in range(len(g.Columns), cols)]
+            g.SetColumns(names)
+        if rows is not None:
+            want = max(0, rows - 1)                     # row 0 = the header row (FixedRows = 1)
+            while g.RowCount < want:
+                g.AddRow()
+            while g.RowCount > want:
+                g.RemoveRow(g.RowCount - 1)
+
+    def _dialog_result(self, method):
+        res = getattr(self.w, method)()
+        if res != "OK" and self.cancel_error:
+            raise err(32755, "Cancel was selected.")
+        return res
+
+    def _ext_get(self, name):
+        w, t = self.w, self.type
+        if t in DIALOGS:
+            if name == "name":
+                return self.name
+            if name == "tag":
+                return self.tag
+            if name == "filename":
+                return w.FileName
+            if name == "filetitle":
+                return os.path.basename(w.FileName)
+            if name == "filter":
+                return w.Filter
+            if name in ("title", "dialogtitle"):
+                return w.Title
+            if name in ("initdir", "initialdirectory"):
+                return w.InitialDirectory
+            if name == "color":
+                return color_to_vb(w.Color)
+            if name == "fontname":
+                return w.FontName
+            if name == "fontsize":
+                return w.FontSize
+            if name in ("selectedpath", "path"):
+                return w.SelectedPath
+            if name == "cancelerror":
+                return self.cancel_error
+            if name in ("flags", "filterindex", "fontbold", "fontitalic", "fontunderline", "fontstrikethru"):
+                return 0
+            raise err(438, f"CommonDialog doesn't support '{name}'")
+        if t == "TabControl":
+            if name in ("tab", "selectedindex"):
+                return w.index("current") if w.tabs() else -1
+            if name in ("tabs", "tabcount"):
+                return len(w.tabs())
+            if name in ("caption", "text"):
+                return w.tab("current", "text") if w.tabs() else ""
+            if name in ("tabcaption", "taburl"):
+                return _IndexedProp(self, "tabcaption")
+        elif t == "TreeView":
+            if name == "nodes":
+                return _VBNodes(self)
+            if name == "selecteditem":
+                sel = w.selection()
+                return _VBNode(self, sel[0]) if sel else NOTHING
+            if name in ("text", "caption"):
+                return w.SelectedText
+            if name == "pathseparator":
+                return "\\"
+        elif t == "ListView":
+            if name == "listitems":
+                return _VBListItems(self)
+            if name == "columnheaders":
+                return _VBColumns(self)
+            if name == "selecteditem":
+                sel = w.selection()
+                return _VBListItem(self, sel[0]) if sel else NOTHING
+            if name in ("text", "caption"):
+                sel = w.selection()
+                return w.GetCell(w.index(sel[0]), 0) if sel else ""
+            if name == "listindex":
+                return w.SelectedIndex
+            if name == "view":
+                return 3 if str(w.cget("show")) == "headings" else 2      # lvwReport / lvwList
+        elif t == "DataGridView":
+            if name == "rows":
+                return w.RowCount + 1
+            if name == "cols":
+                return w.ColumnCount
+            if name == "fixedrows":
+                return 1
+            if name == "fixedcols":
+                return 0
+            if name == "row":
+                return w.CurrentRow + 1 if w.CurrentRow >= 0 else 0
+            if name == "col":
+                return max(0, w.CurrentColumn)
+            if name == "textmatrix":
+                return _IndexedProp(self, "textmatrix")
+            if name in ("text", "caption"):
+                r = self._ext_get("row")
+                return self.vb_call("textmatrix", [r, self._ext_get("col")])
+            if name in ("readonly", "locked"):
+                return bool(w.ReadOnly)
+        elif t == "DateTimePicker":
+            if name == "value":
+                return w.DateTime
+            if name in ("text", "caption"):
+                return w.get()
+            if name in ("year", "month", "day", "hour", "minute", "second"):
+                return getattr(w.DateTime, name)
+            if name == "format":
+                return {"Long": 0, "Short": 1, "Time": 2}.get(w.Format, 1)
+        elif t == "StatusBar":
+            if name in ("simpletext", "text", "caption"):
+                return w.cget("text")
+        elif t == "LinkLabel":
+            if name == "linkcolor":
+                return color_to_vb(self._hex(w.cget("fg")))
+        elif t == "ActiveX":
+            if name == "progid":
+                return self.ctrl.props.get("ProgID", "")
+            if name == "object":
+                if getattr(self, "_com", None) is None:
+                    self._com = self.form.runtime.create_object(self.ctrl.props.get("ProgID", ""))
+                return self._com
+        return _NA
+
+    def _ext_set(self, name, value):
+        w, t = self.w, self.type
+        if t in DIALOGS:
+            if name == "tag":
+                self.tag = value
+            elif name == "filename":
+                w.FileName = to_str(value)
+            elif name == "filter":
+                w.Filter = to_str(value)
+            elif name in ("title", "dialogtitle"):
+                w.Title = to_str(value)
+            elif name in ("initdir", "initialdirectory"):
+                w.InitialDirectory = to_str(value)
+            elif name == "color":
+                w.Color = vb_to_color(value) or "#000000"
+            elif name == "fontname":
+                w.FontName = to_str(value)
+            elif name == "fontsize":
+                w.FontSize = int(to_num(value))
+            elif name in ("selectedpath", "path"):
+                w.SelectedPath = to_str(value)
+            elif name == "cancelerror":
+                self.cancel_error = to_bool(value)
+            elif name in ("flags", "filterindex", "maxfilesize", "defaultext", "helpfile", "min", "max",
+                          "fontbold", "fontitalic", "fontunderline", "fontstrikethru"):
+                pass
+            else:
+                raise err(438, f"CommonDialog doesn't support '{name}'")
+            return None
+        if t == "TabControl":
+            if name in ("tab", "selectedindex"):
+                i = int(to_num(value))
+                if not 0 <= i < len(w.tabs()):
+                    raise err(380, "Invalid property value (Tab)")
+                w.select(i)
+                return None
+            if name in ("caption", "text"):
+                if w.tabs():
+                    w.tab("current", text=to_str(value))
+                return None
+        elif t == "TreeView":
+            if name in ("text", "caption"):
+                return None
+            if name in ("pathseparator", "linestyle", "style", "indentation", "labeledit", "sorted",
+                        "hideselection"):
+                return None
+        elif t == "ListView":
+            if name == "listindex":
+                w.SelectedIndex = int(to_num(value))
+                return None
+            if name == "view":
+                v = int(to_num(value))
+                w.configure(show="headings" if v == 3 else "")
+                w.configure(displaycolumns="#all" if v == 3 else ("c0",))
+                return None
+            if name in ("labeledit", "fullrowselect", "gridlines", "sorted", "hideselection"):
+                return None
+        elif t == "DataGridView":
+            if name == "rows":
+                self._grid_resize(rows=int(to_num(value)))
+                return None
+            if name == "cols":
+                self._grid_resize(cols=int(to_num(value)))
+                return None
+            if name == "row":
+                r = int(to_num(value))
+                w.CurrentRow = r - 1
+                if r >= 1:
+                    w.SelectedIndex = r - 1
+                return None
+            if name == "col":
+                w.CurrentColumn = int(to_num(value))
+                return None
+            if name in ("text", "caption"):
+                self.vb_setindexed("textmatrix", [self._ext_get("row"), self._ext_get("col")], value)
+                return None
+            if name in ("readonly", "locked"):
+                w.ReadOnly = to_bool(value)
+                return None
+            if name in ("fixedrows", "fixedcols", "colwidth", "gridlines", "allowuserresizing"):
+                return None
+        elif t == "DateTimePicker":
+            if name == "value":
+                try:
+                    w.Value = value if isinstance(value, _dt.datetime) else to_str(value)
+                except ValueError:
+                    raise err(380, f"Invalid property value: {to_str(value)!r}") from None
+                return None
+            if name in ("format", "customformat", "checkbox", "updown"):
+                return None
+        elif t == "StatusBar":
+            if name in ("simpletext", "text", "caption"):
+                w.configure(text=to_str(value))
+                return None
+            if name in ("style", "simplestyle"):
+                return None
+        elif t == "LinkLabel":
+            if name == "linkcolor":
+                w.configure(fg=vb_to_color(value) or "#0066CC")
+                return None
+        return _NA
+
+    def _ext_call(self, name, args):
+        w, t = self.w, self.type
+        if t in DIALOGS:
+            method = {"showopen": "ShowOpen", "showsave": "ShowSave", "showcolor": "ShowColor",
+                      "showfont": "ShowFont", "showfolder": "ShowFolder", "showdialog": "ShowDialog"}.get(name)
+            if method:
+                return self._dialog_result(method)
+            return self._ext_get(name)
+        if t == "TabControl" and name == "tabcaption":
+            i = _int(args[0])
+            return w.tab(i, "text")
+        if t == "TreeView" and name == "nodes" and args:
+            return _VBNodes(self).vb_call("item", args)
+        if t == "ListView" and name == "listitems" and args:
+            return _VBListItems(self).vb_call("item", args)
+        if t == "DataGridView":
+            if name == "textmatrix":
+                r, c = self._grid_cell(args)
+                return w.Columns[c] if r == 0 else w.GetCell(r - 1, c)
+            if name == "additem":
+                cells = to_str(args[0]).split("\t")
+                if len(args) > 1 and _given(args[1]):
+                    w.insert("", max(0, _int(args[1]) - 1), values=cells)
+                else:
+                    w.AddRow(*cells)
+                return EMPTY
+            if name == "removeitem":
+                w.RemoveRow(_int(args[0]) - 1)
+                return EMPTY
+            if name == "clear":
+                w.Clear()
+                return EMPTY
+        if t in ("TreeView", "ListView") and name == "clear":
+            w.Clear()
+            self.keys.clear()
+            return EMPTY
+        return _NA
+
+    def _ext_setindexed(self, name, args, value):
+        w, t = self.w, self.type
+        if t == "DataGridView" and name == "textmatrix":
+            r, c = self._grid_cell(args)
+            if r == 0:
+                cols = list(w.Columns)
+                cols[c] = to_str(value)
+                w.Columns = cols
+                w.heading(f"c{c}", text=cols[c])
+            else:
+                w.SetCell(r - 1, c, to_str(value))
+            return True
+        if t == "TabControl" and name == "tabcaption":
+            w.tab(_int(args[0]), text=to_str(value))
+            return True
+        return False
+
     def vb_setindexed(self, name, args, value):
+        if self.type in VB_EXT and self._ext_setindexed(name, args, value):
+            return
         if name == "list":
             i = int(to_num(args[0]))
             if self.type == "ListBox":
@@ -510,6 +1221,10 @@ class VBForm:
         self.loaded = True
         self.runtime.build_form(self)
         for c in self.model.controls:
+            if c.type == "ToolStrip":
+                for item, b in (getattr(self.ui, f"{c.name}_buttons", None) or {}).items():
+                    self.controls[item.lower()] = VBToolButton(self, item, b)
+                continue
             if c.type != "MenuStrip":
                 vc = VBControl(self, c)
                 self.controls[c.name.lower()] = vc
@@ -787,6 +1502,10 @@ class Runtime:
     # -- loading code
     def load(self):
         it = self.interp
+        # multi-language projects: only the VB forms/modules run here (others via RadCall)
+        lang = getattr(self.project, "form_language", lambda _n: "vb-basic")
+        self.project.forms = [n for n in self.project.forms if lang(n) == "vb-basic"]
+        self.project.modules = [m for m in self.project.modules if m.lower().endswith((".bas", ".cls"))]
         for name in self.project.forms:
             form = Form.load(self.project.form_path(name))
             vf = VBForm(self, form)
@@ -794,6 +1513,12 @@ class Runtime:
             it.objects[name.lower()] = vf
         it.objects.update(app=App(self), screen=Screen(self), clipboard=Clipboard(self),
                           forms=_FormsColl(self))
+        # solution references: <Lib>.ref.bas proxy modules first, so the project's own procedures win
+        from ..languages._refs import proxy_files
+        listed = {m.lower() for m in self.project.modules}
+        for path in proxy_files(self.folder, "*.ref.bas"):
+            if path.name.lower() not in listed:
+                self._load_code(path, path.name[:-len(".ref.bas")], False)
         for mod in self.project.modules:
             path = self.folder / mod
             self._load_code(path, Path(mod).stem, False)
@@ -826,7 +1551,7 @@ class Runtime:
             events = CONTROL_TYPES[c.type].all_events() if c is not None else \
                 ["Load", "Activated", "Deactivate", "Resize", "FormClosing", "FormClosed", "Click",
                  "DoubleClick", "MouseDown", "MouseUp", "MouseMove", "MouseWheel", "KeyDown", "KeyUp", "KeyPress"]
-            if c is not None and c.type == "MenuStrip":
+            if c is not None and c.type in ("MenuStrip", "ToolStrip"):
                 for it in menu_leaves(c.props.get("Items", [])):
                     neutral = f"{it['Name']}_Click"
                     if st and it["Name"].lower() + "_click" in st.mod.procs:
@@ -1027,6 +1752,10 @@ class Runtime:
         return None
 
     def create_object(self, progid):
+        from .vbfso import create as _builtin_object      # Scripting.FileSystemObject without COM
+        obj = _builtin_object(str(progid), self.folder)
+        if obj is not None:
+            return obj
         try:
             import win32com.client  # type: ignore
         except ImportError:
@@ -1045,7 +1774,7 @@ class Runtime:
         self.load()
         if self.debugger is not None:
             self.interp.trace = self.debugger.trace
-        start = (self.project.startup or "").lower()
+        start = (os.environ.get("RAD_START_FORM") or self.project.startup or "").lower()
         try:
             if start in ("sub main", "main") or start not in self.forms:
                 found = self.interp.find_proc("main", None)
@@ -1073,10 +1802,36 @@ class Debugger:
         self.mode = "run"
         self.depth = 0
         self.bps: set[tuple[str, int]] = set()
+        self.conds: dict[tuple[str, int], str] = {}
         for spec in filter(None, os.environ.get("RADDBG_BP", "").split(";")):
-            f, _, ln = spec.rpartition("|")
-            if ln.isdigit():
-                self.bps.add((f.lower(), int(ln)))
+            self._add_bp(spec, True)
+
+    def _add_bp(self, spec, on):
+        """spec = file|line[|condition]"""
+        parts = spec.split("|")
+        if len(parts) < 2 or not parts[1].strip().isdigit():
+            return
+        key = (parts[0].lower(), int(parts[1]))
+        cond = "|".join(parts[2:]).strip()
+        if on:
+            self.bps.add(key)
+            if cond:
+                self.conds[key] = cond
+            else:
+                self.conds.pop(key, None)
+        else:
+            self.bps.discard(key)
+            self.conds.pop(key, None)
+
+    def _cond_true(self, key, frame):
+        cond = self.conds.get(key)
+        if not cond:
+            return True
+        try:
+            from .vbinterp import to_bool
+            return to_bool(self.rt.interp.evaluate_text(cond, frame))
+        except Exception:  # noqa: BLE001 - a broken condition stops (like VB) so the user sees it
+            return True
 
     def send(self, *fields):
         text = "|".join(str(f).replace("\n", "\\n").replace("|", "¦") for f in fields)
@@ -1093,7 +1848,7 @@ class Debugger:
             stop = "step"
         elif self.mode == "out" and depth < self.depth:
             stop = "step"
-        if stop is None and (fname, line) in self.bps:
+        if stop is None and (fname, line) in self.bps and self._cond_true((fname, line), frame):
             stop = "breakpoint"
         if stop:
             self.pause(frame, stop)
@@ -1128,9 +1883,7 @@ class Debugger:
                     self.send("eval", f"Error: {ex}")
                 continue
             if cmd.startswith(("b ", "B ")):
-                f, _, ln = cmd[2:].rpartition("|")
-                if ln.isdigit():
-                    (self.bps.add if cmd[0] == "b" else self.bps.discard)((f.lower(), int(ln)))
+                self._add_bp(cmd[2:], cmd[0] == "b")
                 continue
             if cmd in ("c", "s", "n", "o"):
                 self.mode = {"c": "run", "s": "step", "n": "next", "o": "out"}[cmd]

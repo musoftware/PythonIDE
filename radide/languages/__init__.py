@@ -12,9 +12,15 @@ _PLUGINS: dict[str, LanguagePlugin] = {}
 
 def _discover() -> None:
     for mod in pkgutil.iter_modules(__path__):
-        if mod.name == "base":
+        if mod.name in ("base", "bridgebase") or mod.name.startswith("_"):
             continue
-        m = importlib.import_module(f"{__name__}.{mod.name}")
+        try:
+            m = importlib.import_module(f"{__name__}.{mod.name}")
+        except Exception:  # noqa: BLE001 - a broken plugin must not hide the others
+            import sys
+            import traceback
+            sys.stderr.write(f"RAD IDE: language plugin '{mod.name}' failed to load:\n{traceback.format_exc()}")
+            continue
         plugin = getattr(m, "PLUGIN", None)
         if isinstance(plugin, LanguagePlugin):
             _PLUGINS[plugin.id] = plugin

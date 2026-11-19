@@ -87,9 +87,13 @@ class Session(QObject):
         else:
             self.evalResult.emit("(the program must be paused at a breakpoint)")
 
-    def set_breakpoint(self, filename: str, line: int, on: bool) -> None:
+    def set_breakpoint(self, filename: str, line: int, on: bool, cond: str = "") -> None:
         if self.debug:
-            self.send(f"{'b' if on else 'B'} {filename.lower()}|{line}")
+            self.send(f"{'b' if on else 'B'} {filename.lower()}|{line}" + (f"|{cond}" if on and cond else ""))
+
+    def set_break_on_exception(self, on: bool) -> None:
+        if self.debug:
+            self.send(f"x {'on' if on else 'off'}")
 
     def _on_error(self, err) -> None:
         if self.user_stopped and err == QProcess.ProcessError.Crashed:

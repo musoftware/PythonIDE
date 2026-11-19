@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RAD IDE editor</title>
+<style>
+  html, body, #editor { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+  .rad-bp { background: #C0392B; border-radius: 50%; margin-left: 4px; width: 12px !important; height: 12px !important; margin-top: 4px; }
+  .rad-bp-line { background: rgba(192, 57, 43, 0.15); }
+  .rad-cur { background: #FFD700; clip-path: polygon(0 25%, 55% 25%, 55% 0, 100% 50%, 55% 100%, 55% 75%, 0 75%); margin-left: 3px; }
+  .rad-cur-line { background: rgba(255, 215, 0, 0.30); }
+</style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="monaco/vs/loader.js"></script>
+<script>
+// RAD IDE <-> Monaco bridge. Python side: radide/monaco_editor.py (object "rad").
+require.config({ paths: { vs: 'monaco/vs' } });
+require(['vs/editor/editor.main'], function () {
+  new QWebChannel(qt.webChannelTransport, function (channel) {
+    const rad = channel.objects.rad;
+    const editor = monaco.editor.create(document.getElementById('editor'), {
+      value: '', language: 'plaintext', automaticLayout: true, fontSize: 14,
+      fontFamily: "Consolas, 'Cascadia Mono', 'Courier New', monospace",
+      minimap: { enabled: true }, glyphMargin: true, folding: true, renderWhitespace: 'selection',
+      unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
+      bracketPairColorization: { enabled: true }, smoothScrolling: true, mouseWheelZoom: true,
+      contextmenu: false, quickSuggestions: { other: true, comments: false, strings: false },
+      suggestOnTriggerCharacters: true, wordBasedSuggestions: 'off', tabSize: 4, insertSpaces: true,
+    });
+    window.radEditor = editor;
+    let muted = false;
+
+    // ---------------- Python -> JS requests resolved by id
+    const waiting = new Map(); let nextId = 1;
+    function ask(fn) { return new Promise(res => { const id = nextId++; waiting.set(id, res); fn(id); }); }
+    window.radResolve = function (id, value) { const r = waiting.get(id); if (r) { waiting.delete(id); r(value); } };
+
+    // ---------------- providers (registered once per language)
+    const registered = new Set();
+    function ensureProviders(lang) {
+      if (registered.has(lang)) return; registered.add(lang);
+      monaco.languages.registerCompletionItemProvider(lang, {
+        triggerCharacters: ['.'],
+        provideCompletionItems: async (model, pos) => {
+          const items = await ask(id => rad.jsComplete(id, pos.lineNumber - 1, pos.column - 1)) || [];
+          const w = model.getWordUntilPosition(pos);
+          const range = new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
+          return { suggestions: items.map(i => ({ label: i.label, kind: i.kind, detail: i.detail || '',
+            documentation: i.documentation || '', insertText: i.insertText || i.label,
+            insertTextRules: i.snippet ? 4 : 0, range: range, sortText: i.sortText })) };
+        } });
+      monaco.languages.registerSignatureHelpProvider(lang, {
+        signatureHelpTriggerCharacters: ['(', ','],
+        provideSignatureHelp: async (model, pos) => {
+          const tip = await ask(id => rad.jsSignature(id, pos.lineNumber - 1, pos.column - 1));
+          if (!tip) return null;
+          return { value: { signatures: [{ label: tip, parameters: [] }], activeSignature: 0, activeParameter: 0 },
+                   dispose() {} };
+        } });
+      monaco.languages.registerHoverProvider(lang, {
+        provideHover: async (model, pos) => {
+          const w = model.getWordAtPosition(pos); if (!w) return null;
+          const c = editor.getScrolledVisiblePosition(pos);
+          const text = await ask(id => rad.jsHover(id, w.word, c ? c.left : 0, c ? c.top : 0));
+          return text ? { contents: [{ value: '`' + text + '`' }] } : null;
+        } });
+    }
+
+    // custom languages (Ring, Fortran, ...) from the plugin's syntax settings
+    window.radRegisterLanguage = function (spec) {
+      if (monaco.languages.getLanguages().some(l => l.id === spec.id)) return;
+      monaco.languages.register({ id: spec.id });
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+      const root = [];
+      if (spec.block && spec.block.length === 2) root.push([new RegExp(esc(spec.block[0])), 'comment', '@block']);
+      spec.lineComments.forEach(c => root.push([new RegExp(esc(c) + '.*$'), 'comment']));
+      spec.quotes.forEach(q => root.push([new RegExp(esc(q) + '[^' + esc(q) + ']*' + esc(q) + '?'), 'string']));
+      root.push([/\d+(\.\d+)?/, 'number']);
+      root.push([/[A-Za-z_]\w*/, { cases: { '@keywords': 'keyword', '@builtins': 'type.identifier', '@default': 'identifier' } }]);
+      const tokenizer = { root: root };
+      if (spec.block && spec.block.length === 2)
+        tokenizer.block = [[new RegExp(esc(spec.block[1])), 'comment', '@pop'], [/./, 'comment']];
+      monaco.languages.setMonarchTokensProvider(spec.id, {
+        ignoreCase: spec.ignoreCase, keywords: spec.keywords, builtins: spec.builtins, tokenizer: tokenizer });
+      monaco.languages.setLanguageConfiguration(spec.id, {
+        comments: spec.lineComments.length ? { lineComment: spec.lineComments[0] } : {},
+        brackets: [['(', ')'], ['[', ']'], ['{', '}']],
+        autoClosingPairs: [{ open: '(', close: ')' }, { open: '[', close: ']' }, { open: '{', close: '}' },
+                           ...spec.quotes.map(q => ({ open: q, close: q }))],
+      });
+    };
+
+    // ---------------- events to Python
+    editor.onDidChangeModelContent(() => { if (!muted) rad.jsTextChanged(editor.getValue()); });
+    editor.onDidChangeCursorPosition(e => rad.jsCursor(e.position.lineNumber - 1, e.position.column - 1));
+    editor.onDidChangeCursorSelection(e => { const s = e.selection;
+      rad.jsSelection(s.startLineNumber - 1, s.startColumn - 1, s.endLineNumber - 1, s.endColumn - 1); });
+    editor.onMouseDown(e => {
+      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+          e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS && e.event.leftButton && e.event.altKey)
+        rad.jsToggleBreakpoint(e.target.position.lineNumber - 1);
+    });
+    editor.onContextMenu(e => {
+      const p = e.target.position;
+      rad.jsContextMenu(p ? p.lineNumber - 1 : 0, e.event.posx, e.event.posy);
+    });
+    editor.addAction({ id: 'rad.definition', label: 'Go to Definition', keybindings: [monaco.KeyCode.F12],
+      run: ed => { const p = ed.getPosition(); rad.jsDefinition(p.lineNumber - 1, p.column - 1); } });
+
+    // ---------------- Python -> JS commands
+    let bpDecos = [], curDeco = [];
+    window.radSetBreakpoints = function (lines) {
+      bpDecos = editor.deltaDecorations(bpDecos, lines.map(l => ({ range: new monaco.Range(l + 1, 1, l + 1, 1),
+        options: { isWholeLine: true, glyphMarginClassName: 'rad-bp', className: 'rad-bp-line' } })));
+    };
+    window.radSetCurrentLine = function (line) {
+      curDeco = editor.deltaDecorations(curDeco, line < 0 ? [] : [{ range: new monaco.Range(line + 1, 1, line + 1, 1),
+        options: { isWholeLine: true, glyphMarginClassName: 'rad-cur', className: 'rad-cur-line' } }]);
+      if (line >= 0) editor.revealLineInCenter(line + 1);
+    };
+    window.radSetText = function (text, lang) {
+      muted = true;
+      ensureProviders(lang);
+      monaco.editor.setModelLanguage(editor.getModel(), lang || 'plaintext');
+      editor.setValue(text);
+      muted = false;
+    };
+    window.radSetReadOnly = ro => editor.updateOptions({ readOnly: ro });
+    window.radSetCursor = (l, c) => { editor.setPosition({ lineNumber: l + 1, column: c + 1 }); };
+    window.radSetSelection = (l1, c1, l2, c2) => editor.setSelection(new monaco.Range(l1 + 1, c1 + 1, l2 + 1, c2 + 1));
+    window.radReplace = (l1, c1, l2, c2, text) => {
+      muted = true;
+      editor.executeEdits('rad', [{ range: new monaco.Range(l1 + 1, c1 + 1, l2 + 1, c2 + 1), text: text, forceMoveMarkers: true }]);
+      muted = false;
+    };
+    window.radReveal = l => editor.revealLineInCenter(l + 1);
+    window.radSetMarkers = list => monaco.editor.setModelMarkers(editor.getModel(), 'rad', list.map(d => ({
+      startLineNumber: d.line + 1, startColumn: (d.col || 0) + 1, endLineNumber: (d.endLine ?? d.line) + 1,
+      endColumn: (d.endCol ?? 1000) + 1, message: d.message,
+      severity: d.severity === 'error' ? 8 : d.severity === 'warning' ? 4 : 2 })));
+    window.radSetTheme = dark => monaco.editor.setTheme(dark ? 'vs-dark' : 'vs');
+    window.radSetFont = (family, size) => editor.updateOptions({ fontFamily: family, fontSize: size });
+    rad.jsReady();
+  });
+});
+</script>
+</body>
+</html>

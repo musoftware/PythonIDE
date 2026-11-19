@@ -1,4 +1,4 @@
-// RAD IDE - entry program for C# projects (copied into _build when the program runs - do not edit).
+// RAD IDE - entry program for C# projects (copied into _build/<lang> when the program runs - do not edit).
 //   RadApp.dll                    GUI Bridge program: runs the handler named <Object>_<Event> for each EVENT
 //   RadApp.dll --worker <Module>  serves the public static methods of class <Module> to the RAD Hub (JSON lines)
 using System.Reflection;
@@ -47,7 +47,11 @@ public static class RadMain
             {
                 var inner = ex is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : ex;
                 Console.Error.WriteLine($"Error in {obj}_{ev}: {inner.GetType().Name}: {inner.Message}");
-                Console.Error.WriteLine(inner.StackTrace);
+                foreach (var st in (inner.StackTrace ?? "").Split('\n'))
+                {
+                    if (st.Contains("System.RuntimeMethodHandle") || st.Contains("System.Reflection.")) break;
+                    Console.Error.WriteLine(st.TrimEnd());
+                }
             }
             finally
             {
@@ -109,7 +113,8 @@ public static class RadWorker
         foreach (var m in candidates.OrderBy(m => m.GetParameters().Length == args.Length ? 0 : 1))
         {
             var ps = m.GetParameters();
-            if (args.Length > ps.Length || args.Length < ps.Count(p => !p.IsOptional && !IsParams(p))) continue;
+            bool hasParams = ps.Length > 0 && IsParams(ps[^1]);
+            if ((args.Length > ps.Length && !hasParams) || args.Length < ps.Count(p => !p.IsOptional && !IsParams(p))) continue;
             try
             {
                 var call = new object[ps.Length];

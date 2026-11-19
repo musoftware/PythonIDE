@@ -10,9 +10,13 @@ from pathlib import Path
 from PyQt6.QtCore import QMimeData, QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-from .controls import CONTROL_TYPES
+from .controls import CONTROL_TYPES, MENU_TYPES
+from .layout import client_size, relayout, resize_children
 from .model import Control, Form
 from .preview import REBUILD_PROPS
+
+# properties whose change can move docked / anchored controls
+LAYOUT_PROPS = {"Left", "Top", "Width", "Height", "Dock", "Anchor", "Visible", "TabPage", "TabPages"}
 
 CLIP_MIME = "application/x-radide-controls"
 UNDO_LIMIT = 200
@@ -110,7 +114,9 @@ class FormDocument(QObject):
     def add_control(self, type_name: str, x: int, y: int, parent: str = "") -> Control:
         self.checkpoint()
         ctrl = self.form.add(type_name, x, y, parent)
+        self._set_tab_page(ctrl)
         self._normalize()
+        self._relayout(emit=False)
         self.structureChanged.emit()
         self.set_modified()
         self.select(ctrl)
@@ -145,7 +151,12 @@ class FormDocument(QObject):
         if record:
             self.checkpoint()
         old = props.get(name)
+        resized = name in ("Width", "Height") and (owner is None or owner.ctype.container)
+        before = client_size(self.form, owner) if resized else None
         props[name] = value
+        if resized:          # anchored children follow the container / the form
+            for c in resize_children(self.form, owner, before, client_size(self.form, owner)):
+                self.controlChanged.emit(c)
         if name in REBUILD_PROPS:
             self.structureChanged.emit()
         if name == "Name" and owner is not None:
@@ -155,24 +166,59 @@ class FormDocument(QObject):
             self.renamed.emit(old, value)
             self.structureChanged.emit()
         self.controlChanged.emit(owner)
+        if name in LAYOUT_PROPS or owner is None:
+            self._relayout()
         self.set_modified()
 
     def set_geometry(self, ctrl: Control, x: int, y: int, w: int, h: int) -> None:
         """No checkpoint: callers record one for the whole gesture."""
+        before = client_size(self.form, ctrl) if ctrl.ctype.container else None
         for k, v in (("Left", x), ("Top", y), ("Width", w), ("Height", h)):
             ctrl.props[k] = int(v)
+        if before is not None:
+            for c in resize_children(self.form, ctrl, before, client_size(self.form, ctrl)):
+                self.controlChanged.emit(c)
         self.controlChanged.emit(ctrl)
+        self._relayout()
         self.set_modified()
+
+    def _relayout(self, emit: bool = True) -> None:
+        """Snap docked controls to their edges (after any geometry change)."""
+        changed = relayout(self.form)
+        if emit:
+            for c in dict.fromkeys(changed):
+                self.controlChanged.emit(c)
+
+    def _set_tab_page(self, ctrl: Control) -> None:
+        """Controls dropped on a TabControl go to its selected page."""
+        parent = self.form.find(ctrl.parent) if ctrl.parent else None
+        if parent is not None and parent.type == "TabControl":
+            ctrl.props["TabPage"] = int(parent.props.get("SelectedIndex", 0) or 0)
+        else:
+            ctrl.props.pop("TabPage", None)
+
+    @property
+    def locked(self) -> bool:
+        return bool(self.form.props.get("LockControls"))
+
+    def set_locked(self, on: bool) -> None:
+        """Format > Lock Controls: controls can be selected but not moved or resized."""
+        if self.locked != bool(on):
+            self.form.props["LockControls"] = bool(on)
+            self.controlChanged.emit(None)
+            self.set_modified()
 
     def reparent(self, ctrl: Control, parent: str) -> None:
         """Move ctrl into another container keeping its absolute position."""
         if ctrl.parent == parent:
             return
         ax, ay = self.form.abs_pos(ctrl)
-        px, py = (self.form.abs_pos(self.form.find(parent)) if parent else (0, 0))
+        px, py = self.form.client_origin(self.form.find(parent) if parent else None)
         ctrl.props["Parent"] = parent
         ctrl.props["Left"], ctrl.props["Top"] = ax - px, ay - py
+        self._set_tab_page(ctrl)
         self._normalize()
+        self._relayout(emit=False)
         self.structureChanged.emit()
         self.set_modified()
 
@@ -223,8 +269,8 @@ class FormDocument(QObject):
         for d in data:
             c = Control.from_dict(d)
             ctype = CONTROL_TYPES[c.type]
-            if c.type == "MenuStrip" and self.form.menu():
-                continue                                   # one menu per form
+            if c.type in MENU_TYPES and any(x.type == c.type for x in self.form.controls):
+                continue                                   # one menu / tool strip per form
             new_name = self.form.unique_name(ctype.prefix, taken)
             taken.add(new_name.lower())
             mapping[c.name] = new_name
@@ -238,10 +284,11 @@ class FormDocument(QObject):
                 if not c.ctype.nonvisual:
                     c.props["Left"] = int(c.props["Left"]) + 16
                     c.props["Top"] = int(c.props["Top"]) + 16
-            if c.type == "MenuStrip":   # menu item names must stay unique too
+            if c.type in MENU_TYPES:   # menu item names must stay unique too
                 self._rename_menu_items(c.props.get("Items", []), taken)
         self.form.controls += new
         self._normalize()
+        self._relayout(emit=False)
         self.structureChanged.emit()
         self.set_modified()
         self.select_many([c for c in new if c.parent not in mapping.values()])

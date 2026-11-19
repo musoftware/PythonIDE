@@ -14,7 +14,9 @@ from ..controls import CONTROL_TYPES
 from ..model import Form, Project
 from .base import Completion, PackageManager
 from .bridgebase import CLIENTS, BridgeLanguagePlugin
-from .javascript import EXTRA_PROPS, METHODS
+from .javascript import (EXTRA_PROPS, METHODS, REF_MARK, RUNTIME_FILES, balanced, depths, doc_before, ident,
+                         is_private, make_export, mask_code, read_ref_index, ref_index_lines, ref_libs, safe_params,
+                         split_top, unique_functions)
 
 PHP_CLIENT = CLIENTS / "php"
 
@@ -59,10 +61,10 @@ class PhpBridgePlugin(BridgeLanguagePlugin):
     main_file = "_radmain.php"
     package_manager = PackageManager(
         name="Composer", tool="composer",
-        list_cmd=["composer", "show", "--direct", "--no-interaction"],
-        search_cmd=["composer", "search", "{query}", "--no-interaction"],
-        install_cmd=["composer", "require", "{name}", "--no-interaction"],
-        uninstall_cmd=["composer", "remove", "{name}", "--no-interaction"],
+        list_cmd=["composer", "show", "--direct", "--no-interaction", "--no-ansi"],
+        search_cmd=["composer", "search", "{query}", "--no-interaction", "--no-ansi"],
+        install_cmd=["composer", "require", "{name}", "--no-interaction", "--no-ansi"],
+        uninstall_cmd=["composer", "remove", "{name}", "--no-interaction", "--no-ansi"],
         init_cmd=["composer", "init", "--no-interaction", "--name=radide/app", "--type=project"],
         manifest="composer.json",
         search_url="https://packagist.org/?query={query}",
@@ -98,6 +100,89 @@ class PhpBridgePlugin(BridgeLanguagePlugin):
                 "{\n"
                 "    return $a + $b;\n"
                 "}\n")
+
+    # ------------------------------------------------------------ References (CONTRACTS 7.2)
+    def exported_functions(self, path: Path, text: str) -> list:
+        """Top-level functions of a PHP file (not methods, not functions declared inside if/blocks).
+        _private names and event handlers (cmdGo_Click) are skipped."""
+        module = Path(path).stem
+        if REF_MARK in text[:400] or module.lower() in RUNTIME_FILES or module.lower().endswith(".ref"):
+            return []
+        masked = mask_code(text, hash_comments=True, php=True)
+        dep = depths(masked)
+        out, seen = [], set()
+        for m in re.finditer(r"^[ 	]*function[ 	]+&?[ 	]*([A-Za-z_]\w*)[ 	]*\(", masked, re.M | re.I):
+            if dep[m.start()] != 0:
+                continue
+            name = m.group(1)
+            o = m.end() - 1
+            c = balanced(masked, o)
+            if c < 0 or name.lower() in seen or is_private(name):
+                continue
+            seen.add(name.lower())
+            params = []
+            for i, p in enumerate(split_top(re.sub(r"#\[[^\]]*\]", " ", masked[o + 1:c]))):
+                pm = re.search(r"\$([A-Za-z_]\w*)", p)
+                params.append(pm.group(1) if pm else f"arg{i + 1}")
+            kind = "sub" if re.match(r"\s*:\s*\??\s*(void|never)\b", masked[c + 1:c + 40], re.I) else "function"
+            out.append(make_export(name, params, module, doc_before(text, m.start(), hash_comments=True), kind))
+        return out
+
+    def example_function(self, name: str) -> str:
+        """Code of a new Class Library module *name* with public example functions."""
+        return ("<?php\n"
+                f"// Class Library module {name}. Every top-level function here is public: a project that\n"
+                f"// references this library calls it as native code, e.g. {name}.Add(2, 3) in Python/C#/JS,\n"
+                f"// {name}::Add(2, 3) or {name}_Add(2, 3) in PHP. Names starting with _ stay private.\n"
+                "// Arguments and results are JSON values (number, string, bool, null, array).\n\n"
+                "/** Add two numbers and return the sum. */\n"
+                "function Add($a, $b)\n{\n    return $a + $b;\n}\n\n"
+                "/** Say hello to someone. */\n"
+                "function Greet($name)\n{\n    return \"Hello, $name!\";\n}\n")
+
+    def reference_proxy(self, lib: str, functions) -> dict[str, str]:
+        """<Lib>.ref.php: class <Lib> with static methods plus functions <Lib>_<name>(); both
+        forward to radcall('<module>.<name>'). The runtime includes it automatically."""
+        name = ident(lib)
+        functions = unique_functions(functions)
+        first = functions[0].name if functions else "Func"
+        lines = ["<?php",
+                 self.proxy_header(lib).rstrip(),
+                 f"// The functions of the library project '{lib}' run in its own language through RAD Hub;",
+                 "// here they are ordinary PHP (this file is included automatically):",
+                 f"//     {name}::{first}(...)      or      {name}_{first}(...)",
+                 "// Functions:",
+                 *ref_index_lines(name, functions, "::"),
+                 "if (!function_exists('radcall') && is_file(__DIR__ . DIRECTORY_SEPARATOR . 'radgui.php')) {",
+                 "    require_once __DIR__ . DIRECTORY_SEPARATOR . 'radgui.php';",
+                 "}",
+                 "",
+                 f"if (!class_exists({self._q(name)}, false)) {{",
+                 f"    final class {name}",
+                 "    {"]
+        sigs = []
+        for f in functions:
+            ps = safe_params(f.params, ("this",))
+            sig = ", ".join(f"${p} = null" for p in ps)
+            target = self._q(f"{f.module}.{f.name}")
+            sigs.append((f, sig, target))
+            if f.doc:
+                lines.append(f"        /** {f.doc.replace('*/', '* /')} */")
+            lines.append(f"        public static function {f.name}({sig})")
+            lines.append(f"        {{ return radcall({target}, ...func_get_args()); }}")
+        lines += ["    }", "}", ""]
+        for f, sig, target in sigs:
+            fn = f"{name}_{f.name}"
+            lines.append(f"if (!function_exists({self._q(fn)})) {{")
+            if f.doc:
+                lines.append(f"    /** {f.doc.replace('*/', '* /')} */")
+            lines.append(f"    function {fn}({sig}) {{ return radcall({target}, ...func_get_args()); }}")
+            lines.append("}")
+        return {f"{name}.ref.php": "\n".join(lines) + "\n"}
+
+    @staticmethod
+    def _q(s: str) -> str:
+        return "'" + str(s).replace("\\", "\\\\").replace("'", "\\'") + "'"
 
     def find_handler(self, code: str, name: str) -> int:
         return self._find_line(code, rf"^\s*function\s+&?\s*{re.escape(name)}\s*\(", re.I)
@@ -146,8 +231,9 @@ class PhpBridgePlugin(BridgeLanguagePlugin):
         return [self.php(), "-d", "display_errors=stderr", "-d", "log_errors=0", self.main_file]
 
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
+        # absolute path: the worker loads the module's own project folder (CONTRACTS 7.2)
         return [self.php(), "-d", "display_errors=stderr", "-d", "log_errors=0",
-                str(PHP_CLIENT / "radworker.php"), module_file]
+                str(PHP_CLIENT / "radworker.php"), str(Path(folder) / module_file)]
 
     # ------------------------------------------------------------ IntelliSense
     def completions(self, code, line, col, path, names=None):
@@ -159,12 +245,22 @@ class PhpBridgePlugin(BridgeLanguagePlugin):
             return self._members(names.get(m.group(2), ""))
         if re.search(r"[\"']\w*$", before):
             return [Completion(n, "control", t) for n, t in names.items()]
+        rm = re.search(r"\b([A-Za-z_]\w*)::\w*$", before)
+        if rm and path is not None:              # MathLib::|  -> functions of a referenced library
+            refs = read_ref_index(Path(path).parent, rm.group(1), (".php",))
+            if refs:
+                return [Completion(n, "function", f"{sig}  {doc}".strip()) for n, sig, doc in refs]
         if re.search(r"(->|::)\w*$", before):
             return []
         out = [Completion(k, "keyword") for k in self.keywords]
         out += [Completion(k, "function", d) for k, d in API.items()]
         out += [Completion(b, "function") for b in self.builtins if b not in API]
         out += [Completion(f"'{n}'", "control", t) for n, t in names.items()]
+        if path is not None:                     # referenced libraries: MathLib::Add / MathLib_Add
+            for lib in ref_libs(Path(path).parent, (".php",)):
+                out.append(Completion(lib, "class", "referenced library"))
+                out += [Completion(f"{lib}_{n}", "function", f"{lib}_{sig}  {doc}".strip())
+                        for n, sig, doc in read_ref_index(Path(path).parent, lib, (".php",))]
         seen = {c.name.lower() for c in out}
         for w in re.findall(r"\$?[A-Za-z_]\w{2,}", code):
             if w.lower() not in seen:
@@ -184,6 +280,11 @@ class PhpBridgePlugin(BridgeLanguagePlugin):
     def calltip(self, code, line, col, path, names=None):
         lines = code.splitlines()
         before = lines[line][:col] if line < len(lines) else ""
+        rm = re.search(r"\b([A-Za-z_]\w*?)(::|_)(\w+)\s*\([^()]*$", before)
+        if rm and path is not None:              # MathLib::Add(|  or  MathLib_Add(|
+            for n, sig, doc in read_ref_index(Path(path).parent, rm.group(1), (".php",)):
+                if n.lower() == rm.group(3).lower():
+                    return f"{rm.group(1)}{rm.group(2)}{sig}" + (f"  - {doc}" if doc else "")
         m = re.search(r"\b(rad\w*)\s*\([^()]*$", before, re.I)
         return API.get(m.group(1).lower(), "") if m else ""
 

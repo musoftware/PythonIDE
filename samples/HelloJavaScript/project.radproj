@@ -1,0 +1,11 @@
+{
+  "name": "HelloJavaScript",
+  "language": "javascript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Helpers.js"
+  ]
+}

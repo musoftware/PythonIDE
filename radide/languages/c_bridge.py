@@ -3,8 +3,10 @@ gcc is found, with Microsoft Visual C++ (cl.exe, found through vswhere).
 
 Form code (Form1.c) holds handlers ``void cmdGo_Click(void)``; the IDE generates
 ``_radmain.c`` with the event loop + dispatch. Client: runtimes/clients/c/radgui.h/.c.
-Modules (*.c without a form) can export ``RADFUNC(name)`` functions that other
-languages call through RAD Hub: ``radcall("Helpers.add", 2, 3)``.
+Modules (*.c without a form) export their non-static functions with simple types
+(numbers, bool, char*) and ``RADFUNC(name)`` functions to other languages through RAD Hub:
+``radcall("Helpers.add", 2, 3)``. References (docs/CONTRACTS.md 7): a C project that references
+a library gets ``<Lib>.ref.h`` / ``<Lib>.ref.c`` (functions ``<Lib>_<func>``, compiled with the app).
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ from pathlib import Path
 from ..model import Form, Project
 from .base import Completion, PackageManager
 from .bridgebase import CLIENTS, BridgeLanguagePlugin
+from . import native_refs as nr
 
 C_CLIENT = CLIENTS / "c"
 EXE = ".exe" if os.name == "nt" else ""
@@ -46,6 +49,8 @@ def find_native(names: list[str]) -> str:
 
 
 _VCVARS: list[str] = []
+VS_INSTALLER = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / \
+    "Microsoft Visual Studio" / "Installer"
 
 
 def find_vcvars() -> str:
@@ -54,8 +59,7 @@ def find_vcvars() -> str:
         return _VCVARS[0]
     found = ""
     if os.name == "nt":
-        vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / \
-            "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+        vswhere = VS_INSTALLER / "vswhere.exe"
         if vswhere.exists():
             try:
                 out = subprocess.run([str(vswhere), "-latest", "-products", "*", "-requires",
@@ -70,6 +74,9 @@ def find_vcvars() -> str:
                 pass
     _VCVARS.append(found)
     return found
+
+
+SHELL = ["cmd", "/c"] if os.name == "nt" else ["sh", "-c"]
 
 
 def q(s: str) -> str:
@@ -110,7 +117,7 @@ class CBridgePlugin(BridgeLanguagePlugin):
     main_name = "_radmain.c"
     gcc_names = ["gcc"]
     msvc_flags = "/TC"
-    std_flags = "-std=c11"
+    std_flags = "-std=gnu11"
     case_sensitive = True
     line_comments = ["//"]
     block_comment = ("/*", "*/")
@@ -120,10 +127,13 @@ class CBridgePlugin(BridgeLanguagePlugin):
     handler_regex = r"^[ \t]*void[ \t]+(\w+_\w+)[ \t]*\([ \t]*(?:void)?[ \t]*\)"
     install_hint = ("Install gcc (MSYS2: pacman -S mingw-w64-ucrt-x86_64-gcc, or WinLibs into "
                     "%LOCALAPPDATA%\\RADIDE\\toolchains\\mingw64) or Visual Studio with the C++ workload.")
+    # vcpkg in manifest mode: packages are recorded in vcpkg.json and installed into
+    # vcpkg_installed/<triplet>; the build adds its include/lib folders (see _vcpkg_flags).
+    # With gcc set VCPKG_DEFAULT_TRIPLET=x64-mingw-static; MSVC uses the default x64-windows.
     package_manager = PackageManager(
         name="vcpkg", tool="vcpkg",
-        list_cmd=["vcpkg", "list"], search_cmd=["vcpkg", "search", "{query}"],
-        install_cmd=["vcpkg", "install", "{name}"], uninstall_cmd=["vcpkg", "remove", "{name}"],
+        list_cmd=None, search_cmd=["vcpkg", "search", "{query}"],
+        install_cmd=SHELL + ["vcpkg add port {name} && vcpkg install"], uninstall_cmd=None,
         init_cmd=["vcpkg", "new", "--application"], manifest="vcpkg.json",
         search_url="https://vcpkg.io/en/packages?query={query}")
 
@@ -162,6 +172,27 @@ class CBridgePlugin(BridgeLanguagePlugin):
                 f"    if (argc < 2) return rad_fail(\"add needs 2 arguments\");\n"
                 f"    return rad_json_numtext(rad_json_num(argv[0]) + rad_json_num(argv[1]));\n}}\n")
 
+    # ------------------------------------------------------------ References (CONTRACTS 7)
+    cpp = False
+
+    def example_function(self, name: str) -> str:
+        return ("/* Add two numbers. Public (non-static) functions with number, bool or text\n"
+                " * (const char *) parameters can be called by every project that references this one. */\n"
+                "double Add(double a, double b)\n{\n    return a + b;\n}\n")
+
+    def library_template(self, name: str) -> str:
+        return (f"/* Class library {name}.\n"
+                f" * Every non-static function below is public: projects that reference {name} call it as\n"
+                f" * code of their own language (Python: {name}.Add(2, 3), C: {name}_Add_num(2, 3), ...).\n"
+                f" * Supported types: int/long/double/float/bool, const char * (text); static = private. */\n"
+                f"#include \"radgui.h\"\n\n" + self.example_function(name))
+
+    def exported_functions(self, path: Path, text: str):
+        return nr.c_exports(Path(path), text, self.cpp)
+
+    def reference_proxy(self, lib: str, functions) -> dict[str, str]:
+        return nr.c_reference_proxy(lib, functions)
+
     def find_handler(self, code: str, name: str) -> int:
         return self._find_line(code, rf"^\s*void\s+{re.escape(name)}\s*\(")
 
@@ -177,7 +208,9 @@ class CBridgePlugin(BridgeLanguagePlugin):
 
     # ------------------------------------------------------------ project scanning
     def form_files(self, project: Project) -> list[str]:
-        return [self.code_file(f) for f in project.forms]
+        """Code files of the forms written in this language."""
+        return [self.code_file(f) for f in project.forms
+                if getattr(project, "form_language", lambda _f: project.language)(f) == self.id]
 
     def module_files(self, project: Project) -> list[str]:
         return [m for m in project.modules if m.lower().endswith(self.code_ext)]
@@ -218,76 +251,147 @@ class CBridgePlugin(BridgeLanguagePlugin):
         return "\n".join(L)
 
     def main_source(self, project: Project):
-        return self.main_name, self._main_text(self.handlers_in_project(self._folder, project))
-
-    def prepare(self, folder: Path, project: Project) -> None:
-        self._folder = folder
-        super().prepare(folder, project)
+        return self.main_name, self._main_text(self.handlers_in_project(project.folder, project))
 
     # ------------------------------------------------------------ build
-    def _compile_cmd(self, sources: list[str], exe: str) -> str | None:
+    @staticmethod
+    def vcpkg_triplets(folder: Path, kind: str) -> list[Path]:
+        """vcpkg manifest-mode install folders (vcpkg_installed/<triplet>) usable by *kind*."""
+        root = Path(folder) / "vcpkg_installed"
+        if not root.is_dir():
+            return []
+        out = []
+        for t in sorted(root.iterdir()):
+            if not (t / "include").is_dir():
+                continue
+            mingw = "mingw" in t.name
+            if (kind == "gcc") == mingw or os.name != "nt":
+                out.append(t)
+        return out
+
+    def _vcpkg_flags(self, folder: Path | None, kind: str) -> tuple[str, str]:
+        """Include/library flags for packages installed with vcpkg (manifest mode, vcpkg.json)."""
+        if folder is None:
+            return "", ""
+        cflags, lflags = [], []
+        for t in self.vcpkg_triplets(folder, kind):
+            lib = t / "lib"
+            if kind == "gcc":
+                cflags.append(f"-I{q(str(t / 'include'))}")
+                if lib.is_dir():
+                    lflags.append(f"-L{q(str(lib))}")
+                    lflags += [f"-l{a.stem[3:]}" for a in sorted(lib.glob("lib*.a"))]
+            else:
+                cflags.append(f"/I{q(str(t / 'include'))}")
+                if lib.is_dir():
+                    lflags.append(f"/LIBPATH:{q(str(lib))}")
+                    lflags += [q(a.name) for a in sorted(lib.glob("*.lib"))]
+        return " ".join(cflags), " ".join(lflags)
+
+    def _compile_cmd(self, sources: list[str], exe: str, folder: Path | None = None) -> str | None:
         kind = self.compiler_kind()
+        cflags, lflags = self._vcpkg_flags(folder, kind)
+        srcs = " ".join(q(s) for s in sources)
         if kind == "gcc":
-            return (f'{q(self.gcc())} {self.std_flags} -O1 -o {q(exe)} ' + " ".join(q(s) for s in sources) +
-                    " -static -lm" + (" -lws2_32" if os.name == "nt" else ""))
+            return (f'{q(self.gcc())} {self.std_flags} -O1 {cflags} -o {q(exe)} {srcs} {lflags} -static -lm' +
+                    (" -lws2_32" if os.name == "nt" else "")).replace("  ", " ")
         if kind == "msvc":
-            return (f'call {q(find_vcvars())} >nul && cl /nologo /utf-8 /EHsc {self.msvc_flags} '
-                    f'/Fe:{q(exe)} ' + " ".join(q(s) for s in sources) + " ws2_32.lib")
+            vsi = VS_INSTALLER                  # vswhere.exe, used by vcvars64.bat
+            link = f" /link {lflags}" if lflags else ""
+            return (f'set "PATH={vsi};%PATH%" && call {q(find_vcvars())} >nul && '
+                    f'cl /nologo /utf-8 /EHsc {self.msvc_flags} {cflags} /Fe:{q(exe)} {srcs}{link}').replace("  ", " ")
         return None
 
+    def proxy_sources(self, folder: Path, project: Project | None) -> list[str]:
+        """Generated reference proxies to compile (<Lib>.ref.c / .ref.cpp)."""
+        return nr.proxy_files(folder, project, (".ref" + self.code_ext,))
+
     def build_command(self, folder: Path, project: Project) -> str | None:
-        sources = ["radgui.c"] + self.module_files(project) + self.form_files(project) + [self.main_name]
-        return self._compile_cmd(sources, "_radapp" + EXE)
+        sources = ["radgui.c"] + self.module_files(project) + self.proxy_sources(folder, project) + \
+            self.form_files(project) + [self.main_name]
+        return self._compile_cmd(sources, "_radapp" + EXE, folder)
+
+    def _runtime_path(self, folder: Path, base: str) -> str:
+        """PATH for running: toolchain bin (DLLs) + vcpkg bin folders."""
+        dirs = [str(t / "bin") for t in self.vcpkg_triplets(folder, self.compiler_kind()) if (t / "bin").is_dir()]
+        gcc = self.gcc()
+        if gcc:
+            dirs.append(str(Path(gcc).parent))
+        return os.pathsep.join(dirs + [base])
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
         return [str(folder / ("_radapp" + EXE))]
 
     def run_spec(self, folder, startup_form, interpreter):
         spec = super().run_spec(folder, startup_form, interpreter)
-        gcc = self.gcc()
-        if gcc and spec.env is not None:        # DLLs of the toolchain (cc1, as, ld helpers)
-            spec.env["PATH"] = str(Path(gcc).parent) + os.pathsep + spec.env.get("PATH", "")
+        if spec.env is not None:
+            spec.env["PATH"] = self._runtime_path(Path(folder), spec.env.get("PATH", ""))
         return spec
 
     # ------------------------------------------------------------ RAD Hub worker
-    def worker_source(self, module_file: str, funcs: list[str]) -> str:
+    def worker_source(self, module_file: str, funcs) -> str:
+        """Worker main for *module_file*: *funcs* = CFunc list (or RADFUNC names)."""
+        funcs = [nr.CFunc(f, "", radfunc=True) if isinstance(f, str) else f for f in funcs]
         L = ["/* AUTO-GENERATED by RAD IDE - RAD Hub worker for " + module_file + " (do not edit) */",
-             "#include <string.h>", '#include "radgui.h"', ""]
-        L += [f"RADFUNC({f});" for f in funcs]
+             "#include <stdbool.h>" if not self.cpp else "#include <string>",
+             "#include <stddef.h>", "#include <stdint.h>", "#include <stdlib.h>", "#include <string.h>",
+             '#include "radgui.h"' if not self.cpp else '#include "radgui.hpp"', ""]
+        L += nr.C_WORKER_HELPERS
+        decls, entry = nr.c_worker_wrappers(funcs, self.cpp)
+        L += decls
         L += ["", "static const char *rad_wdispatch(const char *func, int argc, const char **argv, int *found)",
               "{", "    *found = 1;"]
-        for f in funcs:
-            L.append(f'    if (strcmp(func, "{f}") == 0) return {f}(argc, argv);')
+        for name, fn in entry.items():
+            L.append(f'    if (strcmp(func, "{name}") == 0) return {fn}(argc, argv);')
         L += ["    *found = 0;", "    (void)argc; (void)argv;", "    return 0;", "}", "",
-              "int main(void) { return rad_worker_main(rad_wdispatch); }", ""]
+              "int main(void) { (void)rad_x_bool; (void)rad_x_dup; (void)rad_x_keep; "
+              "return rad_worker_main(rad_wdispatch); }", ""]
         return "\n".join(L)
+
+    def _source_for(self, folder: Path, module_file: str) -> str:
+        """A header module (lib.h) is served by its source file (lib.c / lib.cpp)."""
+        if Path(module_file).suffix.lower() in (".h", ".hpp", ".hh", ".hxx"):
+            for ext in (self.code_ext, ".c", ".cpp", ".cc"):
+                cand = Path(module_file).with_suffix(ext).name
+                if (folder / cand).exists():
+                    return cand
+        return module_file
 
     def build_worker(self, folder: Path, module_file: str) -> tuple[Path | None, str]:
         """Compile the worker of *module_file*; returns (exe, error text)."""
         folder = Path(folder)
+        module_file = self._source_for(folder, module_file)
         src = folder / module_file
         stem = Path(module_file).stem
         if not src.exists():
             return None, f"{module_file} not found"
-        funcs = self.radfuncs(src.read_text(encoding="utf-8", errors="replace"))
+        text = src.read_text(encoding="utf-8", errors="replace")
+        funcs = [f for f in nr.c_functions(text, self.cpp)
+                 if f.radfunc or (nr.is_public_name(f.name) and f.name != "main" and nr.c_callable(f, self.cpp))]
         main = f"_radworker_{stem}{self.code_ext}"
         exe = folder / f"_radworker_{stem}{EXE}"
         for target, path in self.client_files().items():
             shutil.copy2(path, folder / target)
-        text = self.worker_source(module_file, funcs)
+        wtext = self.worker_source(module_file, funcs)
         mp = folder / main
-        if not mp.exists() or mp.read_text(encoding="utf-8") != text:
-            mp.write_text(text, encoding="utf-8")
-        newest = max((folder / f).stat().st_mtime for f in (module_file, main, "radgui.c", "radgui.h"))
+        if not mp.exists() or mp.read_text(encoding="utf-8") != wtext:
+            mp.write_text(wtext, encoding="utf-8")
+        # the other modules of the project (helpers of the library) + its reference proxies
+        try:
+            project = Project.load(folder)
+            others = [m for m in self.module_files(project) if m != module_file and (folder / m).exists()]
+            others += self.proxy_sources(folder, project)
+        except (OSError, ValueError, KeyError):
+            others = self.proxy_sources(folder, None)
+        sources = ["radgui.c", module_file] + [o for o in others if o != module_file] + [main]
+        newest = max((folder / f).stat().st_mtime for f in sources + ["radgui.h"] +
+                     [h.name for h in folder.glob("*.h*") if h.is_file()])
         if exe.exists() and exe.stat().st_mtime >= newest:
             return exe, ""
-        cmd = self._compile_cmd(["radgui.c", module_file, main], exe.name)
+        cmd = self._compile_cmd(sources, exe.name, folder)
         if cmd is None:
             return None, f"{self.display_name}: no compiler found. {self.install_hint}"
-        env = dict(os.environ)
-        gcc = self.gcc()
-        if gcc:
-            env["PATH"] = str(Path(gcc).parent) + os.pathsep + env.get("PATH", "")
+        env = dict(os.environ, PATH=self._runtime_path(folder, os.environ.get("PATH", "")))
         r = subprocess.run(cmd, cwd=str(folder), shell=True, capture_output=True, text=True, env=env)
         if r.returncode != 0 or not exe.exists():
             return None, (r.stdout + r.stderr).strip() or "build failed"

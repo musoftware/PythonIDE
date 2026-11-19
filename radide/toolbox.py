@@ -112,8 +112,98 @@ def control_icon(type_name: str) -> QIcon:
         p.drawRect(3, 8, 10, 10)
         for y in (11, 14):
             p.drawLine(5, y, 11, y)
+    else:
+        _draw_new_icon(p, type_name)
     p.end()
     return QIcon(pm)
+
+
+def _draw_new_icon(p: QPainter, type_name: str) -> None:
+    """Icons of the controls added with the second control set (tabs, trees, grids, dialogs...)."""
+    white, dark = QColor("#ffffff"), QColor("#3c3c3c")
+    if type_name == "TabControl":
+        p.setBrush(white)
+        p.drawRect(2, 6, 16, 12)
+        p.setBrush(QColor("#dfe8f6"))
+        p.drawRect(2, 2, 7, 4)
+        p.setBrush(white)
+        p.drawRect(9, 3, 6, 3)
+    elif type_name == "TreeView":
+        p.drawLine(4, 4, 4, 15)
+        p.drawLine(4, 9, 9, 9)
+        p.drawLine(4, 15, 9, 15)
+        p.setBrush(QColor("#f0c419"))
+        for x, y in ((2, 2), (9, 7), (9, 13)):
+            p.drawRect(x, y, 5, 4)
+    elif type_name == "ListView":
+        p.setBrush(white)
+        p.drawRect(1, 2, 18, 16)
+        p.fillRect(2, 3, 17, 4, QColor("#dfe8f6"))
+        for y in (10, 14):
+            p.fillRect(3, y - 1, 3, 3, QColor("#4a78c2"))
+            p.drawLine(8, y, 17, y)
+    elif type_name == "DataGridView":
+        p.setBrush(white)
+        p.drawRect(1, 2, 18, 16)
+        p.fillRect(2, 3, 17, 4, QColor("#dfe8f6"))
+        for x in (7, 13):
+            p.drawLine(x, 2, x, 18)
+        for y in (7, 12):
+            p.drawLine(1, y, 19, y)
+    elif type_name == "DateTimePicker":
+        p.setBrush(white)
+        p.drawRect(2, 4, 16, 14)
+        p.fillRect(3, 5, 15, 4, QColor("#d9542b"))
+        for x in (5, 9, 13):
+            for y in (11, 15):
+                p.fillRect(x, y - 1, 2, 2, dark)
+    elif type_name == "LinkLabel":
+        f = QFont("Segoe UI", 9)
+        f.setUnderline(True)
+        p.setFont(f)
+        p.setPen(QColor("#0066cc"))
+        p.drawText(0, 0, 20, 20, Qt.AlignmentFlag.AlignCenter, "A")
+    elif type_name == "StatusBar":
+        p.setBrush(white)
+        p.drawRect(1, 2, 18, 16)
+        p.setBrush(QColor("#d4d0c8"))
+        p.drawRect(1, 13, 18, 5)
+        p.drawLine(12, 13, 12, 18)
+    elif type_name == "ToolStrip":
+        p.setBrush(QColor("#dfe8f6"))
+        p.drawRect(1, 5, 18, 10)
+        p.setBrush(QColor("#4a78c2"))
+        p.drawRect(3, 7, 5, 6)
+        p.setBrush(QColor("#2fb12f"))
+        p.drawRect(10, 7, 5, 6)
+    elif type_name in ("OpenFileDialog", "FolderBrowserDialog"):
+        p.setBrush(QColor("#f0c419"))
+        p.drawPolygon(QPolygonF([QPointF(2, 6), QPointF(8, 6), QPointF(10, 8), QPointF(18, 8),
+                                 QPointF(18, 17), QPointF(2, 17)]))
+        if type_name == "OpenFileDialog":
+            p.setBrush(white)
+            p.drawRect(6, 2, 8, 9)
+    elif type_name == "SaveFileDialog":
+        p.setBrush(QColor("#4a78c2"))
+        p.drawRect(3, 3, 14, 14)
+        p.setBrush(white)
+        p.drawRect(6, 3, 8, 5)
+        p.drawRect(5, 11, 10, 6)
+    elif type_name == "ColorDialog":
+        for i, c in enumerate(("#d9542b", "#2fb12f", "#4a78c2", "#f0c419")):
+            p.setBrush(QColor(c))
+            p.drawRect(2 + (i % 2) * 8, 2 + (i // 2) * 8, 7, 7)
+    elif type_name == "FontDialog":
+        p.setFont(QFont("Times New Roman", 11, QFont.Weight.Bold))
+        p.drawText(0, 0, 13, 20, Qt.AlignmentFlag.AlignCenter, "A")
+        p.setFont(QFont("Segoe UI", 7))
+        p.drawText(9, 4, 11, 16, Qt.AlignmentFlag.AlignCenter, "a")
+    elif type_name == "ActiveX":
+        p.setBrush(white)
+        p.drawRect(2, 2, 16, 16)
+        p.setPen(QColor("#d9542b"))
+        p.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
+        p.drawText(2, 2, 16, 16, Qt.AlignmentFlag.AlignCenter, "OCX")
 
 
 class Toolbox(QListWidget):

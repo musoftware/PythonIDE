@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RAD IDE Help</title>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10pt; color: #1b1b1b; background: #ffffff;
+         max-width: 920px; margin: 0 auto; padding: 8px 16px; line-height: 1.45; }
+  h1 { color: #1F3D7A; font-size: 20pt; margin-bottom: 2px; }
+  h2 { color: #1F3D7A; font-size: 14pt; border-bottom: 1px solid #C8D3E6; padding-bottom: 2px; margin-top: 22px; }
+  h3 { color: #2B4F8F; font-size: 11pt; margin-bottom: 2px; }
+  code, pre { font-family: Consolas, monospace; font-size: 9.5pt; }
+  pre { background: #F4F6FA; border: 1px solid #DDE3EE; padding: 6px 8px; }
+  table { border-collapse: collapse; }
+  th { background: #E4E8EE; text-align: left; }
+  th, td { border: 1px solid #C8D3E6; padding: 3px 8px; vertical-align: top; }
+  .key { font-family: Consolas, monospace; background: #EEF1F6; border: 1px solid #C8D3E6; padding: 0 4px; }
+  .note { background: #FFF8DC; border: 1px solid #E8D88A; padding: 6px 8px; }
+  .toc a { margin-right: 10px; }
+</style>
+</head>
+<body>
+<a name="top"></a>
+<h1>RAD IDE Help</h1>
+<p>RAD IDE is a Visual Basic style environment: draw a window with the mouse, double-click a control and write
+its event handler. The same designer works for several programming languages; a project can even mix them.</p>
+<p class="toc"><a href="#start">Getting started</a> <a href="#designer">Designer</a> <a href="#editor">Code editor</a>
+<a href="#run">Run &amp; debug</a> <a href="#languages">Languages</a> <a href="#multi">Multi-language projects</a>
+<a href="#packages">Packages</a> <a href="#terminal">Terminal</a> <a href="#git">Git</a>
+<a href="#options">Options &amp; themes</a> <a href="#help">F1 help</a> <a href="#import">Import &amp; build</a>
+<a href="#keys">Keyboard shortcuts</a></p>
+
+<a name="start"></a>
+<h2>Getting started</h2>
+<ol>
+  <li><b>File &gt; New Project</b> (<span class="key">Ctrl+Shift+N</span>) or the Start Page. Pick a language and a
+      <b>template</b>:
+    <ul>
+      <li><b>Windows Application</b> - an empty form.</li>
+      <li><b>Dialog Application</b> - a fixed-size form with a message, <i>OK</i> and <i>Cancel</i> buttons.</li>
+      <li><b>Data Entry Form</b> - labels, text boxes, a list and <i>Save</i> / <i>New</i> / <i>Delete</i> buttons;
+          records are stored in a JSON file next to the program (code provided for Python, VB6 and Ring).</li>
+      <li><b>Console Application</b> - no form: a code module with a <code>main</code> entry point; output goes to the
+          Output window.</li>
+    </ul></li>
+  <li>Drag controls from the <b>Toolbox</b> onto the form, set their properties in the <b>Properties</b> window.</li>
+  <li>Double-click a control to create and open its default event handler (for example <code>btnOK_Click</code>).</li>
+  <li>Press <span class="key">F5</span> to run with the debugger or <span class="key">Ctrl+F5</span> to run without it.</li>
+</ol>
+<p>Files of a project: <code>project.radproj</code> (the project), <code>Form1.form</code> (the form layout, JSON),
+<code>Form1.&lt;ext&gt;</code> (your code) and <code>Form1_designer.&lt;ext&gt;</code> (generated from the form
+every time you save - do not edit it).</p>
+
+<a name="designer"></a>
+<h2>Designer</h2>
+<ul>
+  <li>Toolbox: click a tool then click/drag on the form, or drag the tool onto the form. Containers (Panel, GroupBox,
+      TabControl) hold other controls.</li>
+  <li>Selection: click, <span class="key">Ctrl</span>+click or drag a rubber band; arrow keys move, Shift+arrows resize.</li>
+  <li>Grid and snap: <b>Tools &gt; Options &gt; Windows Forms Designer</b> sets the grid size and turns snapping on/off.</li>
+  <li><b>Format</b> menu: align, make same size, center in form, bring to front / send to back.</li>
+  <li>Non-visual components (Timer, dialogs, MenuStrip, ToolStrip) appear in the tray under the form;
+      the <b>Menu Editor</b> edits menus.</li>
+  <li>Properties window: categorized or alphabetical; the <b>Events</b> tab lists events, those with a handler are bold.
+      Anchor and Dock make controls follow the window when it is resized.</li>
+  <li>Undo/redo, cut/copy/paste of controls, right-click menus everywhere.</li>
+</ul>
+
+<a name="editor"></a>
+<h2>Code editor</h2>
+<ul>
+  <li>Syntax highlighting for every language, Arabic / right-to-left text, auto-indent, brace matching.</li>
+  <li>IntelliSense while typing and with <span class="key">Ctrl+Space</span>; parameter info with
+      <span class="key">Ctrl+Shift+Space</span>.</li>
+  <li>Find / Replace (<span class="key">Ctrl+F</span> / <span class="key">Ctrl+H</span>), Find in Files
+      (<span class="key">Ctrl+Shift+F</span>), Go to Line (<span class="key">Ctrl+G</span>), Go to Definition
+      (<span class="key">F12</span>), toggle comment (<span class="key">Ctrl+/</span>).</li>
+  <li>Error List: the project is checked every time you save (and with <span class="key">Ctrl+Shift+B</span>);
+      TODO / FIXME comments appear as tasks.</li>
+  <li>Auto-save writes unsaved changes to <code>.radide_backup</code> (interval in Tools &gt; Options); after a crash
+      the IDE offers to restore them.</li>
+</ul>
+
+<a name="run"></a>
+<h2>Run &amp; debug</h2>
+<ul>
+  <li><span class="key">F5</span> start / continue, <span class="key">Shift+F5</span> stop,
+      <span class="key">F9</span> toggle breakpoint (or click the margin), <span class="key">F10</span> step over,
+      <span class="key">F11</span> step into, <span class="key">Shift+F11</span> step out.</li>
+  <li>While paused: <b>Locals</b>, <b>Call Stack</b>, the <b>Immediate</b> window (type an expression and press Enter)
+      and the value of a variable when the mouse rests on it.</li>
+  <li>Program output (print / Debug.Print / see) goes to the <b>Output</b> window.</li>
+</ul>
+
+<a name="languages"></a>
+<h2>Languages</h2>
+<p>File &gt; New Project lists the language plugins that are installed. The main ones:</p>
+<table>
+  <tr><th>Language</th><th>GUI</th><th>Needs</th><th>Packages</th></tr>
+  <tr><td>Python (Tkinter)</td><td>Tkinter</td><td>Python (or the IDE's own)</td><td>pip, <code>requirements.txt</code></td></tr>
+  <tr><td>Python (PySide6 / Qt)</td><td>Qt widgets</td><td>a Python with PySide6</td><td>pip, <code>requirements.txt</code></td></tr>
+  <tr><td>Ring (RingQt)</td><td>RingQt</td><td><code>C:\ring\ring\bin\ring.exe</code></td><td>RingPM</td></tr>
+  <tr><td>Visual Basic 6 (BASIC)</td><td>Tkinter</td><td>nothing - the interpreter is built in</td><td>none (use modules)</td></tr>
+  <tr><td>GUI Bridge languages (Fortran, ...)</td><td>drawn by the IDE</td><td>the language's compiler</td><td>the language's own tool</td></tr>
+</table>
+<p>The interpreter or compiler used for each language is set in <b>Tools &gt; Options &gt; Languages</b>
+(empty = found automatically in PATH or the usual install folders).</p>
+<p><b>GUI Bridge</b>: languages without a GUI toolkit still get forms. The IDE draws the window and the program
+talks to it over standard input/output (<code>EVENT</code>, <code>SET</code>, <code>GET</code>, <code>CALL</code>,
+<code>MSGBOX</code>, <code>DONE</code>).</p>
+
+<a name="multi"></a>
+<h2>Multi-language projects</h2>
+<ul>
+  <li>A form can be written in a different language than the project (its language is stored in
+      <code>project.radproj</code> under <code>form_languages</code>); modules get their language from the file
+      extension (<code>.py</code>, <code>.ring</code>, <code>.bas</code>, ...).</li>
+  <li>Call a function written in another language with <code>radcall("Module.function", args...)</code>.
+      Values travel as JSON (numbers, strings, booleans, null, lists, objects).</li>
+  <li>When the program runs, the IDE starts <b>RAD Hub</b>, which starts one worker per module language and routes
+      the calls.</li>
+</ul>
+<pre>
+# Python form calling a Ring module (Helpers.ring defines func add a, b)
+total = radcall("Helpers.add", 2, 3)      # -&gt; 5
+</pre>
+
+<a name="packages"></a>
+<h2>Packages (Project &gt; Manage Packages...)</h2>
+<p>A NuGet-style window for the language's package manager (pip for Python, RingPM for Ring, and NuGet, npm, cargo,
+composer, gem, ... for the other language plugins that define one).</p>
+<ul>
+  <li><b>Browse</b>: search for a package (for pip, enter the exact name to see its versions), pick a version (empty =
+      latest) and click <b>Install</b>. <b>Open Website</b> searches the package site in your browser.</li>
+  <li><b>Installed</b>: the packages the tool reports; <b>Uninstall</b> or <b>Update...</b> the selected one.</li>
+  <li>Commands run in the project folder and their output is shown at the bottom. If the manifest
+      (<code>requirements.txt</code>, <code>package.json</code>, <code>.csproj</code>, ...) is missing it is created
+      first. For Python, <code>requirements.txt</code> is kept up to date (<code>name==version</code>).</li>
+  <li>pip installs into the interpreter set for the language - use a virtual environment's
+      <code>python.exe</code> in Tools &gt; Options to keep projects separate.</li>
+  <li>The VB6 language has no package manager: add shared code with Project &gt; Add Existing Item.</li>
+</ul>
+
+<a name="terminal"></a>
+<h2>Terminal (View &gt; Terminal, <span class="key">Ctrl+`</span>)</h2>
+<ul>
+  <li>Command Prompt, PowerShell or Git Bash running in the project folder (choose in the Shell box).</li>
+  <li>Type a command and press Enter. <span class="key">Up</span> / <span class="key">Down</span> browse the history,
+      <span class="key">Ctrl+C</span> stops the running command (the shell keeps running),
+      <span class="key">Ctrl+L</span> or <code>cls</code> clears the screen. <b>Restart</b> starts a new shell.</li>
+</ul>
+
+<a name="git"></a>
+<h2>Git (View &gt; Git Changes, <span class="key">Ctrl+Alt+G</span>)</h2>
+<ul>
+  <li><b>Init Repository</b> creates a repository in the project folder with a suitable <code>.gitignore</code>.</li>
+  <li>The list shows <b>Staged Changes</b> and <b>Changes</b> with their state (Modified, Added, Deleted, Renamed,
+      Untracked, Conflict). Select files and click <b>Stage</b> / <b>Unstage</b>, or <b>Stage All</b>.</li>
+  <li>Selecting a file shows its diff; the <b>History</b> tab lists commits (double-click to see one).</li>
+  <li>Write a message and click <b>Commit</b> (<span class="key">Ctrl+Enter</span>). With nothing staged, the IDE
+      offers to stage everything.</li>
+  <li><b>Pull</b> and <b>Push</b> appear only when the repository has a remote, and run only when you click them
+      (push asks for confirmation).</li>
+  <li>The current branch is shown in the status bar; changed files are coloured in the Solution Explorer
+      (blue = modified, green = new, red = deleted).</li>
+</ul>
+
+<a name="options"></a>
+<h2>Options &amp; themes (Tools &gt; Options)</h2>
+<ul>
+  <li><b>Environment</b>: Light or Dark theme, auto-save interval.</li>
+  <li><b>Text Editor</b>: font, size, tab / indent width.</li>
+  <li><b>Windows Forms Designer</b>: grid size and snap to grid.</li>
+  <li><b>Languages</b>: interpreter / compiler path for each language.</li>
+</ul>
+<p>Changes apply immediately to open editors and designers. In the dark theme the form being designed keeps the
+light look of the real program.</p>
+
+<a name="help"></a>
+<h2>F1 help</h2>
+<p>Press <span class="key">F1</span> on a word in the code editor, or with a control selected in the designer:</p>
+<ul>
+  <li>VB6: the bundled VB6 language reference (keywords, statements, functions, control members).</li>
+  <li>Python: docs.python.org (built-in functions, keywords, standard modules), Tkinter, and the Qt for Python class
+      pages for <code>Q...</code> classes.</li>
+  <li>Ring: the Ring documentation (local copy when installed, otherwise ring-lang.github.io); RingQt classes open the
+      Qt 5 class reference.</li>
+</ul>
+<p>Where no topic is under the cursor, F1 opens this page.</p>
+
+<a name="import"></a>
+<h2>Import &amp; build</h2>
+<ul>
+  <li><b>File &gt; Import &gt; Python GUI Program</b>: reads the windows of a Tkinter or Qt program and turns them into
+      forms with their handlers.</li>
+  <li><b>File &gt; Import &gt; Visual Basic 6 Project</b> (<code>.vbp</code> / <code>.frm</code>): forms, controls,
+      menus and code; runs as-is with the VB6 language.</li>
+  <li><b>Project &gt; Build EXE</b>: PyInstaller for Python, ring2exe for Ring.</li>
+</ul>
+
+<a name="keys"></a>
+<h2>Keyboard shortcuts</h2>
+<table>
+  <tr><th>Keys</th><th>Command</th></tr>
+  <tr><td>Ctrl+Shift+N / Ctrl+Shift+O</td><td>New project / open project</td></tr>
+  <tr><td>Ctrl+S</td><td>Save all</td></tr>
+  <tr><td>F7 / Shift+F7</td><td>View code / view designer</td></tr>
+  <tr><td>F5 / Ctrl+F5 / Shift+F5</td><td>Debug / run without debugging / stop</td></tr>
+  <tr><td>F9, F10, F11, Shift+F11</td><td>Breakpoint, step over, step into, step out</td></tr>
+  <tr><td>Ctrl+F, Ctrl+H, F3, Shift+F3</td><td>Find, replace, find next / previous</td></tr>
+  <tr><td>Ctrl+Shift+F</td><td>Find in files</td></tr>
+  <tr><td>Ctrl+G, F12</td><td>Go to line, go to definition</td></tr>
+  <tr><td>Ctrl+Space, Ctrl+Shift+Space</td><td>IntelliSense, parameter info</td></tr>
+  <tr><td>Ctrl+/</td><td>Comment / uncomment</td></tr>
+  <tr><td>Ctrl+Shift+B</td><td>Check for errors</td></tr>
+  <tr><td>Ctrl+`</td><td>Terminal</td></tr>
+  <tr><td>Ctrl+Alt+G</td><td>Git Changes</td></tr>
+  <tr><td>F1 / Ctrl+F1</td><td>Context help / this help</td></tr>
+</table>
+<p>Help &gt; Keyboard Shortcuts lists every shortcut of the menus as they are right now.</p>
+<p><a href="#top">Back to top</a></p>
+</body>
+</html>

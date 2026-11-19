@@ -21,8 +21,12 @@ call back into the same worker cannot deadlock)::
 While it waits for such an answer the worker keeps serving "func" requests it reads.
 Workers log to stderr; any stdout line that is not a protocol object is shown as output.
 
-``<Module>`` is a file stem in the project folder (a module or a form's code file);
-the language comes from the file extension (``plugin.worker_command(folder, file)``).
+``<Module>`` is a file stem in the project folder (a module or a form's code file), else in
+the folders of the referenced projects (solutions, docs/CONTRACTS.md section 7: consumer
+first, then its references in order, transitively; env ``RAD_PROJECT_PATH`` lists them).
+The language comes from the file extension; the worker runs in the module's own folder
+(``plugin.worker_command(module_folder, file)``) with ``RAD_PROJECT`` = that folder.
+Reference proxy files (AUTO-GENERATED ... reference to X) are never served as modules.
 ``<Form>.Show`` for a project form starts that form as its own program (any language).
 
 Command line (outside the IDE)::
@@ -84,8 +88,10 @@ class _Pending:
 class Worker:
     """One long-running process that serves the functions of one module file."""
 
-    def __init__(self, hub: "RadHub", module: str, path: Path, plugin, argv: list[str]):
+    def __init__(self, hub: "RadHub", module: str, path: Path, plugin, argv: list[str],
+                 folder: Path | None = None):
         self.hub, self.module, self.path, self.plugin, self.argv = hub, module, path, plugin, argv
+        self.folder = Path(folder) if folder is not None else hub.folder
         self.pending: dict[int, _Pending] = {}
         self.lock = threading.Lock()
         self.write_lock = threading.Lock()
@@ -93,8 +99,9 @@ class Worker:
         self.stderr_tail: deque[str] = deque(maxlen=15)
         self.dead = False
         env = hub.child_env(worker=True)
+        env["RAD_PROJECT"] = str(self.folder)          # the module's own project
         try:
-            self.proc = subprocess.Popen(argv, cwd=str(hub.folder), env=env, stdin=subprocess.PIPE,
+            self.proc = subprocess.Popen(argv, cwd=str(self.folder), env=env, stdin=subprocess.PIPE,
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                          creationflags=NO_WINDOW)
         except OSError as e:
@@ -211,8 +218,21 @@ class Worker:
 
 # ============================================================================ hub
 class RadHub:
-    def __init__(self, folder: Path, log=None, timeout: float | None = None, interpreter_for=None):
+    def __init__(self, folder: Path, log=None, timeout: float | None = None, interpreter_for=None,
+                 search_folders=None):
         self.folder = Path(folder).resolve()
+        # folders of referenced projects (in search order). None = from the solution that
+        # contains *folder*, else from env RAD_PROJECT_PATH (a hub started outside the IDE)
+        if search_folders is None:
+            search_folders = self._discover_search_folders()
+        self.search_folders: list[Path] = []
+        for f in search_folders or []:
+            try:
+                rf = Path(f).resolve()
+            except OSError:
+                continue
+            if rf != self.folder and rf not in self.search_folders:
+                self.search_folders.append(rf)
         self._log = log
         if timeout is None:
             try:
@@ -242,9 +262,28 @@ class RadHub:
         threading.Thread(target=self._accept, daemon=True, name="radhub-accept").start()
         return self.address
 
+    @property
+    def folders(self) -> list[Path]:
+        """Where modules are looked up: the project folder, then the referenced projects."""
+        return [self.folder, *self.search_folders]
+
+    def _discover_search_folders(self) -> list[Path]:
+        try:
+            from ..solution import Solution
+            sol = Solution.find_for_project(self.folder)
+            if sol is not None:
+                proj = sol.project_for_folder(self.folder)
+                if proj is not None:
+                    return sol.search_folders(proj)[1:]
+        except Exception:  # noqa: BLE001 - a broken solution file must not stop the program
+            pass
+        env = os.environ.get("RAD_PROJECT_PATH", "")
+        return [Path(p) for p in env.split(os.pathsep) if p.strip()]
+
     def env(self) -> dict[str, str]:
         """Variables to add to the program's environment."""
-        return {"RAD_HUB": self.address, "RAD_PROJECT": str(self.folder)}
+        return {"RAD_HUB": self.address, "RAD_PROJECT": str(self.folder),
+                "RAD_PROJECT_PATH": os.pathsep.join(str(f) for f in self.folders)}
 
     def child_env(self, worker: bool = False, base: dict | None = None) -> dict[str, str]:
         env = dict(base if base is not None else os.environ)
@@ -357,52 +396,82 @@ class RadHub:
         module, dot, func = target.strip().partition(".")
         if not dot or not module or not func:
             raise HubError(f"bad call name '{target}' (expected \"Module.function\")")
-        project = self._project()
-        form = self._find_form(project, module) if project is not None else None
-        if form is not None and func.lower() == "show":
-            return self.show_form(project, form)
-        path, plugin = self._find_module(project, module)
+        if func.lower() == "show":
+            for folder in self.folders:
+                project = self._project(folder)
+                form = self._find_form(project, module) if project is not None else None
+                if form is not None:
+                    return self.show_form(project, form)
+        path, plugin = self._find_module(None, module)
         w = self._worker(module, path, plugin)
         try:
             return w.request(func, args, self.timeout)
         except HubError as e:
             raise HubError(f"{module}.{func}: {e}") from None
 
-    def _project(self):
+    def _project(self, folder: Path | None = None):
         from ..model import Project
         try:
-            return Project.load(self.folder)
+            return Project.load(folder or self.folder)
         except (OSError, ValueError, KeyError):
             return None
+
+    @staticmethod
+    def _is_proxy(path: Path) -> bool:
+        try:
+            with open(path, "rb") as f:
+                return b"AUTO-GENERATED by RAD IDE (reference to" in f.read(2048)
+        except OSError:
+            return False
 
     @staticmethod
     def _find_form(project, name: str) -> str | None:
         return next((f for f in project.forms if f.lower() == name.lower()), None)
 
     def _find_module(self, project, name: str):
+        """(path, plugin) of module *name*: the project folder first, then the referenced
+        projects' folders. *project* = the Project of self.folder (None = load it)."""
+        for i, folder in enumerate(self.folders):
+            proj = project if (i == 0 and project is not None) else self._project(folder)
+            found = self._find_in_folder(folder, proj, name)
+            if found is not None:
+                return found
+        where = "the project" if not self.search_folders else "the project or its references"
+        raise HubError(f"module '{name}' was not found in {where}")
+
+    def _find_in_folder(self, folder: Path, project, name: str):
         from ..languages import plugin_for_file, plugin_for_form
         default = project.language if project is not None else ""
+        proxies = set()
         if project is not None:
+            proxies = {f.lower() for files in getattr(project, "reference_files", {}).values() for f in files}
             for mod in project.modules:
-                if Path(mod).stem.lower() == name.lower():
+                if Path(mod).stem.lower() == name.lower() and mod.lower() not in proxies:
+                    if self._is_proxy(folder / mod):
+                        continue
                     plugin = plugin_for_file(mod, default)
                     if plugin is None:
                         raise HubError(f"no language plugin for {mod}")
-                    return self.folder / mod, plugin
+                    return folder / mod, plugin
             form = self._find_form(project, name)
             if form is not None:
                 plugin = plugin_for_form(project, form)
-                return self.folder / plugin.code_file(form), plugin
+                return folder / plugin.code_file(form), plugin
         # any code file of the folder (projects created outside the IDE)
-        for f in sorted(self.folder.iterdir()):
-            if f.is_file() and f.stem.lower() == name.lower() and not f.name.startswith("_"):
+        try:
+            files = sorted(folder.iterdir())
+        except OSError:
+            return None
+        for f in files:
+            if f.is_file() and f.stem.lower() == name.lower() and not f.name.startswith("_") \
+                    and f.name.lower() not in proxies and not self._is_proxy(f):
                 plugin = plugin_for_file(f.name, default)
                 if plugin is not None:
                     return f, plugin
-        raise HubError(f"module '{name}' was not found in the project")
+        return None
 
     def _worker(self, module: str, path: Path, plugin) -> Worker:
-        key = path.name.lower()
+        key = os.path.normcase(str(Path(path).resolve()))
         with self._wlock:
             if self._stopping:
                 raise HubError("the program is stopping")
@@ -412,14 +481,14 @@ class RadHub:
             if not path.exists():
                 raise HubError(f"{path.name} does not exist")
             try:
-                argv = plugin.worker_command(self.folder, path.name)
+                argv = plugin.worker_command(path.parent, path.name)
             except Exception as e:  # noqa: BLE001 - report plugin failures as call errors
                 raise HubError(f"{plugin.display_name} cannot start a worker for {path.name}: {e}") from None
             if not argv:
                 raise HubError(f"{plugin.display_name} modules cannot be called from other languages yet "
                                f"(no worker for {path.name})")
             self.log(f"[RAD Hub] starting {plugin.display_name} worker for {path.name}\n")
-            w = Worker(self, Path(path).stem, path, plugin, [str(a) for a in argv])
+            w = Worker(self, Path(path).stem, path, plugin, [str(a) for a in argv], folder=path.parent)
             self.workers[key] = w
             return w
 
@@ -440,7 +509,7 @@ class RadHub:
             interp = interp or plugin.find_interpreter("")
             if not interp:
                 raise HubError(f"{form}.Show: no {plugin.display_name} interpreter found")
-            spec = plugin.run_spec(self.folder, form, interp)
+            spec = plugin.run_spec(Path(project.folder), form, interp)
             env = self.child_env(base=spec.env)
             env["RAD_START_FORM"] = form
             self.log(f"[RAD Hub] showing {form} ({plugin.display_name})\n")

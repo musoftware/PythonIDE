@@ -144,3 +144,95 @@ def rename_form(project: Project, old: str, new: str) -> None:
     project.save()
     for name in project.forms:
         _regen(project, name)
+
+
+# ============================================================================ solutions (CONTRACTS 7)
+def create_solution(folder: Path, name: str):
+    """Create an empty solution: <folder>/<name>.radsln. Returns the Solution."""
+    from .solution import Solution
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    sol = Solution(name, folder.resolve(), [], "")
+    sol.save()
+    return sol
+
+
+def create_library_project(folder: Path, name: str, language: str) -> Project:
+    """Create a Class Library project: no form, one module "<Name><ext>" with an example
+    public function (plugin.library_template)."""
+    plugin = get_plugin(language)
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    project = Project(folder, name, language, kind="library")
+    filename = f"{name}{plugin.code_ext}"
+    path = folder / filename
+    if not path.exists():
+        path.write_text(plugin.library_template(name), encoding="utf-8")
+    project.modules.append(filename)
+    project.save()
+    return project
+
+
+def add_project_to_solution(solution, project, name: str | None = None):
+    """Add an existing project (Project or folder) to the solution and save the .radsln.
+    Returns the loaded Project."""
+    entry = solution.add_project(project, name)
+    solution.save()
+    return solution.project(entry.name)
+
+
+def remove_project_from_solution(solution, name: str) -> list[Project]:
+    """Remove a project from the solution (files stay on disk) and drop the references the
+    other projects had to it (their proxies are deleted). Returns the changed projects."""
+    from .references import update_proxies
+    entry = solution.entry(name)
+    if entry is None:
+        raise KeyError(f"project '{name}' is not in solution '{solution.name}'")
+    changed = []
+    for p in solution.all_projects():
+        if solution.name_of(p).lower() != entry.name.lower() and p.references_project(entry.name):
+            p.references = [r for r in p.references if r.lower() != entry.name.lower()]
+            changed.append(p)
+    solution.remove_project(entry.name)
+    solution.save()
+    for p in changed:
+        p.save()
+        update_proxies(solution, p)
+    return changed
+
+
+def _resolve(solution, project) -> Project:
+    p = solution.project(project) if isinstance(project, str) else project
+    if p is None:
+        raise ValueError(f"project '{project}' is not in solution '{solution.name}'")
+    return p
+
+
+def add_reference(solution, project, lib: str, log=None) -> list[Path]:
+    """*project* (Project or name) references the project *lib* of the same solution.
+    Raises ValueError for an unknown project or a reference cycle. Saves project.radproj and
+    writes the proxy files; returns the files written."""
+    from .references import update_proxies
+    project = _resolve(solution, project)
+    lib_project = _resolve(solution, lib)
+    lib_name = solution.name_of(lib_project)
+    if solution.would_create_cycle(project, lib_name):
+        if lib_name.lower() == solution.name_of(project).lower():
+            raise ValueError(f"a project cannot reference itself ({lib_name})")
+        raise ValueError(f"{solution.name_of(project)} cannot reference {lib_name}: {lib_name} already "
+                         f"references {solution.name_of(project)} (circular reference)")
+    if not project.references_project(lib_name):
+        project.references.append(lib_name)
+        project.save()
+    return update_proxies(solution, project, log)
+
+
+def remove_reference(solution, project, lib: str, log=None) -> list[Path]:
+    """Remove a reference; its proxy files are deleted. Returns the files (re)written."""
+    from .references import update_proxies
+    project = _resolve(solution, project)
+    before = len(project.references)
+    project.references = [r for r in project.references if r.lower() != str(lib).lower()]
+    if len(project.references) != before:
+        project.save()
+    return update_proxies(solution, project, log)

@@ -171,6 +171,14 @@ public static class Rad
     /// <summary>Typed variant: radcall&lt;int&gt;("Helpers.add", 2, 3).</summary>
     public static T radcall<T>(string function, params object[] args) => HubCall(function, args).Deserialize<T>();
 
+    /// <summary>Used by the generated reference proxies (&lt;Lib&gt;.ref.cs, Add Reference): a plain value as
+    /// <c>dynamic</c>; whole numbers that fit are <c>int</c> so <c>int n = MathLib.Count();</c> works.</summary>
+    public static dynamic RefCall(string function, params object[] args)
+    {
+        var r = Plain(HubCall(function, args));
+        return r is long l && l >= int.MinValue && l <= int.MaxValue ? (int)l : r;
+    }
+
     static JsonElement HubCall(string function, object[] args)
     {
         lock (_lock)
@@ -205,7 +213,7 @@ public static class Rad
     public static object Plain(JsonElement e) => e.ValueKind switch
     {
         JsonValueKind.String => e.GetString(),
-        JsonValueKind.Number => e.TryGetInt64(out var l) ? l : e.GetDouble(),
+        JsonValueKind.Number => e.TryGetInt64(out var l) ? (object)l : e.GetDouble(),   // (object): keep long
         JsonValueKind.True => true,
         JsonValueKind.False => false,
         JsonValueKind.Array => e.EnumerateArray().Select(Plain).ToList(),

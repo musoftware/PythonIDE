@@ -27,3 +27,6 @@ func mnuHelpAbout_Click
     oMsg.setWindowTitle("About")
     oMsg.setText("Made with RAD IDE")
     oMsg.show()
+
+func Button1_Click
+     

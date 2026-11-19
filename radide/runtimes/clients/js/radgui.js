@@ -80,8 +80,14 @@ function writeFd(fd, text) {
   }
 }
 
-let outFd = 1;          // the worker sends its logs to stderr (fd 2)
-function writeLine(text) { writeFd(outFd, text + '\n'); }
+let workerMode = false;  // in a RAD Hub worker stdin/stdout carry JSON, not the GUI protocol
+function writeLine(text) {
+  if (workerMode) {
+    throw new Error(`'${text.split(' ')[0]}' is not available here: this module runs in a RAD Hub worker ` +
+                    '(called with radcall), which has no form. Return a value instead.');
+  }
+  writeFd(1, text + '\n');
+}
 
 /** console.* must be synchronous: the program blocks in readSync between events. */
 function patchConsole(fd) {
@@ -259,18 +265,77 @@ function installGlobals(folder) {
   g.__radfolder = folder;
 }
 
-/** Run a .js/.ts file in the global scope so its top-level functions become callable by name. */
+const RAD_API = new Set(['set', 'get', 'getNum', 'call', 'msgbox', 'input', 'show', 'hide', 'end', 'ui',
+  'radcall', 'require']);
+const loadedScripts = new Set();
+
+/** Files are scripts: drop ES module syntax (export ...) but keep what it exports reachable. */
+function stripModuleSyntax(code) {
+  code = code.replace(/^([ \t]*)export[ \t]+default[ \t]+(?=(async[ \t]+)?function\b|class\b)/gm, '$1');
+  code = code.replace(/^([ \t]*)export[ \t]+(?=(function|const|let|var|class|async|enum|interface|type|declare|abstract|namespace)\b)/gm, '$1');
+  // export { a, b as c };  ->  globalThis.c = c alias (names that differ), nothing else
+  return code.replace(/^([ \t]*)export[ \t]*\{([^}\n]*)\}[ \t]*;?/gm, (_m, ind, list) => ind + list.split(',')
+    .map((s) => s.trim().split(/\s+as\s+/))
+    .filter((p) => p.length === 2 && p[0] && p[1] && p[0] !== p[1])
+    .map(([a, b]) => `globalThis[${JSON.stringify(b)}] = ${a};`).join(' '));
+}
+
+/** Run a .js/.ts file in the global scope so its top-level functions become callable by name.
+ *  CommonJS-style files (module.exports = {...} / exports.f = ...) also work: what they export
+ *  becomes global. A file is loaded only once. */
 function loadScript(file) {
   const full = path.resolve(file);
+  const key = process.platform === 'win32' ? full.toLowerCase() : full;
+  if (loadedScripts.has(key)) return;
+  loadedScripts.add(key);
   let code = fs.readFileSync(full, 'utf8');
   if (code.charCodeAt(0) === 0xfeff) code = code.slice(1);
-  if (/\.(ts|mts|cts)$/i.test(full)) {
-    // TypeScript files are scripts too: drop module syntax that would make them modules
-    code = code.replace(/^\s*export\s+(?=(function|const|let|var|class|async|enum|interface|type)\b)/gm, '');
-    code = stripTypes(code, full);
-  }
+  const isRef = /\.ref\.[cm]?[jt]s$/i.test(full);          // generated reference proxies
+  if (!isRef) code = stripModuleSyntax(code);
+  if (/\.(ts|mts|cts)$/i.test(full)) code = stripTypes(code, full);
   if (code.startsWith('#!')) code = '//' + code;
-  vm.runInThisContext(code, { filename: full });
+  const cjs = !isRef && /\b(module\s*\.\s*exports|exports\s*\.\s*[A-Za-z_$][\w$]*\s*=(?!=))/.test(code);
+  const g = globalThis;
+  let shim = null;
+  const saved = { module: Object.getOwnPropertyDescriptor(g, 'module'),
+                  exports: Object.getOwnPropertyDescriptor(g, 'exports') };
+  if (cjs) {
+    shim = { exports: {} };
+    g.module = shim;
+    g.exports = shim.exports;
+  }
+  try {
+    vm.runInThisContext(code, { filename: full });
+  } finally {
+    if (cjs) {
+      for (const k of ['module', 'exports']) {
+        if (saved[k]) Object.defineProperty(g, k, saved[k]); else delete g[k];
+      }
+    }
+  }
+  if (shim) {
+    const ex = shim.exports;
+    const publish = (k, v) => {
+      if (RAD_API.has(k)) { writeFd(2, `[${path.basename(full)}] export '${k}' hides a RAD IDE function - ignored\n`); return; }
+      g[k] = v;
+    };
+    if (typeof ex === 'function') { if (ex.name) publish(ex.name, ex); }
+    else if (ex && typeof ex === 'object') {
+      for (const k of Object.keys(ex)) if (typeof ex[k] === 'function') publish(k, ex[k]);
+    }
+  }
+}
+
+/** Load the reference proxies (<Lib>.ref.js / <Lib>.ref.ts) of a project folder: they define the
+ *  global objects of referenced library projects (MathLib.Add(2, 3)). */
+function loadReferences(folder, ext) {
+  let names = [];
+  try { names = fs.readdirSync(folder); } catch (e) { return; }
+  const suffix = `.ref${ext}`.toLowerCase();
+  for (const n of names.sort()) {
+    if (!n.toLowerCase().endsWith(suffix)) continue;
+    try { loadScript(path.join(folder, n)); } catch (e) { report(`error loading reference ${n}`, e); }
+  }
 }
 
 function findHandler(name) {
@@ -302,6 +367,7 @@ function runMain(files, folder) {
   folder = folder || process.cwd();
   patchConsole(1);
   installGlobals(folder);
+  loadReferences(folder, files.some((f) => /\.ts$/i.test(f)) ? '.ts' : '.js');
   for (const f of files) {
     try { loadScript(path.resolve(folder, f)); } catch (e) { report(`error loading ${f}`, e); }
   }
@@ -330,6 +396,6 @@ function runMain(files, folder) {
 
 module.exports = {
   set, get, getNum, call, msgbox, input, show, hide, end, ui, radcall,
-  readLine, writeLine, writeFd, patchConsole, installGlobals, loadScript, findHandler, runMain,
-  _setOutFd(fd) { outFd = fd; },
+  readLine, writeLine, writeFd, patchConsole, installGlobals, loadScript, loadReferences, findHandler, runMain,
+  _setWorkerMode() { workerMode = true; },
 };

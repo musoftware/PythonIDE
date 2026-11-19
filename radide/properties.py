@@ -9,19 +9,63 @@ from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt6.QtWidgets import (QAbstractItemView, QColorDialog, QComboBox, QFileDialog,
-                             QFontComboBox, QHBoxLayout, QHeaderView, QLabel, QPushButton,
+                             QFontComboBox, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
+                             QPushButton,
                              QTableWidget, QTableWidgetItem, QTabWidget, QToolButton,
                              QVBoxLayout, QWidget)
 
-from .controls import CONTROL_TYPES, EVENT_HELP, FORM_PROPS
+from .controls import (ANCHOR_EDGES, CONTROL_TYPES, EVENT_HELP, FORM_PROPS, MENU_TYPES, format_anchor,
+                       menu_names, parse_anchor)
 from .document import FormDocument
 from .model import Control
 
 CATEGORY_ORDER = ["Appearance", "Behavior", "Data", "Design", "Layout", "Misc"]
+CATEGORY_BACK = "#E4E8EE"     # category rows (Tools > Options dark theme changes it)
 
 
 def valid_identifier(s: str) -> bool:
     return s.isidentifier() and not keyword.iskeyword(s)
+
+
+class AnchorEditor(QFrame):
+    """VS-style Anchor editor: a popup with a box and four bars (Top/Bottom/Left/Right)
+    that toggle; *changed(str)* is called with the new value ("Top, Left", ...)."""
+
+    def __init__(self, value: str, changed, parent=None):
+        super().__init__(parent, Qt.WindowType.Popup)
+        self.setFrameShape(QFrame.Shape.Box)
+        self.setStyleSheet("AnchorEditor { background:#ffffff; }")
+        self.changed = changed
+        self.edges = parse_anchor(value)
+        grid = QGridLayout(self)
+        grid.setContentsMargins(10, 10, 10, 10)
+        grid.setSpacing(2)
+        self.buttons: dict[str, QToolButton] = {}
+        spots = {"Top": (0, 1, 22, 34), "Bottom": (2, 1, 22, 34), "Left": (1, 0, 34, 22), "Right": (1, 2, 34, 22)}
+        for edge in ANCHOR_EDGES:
+            row, col, w, h = spots[edge]
+            b = QToolButton(self)
+            b.setCheckable(True)
+            b.setChecked(edge in self.edges)
+            b.setFixedSize(w, h)
+            b.setToolTip(edge)
+            b.setObjectName(f"anchor{edge}")
+            b.setStyleSheet("QToolButton { background:#E8E8E8; border:1px solid #C0C0C0; }"
+                            "QToolButton:checked { background:#3A6FC4; border:1px solid #1E4A90; }")
+            b.toggled.connect(lambda on, e=edge: self._toggle(e, on))
+            grid.addWidget(b, row, col, Qt.AlignmentFlag.AlignCenter)
+            self.buttons[edge] = b
+        box = QLabel(self)
+        box.setFixedSize(34, 34)
+        box.setStyleSheet("background:#F4F4F4; border:1px solid #808080;")
+        grid.addWidget(box, 1, 1)
+
+    def _toggle(self, edge: str, on: bool) -> None:
+        if on:
+            self.edges.add(edge)
+        else:
+            self.edges.discard(edge)
+        self.changed(format_anchor(self.edges))
 
 
 class PropertiesPanel(QWidget):
@@ -182,11 +226,11 @@ class PropertiesPanel(QWidget):
                 item = QTableWidgetItem(d)
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 item.setFont(bold)
-                item.setBackground(QColor("#E4E8EE"))
+                item.setBackground(QColor(CATEGORY_BACK))
                 self.props.setItem(row, 0, item)
                 filler = QTableWidgetItem("")
                 filler.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                filler.setBackground(QColor("#E4E8EE"))
+                filler.setBackground(QColor(CATEGORY_BACK))
                 self.props.setItem(row, 1, filler)
                 continue
             name_item = QTableWidgetItem("(Name)" if d.name == "Name" else d.name)
@@ -243,6 +287,13 @@ class PropertiesPanel(QWidget):
                     w.setStyleSheet("text-align:left; padding-left:4px;")
                     w.clicked.connect(self._edit_menu)
                     self.props.setCellWidget(row, 1, w)
+            elif d.kind == "anchor":
+                if w is None:
+                    w = QPushButton()
+                    w.setStyleSheet("text-align:left; padding-left:4px;")
+                    w.clicked.connect(lambda _=False, n=d.name, b=w: self._edit_anchor(n, b))
+                    self.props.setCellWidget(row, 1, w)
+                w.setText(format_anchor(parse_anchor(value)) + "   \u25be")
             elif d.kind == "file":
                 if w is None:
                     w = QPushButton()
@@ -379,13 +430,25 @@ class PropertiesPanel(QWidget):
         self._set(name, rel.as_posix())
         self._refresh_values()
 
+    def _edit_anchor(self, name: str, button: QPushButton) -> AnchorEditor:
+        current = self._props_dict().get(name, "Top, Left")
+        pop = AnchorEditor(current, lambda v, n=name: (self._set(n, v), self._refresh_values()), self)
+        pop.adjustSize()
+        pop.move(button.mapToGlobal(button.rect().bottomLeft()))
+        pop.show()
+        self._anchor_popup = pop
+        return pop
+
     def _edit_menu(self):
         from .menu_editor import edit_menu
         c = self._owner()
-        if c is None or c.type != "MenuStrip":
+        if c is None or c.type not in MENU_TYPES:
             return
         taken = {x.name for x in self.doc.form.controls} | {self.doc.form.name}
-        items = edit_menu(c.props.get("Items", []), taken, self)
+        for other in self.doc.form.controls:
+            if other.type in MENU_TYPES and other is not c:
+                taken |= set(menu_names(other.props.get("Items", [])))
+        items = edit_menu(c.props.get("Items", []), taken, self, flat=c.type == "ToolStrip")
         if items is not None:
             self.doc.set_prop(c, "Items", items)
 

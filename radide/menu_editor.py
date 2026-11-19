@@ -1,4 +1,4 @@
-"""Menu Editor dialog for the MenuStrip component."""
+"""Menu Editor dialog for the MenuStrip component (and, flat, for ToolStrip buttons)."""
 from __future__ import annotations
 
 import copy
@@ -13,15 +13,17 @@ from .properties import valid_identifier
 EDITABLE = (Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable)
 
 
-def _auto_name(path_texts: list[str]) -> str:
+def _auto_name(path_texts: list[str], prefix: str = "mnu") -> str:
     words = "".join(re.sub(r"[^0-9A-Za-z]", "", t.title()) for t in path_texts)
-    return "mnu" + (words or "Item")
+    return prefix + (words or "Item")
 
 
 class MenuEditor(QDialog):
-    def __init__(self, items: list, taken_names: set[str], parent=None):
+    def __init__(self, items: list, taken_names: set[str], parent=None, flat: bool = False):
         super().__init__(parent)
-        self.setWindowTitle("Menu Editor")
+        self.flat = flat                     # ToolStrip: one level of buttons
+        self.prefix = "tsb" if flat else "mnu"
+        self.setWindowTitle("Tool Strip Buttons" if flat else "Menu Editor")
         self.resize(520, 420)
         self.taken = {n.lower() for n in taken_names}
         self.tree = QTreeWidget()
@@ -34,9 +36,14 @@ class MenuEditor(QDialog):
         self.tree.expandAll()
         self._loading = False
 
-        buttons = [("Add Menu", self.add_top), ("Add Item", self.add_child),
-                   ("Add Separator", self.add_separator), ("Delete", self.delete),
-                   ("Move Up", lambda: self.move(-1)), ("Move Down", lambda: self.move(1))]
+        if flat:
+            buttons = [("Add Button", self.add_top), ("Add Separator", self.add_separator),
+                       ("Delete", self.delete), ("Move Up", lambda: self.move(-1)),
+                       ("Move Down", lambda: self.move(1))]
+        else:
+            buttons = [("Add Menu", self.add_top), ("Add Item", self.add_child),
+                       ("Add Separator", self.add_separator), ("Delete", self.delete),
+                       ("Move Up", lambda: self.move(-1)), ("Move Down", lambda: self.move(1))]
         side = QVBoxLayout()
         for text, slot in buttons:
             b = QPushButton(text)
@@ -98,7 +105,7 @@ class MenuEditor(QDialog):
             parent.addChild(it)
             parent.setExpanded(True)
         if text != "-":
-            it.setText(1, self._unique(_auto_name(self._path(it)), it))
+            it.setText(1, self._unique(_auto_name(self._path(it), self.prefix), it))
         self._loading = False
         self.tree.setCurrentItem(it)
         if text != "-":
@@ -106,7 +113,7 @@ class MenuEditor(QDialog):
         return it
 
     def add_top(self):
-        self._new(f"Menu{self.tree.topLevelItemCount() + 1}", None)
+        self._new(f"{'Button' if self.flat else 'Menu'}{self.tree.topLevelItemCount() + 1}", None)
 
     def add_child(self):
         cur = self.tree.currentItem()
@@ -118,6 +125,9 @@ class MenuEditor(QDialog):
 
     def add_separator(self):
         cur = self.tree.currentItem()
+        if self.flat:
+            self._new("-", None)
+            return
         if cur is None:
             return
         parent = cur if cur.childCount() or cur.parent() is None else cur.parent()
@@ -150,8 +160,8 @@ class MenuEditor(QDialog):
             self._loading = True
             if it.text(0) == "-":
                 it.setText(1, "")
-            elif not it.text(1) or it.text(1).startswith("mnu"):
-                it.setText(1, self._unique(_auto_name(self._path(it)), it))
+            elif not it.text(1) or it.text(1).startswith(self.prefix):
+                it.setText(1, self._unique(_auto_name(self._path(it), self.prefix), it))
             self._loading = False
 
     # ------------------------------------------------------------ result
@@ -187,6 +197,6 @@ class MenuEditor(QDialog):
         self.accept()
 
 
-def edit_menu(items: list, taken: set[str], parent=None) -> list | None:
-    dlg = MenuEditor(copy.deepcopy(items), taken, parent)
+def edit_menu(items: list, taken: set[str], parent=None, flat: bool = False) -> list | None:
+    dlg = MenuEditor(copy.deepcopy(items), taken, parent, flat)
     return dlg.items() if dlg.exec() else None

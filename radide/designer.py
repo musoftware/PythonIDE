@@ -3,15 +3,19 @@
 A fake XP window with a grid surface; selection handles, multi-select
 (Ctrl+click / rubber band), move/resize with snap-to-grid, containers
 (Panel/GroupBox), a menu strip and a component tray for non-visual
-components (Timer, MenuStrip)."""
+components (Timer, MenuStrip, dialogs). TabControl pages are switched by
+clicking their tabs; docked controls snap to the container edges and anchored
+ones follow when the form is resized; Lock Controls and a Tab Order mode
+(click controls in sequence to number them) are available."""
 from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (QHBoxLayout, QMenu, QScrollArea, QToolButton, QWidget)
 
-from .controls import CONTROL_TYPES
+from .controls import CONTROL_TYPES, MENU_TYPES, TOOLSTRIP_H
 from .document import FormDocument
+from .layout import tab_page
 from .model import Control
 from .preview import apply_props, make_preview
 from .toolbox import MIME, TOOL_STATE, control_icon
@@ -24,6 +28,24 @@ MENU_H = 20
 FORM_BACK = "#ECE9D8"      # VB 2005 / Windows XP "Control" colour
 MIN_SIZE = 8
 MARGIN = 10
+
+
+def design_visible(form, c: Control) -> bool:
+    """False for controls on a TabControl page that is not the selected one (or inside one)."""
+    seen = set()
+    while c is not None and c.parent and c.name not in seen:
+        seen.add(c.name)
+        parent = form.find(c.parent)
+        if parent is None:
+            return True
+        if parent.type == "TabControl" and tab_page(c) != int(parent.props.get("SelectedIndex", 0) or 0):
+            return False
+        c = parent
+    return True
+
+
+def toolstrip_of(form) -> Control | None:
+    return next((c for c in form.controls if c.type == "ToolStrip"), None)
 
 # handle index -> (moves left, moves top, moves right, moves bottom)
 HANDLE_EDGES = [(1, 1, 0, 0), (0, 1, 0, 0), (0, 1, 1, 0), (0, 0, 1, 0),
@@ -87,8 +109,12 @@ class Overlay(QWidget):
         x, y = self.form.abs_pos(c)
         return QRect(x, y, int(c.props["Width"]), int(c.props["Height"]))
 
+    def shown(self) -> list[Control]:
+        """Visual controls the designer currently shows (z-order, containers first)."""
+        return [c for c in self.form.ordered() if design_visible(self.form, c)]
+
     def control_at(self, pos: QPoint) -> Control | None:
-        for c in reversed(self.form.ordered()):
+        for c in reversed(self.shown()):
             if self.abs_rect(c).contains(pos):
                 return c
         return None
@@ -98,14 +124,14 @@ class Overlay(QWidget):
         for c in exclude:
             banned.add(id(c))
             banned |= {id(d) for d in self.form.descendants(c)}
-        for c in reversed(self.form.ordered()):
+        for c in reversed(self.shown()):
             if c.ctype.container and id(c) not in banned and self.abs_rect(c).contains(pos):
                 return c.name
         return ""
 
     def handle_at(self, pos: QPoint) -> int:
         c = self.doc.selected
-        if c is None or c.ctype.nonvisual:
+        if c is None or c.ctype.nonvisual or self.doc.locked or self.view.tab_order_mode:
             return -1
         for i, r in enumerate(handle_rects(self.abs_rect(c))):
             if r.adjusted(-2, -2, 2, 2).contains(pos):
@@ -148,7 +174,17 @@ class Overlay(QWidget):
             self.view.create_control(TOOL_STATE.current, pos)
             TOOL_STATE.set(None)
             return
+        if self.view.tab_order_mode:
+            hit = self.control_at(pos)
+            if hit is not None:
+                self.view.assign_tab_index(hit)
+            self.mode = None
+            return
         self.press = pos
+        hit = self.control_at(pos)
+        if hit is not None and hit.type == "TabControl" and self._click_tab(hit, pos):
+            self.mode = None
+            return
         self.handle = self.handle_at(pos) if not ctrl_key else -1
         if self.handle >= 0:
             self.mode = "resize"
@@ -173,10 +209,27 @@ class Overlay(QWidget):
             self.doc.selection.remove(hit)
             self.doc.selection.append(hit)
             self.doc.selectionChanged.emit(hit)
+        if self.doc.locked:
+            self.mode = None
+            return
         self.mode = "move"
         self.starts = {id(c): QRect(int(c.props["Left"]), int(c.props["Top"]),
                                     int(c.props["Width"]), int(c.props["Height"]))
                        for c in self._movable()}
+
+    def _click_tab(self, tc: Control, pos: QPoint) -> bool:
+        """A click on the tab bar of a TabControl shows that page (VS behaviour)."""
+        w = self.view.previews.get(id(tc))
+        if w is None or not hasattr(w, "tab_at"):
+            return False
+        r = self.abs_rect(tc)
+        idx = w.tab_at(pos - r.topLeft())
+        if idx < 0:
+            return False
+        self.doc.select(tc)
+        if idx != int(tc.props.get("SelectedIndex", 0) or 0):
+            self.doc.set_prop(tc, "SelectedIndex", idx, record=False)
+        return True
 
     def mouseMoveEvent(self, e):
         pos = e.position().toPoint()
@@ -226,7 +279,7 @@ class Overlay(QWidget):
             band = self.band
             self.band = QRect()
             if band.width() > 2 or band.height() > 2:
-                hits = [c for c in self.form.ordered() if self.abs_rect(c).intersects(band)]
+                hits = [c for c in self.shown() if self.abs_rect(c).intersects(band)]
                 if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
                     hits = self.doc.selection + [c for c in hits if c not in self.doc.selection]
                 self.doc.select_many(hits)
@@ -255,6 +308,9 @@ class Overlay(QWidget):
     def keyPressEvent(self, e):
         k = e.key()
         if k == Qt.Key.Key_Escape:
+            if self.view.tab_order_mode:
+                self.view.set_tab_order_mode(False)
+                return
             TOOL_STATE.set(None)
             self.doc.select(None)
             return
@@ -267,6 +323,8 @@ class Overlay(QWidget):
                 Qt.Key.Key_Up: (0, -1), Qt.Key.Key_Down: (0, 1)}.get(k)
         if not step:
             return super().keyPressEvent(e)
+        if self.doc.locked:
+            return
         self.doc.checkpoint()
         if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
             c = self.doc.selected
@@ -296,13 +354,20 @@ class Overlay(QWidget):
     def paintEvent(self, _e):
         p = QPainter(self)
         primary = self.doc.selected
+        if self.view.tab_order_mode:
+            self._paint_tab_order(p)
+            return
+        locked = self.doc.locked
         for c in self.doc.selection:
-            if c.ctype.nonvisual:
+            if c.ctype.nonvisual or not design_visible(self.form, c):
                 continue
             r = self.abs_rect(c)
             p.setPen(QPen(QColor("#000000"), 1, Qt.PenStyle.DotLine))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(r.adjusted(-1, -1, 0, 0))
+            if locked:            # VS shows a small padlock instead of the grab handles
+                self._paint_lock(p, r.topLeft() + QPoint(2, 2))
+                continue
             p.setPen(QPen(QColor("#000000")))
             # VB: primary selection has white handles, the others black
             p.setBrush(QColor("#ffffff") if c is primary else QColor("#000000"))
@@ -312,6 +377,42 @@ class Overlay(QWidget):
             p.setPen(QPen(QColor("#000000"), 1, Qt.PenStyle.DashLine))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(self.band)
+
+
+    @staticmethod
+    def _paint_lock(p: QPainter, at: QPoint) -> None:
+        p.save()
+        p.setPen(QPen(QColor("#404040"), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawArc(at.x() + 2, at.y(), 6, 7, 0, 180 * 16)
+        p.setBrush(QColor("#F0C419"))
+        p.drawRect(at.x() + 1, at.y() + 4, 8, 6)
+        p.restore()
+
+    def tab_label(self, c: Control) -> str:
+        """'2' for a control on the form, '1.0' for the first control of container 1 ..."""
+        parts = []
+        seen = set()
+        while c is not None and c.name not in seen:
+            seen.add(c.name)
+            parts.insert(0, str(int(c.props.get("TabIndex", 0) or 0)))
+            c = self.form.find(c.parent) if c.parent else None
+        return ".".join(parts)
+
+    def _paint_tab_order(self, p: QPainter) -> None:
+        f = QFont("Segoe UI", 8, QFont.Weight.Bold)
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        done = self.view.tab_assigned
+        for c in self.shown():
+            text = self.tab_label(c)
+            r = self.abs_rect(c)
+            box = QRect(r.left(), r.top(), fm.horizontalAdvance(text) + 8, fm.height() + 2)
+            p.setPen(QColor("#000000"))
+            p.setBrush(QColor("#FFFFFF") if id(c) in done else QColor("#1E5FBF"))
+            p.drawRect(box)
+            p.setPen(QColor("#1E5FBF") if id(c) in done else QColor("#FFFFFF"))
+            p.drawText(box, Qt.AlignmentFlag.AlignCenter, text)
 
 
 class FormFrame(QWidget):
@@ -326,9 +427,27 @@ class FormFrame(QWidget):
         self._press = QPoint()
         self._start = (0, 0)
         self.menu_rects: list[tuple[QRect, dict]] = []
+        self.tool_rects: list[tuple[QRect, dict]] = []
 
     def menu_height(self) -> int:
-        return MENU_H if self.view.doc.form.menu() else 0
+        """Height of the menu strip + tool strip drawn above the client area."""
+        form = self.view.doc.form
+        return (MENU_H if form.menu() else 0) + (TOOLSTRIP_H if toolstrip_of(form) else 0)
+
+    def _strip_top(self) -> int:
+        return BORDER + CAPTION + (MENU_H if self.view.doc.form.menu() else 0)
+
+    def _in_strip(self, pos: QPoint) -> bool:
+        if toolstrip_of(self.view.doc.form) is None:
+            return False
+        top = self._strip_top()
+        return top <= pos.y() < top + TOOLSTRIP_H
+
+    def _tool_hit(self, pos: QPoint):
+        for r, item in self.tool_rects:
+            if r.contains(pos):
+                return item
+        return None
 
     def _edge(self, pos: QPoint):
         r = self.rect()
@@ -354,6 +473,9 @@ class FormFrame(QWidget):
         if menu is not None and BORDER + CAPTION <= pos.y() < BORDER + CAPTION + MENU_H:
             doc.select(menu)
             return
+        if self._in_strip(pos):
+            doc.select(toolstrip_of(doc.form))
+            return
         doc.select(None)
         self._resizing = self._edge(pos)
         self._press = pos
@@ -367,6 +489,7 @@ class FormFrame(QWidget):
         if self._resizing:
             dx, dy = pos.x() - self._press.x(), pos.y() - self._press.y()
             doc = self.view.doc
+            # set_prop moves / resizes anchored and docked controls with the form
             if self._resizing[0]:
                 doc.set_prop(None, "Width", max(80, snap(self._start[0] + dx)), record=False)
             if self._resizing[1]:
@@ -386,6 +509,14 @@ class FormFrame(QWidget):
         menu = self.view.doc.form.menu()
         if menu is not None and BORDER + CAPTION <= pos.y() < BORDER + CAPTION + MENU_H:
             self.view.edit_menu(menu)
+            return
+        if self._in_strip(pos):
+            strip = toolstrip_of(self.view.doc.form)
+            item = self._tool_hit(pos)
+            if item is not None and item.get("Name"):
+                self.view.doc.eventRequested.emit(strip, item["Name"])
+            else:
+                self.view.edit_menu(strip)
             return
         self.view.doc.eventRequested.emit(None, "Load")
 
@@ -453,12 +584,57 @@ class FormFrame(QWidget):
                 p.setPen(QPen(QColor("#000000"), 1, Qt.PenStyle.DotLine))
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.drawRect(mr.adjusted(0, 0, -1, -1))
+        self._paint_toolstrip(p, r)
         if active:   # VB shows resize handles on the form itself when selected
             p.setPen(QColor("#000000"))
             p.setBrush(QColor("#ffffff"))
             w, h = r.width(), r.height()
             for x, y in ((w - HANDLE, h // 2), (w // 2, h - HANDLE), (w - HANDLE, h - HANDLE)):
                 p.drawRect(x, y, HANDLE - 1, HANDLE - 1)
+
+
+    def _paint_toolstrip(self, p: QPainter, r: QRect) -> None:
+        self.tool_rects = []
+        doc = self.view.doc
+        strip = toolstrip_of(doc.form)
+        if strip is None:
+            return
+        tr = QRect(BORDER, self._strip_top(), r.width() - 2 * BORDER, TOOLSTRIP_H)
+        g = QLinearGradient(0, tr.top(), 0, tr.bottom())
+        g.setColorAt(0, QColor("#FAFAFA"))
+        g.setColorAt(1, QColor("#E3E3E3"))
+        p.fillRect(tr, g)
+        p.setPen(QColor("#B8B8B8"))
+        p.drawLine(tr.left(), tr.bottom(), tr.right(), tr.bottom())
+        f = QFont("Segoe UI", 9)
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        x = tr.left() + 4
+        items = strip.props.get("Items", [])
+        for it in items:
+            if it.get("Text") == "-":
+                p.setPen(QColor("#A0A0A0"))
+                p.drawLine(x + 2, tr.top() + 4, x + 2, tr.bottom() - 4)
+                x += 6
+                continue
+            text = it.get("Text", "") + (" \u25be" if it.get("Items") else "")
+            w = fm.horizontalAdvance(text) + 14
+            br = QRect(x, tr.top() + 2, w, TOOLSTRIP_H - 5)
+            p.setPen(QColor("#C9C9C9"))
+            p.setBrush(QColor("#F4F4F4"))
+            p.drawRoundedRect(br, 2, 2)
+            p.setPen(QColor("#000000"))
+            p.drawText(br, Qt.AlignmentFlag.AlignCenter, text)
+            self.tool_rects.append((br, it))
+            x += w + 2
+        if not items:
+            p.setPen(QColor("#808080"))
+            p.drawText(QRect(x, tr.top(), 260, TOOLSTRIP_H), Qt.AlignmentFlag.AlignVCenter,
+                       "Tool strip - double-click to add buttons")
+        if doc.selected is strip:
+            p.setPen(QPen(QColor("#000000"), 1, Qt.PenStyle.DotLine))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRect(tr.adjusted(0, 0, -1, -1))
 
 
 class ComponentTray(QWidget):
@@ -513,7 +689,7 @@ class _TrayButton(QToolButton):
             self.view.show_context_menu(self.ctrl, e.globalPosition().toPoint())
 
     def mouseDoubleClickEvent(self, _e):
-        if self.ctrl.type == "MenuStrip":
+        if self.ctrl.type in MENU_TYPES:
             self.view.edit_menu(self.ctrl)
         else:
             ev = self.ctrl.ctype.default_event
@@ -524,10 +700,15 @@ class _TrayButton(QToolButton):
 class DesignerView(QScrollArea):
     """Hosts one FormDocument's visual designer."""
     contextActions = pyqtSignal(object, object)   # (QMenu, Control|None) - app may add items
+    tabOrderModeChanged = pyqtSignal(bool)
 
     def __init__(self, doc: FormDocument, parent=None):
         super().__init__(parent)
         self.doc = doc
+        self.tab_order_mode = False
+        self.tab_next: dict[str, int] = {}          # container name -> next TabIndex to give
+        self.tab_assigned: set[int] = set()         # ids of controls numbered in this session
+        self._tab_recorded = False
         self.setWidgetResizable(False)
         self.content = QWidget()
         self.content.setStyleSheet("background:#ffffff;")
@@ -572,41 +753,105 @@ class DesignerView(QScrollArea):
         self.previews.clear()
         for c in self.doc.form.ordered():
             parent = self.previews.get(id(self.doc.form.find(c.parent))) if c.parent else None
-            self.previews[id(c)] = make_preview(c, parent or self.surface, self.doc.path.parent)
+            host = getattr(parent, "client", parent) if parent is not None else self.surface
+            self.previews[id(c)] = make_preview(c, host, self.doc.path.parent)
+        self.sync_pages()
         self.overlay.raise_()
         self.tray.rebuild()
         self.layout_form()
         self.overlay.update()
 
+    def sync_pages(self) -> None:
+        """Show only the controls on the selected page of each TabControl."""
+        form = self.doc.form
+        for c in form.visual():
+            w = self.previews.get(id(c))
+            if w is not None and c.parent:
+                parent = form.find(c.parent)
+                if parent is not None and parent.type == "TabControl":
+                    w.setVisible(tab_page(c) == int(parent.props.get("SelectedIndex", 0) or 0))
+
     def on_control_changed(self, ctrl) -> None:
-        if ctrl is None or ctrl.type == "MenuStrip":
+        if ctrl is None or ctrl.type in MENU_TYPES:
             self.layout_form()
         elif id(ctrl) in self.previews:
             apply_props(self.previews[id(ctrl)], ctrl)
+            if ctrl.type == "TabControl" or "TabPage" in ctrl.props:
+                self.sync_pages()
         self.overlay.update()
 
-    def _on_selection(self, _c):
+    def _on_selection(self, c):
+        # selecting a control on a hidden page (Properties / Document Outline) shows that page
+        form = self.doc.form
+        if c is not None and not c.ctype.nonvisual:
+            x, seen = c, set()
+            while x.parent and x.name not in seen:
+                seen.add(x.name)
+                parent = form.find(x.parent)
+                if parent is None:
+                    break
+                if parent.type == "TabControl" and tab_page(x) != int(parent.props.get("SelectedIndex", 0) or 0):
+                    self.doc.set_prop(parent, "SelectedIndex", tab_page(x), record=False)
+                x = parent
         self.overlay.update()
         self.frame.update()
         self.tray.sync()
 
+    # ------------------------------------------------------------ lock / tab order
+    def set_locked(self, on: bool) -> None:
+        self.doc.set_locked(on)
+        self.overlay.update()
+
+    def set_tab_order_mode(self, on: bool) -> None:
+        on = bool(on)
+        if on == self.tab_order_mode:
+            return
+        self.tab_order_mode = on
+        self.tab_next = {}
+        self.tab_assigned = set()
+        self._tab_recorded = False
+        if on:
+            TOOL_STATE.set(None)
+        self.overlay.update()
+        self.overlay.setFocus()
+        self.tabOrderModeChanged.emit(on)
+
+    def assign_tab_index(self, c: Control) -> None:
+        """Tab Order mode: give *c* the next TabIndex of its container (0, 1, 2 ... in click order)."""
+        if not self._tab_recorded:
+            self.doc.checkpoint()
+            self._tab_recorded = True
+        n = self.tab_next.get(c.parent, 0)
+        self.tab_next[c.parent] = n + 1
+        self.tab_assigned.add(id(c))
+        self.doc.set_prop(c, "TabIndex", n, record=False)
+        self.overlay.update()
+
     # ------------------------------------------------------------ actions
     def create_control(self, type_name: str, pos: QPoint) -> None:
         ctype = CONTROL_TYPES[type_name]
-        if type_name == "MenuStrip" and self.doc.form.menu():
-            self.doc.select(self.doc.form.menu())
-            return
+        if type_name in MENU_TYPES:
+            existing = next((c for c in self.doc.form.controls if c.type == type_name), None)
+            if existing is not None:
+                self.doc.select(existing)
+                return
+        if self.tab_order_mode:
+            self.set_tab_order_mode(False)
         parent = "" if ctype.nonvisual else self.overlay.container_at(pos, [])
-        px, py = (self.doc.form.abs_pos(self.doc.form.find(parent)) if parent else (0, 0))
+        px, py = self.doc.form.client_origin(self.doc.form.find(parent) if parent else None)
         ctrl = self.doc.add_control(type_name, snap(pos.x() - px), snap(pos.y() - py), parent)
         self.overlay.setFocus()
-        if type_name == "MenuStrip":
+        if type_name in MENU_TYPES:
             self.edit_menu(ctrl)
 
     def edit_menu(self, ctrl: Control) -> None:
+        from .controls import menu_names
         from .menu_editor import edit_menu
         taken = {c.name for c in self.doc.form.controls} | {self.doc.form.name}
-        items = edit_menu(ctrl.props.get("Items", []), taken, self)
+        for other in self.doc.form.controls:        # menu and tool strip item names must not clash
+            if other.type in MENU_TYPES and other is not ctrl:
+                taken |= set(menu_names(other.props.get("Items", [])))
+        items = edit_menu(ctrl.props.get("Items", []), taken, self, flat=ctrl.type == "ToolStrip")
         if items is not None:
             self.doc.set_prop(ctrl, "Items", items)
 
@@ -643,6 +888,8 @@ class DesignerView(QScrollArea):
         if c is not None:
             if c.type == "MenuStrip":
                 m.addAction("Edit Menu...", lambda: self.edit_menu(c))
+            if c.type == "ToolStrip":
+                m.addAction("Edit Buttons...", lambda: self.edit_menu(c))
             if not c.ctype.nonvisual:
                 m.addSeparator()
                 m.addAction("Bring to Front", lambda: self.doc.reorder(c, True))
@@ -653,5 +900,9 @@ class DesignerView(QScrollArea):
         m.addAction("Paste", self.doc.paste).setEnabled(self.doc.can_paste())
         m.addAction("Delete", lambda: self.doc.remove_controls(list(self.doc.selection))) \
             .setEnabled(bool(self.doc.selection))
+        m.addSeparator()
+        a = m.addAction("Lock Controls", lambda: self.set_locked(not self.doc.locked))
+        a.setCheckable(True)
+        a.setChecked(self.doc.locked)
         self.contextActions.emit(m, c)
         m.exec(at)

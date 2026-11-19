@@ -23,6 +23,9 @@ FONT.setStyleHint(QFont.StyleHint.Monospace)
 COLORS = {"keyword": "#0000FF", "builtin": "#2B91AF", "comment": "#008000", "string": "#A31515",
           "number": "#098658", "decorator": "#795E26", "defname": "#795E26", "operator": "#000000"}
 INDENT = "    "
+# editor chrome colours (Tools > Options switches them for the dark theme)
+EDITOR_THEME = {"margin": "#F3F3F3", "margin_bp": "#E6E6E6", "line_number": "#2B91AF",
+                "breakpoint_line": "#F7D9D6", "current_stmt": "#FFF3A0", "caret_line": "#EEF4FF"}
 
 
 # =================================================================== highlighting
@@ -417,8 +420,8 @@ class CodeEditor(QPlainTextEdit):
 
     def paint_margin(self, widget, e):
         p = QPainter(widget)
-        p.fillRect(e.rect(), QColor("#F3F3F3"))
-        p.fillRect(QRect(0, e.rect().top(), 18, e.rect().height()), QColor("#E6E6E6"))
+        p.fillRect(e.rect(), QColor(EDITOR_THEME["margin"]))
+        p.fillRect(QRect(0, e.rect().top(), 18, e.rect().height()), QColor(EDITOR_THEME["margin_bp"]))
         block = self.firstVisibleBlock()
         top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         fm = QFontMetrics(self.font())
@@ -426,7 +429,7 @@ class CodeEditor(QPlainTextEdit):
             h = round(self.blockBoundingRect(block).height())
             n = block.blockNumber()
             if block.isVisible() and top + h >= e.rect().top():
-                p.setPen(QColor("#2B91AF"))
+                p.setPen(QColor(EDITOR_THEME["line_number"]))
                 p.drawText(0, top, widget.width() - 6, fm.height(), Qt.AlignmentFlag.AlignRight, str(n + 1))
                 cy = top + fm.height() // 2
                 if n in self._breakpoints:
@@ -513,11 +516,11 @@ class CodeEditor(QPlainTextEdit):
             s.cursor = c
             return s
         for b in self._breakpoints:
-            sels.append(line_sel(b, "#F7D9D6"))
+            sels.append(line_sel(b, EDITOR_THEME["breakpoint_line"]))
         if self._current is not None:
-            sels.append(line_sel(self._current, "#FFF3A0"))
+            sels.append(line_sel(self._current, EDITOR_THEME["current_stmt"]))
         elif not self.isReadOnly():
-            sels.append(line_sel(self.textCursor().blockNumber(), "#EEF4FF"))
+            sels.append(line_sel(self.textCursor().blockNumber(), EDITOR_THEME["caret_line"]))
         sels += self._brace_selections()
         self.setExtraSelections(sels)
 
@@ -582,8 +585,8 @@ class CodeEditor(QPlainTextEdit):
         if k == Qt.Key.Key_Backspace and not self.textCursor().hasSelection():
             cur = self.textCursor()
             before = cur.block().text()[:cur.positionInBlock()]
-            if before and not before.strip() and len(before) % 4 == 0:
-                for _ in range(4):
+            if before and not before.strip() and len(before) % len(INDENT) == 0:
+                for _ in range(len(INDENT)):
                     cur.deletePreviousChar()
                 return
         super().keyPressEvent(e)
@@ -750,6 +753,27 @@ class CodeEditor(QPlainTextEdit):
         m.exec(e.globalPos())
 
 
+def monaco_available() -> bool:
+    import importlib.util
+    if importlib.util.find_spec("PyQt6.QtWebEngineWidgets") is None:
+        return False
+    return (Path(__file__).resolve().parent / "web" / "monaco" / "vs" / "loader.js").exists()
+
+
+def use_monaco() -> bool:
+    from PyQt6.QtCore import QSettings
+    engine = QSettings("RADIDE", "RADIDE").value("editor/engine", "monaco")
+    return engine == "monaco" and monaco_available()
+
+
+def make_editor(plugin, path: Path, parent=None):
+    """Monaco (VS Code editor) when available, else the built-in editor."""
+    if use_monaco():
+        from .monaco_editor import MonacoEditor
+        return MonacoEditor(plugin, path, parent)
+    return CodeEditor(plugin, path, parent)
+
+
 class CodeView(QWidget):
     """Editor with VB's two dropdowns: (object) and (event)."""
 
@@ -761,7 +785,7 @@ class CodeView(QWidget):
         for cb in (self.objects, self.events):
             cb.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             cb.setMinimumContentsLength(12)
-        self.editor = CodeEditor(plugin, path)
+        self.editor = make_editor(plugin, path)
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.addWidget(self.objects, 1)

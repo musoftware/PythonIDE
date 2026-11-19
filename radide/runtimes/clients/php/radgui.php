@@ -21,7 +21,8 @@ if (defined('RADGUI_LOADED')) {
 }
 define('RADGUI_LOADED', true);
 
-$GLOBALS['__rad_out'] = STDOUT;     // the worker redirects GUI output to STDERR
+$GLOBALS['__rad_out'] = STDOUT;
+$GLOBALS['__rad_worker'] = false;   // set by radworker.php: no GUI protocol in a worker
 $GLOBALS['__rad_ended'] = false;
 
 function rad__line($v): string
@@ -35,6 +36,10 @@ function rad__line($v): string
 
 function rad__send(string $text): void
 {
+    if (!empty($GLOBALS['__rad_worker'])) {
+        throw new RuntimeException("'" . strtok($text, ' ') . "' is not available here: this module runs in a " .
+            'RAD Hub worker (called with radcall), which has no form. Return a value instead.');
+    }
     $out = $GLOBALS['__rad_out'];
     fwrite($out, $text . "\n");
     fflush($out);
@@ -99,6 +104,9 @@ function rad_end(): void
 function radcall(string $name, ...$args)
 {
     static $sock = null, $nextId = 1;
+    if (isset($GLOBALS['__rad_worker_call'])) {        // inside a RAD Hub worker: via stdout/stdin
+        return ($GLOBALS['__rad_worker_call'])($name, $args);
+    }
     if ($sock === null || feof($sock)) {
         $addr = getenv('RAD_HUB') ?: '';
         if ($addr === '' || strrpos($addr, ':') === false) {
@@ -139,6 +147,21 @@ function rad__event_args(string $rest): array
             'KeyChar' => count($p) > 4 ? implode(' ', array_slice($p, 4)) : '', 'args' => $rest];
 }
 
+/** Include the reference proxies (<Lib>.ref.php) of a project folder: they define the classes
+ *  <Lib> (MathLib::Add(2, 3)) and functions <Lib>_<name> of referenced library projects. */
+function rad_load_references(string $folder): void
+{
+    $refs = glob(rtrim($folder, '\/') . DIRECTORY_SEPARATOR . '*.ref.php') ?: [];
+    sort($refs);
+    foreach ($refs as $r) {
+        try {
+            require_once $r;
+        } catch (\Throwable $t) {
+            fwrite(STDERR, '[error loading reference ' . basename($r) . '] ' . $t->getMessage() . "\n");
+        }
+    }
+}
+
 /** Entry point of the generated _radmain.php: load the code files, then serve events. */
 function rad_run_main(array $files): void
 {
@@ -146,6 +169,7 @@ function rad_run_main(array $files): void
     while (ob_get_level() > 0) ob_end_flush();
     $autoload = getcwd() . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
     if (is_file($autoload)) require_once $autoload;          // composer packages
+    rad_load_references(getcwd());
     foreach ($files as $f) {
         try {
             require_once $f;

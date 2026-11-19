@@ -66,7 +66,9 @@ class Agent(bdb.Bdb):
     # ----------------------------------------------------------- breakpoints
     def add_bp(self, spec, remove=False):
         try:
-            name, line = spec.rsplit("|", 1)
+            parts = spec.split("|")
+            name, line = parts[0], parts[1]
+            cond = "|".join(parts[2:]) or None
             path = os.path.join(self.root, name)
             for f in os.listdir(self.root):
                 if f.lower() == name.lower():
@@ -75,7 +77,8 @@ class Agent(bdb.Bdb):
             if remove:
                 self.clear_break(path, int(line))
             else:
-                self.set_break(path, int(line))
+                self.clear_break(path, int(line))
+                self.set_break(path, int(line), cond=cond)
         except Exception as e:  # noqa: BLE001
             send("log", f"breakpoint error: {e}")
 

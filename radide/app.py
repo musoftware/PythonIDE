@@ -3,10 +3,11 @@ Properties, Output, Locals, Call Stack, Immediate), designer/code tabs,
 run and debug."""
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QFont, QKeySequence
 from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QInputDialog, QLabel,
                              QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox, QPlainTextEdit,
@@ -16,17 +17,29 @@ from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QInputDialo
 from .controls import event_args
 from .debugger import Session, StopInfo
 from .designer import DesignerView
-from .dialogs import NewProjectDialog
+from .dialogs import AddItemDialog, NewProjectDialog
 from .document import FormDocument
-from .editor import CodeEditor, CodeView
-from .languages import get_plugin
+from .editor import CodeView
+from .languages import code_extensions, get_plugin, language_label
+from .languages import plugin_for_form as _form_plugin
+from .languages import plugin_for_module as _module_plugin
 from .model import Form, Project
 from .properties import PropertiesPanel, valid_identifier
+from .solution import EXT as SOLUTION_EXT
+from .solution import Solution
 from .toolbox import TOOL_STATE, Toolbox
-from .workspace import (add_module, create_form, create_project, delete_form, delete_module,
-                        rename_form)
+from .workspace import add_module, create_form, delete_form, delete_module, rename_form
 
 APP_NAME = "RAD IDE"
+
+
+def ide_settings() -> QSettings:
+    """The IDE's settings. Tests set QCoreApplication.setOrganizationName("RADIDE-TEST...")
+    before creating the window so that they never touch the user's real "RADIDE" settings."""
+    org = QCoreApplication.organizationName()
+    if org.upper().startswith("RADIDE-TEST"):
+        return QSettings(org, QCoreApplication.applicationName() or org)
+    return QSettings("RADIDE", "RADIDE")
 
 STYLE = """
 QMainWindow, QDockWidget { background: #F0F0EA; }
@@ -36,6 +49,29 @@ QTabBar::tab:selected { background: #ffffff; }
 QToolBar { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #FAFAFA, stop:1 #E3E3DC);
            border-bottom: 1px solid #C0C0B8; spacing: 2px; }
 """
+
+
+_REAL_PY: dict[str, str] = {}
+
+
+def real_python(exe: str) -> str:
+    """The real python.exe behind a Windows Store / App Execution Alias (WindowsApps) or py launcher:
+    debuggers and launchers cannot start the alias itself."""
+    if exe in _REAL_PY:
+        return _REAL_PY[exe]
+    real = exe
+    low = exe.lower()
+    if "windowsapps" in low or Path(low).name in ("py.exe", "py"):
+        import subprocess
+        try:
+            out = subprocess.run([exe, "-c", "import sys; print(sys.executable)"], capture_output=True,
+                                 text=True, timeout=20).stdout.strip()
+            if out and Path(out).exists() and "windowsapps" not in out.lower():
+                real = out
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    _REAL_PY[exe] = real
+    return real
 
 
 def bring_to_front(win) -> None:
@@ -120,16 +156,27 @@ class ModuleView(QWidget):
     def __init__(self, plugin, path: Path):
         super().__init__()
         self.path = path
-        self.editor = CodeEditor(plugin, path)
+        from .editor import make_editor
+        self.editor = make_editor(plugin, path)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self.editor)
 
 
 class MainWindow(QMainWindow):
+    _hub_log = pyqtSignal(str)          # RAD Hub output (emitted from its threads)
+
     def __init__(self):
         super().__init__()
-        self.settings = QSettings("RADIDE", "RADIDE")
+        self.hub = None                  # radide.runtimes.radhub.RadHub while a program runs
+        self._hub_log.connect(self._append_output)
+        self.settings = ide_settings()
+        # A solution holds several projects; self.project / self.plugin (and docs, designers,
+        # codeviews, modviews, breakpoints) always mean the *active* project - the one whose
+        # document is focused. Each project keeps its own state in self._pstates.
+        self.sln: Solution | None = None
+        self._pstates: dict[str, dict] = {}
+        self._active_key: str | None = None
         self.project: Project | None = None
         self.plugin = None
         self.docs: dict[str, FormDocument] = {}
@@ -206,7 +253,7 @@ class MainWindow(QMainWindow):
         self.dock_output.raise_()
         self.resizeDocks([self.dock_toolbox], [170], Qt.Orientation.Horizontal)
         self.resizeDocks([self.dock_solution, self.dock_props], [260, 300], Qt.Orientation.Horizontal)
-        self.resizeDocks([self.dock_solution, self.dock_props], [200, 500], Qt.Orientation.Vertical)
+        self.resizeDocks([self.dock_solution, self.dock_props], [330, 380], Qt.Orientation.Vertical)
         self.resizeDocks([self.dock_output], [170], Qt.Orientation.Vertical)
 
     def _act(self, text, slot, shortcut=None, icon=None) -> QAction:
@@ -316,46 +363,86 @@ class MainWindow(QMainWindow):
 
     # ================================================================ project
     def recent_projects(self) -> list[str]:
+        """Recent solutions (.radsln files) and bare projects (folders), newest first."""
         items = self.settings.value("recent", []) or []
         if isinstance(items, str):
             items = [items]
-        return [p for p in items if (Path(p) / Project.FILE).exists()][:8]
+        tmp = str(Path(os.environ.get("TEMP", "~"))).lower()
 
-    def _remember(self, folder: Path):
-        items = [str(folder)] + [p for p in self.recent_projects() if p != str(folder)]
+        def ok(p: str) -> bool:
+            path = Path(p)
+            if p.lower().startswith(tmp):
+                return False
+            if path.suffix.lower() == SOLUTION_EXT:
+                return path.is_file()
+            return (path / Project.FILE).exists()
+        return [p for p in items if ok(p)][:8]
+
+    def _remember(self, path: Path):
+        items = [str(path)] + [p for p in self.recent_projects() if p.lower() != str(path).lower()]
         self.settings.setValue("recent", items[:8])
 
     def new_project(self):
+        """File > New Project: create a project in a new solution or add it to the open one."""
         dlg = NewProjectDialog(self)
-        if dlg.exec():
-            project = create_project(dlg.folder(), dlg.name.text(), dlg.language())
-            self.open_project(project.folder)
+        if not dlg.exec():
+            return None
+        self._pending_template = None           # templates are applied here (also Class Library)
+        from .features.solution_ui import create_project_from_dialog
+        return create_project_from_dialog(self, dlg)
 
     def open_project_dialog(self):
-        f, _ = QFileDialog.getOpenFileName(self, "Open Project", "", f"RAD IDE project ({Project.FILE})")
+        f, _ = QFileDialog.getOpenFileName(
+            self, "Open Project/Solution", "",
+            f"RAD IDE solution or project (*{SOLUTION_EXT} {Project.FILE});;All files (*)")
         if f:
-            self.open_project(Path(f).parent)
+            self.open_project(Path(f))
 
-    def open_project(self, folder: Path, ask: bool = True):
+    def open_project(self, folder: Path, ask: bool = True, activate=None):
+        """Open a solution (.radsln), a project (project.radproj) or a folder that holds one.
+        A bare project opens as a one-project solution. *activate* = folder or name of the
+        project to make active (default: the startup project)."""
+        path = Path(folder).resolve()
         if ask and not self._confirm_close_project():
             return
         try:
-            project = Project.load(folder)
-            plugin = get_plugin(project.language)
+            sln = Solution.open_any(path)
+            projects = sln.all_projects()
+            if not projects:
+                raise ValueError(f"solution '{sln.name}' has no project that can be opened")
+            for p in projects:
+                get_plugin(p.language)
         except Exception as e:  # noqa: BLE001 - show any load error to the user
             QMessageBox.critical(self, APP_NAME, f"Cannot open project:\n{e}")
             return
         self.stop_project()
         self._reset()
-        self.project, self.plugin = project, plugin
-        self._remember(folder)
-        self._load_breakpoints()
+        self.sln = sln
+        for p in projects:
+            self._state_for(p)
+        target = None
+        if activate is not None:
+            target = sln.project(activate) if isinstance(activate, str) else sln.project_for_folder(Path(activate))
+        if target is None and path.is_dir() and (path / Project.FILE).exists():
+            target = sln.project_for_folder(path)          # the project the user asked for
+        target = target or sln.startup_project() or projects[0]
+        self.activate_project(target)
+        self._remember(sln.file if sln.file is not None else Path(target.folder).resolve())
         self._fill_solution()
+        project = self.project
         if project.forms:
-            self.open_designer(project.startup or project.forms[0])
+            self.open_designer(project.startup if project.startup in project.forms else project.forms[0])
+        elif project.modules:
+            self.open_module(project.modules[0])
         self._update_title()
         self._update_actions()
-        self.log(f"Opened project '{project.name}' ({plugin.display_name})")
+        if len(projects) > 1 or not sln.implicit:
+            self.log(f"Opened solution '{sln.name}' ({len(projects)} project{'s' if len(projects) != 1 else ''})")
+        else:
+            self.log(f"Opened project '{project.name}' ({self.plugin.display_name})")
+        missing = [e.name for e in sln.projects if sln.project(e.name) is None]
+        if missing:
+            self.log(f"*** Projects that could not be loaded: {', '.join(missing)}")
         from .tools import offer_restore
         offer_restore(self)
 
@@ -365,11 +452,113 @@ class MainWindow(QMainWindow):
             w = self.tabs.widget(0)
             self.tabs.removeTab(0)
             w.deleteLater()
-        self.docs.clear()
-        self.designers.clear()
-        self.codeviews.clear()
-        self.modviews.clear()
-        self.breakpoints.clear()
+        self._pstates = {}
+        self._active_key = None
+        self.docs, self.designers, self.codeviews, self.modviews = {}, {}, {}, {}
+        self.breakpoints = {}
+
+    # ---------------------------------------------------------- solution: projects and the active one
+    @staticmethod
+    def _pkey(project) -> str:
+        return os.path.normcase(str(Path(project.folder).resolve()))
+
+    def _state_for(self, project) -> dict:
+        key = self._pkey(project)
+        st = self._pstates.get(key)
+        if st is None:
+            st = {"project": project, "plugin": get_plugin(project.language), "docs": {}, "designers": {},
+                  "codeviews": {}, "modviews": {}, "breakpoints": None}
+            self._pstates[key] = st
+        return st
+
+    def project_states(self) -> list[dict]:
+        """State of every open project: {"project", "plugin", "docs", "designers", "codeviews", ...}."""
+        return list(self._pstates.values())
+
+    def projects(self) -> list[Project]:
+        return [st["project"] for st in self._pstates.values()]
+
+    def activate_project(self, project) -> bool:
+        """Make *project* (a Project, or a project name of the solution) the active project:
+        self.project, self.plugin, docs, designers, codeviews, modviews and breakpoints then
+        belong to it. Returns False when it is not part of the open solution."""
+        if isinstance(project, str):
+            project = self.sln.project(project) if self.sln is not None else None
+        if project is None:
+            return False
+        key = self._pkey(project)
+        if key == self._active_key and self.project is not None:
+            return True
+        st = self._state_for(project)
+        self._active_key = key
+        self.project, self.plugin = st["project"], st["plugin"]
+        self.docs, self.designers = st["docs"], st["designers"]
+        self.codeviews, self.modviews = st["codeviews"], st["modviews"]
+        if st["breakpoints"] is None:
+            self._load_breakpoints()
+            st["breakpoints"] = self.breakpoints
+        else:
+            self.breakpoints = st["breakpoints"]
+        self._update_title()
+        return True
+
+    def project_of_widget(self, w) -> Project | None:
+        key = w.property("radProject") if w is not None else None
+        st = self._pstates.get(key) if key else None
+        return st["project"] if st else None
+
+    def startup_project(self) -> Project | None:
+        return self.sln.startup_project() if self.sln is not None else self.project
+
+    def _forget_project(self, project) -> None:
+        """Close the tabs of a project and drop its state (Remove from solution)."""
+        key = self._pkey(project)
+        for i in reversed(range(self.tabs.count())):
+            w = self.tabs.widget(i)
+            if w.property("radProject") == key:
+                self.tabs.removeTab(i)
+                w.deleteLater()
+        self._pstates.pop(key, None)
+        if key == self._active_key:
+            self._active_key, self.project = None, None
+            nxt = self.startup_project()
+            if nxt is not None and self._pkey(nxt) in self._pstates:
+                self.activate_project(nxt)
+            elif self._pstates:
+                self.activate_project(next(iter(self._pstates.values()))["project"])
+            else:
+                self.plugin = None
+                self.docs, self.designers, self.codeviews, self.modviews = {}, {}, {}, {}
+                self.breakpoints = {}
+
+    # ---------------------------------------------------------- languages (multi-language projects)
+    def plugin_for_form(self, name: str):
+        """Language plugin of a form (project.form_languages, else the project language)."""
+        return _form_plugin(self.project, name) if self.project else self.plugin
+
+    def plugin_for_file(self, filename: str):
+        """Language plugin of a code file of the project (form code, designer or module)."""
+        if not self.project:
+            return self.plugin
+        base = Path(filename).name.lower()
+        for name in self.project.forms:
+            fp = self.plugin_for_form(name)
+            if base in (fp.code_file(name).lower(), fp.designer_file(name).lower()):
+                return fp
+        return _module_plugin(self.project, base)
+
+    def run_plugin(self):
+        """The startup form's plugin: it runs and debugs the program."""
+        if not self.project:
+            return self.plugin
+        return self.plugin_for_form(self.project.startup) if self.project.startup else self.plugin
+
+    def is_multi_language(self) -> bool:
+        if not self.project:
+            return False
+        ids = {self.plugin_for_form(f).id for f in self.project.forms}
+        ids |= {self.plugin_for_file(m).id for m in self.project.modules}
+        return len(ids) > 1
 
     def _confirm_close_project(self) -> bool:
         if not self._any_modified():
@@ -384,9 +573,11 @@ class MainWindow(QMainWindow):
         return True
 
     def _any_modified(self) -> bool:
-        return any(d.modified for d in self.docs.values()) or \
-            any(cv.editor.isModified() for cv in self.codeviews.values()) or \
-            any(mv.editor.isModified() for mv in self.modviews.values())
+        states = self._pstates.values() or [{"docs": self.docs, "codeviews": self.codeviews,
+                                              "modviews": self.modviews}]
+        return any(any(d.modified for d in st["docs"].values()) or
+                   any(cv.editor.isModified() for cv in st["codeviews"].values()) or
+                   any(mv.editor.isModified() for mv in st["modviews"].values()) for st in states)
 
     def add_form(self):
         if not self.project:
@@ -394,52 +585,43 @@ class MainWindow(QMainWindow):
         i = len(self.project.forms) + 1
         while f"Form{i}" in self.project.forms:
             i += 1
-        name, ok = QInputDialog.getText(self, "Add Windows Form", "Name:", text=f"Form{i}")
-        if not ok:
+        dlg = AddItemDialog(self, "Add Windows Form", f"Form{i}", self.plugin.id, forms=True)
+        if not dlg.exec():
             return
-        if not valid_identifier(name) or name.lower() in (f.lower() for f in self.project.forms):
+        name, language = dlg.name(), dlg.language()
+        if not valid_identifier(name) or name.lower() in (f.lower() for f in self.project.forms) or \
+                name.lower() in (os.path.splitext(m)[0].lower() for m in self.project.modules):
             QMessageBox.warning(self, APP_NAME, f"'{name}' is not a valid new form name.")
             return
         self.save_all()
-        create_form(self.project, name)
-        startup = self.project.startup
-        if startup in self.codeviews:      # the startup file now imports/loads the new form
-            path = self.project.folder / self.plugin.code_file(startup)
-            self.codeviews[startup].editor.setText(path.read_text(encoding="utf-8"))
-            self.codeviews[startup].editor.setModified(False)
+        create_form(self.project, name, language)
+        self._reload_startup_code()        # the startup file may now import/load the new form
         self._fill_solution()
         self.open_designer(name)
 
     def _fill_solution(self):
-        self.solution.clear()
-        p = self.project
-        root = QTreeWidgetItem([f"Solution '{p.name}' ({self.plugin.display_name})"])
-        proj = QTreeWidgetItem(root, [p.name])
-        proj.setIcon(0, self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon))
-        for name in p.forms:
-            fi = QTreeWidgetItem(proj, [f"{name}.form" + ("   (startup)" if name == p.startup else "")])
-            fi.setData(0, Qt.ItemDataRole.UserRole, ("design", name))
-            fi.setIcon(0, self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarNormalButton))
-            ci = QTreeWidgetItem(fi, [self.plugin.code_file(name)])
-            ci.setData(0, Qt.ItemDataRole.UserRole, ("code", name))
-            ci.setIcon(0, self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
-            di = QTreeWidgetItem(fi, [self.plugin.designer_file(name) + "  (generated)"])
-            di.setForeground(0, Qt.GlobalColor.gray)
-            di.setData(0, Qt.ItemDataRole.UserRole, ("generated", name))
-        for mod in p.modules:
-            mi = QTreeWidgetItem(proj, [mod])
-            mi.setData(0, Qt.ItemDataRole.UserRole, ("module", mod))
-            mi.setIcon(0, self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
-        root.setData(0, Qt.ItemDataRole.UserRole, ("project", p.name))
-        proj.setData(0, Qt.ItemDataRole.UserRole, ("project", p.name))
-        self.solution.addTopLevelItem(root)
-        self.solution.expandAll()
+        """Solution Explorer: Solution 'X' > projects (startup bold) > References > forms/modules
+        (radide/features/solution_ui.py)."""
+        from .features.solution_ui import fill_tree
+        fill_tree(self)
 
     def _on_solution_dclick(self, item, _col):
+        from .features.solution_ui import PROJECT_ROLE
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if not data:
             return
-        kind, name = data
+        key = item.data(0, PROJECT_ROLE)
+        if key and key in self._pstates:
+            self.activate_project(self._pstates[key]["project"])
+        kind, name = data[0], data[1]
+        if kind == "reference":
+            from .features.solution_ui import open_reference
+            open_reference(self, name)
+            return
+        if kind == "proxy":
+            from .features.solution_ui import open_proxy
+            open_proxy(self, name)
+            return
         if kind == "design":
             self.open_designer(name)
         elif kind == "code":
@@ -465,7 +647,13 @@ class MainWindow(QMainWindow):
     def _show_tab(self, widget, title: str):
         idx = self.tabs.indexOf(widget)
         if idx < 0:
+            if self._active_key and widget.property("radProject") is None:
+                widget.setProperty("radProject", self._active_key)      # the project it belongs to
+                if self.project is not None and len(self._pstates) > 1:
+                    widget.setToolTip(f"{self.project.name}: {title}")
             idx = self.tabs.addTab(widget, title)
+            if self.project is not None and len(self._pstates) > 1:
+                self.tabs.setTabToolTip(idx, f"{title}  ({self.project.name})")
         self.tabs.setCurrentIndex(idx)
 
     def open_designer(self, name: str):
@@ -479,11 +667,12 @@ class MainWindow(QMainWindow):
 
     def _codeview(self, name: str) -> CodeView:
         if name not in self.codeviews:
-            path = self.project.folder / self.plugin.code_file(name)
-            cv = CodeView(self._doc(name), self.plugin, path)
+            fp = self.plugin_for_form(name)
+            path = self.project.folder / fp.code_file(name)
+            cv = CodeView(self._doc(name), fp, path)
             cv.editor.setText(path.read_text(encoding="utf-8") if path.exists() else "")
             cv.editor.setModified(False)
-            fname = self.plugin.code_file(name)
+            fname = fp.code_file(name)
             cv.editor.set_breakpoints(sorted(self.breakpoints.get(fname, set())))
             cv.editor.contextMenuAboutToShow.connect(lambda m, n=name: self._editor_menu(m, n))
             cv.editor.hoverWord.connect(lambda w, pos, ed=cv.editor: self._hover(ed, w, pos))
@@ -494,7 +683,7 @@ class MainWindow(QMainWindow):
 
     def open_code(self, name: str):
         cv = self._codeview(name)
-        self._show_tab(cv, self.plugin.code_file(name))
+        self._show_tab(cv, self.plugin_for_form(name).code_file(name))
         self._update_tab_titles(name)
         cv.editor.setFocus()
 
@@ -505,12 +694,13 @@ class MainWindow(QMainWindow):
         self.open_code(form_name)
         if not event:
             return
-        handler = self.plugin.handler_for(doc.form, owner, event)
+        fp = self.plugin_for_form(form_name)
+        handler = fp.handler_for(doc.form, owner, event)
         code = cv.editor.text()
-        line = self.plugin.find_handler(code, handler)
+        line = fp.find_handler(code, handler)
         if line < 0:
             args = None if owner is not None and owner.type in ("MenuStrip", "ToolStrip") else event_args(event)
-            code, line = self.plugin.add_handler(code, handler, doc.form, args)
+            code, line = fp.add_handler(code, handler, doc.form, args)
             self._replace_code(cv, code)
             doc.set_modified()   # designer code must be regenerated (Ring binds events)
         else:
@@ -530,10 +720,11 @@ class MainWindow(QMainWindow):
     def _on_control_renamed(self, form_name: str, old: str, new: str):
         cv = self._codeview(form_name)
         code = cv.editor.text()
-        updated = self.plugin.rename_symbol(code, old, new)
+        fp = self.plugin_for_form(form_name)
+        updated = fp.rename_symbol(code, old, new)
         if updated != code:
             self._replace_code(cv, updated)
-            self.log(f"Renamed '{old}' to '{new}' in {self.plugin.code_file(form_name)}")
+            self.log(f"Renamed '{old}' to '{new}' in {fp.code_file(form_name)}")
 
     def _on_form_rename(self, old: str, new: str):
         if not valid_identifier(new) or new.lower() in (f.lower() for f in self.project.forms if f != old):
@@ -547,7 +738,7 @@ class MainWindow(QMainWindow):
         self.save_all()
         rename_form(self.project, old, new)
         self.breakpoints.pop(old, None)
-        self.open_project(self.project.folder, ask=False)
+        self.open_project(self.solution_path(), ask=False, activate=self.project.folder)
         self.open_designer(new)
         self.log(f"Form '{old}' renamed to '{new}'")
 
@@ -580,9 +771,13 @@ class MainWindow(QMainWindow):
             self.open_designer(name)
 
     def _on_tab_changed(self, _idx):
+        owner = self.project_of_widget(self.tabs.currentWidget())
+        if owner is not None and owner is not self.project:
+            self.activate_project(owner)          # the focused document decides the active project
         d = self._current_designer()
-        if d is not None:
-            self.properties.set_document(d.doc, self.plugin)
+        if d is not None and self.project is not None:
+            self.properties.set_document(d.doc, self.plugin_for_form(d.doc.form.name)
+                                         if d.doc.form.name in self.project.forms else self.plugin)
             self.toolbox.setEnabled(True)
         else:
             self.toolbox.setEnabled(False)
@@ -605,10 +800,14 @@ class MainWindow(QMainWindow):
             cv = self.codeviews[name]
             i = self.tabs.indexOf(cv)
             if i >= 0:
-                self.tabs.setTabText(i, self.plugin.code_file(name) + ("*" if cv.editor.isModified() else ""))
+                self.tabs.setTabText(i, self.plugin_for_form(name).code_file(name) +
+                                     ("*" if cv.editor.isModified() else ""))
 
     def _update_title(self):
         title = f"{self.project.name} - {APP_NAME}" if self.project else APP_NAME
+        if self.project and self.sln is not None and (len(self.sln.projects) > 1 or not self.sln.implicit) \
+                and self.sln.name != self.project.name:
+            title = f"{self.project.name} - Solution '{self.sln.name}' - {APP_NAME}"
         if self.session is not None:
             title += " [break]" if self.session.paused else " [run]"
         self.setWindowTitle(title)
@@ -625,7 +824,8 @@ class MainWindow(QMainWindow):
         self.a_stop.setEnabled(running)
         for a in (self.a_step_into, self.a_step_over, self.a_step_out):
             a.setEnabled(paused)
-        self.a_bp.setEnabled(cv is not None and self.plugin is not None and self.plugin.supports_debug)
+        cvp = getattr(getattr(cv, "editor", None), "plugin", None) or self.plugin
+        self.a_bp.setEnabled(cv is not None and cvp is not None and cvp.supports_debug)
         self.a_undo.setEnabled(bool(d and d.doc.can_undo()) or cv is not None)
         self.a_redo.setEnabled(bool(d and d.doc.can_redo()) or cv is not None)
         sel = bool(d and d.doc.selection)
@@ -708,15 +908,30 @@ class MainWindow(QMainWindow):
         if form_name in self.codeviews:
             return self.codeviews[form_name].editor.text()
         if self.project:
-            p = self.project.folder / self.plugin.code_file(form_name)
+            p = self.project.folder / self.plugin_for_form(form_name).code_file(form_name)
             if p.exists():
                 return p.read_text(encoding="utf-8")
         return ""
 
     def _editor_for_file(self, file: str):
+        """Open the editor of a code file (a name of the active project, or a path of any project
+        of the solution - that project becomes active)."""
+        if self.project is None:
+            return None
+        if len(self._pstates) > 1:
+            p = Path(file)
+            owner = None
+            if p.is_absolute():
+                owner = next((st["project"] for st in self._pstates.values()
+                              if self._pkey(st["project"]) == os.path.normcase(str(p.resolve().parent))), None)
+            elif not self._has_file(self.project, p.name):
+                owner = next((st["project"] for st in self._pstates.values()
+                              if self._has_file(st["project"], p.name)), None)
+            if owner is not None and owner is not self.project:
+                self.activate_project(owner)
         base = Path(file).name.lower()
         for name in self.project.forms:
-            if self.plugin.code_file(name).lower() == base:
+            if self.plugin_for_form(name).code_file(name).lower() == base:
                 self.open_code(name)
                 return self.codeviews[name].editor
         for mod in self.project.modules:
@@ -725,10 +940,18 @@ class MainWindow(QMainWindow):
                 return self.modviews[mod].editor
         return None
 
+    @staticmethod
+    def _has_file(project, filename: str) -> bool:
+        from .languages import plugin_for_form
+        base = filename.lower()
+        if any(m.lower() == base for m in project.modules):
+            return True
+        return any(plugin_for_form(project, f).code_file(f).lower() == base for f in project.forms)
+
     def open_module(self, filename: str):
         if filename not in self.modviews:
             path = self.project.folder / filename
-            mv = ModuleView(self.plugin, path)
+            mv = ModuleView(self.plugin_for_file(filename), path)
             mv.editor.setText(path.read_text(encoding="utf-8") if path.exists() else "")
             mv.editor.setModified(False)
             mv.editor.set_breakpoints(sorted(self.breakpoints.get(filename, set())))
@@ -755,8 +978,10 @@ class MainWindow(QMainWindow):
     def open_generated(self, form_name: str):
         """Show the generated designer code read-only."""
         self.save_all()
-        path = self.project.folder / self.plugin.designer_file(form_name)
-        ed = CodeEditor(self.plugin, path)
+        fp = self.plugin_for_form(form_name)
+        path = self.project.folder / fp.designer_file(form_name)
+        from .editor import make_editor
+        ed = make_editor(fp, path)
         ed.setText(path.read_text(encoding="utf-8") if path.exists() else "")
         ed.setReadOnly(True)
         self._show_tab(ed, path.name + " [read-only]")
@@ -765,25 +990,29 @@ class MainWindow(QMainWindow):
         if not self.project:
             return
         i = 1
-        while f"Module{i}{self.plugin.code_ext}" in self.project.modules:
+        stems = {os.path.splitext(m)[0].lower() for m in self.project.modules}
+        while f"module{i}" in stems:
             i += 1
-        name, ok = QInputDialog.getText(self, "Add Module", "Name:", text=f"Module{i}")
-        if not ok:
+        dlg = AddItemDialog(self, "Add Module", f"Module{i}", self.plugin.id, forms=False)
+        if not dlg.exec():
             return
-        if not valid_identifier(name) or name.lower() in (f.lower() for f in self.project.forms):
-            QMessageBox.warning(self, APP_NAME, f"'{name}' is not a valid module name.")
+        name, language = dlg.name(), dlg.language()
+        if not valid_identifier(name) or name.lower() in (f.lower() for f in self.project.forms) or \
+                name.lower() in stems:
+            QMessageBox.warning(self, APP_NAME, f"'{name}' is not a valid new module name.")
             return
         self.save_all()
-        add_module(self.project, name)
+        path = add_module(self.project, name, language)
         self._reload_startup_code()
         self._fill_solution()
-        self.open_module(f"{name}{self.plugin.code_ext}")
+        self.open_module(path.name)
 
     def add_existing(self):
         if not self.project:
             return
         files, _ = QFileDialog.getOpenFileNames(self, "Add Existing Item", str(self.project.folder),
-                                                f"Code files (*{self.plugin.code_ext});;All files (*)")
+                                                "Code files (" + " ".join(f"*{e}" for e in code_extensions()) +
+                                                ");;All files (*)")
         if not files:
             return
         import shutil
@@ -797,16 +1026,17 @@ class MainWindow(QMainWindow):
                     continue
                 shutil.copy2(src, dst)
             if src.stem not in self.project.forms:
-                add_module(self.project, src.stem)
+                add_module(self.project, src.stem, filename=src.name)
         self._reload_startup_code()
         self._fill_solution()
 
     def _reload_startup_code(self):
         startup = self.project.startup
         if startup in self.codeviews:
-            path = self.project.folder / self.plugin.code_file(startup)
-            self.codeviews[startup].editor.setText(path.read_text(encoding="utf-8"))
-            self.codeviews[startup].editor.setModified(False)
+            path = self.project.folder / self.plugin_for_form(startup).code_file(startup)
+            if path.exists():
+                self.codeviews[startup].editor.setText(path.read_text(encoding="utf-8"))
+                self.codeviews[startup].editor.setModified(False)
 
     def delete_form_dialog(self, name: str):
         if QMessageBox.question(self, APP_NAME, f"Delete form '{name}' and its code?\n"
@@ -823,7 +1053,7 @@ class MainWindow(QMainWindow):
         if self.properties.doc is self.docs.get(name):
             self.properties.set_document(None, None)
         self.docs.pop(name, None)
-        self.breakpoints.pop(self.plugin.code_file(name), None)
+        self.breakpoints.pop(self.plugin_for_form(name).code_file(name), None)
         delete_form(self.project, name)
         self._reload_startup_code()
         self._fill_solution()
@@ -871,13 +1101,22 @@ class MainWindow(QMainWindow):
         lay.addRow("Project name:", QLabel(self.project.name))
         lay.addRow("Language:", QLabel(self.plugin.display_name))
         lay.addRow("Folder:", QLabel(str(self.project.folder)))
+        lay.addRow("Output type:", QLabel("Class Library" if self.project.is_library else "Application"))
+        lay.addRow("References:", QLabel(", ".join(self.project.references) or "(none)"))
+        if self.sln is not None and len(self.sln.projects) > 1:
+            lay.addRow("Solution:", QLabel(f"{self.sln.name}   (StartUp Project: {self.sln.startup or '-'})"))
         startup = QComboBox()
         startup.addItems(self.project.forms)
         startup.setCurrentText(self.project.startup)
         lay.addRow("Startup form:", startup)
-        interp = QLabel(self.plugin.find_interpreter(
-            self.settings.value(f"interpreter/{self.plugin.id}", "") or "") or "(not found)")
-        lay.addRow("Interpreter:", interp)
+        rp = self.run_plugin()
+        if self.is_multi_language():
+            used = sorted({language_label(self.plugin_for_form(f)) for f in self.project.forms} |
+                          {language_label(self.plugin_for_file(m)) for m in self.project.modules})
+            lay.addRow("Languages used:", QLabel(", ".join(used)))
+        interp = QLabel(rp.find_interpreter(
+            self.settings.value(f"interpreter/{rp.id}", "") or "") or "(not found)")
+        lay.addRow(f"Interpreter ({language_label(rp)}):", interp)
         box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         box.accepted.connect(dlg.accept)
         box.rejected.connect(dlg.reject)
@@ -886,6 +1125,15 @@ class MainWindow(QMainWindow):
             self.set_startup(startup.currentText())
 
     def _solution_menu(self, pos):
+        try:
+            from .features.solution_ui import solution_menu
+        except ImportError:
+            solution_menu = None
+        if solution_menu is not None and self.project:
+            return solution_menu(self, pos)
+        self._basic_solution_menu(pos)
+
+    def _basic_solution_menu(self, pos):
         if not self.project:
             m = QMenu(self)
             m.addAction(self.a_new)
@@ -953,16 +1201,17 @@ class MainWindow(QMainWindow):
         """Extra items for the designer's right-click menu."""
         doc = self._doc(form_name)
         code = self._code_text(form_name)
-        events = self.plugin.events_for(c)
+        fp = self.plugin_for_form(form_name)
+        events = fp.events_for(c)
         if events:
             sub = QMenu("Events", m)
             bold = QFont()
             bold.setBold(True)
             for ev in events:
-                handler = self.plugin.handler_for(doc.form, c, ev)
+                handler = fp.handler_for(doc.form, c, ev)
                 label = f"{ev}.Click" if c is not None and c.type in ("MenuStrip", "ToolStrip") else ev
                 a = sub.addAction(label, lambda e=ev: doc.eventRequested.emit(c, e))
-                if self.plugin.find_handler(code, handler) >= 0:
+                if fp.find_handler(code, handler) >= 0:
                     a.setFont(bold)
             m.insertMenu(m.actions()[1] if len(m.actions()) > 1 else None, sub)
         if c is not None and not c.ctype.nonvisual and len(doc.selection) > 1:
@@ -984,7 +1233,7 @@ class MainWindow(QMainWindow):
         extra = []
         if form_name:
             extra.append(("View Designer", lambda: self.open_designer(form_name)))
-        if self.plugin.supports_debug:
+        if self.run_plugin() is not None and self.run_plugin().supports_debug:
             extra.append(("Toggle Breakpoint", self.toggle_breakpoint))
         extra.append(("Run (F5)", self.start_or_continue))
         for text, slot in extra:
@@ -1064,36 +1313,57 @@ class MainWindow(QMainWindow):
 
     # ================================================================ save
     def save_all(self) -> bool:
+        """Save every open document of every project of the solution."""
         if not self.project:
             return False
+        active = self.project
+        saved_libs = []
+        for st in list(self._pstates.values()) or [None]:
+            if st is not None:
+                self.activate_project(st["project"])
+            if self._save_active_project() and self.project.is_library:
+                saved_libs.append(self.project)
+        self.activate_project(active)
+        if saved_libs and self.sln is not None:   # consumers see the library's new functions
+            from .features.solution_ui import refresh_consumers
+            refresh_consumers(self, saved_libs)
+        self.statusBar().showMessage("All files saved", 3000)
+        return True
+
+    def _save_active_project(self) -> bool:
+        """Save the active project's documents; True when a code file was written."""
+        wrote = False
         names = set(self.docs) | set(self.codeviews)
         for name in names:
             doc = self._doc(name)
-            code_path = self.project.folder / self.plugin.code_file(name)
+            fp = self.plugin_for_form(name)
+            code_path = self.project.folder / fp.code_file(name)
             if name in self.codeviews:
                 cv = self.codeviews[name]
                 code = cv.editor.text()
                 if cv.editor.isModified() or not code_path.exists():
                     code_path.write_text(code, encoding="utf-8")
                     cv.editor.setModified(False)
+                    wrote = True
             else:
                 code = code_path.read_text(encoding="utf-8")
             doc.save()
-            designer_path = self.project.folder / self.plugin.designer_file(name)
-            designer_path.write_text(self.plugin.generate_designer(doc.form, code), encoding="utf-8")
+            designer_path = self.project.folder / fp.designer_file(name)
+            designer_path.write_text(fp.generate_designer(doc.form, code), encoding="utf-8")
             self._update_tab_titles(name)
         for mod, mv in self.modviews.items():
             if mv.editor.isModified():
                 (self.project.folder / mod).write_text(mv.editor.text(), encoding="utf-8")
                 mv.editor.setModified(False)
                 self._update_module_title(mod)
+                wrote = True
         self.project.save()
         self._save_breakpoints()
-        self.statusBar().showMessage("All files saved", 3000)
-        return True
+        return wrote
 
     def log(self, text: str):
         self.output.appendPlainText(text)
+        self._output_after_log = True        # program output starts on a new line
 
     # ================================================================ breakpoints
     def _bp_key(self) -> str:
@@ -1121,7 +1391,7 @@ class MainWindow(QMainWindow):
 
     def _sync_breakpoints(self):
         for name, cv in self.codeviews.items():
-            self.breakpoints[self.plugin.code_file(name)] = set(cv.editor.breakpoints())
+            self.breakpoints[self.plugin_for_form(name).code_file(name)] = set(cv.editor.breakpoints())
         for mod, mv in self.modviews.items():
             self.breakpoints[mod] = set(mv.editor.breakpoints())
 
@@ -1129,27 +1399,31 @@ class MainWindow(QMainWindow):
         lines = self.breakpoints.setdefault(filename, set())
         (lines.add if on else lines.discard)(line)
         if self.session is not None:
-            self.session.set_breakpoint(filename, line + 1, on)
+            self.session.set_breakpoint(filename, line + 1, on,
+                                        getattr(self, "bp_conditions", {}).get((filename, line), ""))
 
     def _all_breakpoints(self) -> list[tuple[str, int]]:
         self._sync_breakpoints()
-        return [(f, ln + 1) for f, lines in self.breakpoints.items() for ln in lines]
+        conds = getattr(self, "bp_conditions", {})
+        return [(f, ln + 1, conds.get((f, ln), "")) for f, lines in self.breakpoints.items() for ln in lines]
 
     # ================================================================ run / debug
     def _interpreter(self) -> str:
-        key = f"interpreter/{self.plugin.id}"
-        found = self.plugin.find_interpreter(self.settings.value(key, "") or "")
+        rp = self.run_plugin()
+        key = f"interpreter/{rp.id}"
+        found = rp.find_interpreter(self.settings.value(key, "") or "")
         if not found:
             found = self.choose_interpreter()
         return found
 
     def choose_interpreter(self) -> str:
-        if not self.plugin:
+        rp = self.run_plugin()
+        if not rp:
             return ""
-        f, _ = QFileDialog.getOpenFileName(self, f"Locate {self.plugin.display_name} interpreter",
+        f, _ = QFileDialog.getOpenFileName(self, f"Locate {rp.display_name} interpreter",
                                            "", "Programs (*.exe);;All files (*)")
         if f:
-            self.settings.setValue(f"interpreter/{self.plugin.id}", f)
+            self.settings.setValue(f"interpreter/{rp.id}", f)
         return f
 
     def start_or_continue(self):
@@ -1162,23 +1436,35 @@ class MainWindow(QMainWindow):
         if not self.project or (self.session is not None and self.session.running()):
             return
         self.save_all()
+        if self.sln is not None:                 # a solution runs its StartUp Project
+            from .features.solution_ui import prepare_run
+            if not prepare_run(self):
+                return
         interp = self._interpreter()
         if not interp:
             self.log("No interpreter configured (Tools > Interpreter Path...)")
             return
-        debug = debug and self.plugin.supports_debug
-        if debug:
-            spec = self.plugin.debug_spec(self.project.folder, self.project.startup, interp,
-                                          self._all_breakpoints())
-        else:
-            spec = self.plugin.run_spec(self.project.folder, self.project.startup, interp)
+        rp = self.run_plugin()
+        if rp.id.startswith("python"):
+            interp = real_python(interp)        # not the Windows Store alias
+        debug = debug and rp.supports_debug
+        try:
+            if debug:
+                spec = rp.debug_spec(self.project.folder, self.project.startup, interp,
+                                     self._all_breakpoints())
+            else:
+                spec = rp.run_spec(self.project.folder, self.project.startup, interp)
+        except Exception as e:  # noqa: BLE001 - show plugin errors instead of crashing
+            self.log(f"*** Cannot start the program: {e}")
+            return
+        spec = self._start_hub(spec)
         self.output.clear()
         self.locals.clear()
         self.callstack.clear()
         self.dock_output.show()
         self.dock_output.raise_()
         self.log(f"------ {'Debug' if debug else 'Run'}: {spec.program} {' '.join(spec.args)} ------")
-        s = Session(spec, debug, self)
+        s = self._make_session(spec, debug, rp, interp)
         s.output.connect(self._append_output)
         s.stopped.connect(self._on_stopped)
         s.resumed.connect(self._on_resumed)
@@ -1191,15 +1477,87 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Running...")
         self._update_actions()
 
+    def _make_session(self, spec, debug, plugin, interp):
+        """Python debugging uses debugpy (DAP) when installed: conditional breakpoints and
+        break on exception come ready-made. Everything else uses the plugin's own agent."""
+        import importlib.util
+        if debug and plugin.id.startswith("python") and importlib.util.find_spec("debugpy") is not None \
+                and self.settings.value("debug/python_engine", "debugpy") == "debugpy":
+            from .dap import DapSession
+            program = str(self.project.folder / plugin.code_file(self.project.startup))
+            s = DapSession("debugpy", program, [], self.project.folder.resolve(), spec.env,
+                           self._all_breakpoints(), self)
+            s.launch_args["python"] = [real_python(interp)]
+            s.break_on_exception = self.settings.value("debug/break_on_exception", True) in (True, "true")
+            return s
+        return Session(spec, debug, self)
+
+    # ---------------------------------------------------------- RAD Hub (cross-language calls)
+    def _start_hub(self, spec):
+        """Start a RAD Hub for this run and give the program RAD_HUB / RAD_PROJECT."""
+        import os as _os
+
+        from .runtimes.radhub import RadHub
+        self._stop_hub()
+
+        def interp_for(plugin):
+            return plugin.find_interpreter(self.settings.value(f"interpreter/{plugin.id}", "") or "")
+        search = []
+        if self.sln is not None:   # modules of referenced projects (transitively) are found too
+            search = [Path(p.folder) for p in self.sln.referenced_projects(self.project)]
+        try:
+            self.hub = RadHub(self.project.folder, log=self._hub_log.emit, interpreter_for=interp_for,
+                              search_folders=search)
+        except TypeError:          # older RadHub without solution support
+            self.hub = RadHub(self.project.folder, log=self._hub_log.emit, interpreter_for=interp_for)
+        try:
+            self.hub.start()
+        except OSError as e:
+            self.log(f"*** RAD Hub could not start ({e}); cross-language calls are disabled")
+            self.hub = None
+            return spec
+        self._copy_clients()
+        spec.env = self.hub.child_env(base=spec.env if spec.env is not None else dict(_os.environ))
+        return spec
+
+    def _copy_clients(self):
+        """radcall clients that a language loads from the project folder."""
+        folder = self.project.folder
+        try:
+            if any("radcall" in f.read_text(encoding="utf-8", errors="replace")
+                   for f in folder.glob("*.ring") if f.name != "radcall.ring"):
+                from .languages.ring_qt import copy_ring_client
+                copy_ring_client(folder)
+        except OSError as e:
+            self.log(f"*** cannot copy radcall.ring: {e}")
+        try:                     # Python: also on PYTHONPATH; the copy helps IntelliSense and EXE builds
+            if any("radcall" in f.read_text(encoding="utf-8", errors="replace")
+                   for f in folder.glob("*.py") if f.name != "radcall.py"):
+                from .runtimes.radhub import CLIENTS
+                src = (CLIENTS / "python" / "radcall.py").read_bytes()
+                target = folder / "radcall.py"
+                if not target.exists() or target.read_bytes() != src:
+                    target.write_bytes(src)
+        except OSError as e:
+            self.log(f"*** cannot copy radcall.py: {e}")
+
+    def _stop_hub(self):
+        hub, self.hub = getattr(self, "hub", None), None
+        if hub is not None:
+            hub.stop()
+
     def _append_output(self, text: str):
         self.output.moveCursor(self.output.textCursor().MoveOperation.End)
+        if getattr(self, "_output_after_log", False) and not self.output.document().isEmpty():
+            text = "\n" + text
+        self._output_after_log = False
         self.output.insertPlainText(text)
         self.output.ensureCursorVisible()
 
     def _form_for_file(self, file: str) -> str | None:
         base = Path(file).name.lower()
         for name in self.project.forms:
-            if self.plugin.code_file(name).lower() == base:
+            if self.plugin_for_form(name).code_file(name).lower() == base:
                 return name
         return None
 
@@ -1256,6 +1614,7 @@ class MainWindow(QMainWindow):
         else:
             self.log(f"\n------ Program exited with code {code} ------")
         self.session = None
+        self._stop_hub()
         self.statusBar().showMessage("Ready")
         self._update_actions()
 
@@ -1263,19 +1622,33 @@ class MainWindow(QMainWindow):
         if not self._confirm_close_project():
             e.ignore()
             return
-        self._save_breakpoints()
+        active = self.project
+        for st in list(self._pstates.values()):
+            self.activate_project(st["project"])
+            self._save_breakpoints()
+        if active is not None:
+            self.activate_project(active)
         self.stop_project()
+        self._stop_hub()
         e.accept()
 
 
 def main(argv=None):
+    try:                               # QtWebEngine must be imported before QApplication
+        __import__("PyQt6.QtWebEngineWidgets")
+    except ImportError:
+        pass
     argv = sys.argv if argv is None else argv
     app = QApplication(argv)
     app.setApplicationName(APP_NAME)
     app.setStyle("Fusion")
+    try:      # one consistent theme: Light unless Tools > Options says Dark (not Windows' dark mode)
+        app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+    except AttributeError:
+        pass
     app.setFont(QFont("Segoe UI", 9))
     win = MainWindow()
-    if len(argv) > 1 and (Path(argv[1]) / Project.FILE).exists():
+    if len(argv) > 1 and Path(argv[1]).exists():
         win.open_project(Path(argv[1]))
     win.show()
     return app.exec()

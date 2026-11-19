@@ -188,25 +188,67 @@ class Project:
     modules: list[str] = field(default_factory=list)  # plain code files (no form)
     # forms written in another language than the project default: form name -> plugin id
     form_languages: dict[str, str] = field(default_factory=dict)
+    # solutions (docs/CONTRACTS.md section 7): "app" | "library", and the names of the
+    # projects of the same solution this one references (Add Reference)
+    kind: str = "app"
+    references: list[str] = field(default_factory=list)
+    # proxy files generated for the references: library name -> files (relative to folder)
+    reference_files: dict[str, list[str]] = field(default_factory=dict)
+    # keys of project.radproj this version does not know (kept when saving)
+    extra: dict = field(default_factory=dict, repr=False, compare=False)
 
     FILE = "project.radproj"
+    KINDS = ("app", "library")
+    _KNOWN = ("name", "language", "forms", "startup", "modules", "form_languages", "kind", "references",
+              "reference_files")
 
-    def save(self) -> None:
+    @property
+    def is_library(self) -> bool:
+        return self.kind == "library"
+
+    def to_dict(self) -> dict:
+        """The project.radproj content. Keys added for solutions are written only when they
+        differ from the default, so files of older projects stay byte-identical."""
         data = {"name": self.name, "language": self.language,
                 "forms": self.forms, "startup": self.startup, "modules": self.modules}
         langs = {f: lang for f, lang in self.form_languages.items()
                  if f in self.forms and lang and lang != self.language}
         if langs:
             data["form_languages"] = langs
-        (self.folder / self.FILE).write_text(json.dumps(data, indent=2), encoding="utf-8")
+        if self.kind and self.kind != "app":
+            data["kind"] = self.kind
+        if self.references:
+            data["references"] = list(self.references)
+        files = {k: list(v) for k, v in self.reference_files.items() if v}
+        if files:
+            data["reference_files"] = files
+        for k, v in self.extra.items():
+            if k not in data and k not in self._KNOWN:
+                data[k] = v
+        return data
+
+    def save(self) -> None:
+        (self.folder / self.FILE).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
 
     @staticmethod
     def load(folder: Path) -> "Project":
+        folder = Path(folder)
         d = json.loads((folder / Project.FILE).read_text(encoding="utf-8"))
         langs = d.get("form_languages") or {}
+        refs = d.get("references") or []
+        rfiles = d.get("reference_files") or {}
+        kind = str(d.get("kind") or "app").lower()
         return Project(folder, d["name"], d["language"], d.get("forms", []), d.get("startup", ""),
                        d.get("modules", []),
-                       {str(k): str(v) for k, v in langs.items()} if isinstance(langs, dict) else {})
+                       {str(k): str(v) for k, v in langs.items()} if isinstance(langs, dict) else {},
+                       kind if kind in Project.KINDS else "app",
+                       [str(r) for r in refs] if isinstance(refs, list) else [],
+                       {str(k): [str(f) for f in v] for k, v in rfiles.items() if isinstance(v, list)}
+                       if isinstance(rfiles, dict) else {},
+                       {k: v for k, v in d.items() if k not in Project._KNOWN})
+
+    def references_project(self, name: str) -> bool:
+        return any(r.lower() == name.lower() for r in self.references)
 
     # ------------------------------------------------------------ languages
     def form_language(self, form_name: str) -> str:

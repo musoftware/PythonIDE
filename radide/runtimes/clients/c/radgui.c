@@ -14,6 +14,9 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#ifdef _MSC_VER
+#pragma comment(lib, "ws2_32.lib")
+#endif
 typedef SOCKET rad_sock_t;
 #define RAD_BAD_SOCK INVALID_SOCKET
 #define rad_closesock closesocket
@@ -415,55 +418,74 @@ const char *radcall(const char *name, const char *json_args) {
 }
 
 /* ------------------------------------------------------------------ worker */
+/* One request at a time: rad_wk_next() reads {"id":..,"func":..,"args":[..]} from stdin,
+ * rad_wk_reply()/rad_wk_error() answer it. Also used by the Fortran worker (bind(C)). */
 #define RAD_MAX_ARGS 64
-int rad_worker_main(const char *(*dispatch)(const char *func, int argc, const char **argv, int *found)) {
-    static char argbufs[RAD_MAX_ARGS][RAD_BUF / 4];
-    const char *argv[RAD_MAX_ARGS];
-    setvbuf(stdout, NULL, _IOLBF, 4096);
+static char rad_wk_idbuf[64] = "null";
+static char rad_wk_fn[256] = "";
+static char rad_wk_args[RAD_MAX_ARGS][RAD_BUF / 4];
+static const char *rad_wk_argv[RAD_MAX_ARGS];
+static int rad_wk_n = 0;
+
+int rad_wk_next(void) {
     for (;;) {
-        int eof, argc = 0, found = 0;
+        int eof;
         char *line = rad_readline(&eof);
-        const char *id, *func, *args, *res;
-        if (eof) break;
+        const char *id, *func, *args;
+        if (eof) return 0;
         if (!*js_ws(line)) continue;
         id = js_key(line, "id");
         func = js_key(line, "func");
         args = js_key(line, "args");
-        if (!id) id = "null";
-        if (!func) { printf("{\"id\": %s, \"error\": \"bad request\"}\n", id); fflush(stdout); continue; }
-        func = rad_json_str(func);
+        snprintf(rad_wk_idbuf, sizeof rad_wk_idbuf, "%s", id ? id : "null");
+        snprintf(rad_wk_fn, sizeof rad_wk_fn, "%s", func ? rad_json_str(func) : "");
+        rad_wk_n = 0;
         if (args) {
             const char *p = js_ws(args);
             if (*p == '[') {
                 p = js_ws(p + 1);
-                while (*p && *p != ']' && argc < RAD_MAX_ARGS) {
+                while (*p && *p != ']' && rad_wk_n < RAD_MAX_ARGS) {
                     const char *e = js_skip(p);
                     size_t n = (size_t)(e - p);
-                    if (n >= sizeof argbufs[0]) n = sizeof argbufs[0] - 1;
-                    memcpy(argbufs[argc], p, n);
-                    argbufs[argc][n] = 0;
-                    argv[argc] = argbufs[argc];
-                    argc++;
+                    if (n >= sizeof rad_wk_args[0]) n = sizeof rad_wk_args[0] - 1;
+                    memcpy(rad_wk_args[rad_wk_n], p, n);
+                    rad_wk_args[rad_wk_n][n] = 0;
+                    rad_wk_argv[rad_wk_n] = rad_wk_args[rad_wk_n];
+                    rad_wk_n++;
+                    if (e == p) break;
                     p = js_ws(e);
                     if (*p == ',') p = js_ws(p + 1);
                 }
             }
         }
-        /* copy id / func: the ring buffers are reused by the user's function */
-        {
-            char idc[64], fn[256];
-            snprintf(idc, sizeof idc, "%s", id);
-            snprintf(fn, sizeof fn, "%s", func);
-            rad_errbuf[0] = 0;
-            res = dispatch(fn, argc, argv, &found);
-            if (!found)
-                printf("{\"id\": %s, \"error\": %s}\n", idc, rad_json_quote("unknown function"));
-            else if (rad_errbuf[0])
-                printf("{\"id\": %s, \"error\": %s}\n", idc, rad_json_quote(rad_errbuf));
-            else
-                printf("{\"id\": %s, \"result\": %s}\n", idc, (res && *res) ? res : "null");
-            fflush(stdout);
-        }
+        if (!func) { rad_wk_error("bad request"); continue; }
+        rad_errbuf[0] = 0;
+        return 1;
+    }
+}
+
+const char *rad_wk_func(void) { return rad_wk_fn; }
+int rad_wk_argc(void) { return rad_wk_n; }
+const char *rad_wk_arg(int i) { return (i >= 0 && i < rad_wk_n) ? rad_wk_args[i] : ""; }
+
+void rad_wk_reply(const char *json) {
+    printf("{\"id\": %s, \"result\": %s}\n", rad_wk_idbuf, (json && *js_ws(json)) ? json : "null");
+    fflush(stdout);
+}
+
+void rad_wk_error(const char *message) {
+    printf("{\"id\": %s, \"error\": %s}\n", rad_wk_idbuf, rad_json_quote(message && *message ? message : "error"));
+    fflush(stdout);
+}
+
+int rad_worker_main(const char *(*dispatch)(const char *func, int argc, const char **argv, int *found)) {
+    setvbuf(stdout, NULL, _IOLBF, 4096);
+    while (rad_wk_next()) {
+        int found = 0;
+        const char *res = dispatch(rad_wk_fn, rad_wk_n, rad_wk_argv, &found);
+        if (!found) rad_wk_error("unknown function");
+        else if (rad_errbuf[0]) rad_wk_error(rad_errbuf);
+        else rad_wk_reply(res);
     }
     return 0;
 }

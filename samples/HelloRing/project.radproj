@@ -2,8 +2,11 @@
   "name": "HelloRing",
   "language": "ring-qt",
   "forms": [
-    "Form1"
+    "Form1",
+    "Form2"
   ],
   "startup": "Form1",
-  "modules": []
+  "modules": [
+    "Module1.ring"
+  ]
 }

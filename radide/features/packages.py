@@ -18,7 +18,7 @@ from urllib.parse import quote_plus
 
 from PyQt6.QtCore import QObject, QProcess, QProcessEnvironment, Qt, pyqtSignal
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QComboBox, QDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+from PyQt6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit,
                              QMessageBox, QPlainTextEdit, QPushButton, QSplitter, QTabWidget,
                              QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
@@ -69,6 +69,8 @@ def parse_packages(text: str) -> list[tuple[str, str, str]]:
                     continue
                 ver, desc = toks[1], " ".join(t for t in toks[2:] if not VERSION_RX.match(t))
         name = name.strip().strip(",;")
+        if re.match(r"^(?:[A-Za-z]:[\\/]|/)", desc.strip()):
+            continue            # "my-app@1.0.0 C:\path" - the project itself (npm ls), not a dependency
         if not name or not NAME_RX.match(name) or name.lower() in HEADER_WORDS:
             continue
         if ver and not VERSION_RX.match(ver):
@@ -179,8 +181,8 @@ def build_argv(cmd: list[str], pm, interpreter: str, name: str = "", version: st
         resolved = resolve_tool(out[0], interpreter)
         if resolved:
             out[0] = resolved
-    if out and out[0].lower().endswith((".cmd", ".bat")):
-        out = ["cmd.exe", "/c"] + out
+    # .cmd / .bat tools (npm.cmd, composer.bat) are started directly: QProcess quotes their
+    # arguments correctly, wrapping them in "cmd /c" would not
     return out
 
 

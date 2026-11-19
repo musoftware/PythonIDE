@@ -133,6 +133,11 @@ class FindBar(QWidget):
         ed = self.editor()
         if ed is None:
             return
+        if hasattr(ed, "_js"):           # Monaco: use its built-in find / replace widget
+            ed.setFocus()
+            ed._js("radEditor.focus(); radEditor.trigger('rad', '%s');" %
+                   ("editor.action.startFindReplaceAction" if replace else "actions.find"))
+            return
         sel = ed.textCursor().selectedText()
         if sel and " " not in sel:
             self.find.setText(sel)
@@ -179,10 +184,18 @@ class FindBar(QWidget):
         return True
 
     def next(self):
+        ed = self.editor()
+        if ed is not None and hasattr(ed, "_js"):
+            ed._js("radEditor.trigger('rad', 'editor.action.nextMatchFindAction');")
+            return
         self._search()
         self._count()
 
     def prev(self):
+        ed = self.editor()
+        if ed is not None and hasattr(ed, "_js"):
+            ed._js("radEditor.trigger('rad', 'editor.action.previousMatchFindAction');")
+            return
         self._search(backward=True)
 
     def _count(self):
@@ -334,10 +347,10 @@ def install_tools(win) -> None:
 
 
 def _project_texts(win) -> dict[str, str]:
-    p, plugin = win.project, win.plugin
+    p = win.project
     texts = {}
     for name in p.forms:
-        f = plugin.code_file(name)
+        f = win.plugin_for_form(name).code_file(name) if hasattr(win, "plugin_for_form") else             win.plugin.code_file(name)
         texts[f] = win.codeviews[name].editor.text() if name in win.codeviews else \
             (p.folder / f).read_text(encoding="utf-8", errors="replace") if (p.folder / f).exists() else ""
     for mod in p.modules:
@@ -350,7 +363,13 @@ def run_checks(win, show=False) -> list[Diag]:
     if not win.project:
         return []
     try:
-        diags = check_project(win.project, win.plugin, _project_texts(win))
+        groups: dict = {}                 # multi-language projects: check each file with its language
+        for fname, text in _project_texts(win).items():
+            fp = win.plugin_for_file(fname) if hasattr(win, "plugin_for_file") else win.plugin
+            groups.setdefault(fp.id, (fp, {}))[1][fname] = text
+        diags = []
+        for fp, texts in groups.values():
+            diags += check_project(win.project, fp, texts)
     except Exception as e:  # noqa: BLE001 - never break saving
         diags = [Diag("Warning", f"checker failed: {e}", "", 1)]
     win.error_list.clear()
@@ -440,7 +459,7 @@ def goto_definition(win):
     if m is None:
         return
     word = m.group()
-    if win.plugin.id.startswith("python"):
+    if (getattr(ed, "plugin", None) or win.plugin).id.startswith("python"):
         try:
             import jedi
             script = jedi.Script(ed.text(), path=str(ed.path), project=jedi.Project(str(win.project.folder)))
@@ -480,7 +499,8 @@ def autosave(win):
     if not win.project:
         return
     backup = win.project.folder / ".radide_backup"
-    views = [(win.plugin.code_file(n), cv.editor) for n, cv in win.codeviews.items()]
+    views = [((getattr(cv.editor, "plugin", None) or win.plugin).code_file(n), cv.editor)
+             for n, cv in win.codeviews.items()]
     views += [(m, mv.editor) for m, mv in win.modviews.items()]
     for fname, ed in views:
         if ed.isModified():
@@ -536,7 +556,8 @@ def build_exe(win):
     if not win.project:
         return
     win.save_all()
-    p, plugin = win.project, win.plugin
+    p = win.project
+    plugin = win.run_plugin() if hasattr(win, "run_plugin") else win.plugin    # the startup form's language
     folder = p.folder
     interp = win._interpreter()
     if plugin.id.startswith("python"):

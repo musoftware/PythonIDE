@@ -3,53 +3,16 @@
   "props": {
     "Name": "Form1",
     "Text": "Hello - Ring (RingQt)",
-    "Width": 440,
+    "Width": 736,
     "Height": 300,
     "BackColor": "",
     "StartPosition": "CenterScreen",
     "FormBorderStyle": "Sizable",
     "TopMost": false,
     "WindowState": "Normal",
-    "Icon": "",
-    "ScaleMode": "Pixel"
+    "Icon": ""
   },
   "controls": [
-    {
-      "type": "MenuStrip",
-      "props": {
-        "Name": "MenuStrip1",
-        "Items": [
-          {
-            "Text": "File",
-            "Name": "mnuFile",
-            "Items": [
-              {
-                "Text": "Clear",
-                "Name": "mnuFileClear"
-              },
-              {
-                "Text": "-"
-              },
-              {
-                "Text": "Exit",
-                "Name": "mnuFileExit"
-              }
-            ]
-          },
-          {
-            "Text": "Help",
-            "Name": "mnuHelp",
-            "Items": [
-              {
-                "Text": "About",
-                "Name": "mnuHelpAbout"
-              }
-            ]
-          }
-        ],
-        "Parent": ""
-      }
-    },
     {
       "type": "Panel",
       "props": {
@@ -253,6 +216,135 @@
         "ToolTip": "",
         "TabIndex": 0,
         "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button1",
+        "Text": "Button1",
+        "Left": 296,
+        "Top": 232,
+        "Width": 75,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TrackBar",
+      "props": {
+        "Name": "TrackBar1",
+        "Left": 448,
+        "Top": 184,
+        "Width": 160,
+        "Height": 45,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "ListBox1",
+        "Left": 520,
+        "Top": 48,
+        "Width": 120,
+        "Height": 95,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Items": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ProgressBar",
+      "props": {
+        "Name": "ProgressBar1",
+        "Left": 528,
+        "Top": 256,
+        "Width": 100,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 8,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "Clear",
+                "Name": "mnuFileClear"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "About",
+                "Name": "mnuHelpAbout"
+              }
+            ]
+          }
+        ],
         "Parent": ""
       }
     },

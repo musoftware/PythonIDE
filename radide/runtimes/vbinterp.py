@@ -573,6 +573,64 @@ def _datediff(interval, a, b, *_):
     raise err(5, "Invalid procedure call or argument")
 
 
+
+# ---------------------------------------------------------------- RadCall (RAD Hub, docs/CONTRACTS.md)
+def vb_to_json(v):
+    """VB value -> JSON-able Python value."""
+    if v is EMPTY or v is NOTHING or v is None:
+        return None
+    if isinstance(v, (bool, int, float, str)):
+        return v
+    if isinstance(v, VBArray):
+        return [vb_to_json(x) for x in v.items()]
+    if isinstance(v, Collection):
+        if v.keys and len(v.keys) == len(v.items):
+            return {k: vb_to_json(x) for k, x in v.keys.items()}
+        return [vb_to_json(x) for x in v.items]
+    if isinstance(v, UDT):
+        return {k: vb_to_json(x) for k, x in v._fields.items()}
+    if isinstance(v, _dt.datetime):
+        return v.isoformat(sep=" ")
+    return to_str(v)
+
+
+def json_to_vb(v):
+    """JSON value -> VB value (list -> 0-based array, object -> keyed Collection)."""
+    if v is None:
+        return EMPTY
+    if isinstance(v, list):
+        return _array(*[json_to_vb(x) for x in v])
+    if isinstance(v, dict):
+        c = Collection()
+        for k, x in v.items():
+            c.vb_call("add", [json_to_vb(x), str(k)])
+        return c
+    return v
+
+
+def _radcall_module():
+    import sys
+    mod = sys.modules.get("radcall")
+    if mod is None or not hasattr(mod, "radcall"):
+        import importlib.util
+        from pathlib import Path
+        path = Path(__file__).resolve().parent / "clients" / "python" / "radcall.py"
+        spec = importlib.util.spec_from_file_location("radcall", str(path))
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["radcall"] = mod
+        spec.loader.exec_module(mod)
+    return mod
+
+
+def _radcall(name, *args):
+    """RadCall("Module.Function", args...) - call a function written in another language."""
+    rc = _radcall_module()
+    try:
+        return json_to_vb(rc.radcall(to_str(name), *[vb_to_json(a) for a in args]))
+    except rc.RadCallError as e:
+        raise err(440, f"RadCall error: {e}") from None
+
+
 BUILTINS = {
     "len": lambda s: len(to_str(s)) if not isinstance(s, VBArray) else len(s.items()),
     "left": lambda s, n: to_str(s)[:int(to_num(n))],
@@ -629,6 +687,7 @@ BUILTINS = {
                           0xFF0000, 0xFF00, 0xFFFF00, 0xFF, 0xFF00FF, 0xFFFF, 0xFFFFFF][int(to_num(n))],
     "environ": lambda n: __import__("os").environ.get(to_str(n), ""),
     "nz": lambda v, d="": d if v is None or v is EMPTY else v,
+    "radcall": _radcall,
 }
 
 
