@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDateTimeE
                              QTreeWidgetItem, QWidget)
 
 from .controls import TAB_PAGE_X, TAB_PAGE_Y, split_items, split_rows, tree_paths
+from .mobile.render import apply_mobile_props, make_mobile_preview, wants_mobile_preview
 from .model import Control
 
 
@@ -103,6 +104,8 @@ REBUILD_PROPS = {"Multiline"}
 
 
 def make_preview(ctrl: Control, parent: QWidget, root: Path | None = None) -> QWidget:
+    if wants_mobile_preview(ctrl.type, parent):          # mobile controls / phone forms (radide/mobile)
+        return make_mobile_preview(ctrl, parent, root)
     if ctrl.type == "TextBox" and ctrl.props.get("Multiline"):
         w = QPlainTextEdit(parent)
     else:
@@ -127,6 +130,8 @@ def _form_palette(w: QWidget) -> None:
 
 
 def apply_props(w: QWidget, ctrl: Control) -> None:
+    if getattr(w, "rad_mobile", False):
+        return apply_mobile_props(w, ctrl)
     p = ctrl.props
     w.setObjectName(f"rad_{ctrl.name}")
     w.setGeometry(int(p["Left"]), int(p["Top"]), max(4, int(p["Width"])), max(4, int(p["Height"])))

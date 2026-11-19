@@ -13,7 +13,13 @@ import threading
 import traceback
 
 TAG = "@@RADDBG@@"
-_NEVER = object()   # a "stop frame" that matches no frame
+class _Never:
+    """A "stop frame" that matches no frame. It has an f_code because Python 3.12's
+    bdb.dispatch_exception reads stopframe.f_code.co_flags when an exception passes a frame."""
+    f_code = (lambda: None).__code__
+
+
+_NEVER = _Never()
 _out = sys.__stdout__
 
 

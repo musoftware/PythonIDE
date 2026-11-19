@@ -58,8 +58,9 @@ def add_module(project: Project, name: str, language: str | None = None, filenam
     if filename:
         plugin = plugin_for_module(project, filename)
     else:
-        filename = f"{name}{plugin.code_ext}"
+        filename = f"{getattr(plugin, 'module_dir', '')}{name}{plugin.code_ext}"    # Flutter: lib/<name>.dart
     path = project.folder / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         path.write_text(plugin.module_template(Path(filename).stem), encoding="utf-8")
     if filename not in project.modules:

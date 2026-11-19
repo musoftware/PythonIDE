@@ -14,9 +14,11 @@ from PyQt6.QtWidgets import (QAbstractItemView, QColorDialog, QComboBox, QFileDi
                              QTableWidget, QTableWidgetItem, QTabWidget, QToolButton,
                              QVBoxLayout, QWidget)
 
-from .controls import (ANCHOR_EDGES, CONTROL_TYPES, EVENT_HELP, FORM_PROPS, MENU_TYPES, format_anchor,
+from .controls import (ANCHOR_EDGES, CONTROL_TYPES, EVENT_HELP, MENU_TYPES, format_anchor,
                        menu_names, parse_anchor)
 from .document import FormDocument
+from .mobile.controls import form_prop_defs
+from .mobile.material_icons import icon as material_icon
 from .model import Control
 
 CATEGORY_ORDER = ["Appearance", "Behavior", "Data", "Design", "Layout", "Misc"]
@@ -202,7 +204,7 @@ class PropertiesPanel(QWidget):
     # ------------------------------------------------------------ tables
     def _defs(self):
         c = self._owner()
-        defs = list(FORM_PROPS.values()) if c is None else CONTROL_TYPES[c.type].prop_defs()
+        defs = form_prop_defs(self.doc.form, self.plugin) if c is None else CONTROL_TYPES[c.type].prop_defs()
         if self.categorized:
             return sorted(defs, key=lambda d: (CATEGORY_ORDER.index(d.category)
                                                if d.category in CATEGORY_ORDER else 99, d.name != "Name", d.name))
@@ -291,6 +293,9 @@ class PropertiesPanel(QWidget):
                 if w is None:
                     w = QComboBox()
                     w.addItems(list(d.choices))
+                    if d.name == "Icon":            # mobile Fab / MIcon: show the Material icons
+                        for i in range(w.count()):
+                            w.setItemIcon(i, material_icon(w.itemText(i), 16))
                     w.currentTextChanged.connect(lambda t, n=d.name: self._set(n, t))
                     self.props.setCellWidget(row, 1, w)
                 w.blockSignals(True)

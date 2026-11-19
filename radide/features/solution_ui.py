@@ -591,6 +591,8 @@ def create_project_from_dialog(win, dlg):
         if getattr(get_plugin(language), "project_kind", "") == "website":     # CONTRACTS 8.1
             from ..web_site.project import create_website
             project = create_website(folder, name, language, template)
+        elif callable(getattr(get_plugin(language), "create_new_project", None)):   # games (CONTRACTS 10.2)
+            project = get_plugin(language).create_new_project(folder, name, template)
         elif template == "library":
             project = create_library_project(folder, name, language)
         else:

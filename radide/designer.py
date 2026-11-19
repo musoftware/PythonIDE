@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (QHBoxLayout, QMenu, QScrollArea, QToolButton, QWidg
 from .controls import CONTROL_TYPES, MENU_TYPES, TOOLSTRIP_H
 from .document import FormDocument
 from .layout import tab_page
+from .mobile.frame import PhoneChrome
 from .model import Control
 from .preview import apply_props, make_preview
 from .toolbox import MIME, TOOL_STATE, control_icon
@@ -75,6 +76,8 @@ class Surface(QWidget):
 
     def paintEvent(self, _e):
         p = QPainter(self)
+        if self.view.phone.paint_surface(p, self):          # phone form (radide/mobile/frame.py)
+            return
         back = self.view.form_props().get("BackColor") or FORM_BACK
         p.fillRect(self.rect(), QColor(back))
         p.setPen(QColor(0, 0, 0, 140))
@@ -233,6 +236,7 @@ class Overlay(QWidget):
             return
         self.mode = "move"
         self.starts = {id(c): self.start_rect(c) for c in self._movable()}
+        self.view.phone.begin_drag(self._movable())     # children of a Column / Row follow the mouse
 
     def _click_tab(self, tc: Control, pos: QPoint) -> bool:
         """A click on the tab bar of a TabControl shows that page (VS behaviour)."""
@@ -313,6 +317,8 @@ class Overlay(QWidget):
                 target = self.container_at(r.center(), moved)
                 self.doc.reparent(c, target)
             self.update()
+        if mode == "move":           # dropped inside a Column / Row: take that place in the order
+            self.view.phone.end_drag(self._movable() if self.recorded and not self.view.blend_recording() else [])
 
     def mouseDoubleClickEvent(self, e):
         hit = self.control_at(e.position().toPoint())
@@ -453,6 +459,8 @@ class FormFrame(QWidget):
 
     def menu_height(self) -> int:
         """Height of the menu strip + tool strip drawn above the client area."""
+        if self.view.phone.active:
+            return 0
         form = self.view.doc.form
         return (MENU_H if form.menu() else 0) + (TOOLSTRIP_H if toolstrip_of(form) else 0)
 
@@ -486,6 +494,9 @@ class FormFrame(QWidget):
     def mousePressEvent(self, e):
         pos = e.position().toPoint()
         doc = self.view.doc
+        if self.view.phone.active:          # a phone has no menu strip and is not resized by its edges
+            doc.select(None)
+            return
         menu = doc.form.menu()
         hit = self._menu_hit(pos)
         if menu is not None and hit:
@@ -508,6 +519,8 @@ class FormFrame(QWidget):
 
     def mouseMoveEvent(self, e):
         pos = e.position().toPoint()
+        if self.view.phone.active:
+            return
         if self._resizing:
             dx, dy = pos.x() - self._press.x(), pos.y() - self._press.y()
             doc = self.view.doc
@@ -547,6 +560,8 @@ class FormFrame(QWidget):
 
     def paintEvent(self, _e):
         p = QPainter(self)
+        if self.view.phone.paint(p, self):          # phone / tablet frame (radide/mobile/frame.py)
+            return
         r = self.rect()
         doc = self.view.doc
         active = doc.selected is None
@@ -741,6 +756,7 @@ class DesignerView(QScrollArea):
         self.tray = ComponentTray(self)
         self.tray.setParent(self.content)
         self.previews: dict[int, QWidget] = {}
+        self.phone = PhoneChrome(self)             # mobile forms: phone frame + device bar
         self.setWidget(self.content)
         doc.structureChanged.connect(self.rebuild)
         doc.controlChanged.connect(self.on_control_changed)
@@ -778,6 +794,8 @@ class DesignerView(QScrollArea):
 
     # ------------------------------------------------------------ layout
     def layout_form(self) -> None:
+        if self.phone.layout():
+            return
         fp = self.form_props()
         w, h = int(fp["Width"]), int(fp["Height"])
         mh = self.frame.menu_height()
@@ -796,7 +814,12 @@ class DesignerView(QScrollArea):
         super().resizeEvent(e)
         self.layout_form()
 
+    def showEvent(self, e):
+        super().showEvent(e)
+        self.phone.announce()       # the Toolbox shows the Mobile group for phone forms
+
     def rebuild(self) -> None:
+        self.phone.refresh()
         for w in self.previews.values():
             w.setParent(None)
             w.deleteLater()
@@ -890,6 +913,7 @@ class DesignerView(QScrollArea):
         parent = "" if ctype.nonvisual else self.overlay.container_at(pos, [])
         px, py = self.doc.form.client_origin(self.doc.form.find(parent) if parent else None)
         ctrl = self.doc.add_control(type_name, snap(pos.x() - px), snap(pos.y() - py), parent)
+        self.phone.placed(ctrl, pos)
         self.overlay.setFocus()
         if type_name in MENU_TYPES:
             self.edit_menu(ctrl)

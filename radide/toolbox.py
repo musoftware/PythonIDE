@@ -6,9 +6,13 @@ from PyQt6.QtGui import QColor, QDrag, QFont, QIcon, QPainter, QPen, QPixmap, QP
 from PyQt6.QtWidgets import QListWidget, QListWidgetItem
 
 from .controls import CONTROL_TYPES
+from .mobile.controls import MOBILE_CONTROL_TYPES
+from .mobile.render import mobile_tool_icon
 
 MIME = "application/x-radide-control"
 POINTER = "Pointer"
+MOBILE_HEADER = "Mobile"                 # Toolbox group captions shown for phone forms
+CLASSIC_HEADER = "Common Controls"
 
 
 class ToolState(QObject):
@@ -21,6 +25,19 @@ class ToolState(QObject):
     def set(self, tool: str | None) -> None:
         self.current = tool
         self.changed.emit(tool)
+
+    # mobile forms (CONTRACTS 10.1): the shown designer says whether it is a phone form
+    modeChanged = pyqtSignal(bool, object)      # mobile, enabled control types (set) | None
+    mobile = False
+    supported = None
+
+    def set_mode(self, mobile: bool, supported=None) -> None:
+        mobile = bool(mobile)
+        supported = set(supported) if (mobile and supported) else None
+        if mobile == self.mobile and supported == self.supported:
+            return
+        self.mobile, self.supported = mobile, supported
+        self.modeChanged.emit(mobile, supported)
 
 
 TOOL_STATE = ToolState()
@@ -36,6 +53,9 @@ def control_icon(type_name: str) -> QIcon:
     p.setPen(pen)
     f = QFont("Segoe UI", 7, QFont.Weight.Bold)
     p.setFont(f)
+    if type_name in MOBILE_CONTROL_TYPES:
+        p.end()
+        return mobile_tool_icon(type_name)
     if type_name == POINTER:
         p.setBrush(QColor("#ffffff"))
         p.drawPolygon(QPolygonF([QPointF(6, 2), QPointF(6, 16), QPointF(9, 13),
@@ -216,7 +236,20 @@ class Toolbox(QListWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.setUniformItemSizes(True)
-        for name in [POINTER, *CONTROL_TYPES]:
+        mobile = [n for n in CONTROL_TYPES if n in MOBILE_CONTROL_TYPES]
+        classic = [n for n in CONTROL_TYPES if n not in MOBILE_CONTROL_TYPES]
+        self._headers: dict[str, QListWidgetItem] = {}
+        for name in [POINTER, MOBILE_HEADER, *mobile, CLASSIC_HEADER, *classic]:
+            if name in (MOBILE_HEADER, CLASSIC_HEADER):          # group caption (mobile designers only)
+                it = QListWidgetItem(name)
+                f = it.font()
+                f.setBold(True)
+                it.setFont(f)
+                it.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                it.setSizeHint(QSize(10, 22))
+                self._headers[name] = it
+                self.addItem(it)
+                continue
             it = QListWidgetItem(control_icon(name), name)
             it.setData(Qt.ItemDataRole.UserRole, name)
             ctype = CONTROL_TYPES.get(name)
@@ -226,9 +259,40 @@ class Toolbox(QListWidget):
         self.setCurrentRow(0)
         self.currentItemChanged.connect(self._on_current)
         TOOL_STATE.changed.connect(self._on_tool_reset)
+        TOOL_STATE.modeChanged.connect(self._on_mode)
+        self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported)
+
+    def _on_mode(self, mobile: bool, supported) -> None:
+        """Desktop forms: the classic controls only.  Phone forms: the Mobile group first and the
+        Windows-only classic controls greyed (not available in mobile apps)."""
+        from .mobile.controls import supported_controls
+        allowed = set(supported) if supported else supported_controls(None)
+        for row in range(self.count()):
+            it = self.item(row)
+            name = it.data(Qt.ItemDataRole.UserRole)
+            if name is None:                                   # group caption
+                it.setHidden(not mobile)
+                continue
+            if name == POINTER:
+                continue
+            ctype = CONTROL_TYPES.get(name)
+            desc = f"{name}: {ctype.description}" if ctype is not None and ctype.description else name
+            if name in MOBILE_CONTROL_TYPES:
+                it.setHidden(not mobile)
+                ok = True
+            else:
+                it.setHidden(False)
+                ok = not mobile or name in allowed
+            it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
+                        if ok else Qt.ItemFlag.NoItemFlags)
+            it.setToolTip(desc if ok else f"{name}: Windows only - not available in mobile apps.")
+        if TOOL_STATE.current is not None and (TOOL_STATE.current not in CONTROL_TYPES or
+                                               (mobile and TOOL_STATE.current not in allowed) or
+                                               (not mobile and TOOL_STATE.current in MOBILE_CONTROL_TYPES)):
+            TOOL_STATE.set(None)
 
     def _on_current(self, item, _prev):
-        if item is None:
+        if item is None or item.data(Qt.ItemDataRole.UserRole) is None:
             return
         name = item.data(Qt.ItemDataRole.UserRole)
         TOOL_STATE.set(None if name == POINTER else name)

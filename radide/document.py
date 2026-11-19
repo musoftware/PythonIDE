@@ -16,7 +16,8 @@ from .model import Control, Form
 from .preview import REBUILD_PROPS
 
 # properties whose change can move docked / anchored controls
-LAYOUT_PROPS = {"Left", "Top", "Width", "Height", "Dock", "Anchor", "Visible", "TabPage", "TabPages"}
+LAYOUT_PROPS = {"Left", "Top", "Width", "Height", "Dock", "Anchor", "Visible", "TabPage", "TabPages",
+                "Spacing", "Align", "Padding"}       # the last three: mobile Column / Row / Stack
 
 CLIP_MIME = "application/x-radide-controls"
 UNDO_LIMIT = 200

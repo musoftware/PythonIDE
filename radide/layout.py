@@ -177,6 +177,9 @@ def relayout(form) -> list:
                     else:
                         _set(c, new)
                     changed.append(c)
+    if any(c.type in ("Column", "Row", "Stack") for c in form.controls):
+        from .mobile.frame import layout_containers      # mobile layout containers (CONTRACTS 10.4)
+        changed += layout_containers(form)
     return changed
 
 

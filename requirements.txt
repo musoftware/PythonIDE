@@ -12,3 +12,13 @@ pygments>=2.17
 # tests of Publish only (local FTP/FTPS server): pyftpdlib>=2.0, pyopenssl>=24
 # optional: PySide6-Essentials (Python/Qt projects and importing Qt programs), pyinstaller (Build EXE), pywin32 (VB CreateObject)
 
+# Games (pygame projects: run and the scene runtime radgame.py)
+pygame-ce>=2.4
+# File > Import > Program (.exe / .dll): identify PE files, read resources, disassemble (radide/importers/exe)
+pefile>=2023.2
+capstone>=5.0
+# optional for old Python exes (3.7/3.8): decompyle3 / uncompyle6. Installed on demand into %LOCALAPPDATA%\RADIDE\tools:
+#   ilspycmd (dotnet tool, .NET), Vineflower / CFR (Java); pycdc is used when present there
+
+# Mobile: Python Kivy App projects (run as a phone-sized window; Flutter projects need the Flutter SDK)
+kivy>=2.3

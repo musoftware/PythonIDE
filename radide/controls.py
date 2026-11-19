@@ -360,3 +360,12 @@ def menu_names(items: list) -> list[str]:
             out.append(it["Name"])
         out += menu_names(it.get("Items", []))
     return out
+
+
+# ---------------------------------------------------------------- mobile controls (CONTRACTS 10.4)
+# AppBar, BottomNav, Fab, Card, MListView, Switch, MSlider, MTextField, MImage, MIcon, Drawer, MTabBar,
+# MWebView, Column / Row / Stack - defined in radide/mobile/controls.py (imported last: it uses the
+# names above).
+from .mobile.controls import MOBILE_CONTROL_TYPES as _MOBILE_CONTROL_TYPES  # noqa: E402
+
+CONTROL_TYPES.update(_MOBILE_CONTROL_TYPES)
