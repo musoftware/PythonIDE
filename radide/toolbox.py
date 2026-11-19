@@ -212,9 +212,16 @@ class Toolbox(QListWidget):
         self.setIconSize(QSize(20, 20))
         self.setDragEnabled(True)
         self.setSpacing(1)
+        # names are elided to the dock's width - never a horizontal scroll bar
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.setUniformItemSizes(True)
         for name in [POINTER, *CONTROL_TYPES]:
             it = QListWidgetItem(control_icon(name), name)
             it.setData(Qt.ItemDataRole.UserRole, name)
+            ctype = CONTROL_TYPES.get(name)
+            it.setToolTip(f"{name}: {ctype.description}" if ctype is not None and ctype.description else name)
+            it.setSizeHint(QSize(10, 24))          # the row is as wide as the list, the text elides
             self.addItem(it)
         self.setCurrentRow(0)
         self.currentItemChanged.connect(self._on_current)

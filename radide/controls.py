@@ -189,11 +189,13 @@ class ControlType:
 
 _ITEMS = _p("Items", "list", "", "Items separated by ;", category="Data")
 _ALIGN = _p("TextAlign", "enum", "Left", choices=ALIGN, category="Appearance")
+# a Button's caption is centred (VB / WinForms MiddleCenter)
+_BUTTON_ALIGN = _p("TextAlign", "enum", "Center", choices=ALIGN, category="Appearance")
 _VALUE = [_p("Minimum", "int", 0, category="Behavior"), _p("Maximum", "int", 100, category="Behavior"),
           _p("Value", "int", 0, category="Behavior")]
 
 CONTROL_TYPES: dict[str, ControlType] = {t.name: t for t in [
-    ControlType("Button", "Button", (75, 23), ["Click"], [_ALIGN],
+    ControlType("Button", "Button", (75, 23), ["Click"], [_BUTTON_ALIGN],
                 description="Raises an event when the user clicks it."),
     ControlType("Label", "Label", (60, 17), ["Click"], [_ALIGN],
                 description="Displays read-only text."),

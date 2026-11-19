@@ -36,8 +36,16 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
          "node-web": ("N", "#3C873A")}
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
-                  "data": "SP_FileDialogDetailedView", "console": "SP_CommandLink",
+                  "data": "SP_FileDialogDetailedView", "console": "rad:console",
                   "library": "SP_DriveHDIcon"}
+
+
+def template_icon(style, name: str):
+    """A QStyle standard icon name ("SP_...") or one of radide.icons ("rad:<name>")."""
+    if name.startswith("rad:"):
+        from .icons import icon
+        return icon(name[4:], 32)
+    return style.standardIcon(getattr(QStyle.StandardPixmap, name, QStyle.StandardPixmap.SP_FileIcon))
 
 
 def badge_icon(pid: str, size: int = 28):
@@ -64,6 +72,8 @@ def language_installed(plugin) -> tuple[bool, str]:
             t = plugin.tool()
             return (bool(t), Path(t).name if t else f"needs {', '.join(plugin.tool_names) or 'its compiler'}")
         exe = plugin.find_interpreter("")
+        if exe and getattr(plugin, "id", "") == "vb-basic":
+            return True, "built in (no install needed)"
         return (bool(exe), Path(exe).name if exe else "interpreter not found")
     except Exception as e:  # noqa: BLE001
         return (False, str(e))
@@ -107,6 +117,8 @@ class NewProjectDialog(QDialog):
                 self._lang_item(g, p)
             self.langs.addTopLevelItem(g)
         self.langs.expandAll()
+        self.langs.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.langs.setMinimumWidth(250)
 
         self.templates = QListWidget()
         self.templates.setViewMode(QListWidget.ViewMode.IconMode)
@@ -123,7 +135,7 @@ class NewProjectDialog(QDialog):
             TEMPLATES = [("windows", "Windows Application", "An application with an empty form.")]
         self._template_list = TEMPLATES
         for tid, title, desc in TEMPLATES:
-            icon = self.style().standardIcon(getattr(QStyle.StandardPixmap, TEMPLATE_ICONS.get(tid, "SP_FileIcon")))
+            icon = template_icon(self.style(), TEMPLATE_ICONS.get(tid, "SP_FileIcon"))
             it = QListWidgetItem(icon, title)
             it.setData(Qt.ItemDataRole.UserRole, tid)
             it.setToolTip(desc)
@@ -139,7 +151,8 @@ class NewProjectDialog(QDialog):
         split.addWidget(self.langs)
         split.addWidget(self.templates)
         split.addWidget(self.desc)
-        split.setSizes([230, 400, 230])
+        split.setSizes([290, 390, 240])
+        split.setChildrenCollapsible(False)
 
         self.name = QLineEdit("WindowsApplication1")
         self.location = QLineEdit(str(default_location()))
@@ -240,8 +253,8 @@ class NewProjectDialog(QDialog):
         self.templates.blockSignals(True)
         self.templates.clear()
         for tid, title, desc, icon in items:
-            it = QListWidgetItem(self.style().standardIcon(getattr(QStyle.StandardPixmap, icon,
-                                                                   QStyle.StandardPixmap.SP_FileIcon)), title)
+            from .icons import template_badge
+            it = QListWidgetItem(template_badge(tid) or template_icon(self.style(), icon or "SP_FileIcon"), title)
             it.setData(Qt.ItemDataRole.UserRole, tid)
             it.setToolTip(desc)
             self.templates.addItem(it)
@@ -269,9 +282,10 @@ class NewProjectDialog(QDialog):
         it.setIcon(0, badge_icon(plugin.id))
         it.setData(0, Qt.ItemDataRole.UserRole, plugin.id)
         it.setData(0, Qt.ItemDataRole.UserRole + 1, (ok, note))
+        it.setToolTip(0, plugin.display_name + "  -  " +
+                      (note if ok else f"not installed on this computer: {note}"))
         if not ok:
             it.setForeground(0, Qt.GlobalColor.gray)
-            it.setToolTip(0, f"Not installed on this computer: {note}")
         return it
 
     def _filter(self, text):
@@ -312,8 +326,11 @@ class NewProjectDialog(QDialog):
         p = self._plugins[pid]
         ok, note = li.data(0, Qt.ItemDataRole.UserRole + 1)
         tdesc = ti.toolTip() if ti is not None else ""
-        state = (f"<span style='color:#1E7B1E'>&#10004; installed ({note})</span>" if ok else
-                 f"<span style='color:#B00020'>&#10008; not installed: {note}</span>")
+        from . import theme
+        good, bad = theme.color("success"), theme.color("error")
+        state = (f"<span style='color:{good}'>&#10004; {note}</span>" if ok and note.startswith("built in") else
+                 f"<span style='color:{good}'>&#10004; installed ({note})</span>" if ok else
+                 f"<span style='color:{bad}'>&#10008; not installed: {note}</span>")
         pm = p.package_manager.name if getattr(p, "package_manager", None) else "-"
         dbg = "yes" if p.supports_debug else "no"
         self.desc.setText(f"<b>{p.display_name}</b><br>{state}<br><br>"

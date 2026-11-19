@@ -23,6 +23,14 @@ CATEGORY_ORDER = ["Appearance", "Behavior", "Data", "Design", "Layout", "Misc"]
 CATEGORY_BACK = "#E4E8EE"     # category rows (Tools > Options dark theme changes it)
 
 
+_GENERIC_HELP = {"color": "A colour: click the value to pick one ((default) = the system colour).",
+                 "bool": "True or False.", "int": "A whole number (pixels for positions and sizes).",
+                 "enum": "Choose one of the values in the list.", "file": "A file: click ... to choose it.",
+                 "font": "The font of the text.", "list": "Items separated by ;",
+                 "anchor": "The edges of the parent this control keeps its distance to when the form is resized.",
+                 "menu": "Click ... to edit the items.", "str": "Text."}
+
+
 def valid_identifier(s: str) -> bool:
     return s.isidentifier() and not keyword.iskeyword(s)
 
@@ -102,7 +110,7 @@ class PropertiesPanel(QWidget):
         self.tabs.currentChanged.connect(lambda _i: self._refresh_events())
         self.help = QLabel()
         self.help.setWordWrap(True)
-        self.help.setMinimumHeight(44)
+        self.help.setMinimumHeight(54)
         self.help.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.help.setProperty("radRole", "help")
 
@@ -240,6 +248,21 @@ class PropertiesPanel(QWidget):
         self._refresh_values()
         self._refresh_events()
         self._updating = False
+        self._describe_owner()
+
+    def _describe_owner(self) -> None:
+        """The description box shows the selected object until a property row is picked."""
+        if not self.doc:
+            self.help.setText("")
+            return
+        c = self._owner()
+        if c is None:
+            name, kind, desc = self.doc.form.name, "Form", "A window of the program. Select a property " \
+                                                          "to see its description; Events lists its handlers."
+        else:
+            name, kind = c.name, c.type
+            desc = CONTROL_TYPES[c.type].description or "Select a property to see its description."
+        self.help.setText(f"<b>{name}</b> ({kind})<br>{desc}")
 
     def _row_def(self, row: int):
         item = self.props.item(row, 0)
@@ -349,7 +372,7 @@ class PropertiesPanel(QWidget):
     def _on_current_cell(self, row, *_):
         d = self._row_def(row) if row >= 0 else None
         if d is not None:
-            self.help.setText(f"<b>{d.name}</b><br>{d.help or ''}")
+            self.help.setText(f"<b>{d.name}</b><br>{d.help or _GENERIC_HELP.get(d.kind, '')}")
 
     def _on_event_cell(self, row, *_):
         item = self.events.item(row, 0) if row >= 0 else None

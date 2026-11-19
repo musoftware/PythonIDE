@@ -7,12 +7,12 @@ import os
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal
+from PyQt6.QtCore import QCoreApplication, QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QFont, QKeySequence
-from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QInputDialog, QLabel,
-                             QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox, QPlainTextEdit,
-                             QPushButton, QStyle, QTabWidget, QTreeWidget, QTreeWidgetItem,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QFrame, QGroupBox, QHBoxLayout,
+                             QInputDialog, QLabel, QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox,
+                             QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStyle, QTabWidget,
+                             QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from .controls import event_args
 from .debugger import Session, StopInfo
@@ -74,6 +74,15 @@ def real_python(exe: str) -> str:
     return real
 
 
+def project_venv_python(folder: Path) -> str:
+    """<folder>/.venv's python (Windows or POSIX layout), or "" when the project has no venv."""
+    for rel in ((".venv", "Scripts", "python.exe"), (".venv", "bin", "python")):
+        p = Path(folder).joinpath(*rel)
+        if p.is_file():
+            return str(p)
+    return ""
+
+
 def bring_to_front(win) -> None:
     """Raise the IDE above the paused program (Windows blocks plain
     activateWindow from background processes), and flash the taskbar."""
@@ -96,28 +105,148 @@ def bring_to_front(win) -> None:
     QApplication.alert(win, 3000)
 
 
+START_TIPS = [
+    "Double-click a control on the form to write its default event handler (F7 shows the code).",
+    "A solution can mix languages: add a Class Library in any language, then Add Reference and call it "
+    "like normal code.",
+    "F5 runs with the debugger, Ctrl+F5 without it. F9 sets a breakpoint, F10 / F11 step.",
+    "Tools > Options > Environment switches the workbench between Visual Studio, VS Code and Agent layouts.",
+    "Project > Manage Packages installs libraries into the project's own virtual environment (.venv).",
+]
+
+
+def link_button(text: str, slot, tip: str = "") -> QPushButton:
+    """A flat, theme-coloured hyperlink-style button (Start Page)."""
+    b = QPushButton(text)
+    b.setFlat(True)
+    b.setCursor(Qt.CursorShape.PointingHandCursor)
+    b.setProperty("radRole", "link")
+    b.setStyleSheet("QPushButton { border: none; padding: 2px 0px; text-align: left; }"
+                    "QPushButton:hover { text-decoration: underline; }")
+    b.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+    if tip:
+        b.setToolTip(tip)
+    b.clicked.connect(lambda _=False: slot())
+    return b
+
+
 class StartPage(QWidget):
+    """Visual Studio 2005 style Start Page: Recent Projects on the left, Getting Started / templates /
+    tips on the right. Features add their own boxes with add_section() / add_link()."""
+
     def __init__(self, win: "MainWindow"):
         super().__init__()
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(40, 30, 40, 30)
-        title = QLabel(f"<h1>{APP_NAME}</h1>")
+        self.win = win
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        outer.addWidget(scroll)
+        body = QWidget()
+        scroll.setWidget(body)
+        lay = QVBoxLayout(body)
+        lay.setContentsMargins(32, 22, 32, 22)
+        lay.setSpacing(12)
+        title = QLabel(f"<span style='font-size:20pt; font-weight:600'>{APP_NAME}</span>")
         title.setProperty("radRole", "heading")
         lay.addWidget(title)
-        lay.addWidget(QLabel("<p>Visual RAD environment for scripting languages</p>"))
-        for text, slot in (("New Project...", win.new_project), ("Open Project...", win.open_project_dialog)):
-            b = QPushButton(text)
-            b.setMinimumHeight(30)
-            b.clicked.connect(slot)
+        sub = QLabel("Visual RAD environment for scripting languages - design forms, write code, run and debug.")
+        sub.setProperty("radRole", "muted")
+        lay.addWidget(sub)
+        cols = QHBoxLayout()
+        cols.setSpacing(18)
+        lay.addLayout(cols, 1)
+        self.left = QVBoxLayout()
+        self.right = QVBoxLayout()
+        for c, stretch in ((self.left, 2), (self.right, 3)):
+            c.setSpacing(12)
+            cols.addLayout(c, stretch)
+        # left: Recent Projects (+ Open / Create links)
+        self.recent_box, self.recent_lay = self._box("Recent Projects", self.left)
+        self.left.addStretch(1)
+        # right: Getting Started, then feature sections (templates, App Gallery ...), then tips
+        _box, gs = self._box("Getting Started", self.right)
+        for text, slot, tip in (
+                ("Create a new project...", win.new_project, "File > New Project (Ctrl+Shift+N)"),
+                ("Open a project or solution...", win.open_project_dialog, "File > Open Project (Ctrl+Shift+O)"),
+                ("Open a file...", win.open_file_dialog, "File > Open File (Ctrl+O)"),
+                ("Customize the IDE (Tools > Options)...", win.show_options, "Theme, fonts, layout, start-up")):
+            gs.addWidget(link_button(text, slot, tip))
+        self._sections_at = self.right.count()
+        _box, tips = self._box("Did you know?", self.right)
+        for t in START_TIPS:
+            lbl = QLabel("•  " + t)
+            lbl.setWordWrap(True)
+            tips.addWidget(lbl)
+        self.right.addStretch(1)
+        self.refresh()
+
+    def _box(self, title: str, column, index: int | None = None):
+        box = QGroupBox(title)
+        box.setStyleSheet("QGroupBox { font-weight: bold; padding-top: 16px; margin-top: 4px; }")
+        inner = QVBoxLayout(box)
+        inner.setSpacing(2)
+        if index is None:
+            column.addWidget(box)
+        else:
+            column.insertWidget(index, box)
+        return box, inner
+
+    def add_section(self, title: str):
+        """A new box in the right column (before the tips); returns its QVBoxLayout."""
+        box, inner = self._box(title, self.right, self._sections_at)
+        self._sections_at += 1
+        return inner
+
+    @staticmethod
+    def add_link(layout, text: str, slot, tip: str = "") -> QPushButton:
+        b = link_button(text, slot, tip)
+        layout.addWidget(b)
+        return b
+
+    def refresh(self):
+        """Rebuild the Recent Projects list."""
+        lay = self.recent_lay
+
+        def clear(layout):
+            while layout.count():
+                it = layout.takeAt(0)
+                if it.widget() is not None:
+                    it.widget().deleteLater()
+                elif it.layout() is not None:
+                    clear(it.layout())
+        clear(lay)
+        recent = self.win.recent_projects()
+        if not recent:
+            empty = QLabel("No recent projects yet.")
+            empty.setProperty("radRole", "muted")
+            lay.addWidget(empty)
+        for path in recent:
+            p = Path(path)
+            name = p.stem if p.suffix.lower() == SOLUTION_EXT else p.name
+            b = link_button(name, lambda f=path: self.win.open_project(Path(f)), path)
             lay.addWidget(b)
-        lay.addWidget(QLabel("<h3>Recent Projects</h3>"))
-        for folder in win.recent_projects():
-            b = QPushButton(folder)
-            b.setFlat(True)
-            b.setProperty("radRole", "link")
-            b.clicked.connect(lambda _=False, f=folder: win.open_project(Path(f)))
-            lay.addWidget(b)
-        lay.addStretch(1)
+            where = QLabel(str(p.parent if p.suffix else p))
+            where.setProperty("radRole", "muted")
+            where.setIndent(14)
+            where.setToolTip(path)
+            f = QFont()
+            f.setPointSizeF(max(7.0, f.pointSizeF() - 1))
+            where.setFont(f)
+            lay.addWidget(where)
+        lay.addSpacing(8)
+        row = QHBoxLayout()
+        lbl = QLabel("Open:")
+        row.addWidget(lbl)
+        row.addWidget(link_button("Project...", self.win.open_project_dialog, "Open a project or solution"))
+        row.addStretch(1)
+        lay.addLayout(row)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Create:"))
+        row.addWidget(link_button("Project...", self.win.new_project, "Create a new project"))
+        row.addStretch(1)
+        lay.addLayout(row)
 
 
 class ImmediateWindow(QWidget):
@@ -200,16 +329,111 @@ class MainWindow(QMainWindow):
         self.tabs.tabBar().customContextMenuRequested.connect(self._tab_menu)
         self.setCentralWidget(self.tabs)
 
+        # a layout the user arranged (saved by the workbench) wins over our default dock sizes
+        self._had_saved_layout = self.settings.contains("workbench/state/vs")
         self._make_docks()
         self._make_actions()
-        self.tabs.addTab(StartPage(self), "Start Page")
-        self.statusBar().showMessage("Ready")
+        if self.option("show_start_page", True):
+            self.tabs.addTab(StartPage(self), "Start Page")
+        self._make_status()
         self._update_title()
         self._update_actions()
         from .tools import install_tools
         install_tools(self)
         from .features import install_all
         install_all(self)
+
+    def option(self, name: str, default=None):
+        """A Tools > Options value ("options/<name>"), bools and ints converted."""
+        v = self.settings.value("options/" + name, default)
+        if isinstance(default, bool):
+            return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "yes")
+        if isinstance(default, int):
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return default
+        return v
+
+    def show_options(self):
+        from .features.settings import show_options
+        show_options(self)
+
+    # ---------------------------------------------------------------- status bar
+    def _make_status(self):
+        sb = self.statusBar()
+        self.status_ready = QLabel("Ready")
+        self.status_ready.setMinimumWidth(60)
+        sb.addWidget(self.status_ready, 1)
+        self.status_pos = QLabel("")
+        self.status_pos.setToolTip("Line and column of the cursor (Ctrl+G: Go to Line)")
+        self.status_pos.setMinimumWidth(self.status_pos.fontMetrics().horizontalAdvance("Ln 99999, Col 999") + 12)
+        self.status_pos.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_pos.hide()
+        sb.addPermanentWidget(self.status_pos)
+        self._pos_timer = QTimer(self, interval=250)
+        self._pos_timer.timeout.connect(self._update_cursor_pos)
+        self._pos_timer.start()
+
+    def _update_cursor_pos(self):
+        """Ln / Col of the active editor (Monaco or the built-in one). The VS Code / Agent layouts show
+        their own position item, so ours is hidden there."""
+        lbl = self.status_pos
+        wb = getattr(self, "workbench", None)
+        ed = None
+        if wb is None or getattr(wb, "mode", "vs") == "vs":
+            w = self.tabs.currentWidget()
+            ed = getattr(w, "editor", None) or w
+            if not hasattr(ed, "getCursorPosition"):
+                ed = None
+        if ed is None:
+            if lbl.isVisible():
+                lbl.hide()
+            return
+        try:
+            line, col = ed.getCursorPosition()
+        except Exception:  # noqa: BLE001 - an editor being destroyed
+            return
+        text = f"Ln {line + 1}, Col {col + 1}"
+        if lbl.text() != text:
+            lbl.setText(text)
+        if not lbl.isVisible():
+            lbl.show()
+
+    # ---------------------------------------------------------------- default dock sizes
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not getattr(self, "_rad_first_show", False):
+            self._rad_first_show = True
+            if not self._had_saved_layout:
+                QTimer.singleShot(0, self.apply_default_dock_sizes)
+
+    def apply_default_dock_sizes(self):
+        """Visual Studio defaults for the window's real size: a slim Output panel, the Toolbox wide
+        enough for its names, Solution Explorer above a tall Properties window."""
+        wb = getattr(self, "workbench", None)
+        if wb is not None and getattr(wb, "mode", "vs") != "vs":
+            return
+        H, V = Qt.Orientation.Horizontal, Qt.Orientation.Vertical
+        out = max(140, min(180, int(self.height() * 0.18)))
+        right = max(300, min(380, int(self.width() * 0.23)))
+        if not self.dock_toolbox.isFloating() and self.dock_toolbox.isVisible():
+            self.resizeDocks([self.dock_toolbox], [200], H)
+        if not self.dock_solution.isFloating():
+            self.resizeDocks([self.dock_solution], [right], H)
+        if not self.dock_output.isFloating():
+            self.resizeDocks([self.dock_output], [out], V)
+
+        def split():
+            sol, props = self.dock_solution, self.dock_props
+            if sol.isFloating() or props.isFloating() or not (sol.isVisible() and props.isVisible()):
+                return
+            if self.dockWidgetArea(sol) != self.dockWidgetArea(props):
+                return
+            total = sol.height() + props.height()
+            top = max(170, int(total * 0.36))
+            self.resizeDocks([sol, props], [top, max(200, total - top)], V)
+        QTimer.singleShot(0, split)
 
     # ================================================================ UI setup
     def _dock(self, title: str, widget, area) -> QDockWidget:
@@ -253,6 +477,10 @@ class MainWindow(QMainWindow):
         self.tabifyDockWidget(self.dock_locals, self.dock_stack)
         self.tabifyDockWidget(self.dock_stack, self.dock_immediate)
         self.dock_output.raise_()
+        # stable widths: opening a code editor (Monaco) must not squeeze the tool windows
+        self.toolbox.setMinimumWidth(180)
+        self.solution.setMinimumWidth(220)
+        self.properties.setMinimumWidth(240)
         self.resizeDocks([self.dock_toolbox], [170], Qt.Orientation.Horizontal)
         self.resizeDocks([self.dock_solution, self.dock_props], [260, 300], Qt.Orientation.Horizontal)
         self.resizeDocks([self.dock_solution, self.dock_props], [330, 380], Qt.Orientation.Vertical)
@@ -273,6 +501,14 @@ class MainWindow(QMainWindow):
         self.a_new = A("&New Project...", self.new_project, "Ctrl+Shift+N", SP.SP_FileIcon)
         self.a_open = A("&Open Project...", self.open_project_dialog, "Ctrl+Shift+O", SP.SP_DirOpenIcon)
         self.a_save = A("Save &All", self.save_all, "Ctrl+S", SP.SP_DialogSaveButton)
+        self.a_save.setToolTip("Save All (Ctrl+S)")
+        from . import icons
+        self.a_open_file = A("Open &File...", self.open_file_dialog, "Ctrl+O")
+        self.a_open_file.setIcon(icons.icon("open_file"))
+        self.a_save_file = A("&Save", self.save_current)
+        self.a_save_file.setIcon(icons.icon("save"))
+        self.a_close_sln = A("Close Solutio&n", self.close_solution)
+        self.a_close_sln.setIcon(icons.icon("close_solution"))
         self.a_add_form = A("Add Windows &Form...", self.add_form)
         self.a_exit = A("E&xit", self.close)
         # edit
@@ -301,8 +537,14 @@ class MainWindow(QMainWindow):
 
         mb = self.menuBar()
         m = mb.addMenu("&File")
-        for a in (self.a_new, self.a_open, None, self.a_save, None):
+        self.file_menu = m
+        for a in (self.a_new, self.a_open, self.a_open_file, None, self.a_close_sln, None,
+                  self.a_save_file, self.a_save, None):
             m.addSeparator() if a is None else m.addAction(a)
+        self.recent_menu = m.addMenu("Recent &Projects and Solutions")
+        self.recent_menu.aboutToShow.connect(self._fill_recent_menu)
+        self._fill_recent_menu()
+        m.addSeparator()
         imp = m.addMenu("&Import")
         imp.addAction("Python GUI Program (Tkinter / Qt)...", self.import_python)
         imp.addAction("Visual Basic 6 Project (.vbp / .frm)...", self.import_vb6)
@@ -358,10 +600,42 @@ class MainWindow(QMainWindow):
         tb.addActions([self.a_run, self.a_stop])
         tb2 = self.addToolBar("Debug")
         tb2.setObjectName("Debug")
-        for a, text in ((self.a_step_into, "Step Into"), (self.a_step_over, "Step Over"),
-                        (self.a_step_out, "Step Out"), (self.a_bp, "Breakpoint")):
+        for a, text, ic in ((self.a_step_into, "Step Into", "step_into"), (self.a_step_over, "Step Over", "step_over"),
+                            (self.a_step_out, "Step Out", "step_out"), (self.a_bp, "Toggle Breakpoint", "breakpoint")):
             a.setIconText(text)
+            a.setIcon(icons.icon(ic))
             tb2.addAction(a)
+        for a in (self.a_new, self.a_open, self.a_undo, self.a_redo, self.a_run, self.a_run_nodebug, self.a_stop,
+                  self.a_step_into, self.a_step_over, self.a_step_out, self.a_bp, self.a_open_file):
+            self._tip(a)
+
+    @staticmethod
+    def _tip(a: QAction) -> None:
+        """Tool tip = the command name + its shortcut, e.g. "Step Over (F10)"."""
+        text = a.text().replace("&", "").replace("...", "")
+        keys = a.shortcut().toString(QKeySequence.SequenceFormat.NativeText)
+        a.setToolTip(f"{text} ({keys})" if keys else text)
+
+    def _fill_recent_menu(self):
+        m = self.recent_menu
+        m.clear()
+        items = self.recent_projects()
+        for i, path in enumerate(items, 1):
+            p = Path(path)
+            label = f"&{i}  {p.stem if p.suffix.lower() == SOLUTION_EXT else p.name}  -  {path}"
+            m.addAction(label, lambda f=path: self.open_project(Path(f)))
+        if not items:
+            a = m.addAction("(no recent projects)")
+            a.setEnabled(False)
+        else:
+            m.addSeparator()
+            m.addAction("Clear List", lambda: (self.settings.remove("recent"), self._refresh_recent()))
+
+    def _refresh_recent(self):
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, StartPage):
+                w.refresh()
 
     # ================================================================ project
     def recent_projects(self) -> list[str]:
@@ -383,6 +657,7 @@ class MainWindow(QMainWindow):
     def _remember(self, path: Path):
         items = [str(path)] + [p for p in self.recent_projects() if p.lower() != str(path).lower()]
         self.settings.setValue("recent", items[:8])
+        self._refresh_recent()
 
     def new_project(self):
         """File > New Project: create a project in a new solution or add it to the open one."""
@@ -399,6 +674,97 @@ class MainWindow(QMainWindow):
             f"RAD IDE solution or project (*{SOLUTION_EXT} {Project.FILE});;All files (*)")
         if f:
             self.open_project(Path(f))
+
+    def open_file_dialog(self):
+        """File > Open File...: any file in an editor tab (the project's own editors for its code files)."""
+        start = str(self.project.folder) if self.project is not None else ""
+        f, _ = QFileDialog.getOpenFileName(self, "Open File", start, "All files (*)")
+        if f:
+            self.open_any_file(Path(f))
+
+    def open_any_file(self, path: Path):
+        path = Path(path).resolve()
+        if self.project is not None and callable(getattr(self, "open_file", None)):
+            return self.open_file(path)                # web_workspace: project/web files, images ...
+        for w in (self.tabs.widget(i) for i in range(self.tabs.count())):
+            if isinstance(w, ModuleView) and Path(w.path).resolve() == path:
+                self.tabs.setCurrentWidget(w)
+                return w.editor
+        from .languages import all_plugins
+        ext = path.suffix.lower()
+        plugin = next((p for p in all_plugins() if p.code_ext == ext), None) or get_plugin("python-tk")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            text = path.read_text(encoding="cp1252", errors="replace")
+        except OSError as e:
+            QMessageBox.warning(self, APP_NAME, f"Cannot open the file:\n{e}")
+            return None
+        mv = ModuleView(plugin, path)
+        mv.editor.setText(text)
+        mv.editor.setModified(False)
+        mv.setToolTip(str(path))
+        self._show_tab(mv, path.name)
+        mv.editor.modificationChanged.connect(
+            lambda m, v=mv: self.tabs.indexOf(v) >= 0 and self.tabs.setTabText(
+                self.tabs.indexOf(v), v.path.name + ("*" if m else "")))
+        return mv.editor
+
+    def save_current(self) -> bool:
+        """File > Save <file>: only the document of the current tab."""
+        w = self.tabs.currentWidget()
+        if w is None or isinstance(w, StartPage):
+            return False
+        owner = self.project_of_widget(w)
+        if owner is not None and owner is not self.project:
+            self.activate_project(owner)
+        form = next((n for n, v in {**self.designers, **self.codeviews}.items() if v is w), None)
+        mod = next((m for m, v in self.modviews.items() if v is w), None)
+        if form is not None and self.project is not None:
+            self._save_form(form)
+            self.project.save()
+            self._save_breakpoints()
+            name = self.plugin_for_form(form).code_file(form)
+        elif mod is not None and self.project is not None:
+            if w.editor.isModified():
+                (self.project.folder / mod).write_text(w.editor.text(), encoding="utf-8")
+                w.editor.setModified(False)
+                self._update_module_title(mod)
+            name = mod
+        elif isinstance(w, ModuleView):                     # a file opened without a project
+            w.path.write_text(w.editor.text(), encoding="utf-8")
+            w.editor.setModified(False)
+            name = w.path.name
+        elif callable(getattr(w, "save", None)):           # Design View and other documents
+            w.save()
+            name = self.tabs.tabText(self.tabs.currentIndex()).rstrip("*")
+        else:
+            return False
+        self.statusBar().showMessage(f"Saved {name}", 3000)
+        return True
+
+    def close_solution(self):
+        """File > Close Solution: close every project (asks to save) and show the Start Page."""
+        if self.project is None and self.sln is None:
+            return
+        if not self._confirm_close_project():
+            return
+        active = self.project
+        for st in list(self._pstates.values()):
+            self.activate_project(st["project"])
+            self._save_breakpoints()
+        if active is not None:
+            self.activate_project(active)
+        self.stop_project()
+        self._reset()
+        self.sln, self.project, self.plugin = None, None, None
+        self._fill_solution()
+        self.solution.clear()
+        self.tabs.addTab(StartPage(self), "Start Page")
+        self.toolbox.setEnabled(False)
+        self._update_title()
+        self._update_actions()
+        self.log("Solution closed")
 
     def open_project(self, folder: Path, ask: bool = True, activate=None):
         """Open a solution (.radsln), a project (project.radproj) or a folder that holds one.
@@ -564,6 +930,9 @@ class MainWindow(QMainWindow):
 
     def _confirm_close_project(self) -> bool:
         if not self._any_modified():
+            return True
+        if not self.option("confirm_unsaved", True):      # Tools > Options: save without asking
+            self.save_all()
             return True
         r = QMessageBox.question(self, APP_NAME, "Save changes to the current project?",
                                  QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard |
@@ -825,8 +1194,14 @@ class MainWindow(QMainWindow):
         d, cv = self._current_designer(), self._current_code()
         running = self.session is not None and self.session.running()
         paused = running and self.session.paused
-        for a in (self.a_save, self.a_add_form, self.a_code, self.a_design):
+        for a in (self.a_save, self.a_add_form, self.a_code, self.a_design, self.a_close_sln):
             a.setEnabled(has)
+        cur = self.tabs.currentWidget()
+        title = self.tabs.tabText(self.tabs.currentIndex()).rstrip("*") if cur is not None else ""
+        savable = cur is not None and not isinstance(cur, StartPage) and (
+            d is not None or cv is not None or callable(getattr(cur, "save", None)))
+        self.a_save_file.setEnabled(savable)
+        self.a_save_file.setText(f"&Save {title}" if savable and title else "&Save")
         self.a_run.setEnabled(has and (not running or paused))
         self.a_run_nodebug.setEnabled(has and not running)
         self.a_stop.setEnabled(running or getattr(self, "web_server", None) is not None)
@@ -1126,8 +1501,7 @@ class MainWindow(QMainWindow):
             used = sorted({language_label(self.plugin_for_form(f)) for f in self.project.forms} |
                           {language_label(self.plugin_for_file(m)) for m in self.project.modules})
             lay.addRow("Languages used:", QLabel(", ".join(used)))
-        interp = QLabel(rp.find_interpreter(
-            self.settings.value(f"interpreter/{rp.id}", "") or "") or "(not found)")
+        interp = QLabel(rp.find_interpreter(self._configured_interpreter(rp)) or "(not found)")
         lay.addRow(f"Interpreter ({language_label(rp)}):", interp)
         box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         box.accepted.connect(dlg.accept)
@@ -1342,27 +1716,33 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("All files saved", 3000)
         return True
 
+    def _save_form(self, name: str) -> bool:
+        """Save one form (code file, .form and generated designer code); True when code was written."""
+        wrote = False
+        doc = self._doc(name)
+        fp = self.plugin_for_form(name)
+        code_path = self.project.folder / fp.code_file(name)
+        if name in self.codeviews:
+            cv = self.codeviews[name]
+            code = cv.editor.text()
+            if cv.editor.isModified() or not code_path.exists():
+                code_path.write_text(code, encoding="utf-8")
+                cv.editor.setModified(False)
+                wrote = True
+        else:
+            code = code_path.read_text(encoding="utf-8")
+        doc.save()
+        designer_path = self.project.folder / fp.designer_file(name)
+        designer_path.write_text(fp.generate_designer(doc.form, code), encoding="utf-8")
+        self._update_tab_titles(name)
+        return wrote
+
     def _save_active_project(self) -> bool:
         """Save the active project's documents; True when a code file was written."""
         wrote = False
         names = set(self.docs) | set(self.codeviews)
         for name in names:
-            doc = self._doc(name)
-            fp = self.plugin_for_form(name)
-            code_path = self.project.folder / fp.code_file(name)
-            if name in self.codeviews:
-                cv = self.codeviews[name]
-                code = cv.editor.text()
-                if cv.editor.isModified() or not code_path.exists():
-                    code_path.write_text(code, encoding="utf-8")
-                    cv.editor.setModified(False)
-                    wrote = True
-            else:
-                code = code_path.read_text(encoding="utf-8")
-            doc.save()
-            designer_path = self.project.folder / fp.designer_file(name)
-            designer_path.write_text(fp.generate_designer(doc.form, code), encoding="utf-8")
-            self._update_tab_titles(name)
+            wrote = self._save_form(name) or wrote
         for mod, mv in self.modviews.items():
             if mv.editor.isModified():
                 (self.project.folder / mod).write_text(mv.editor.text(), encoding="utf-8")
@@ -1420,10 +1800,24 @@ class MainWindow(QMainWindow):
         return [(f, ln + 1, conds.get((f, ln), "")) for f, lines in self.breakpoints.items() for ln in lines]
 
     # ================================================================ run / debug
+    def project_venv_python(self, project=None) -> str:
+        """python.exe of the project's own virtual environment (<project>/.venv), or ""."""
+        project = project or self.project
+        if project is None:
+            return ""
+        return project_venv_python(Path(project.folder))
+
+    def _configured_interpreter(self, plugin, project=None) -> str:
+        """Python projects run with their .venv first, then Tools > Options / Interpreter Path."""
+        if plugin is not None and plugin.id.startswith("python"):
+            venv = self.project_venv_python(project)
+            if venv:
+                return venv
+        return self.settings.value(f"interpreter/{plugin.id}", "") or "" if plugin is not None else ""
+
     def _interpreter(self) -> str:
         rp = self.run_plugin()
-        key = f"interpreter/{rp.id}"
-        found = rp.find_interpreter(self.settings.value(key, "") or "")
+        found = rp.find_interpreter(self._configured_interpreter(rp))
         if not found:
             found = self.choose_interpreter()
         return found
@@ -1517,7 +1911,7 @@ class MainWindow(QMainWindow):
         self._stop_hub()
 
         def interp_for(plugin):
-            return plugin.find_interpreter(self.settings.value(f"interpreter/{plugin.id}", "") or "")
+            return plugin.find_interpreter(self._configured_interpreter(plugin))
         search = []
         if self.sln is not None:   # modules of referenced projects (transitively) are found too
             search = [Path(p.folder) for p in self.sln.referenced_projects(self.project)]
@@ -1683,5 +2077,7 @@ def main(argv=None):
     win = MainWindow()
     if len(argv) > 1 and Path(argv[1]).exists():
         win.open_project(Path(argv[1]))
+    elif win.option("reopen_last", False) and win.recent_projects():
+        win.open_project(Path(win.recent_projects()[0]), ask=False)
     win.show()
     return app.exec()

@@ -133,10 +133,46 @@ def project_languages(win) -> list:
 
 
 def plugin_interpreter(win, plugin) -> str:
+    """The language's configured / detected interpreter (not a project venv)."""
     try:
         return plugin.find_interpreter(win.settings.value(f"interpreter/{plugin.id}", "") or "")
     except Exception:  # noqa: BLE001
         return ""
+
+
+def is_python(plugin) -> bool:
+    return plugin is not None and str(getattr(plugin, "id", "")).startswith("python")
+
+
+def venv_python(folder: Path) -> str:
+    from ..app import project_venv_python
+    return project_venv_python(folder)
+
+
+class ElidedLabel(QLabel):
+    """One line of text elided in the middle (long paths), full text in the tool tip."""
+
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(parent)
+        self._full = ""
+        self.setMinimumWidth(80)
+        self.set_full_text(text)
+
+    def set_full_text(self, text: str):
+        self._full = text
+        self.setToolTip(text)
+        self._elide()
+
+    def full_text(self) -> str:
+        return self._full
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._elide()
+
+    def _elide(self):
+        w = max(40, self.width() - 4)
+        super().setText(self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideMiddle, w))
 
 
 def resolve_tool(tool: str, interpreter: str) -> str:
@@ -247,9 +283,10 @@ class CommandRunner(QObject):
     def busy(self) -> bool:
         return self.proc is not None
 
-    def run(self, argv: list[str], cwd: str, done=None) -> None:
-        """done(exit_code, full_output) is called when the command ends."""
-        self.queue.append((argv, cwd, done))
+    def run(self, argv: list[str], cwd: str, done=None, quiet: bool = False) -> None:
+        """done(exit_code, full_output) is called when the command ends. *quiet*: the output is
+        not streamed to the log (listings) - only the command line and a failure are shown."""
+        self.queue.append((argv, cwd, done, quiet))
         if self.proc is None:
             self._next()
 
@@ -257,7 +294,8 @@ class CommandRunner(QObject):
         if not self.queue:
             self.busyChanged.emit(False)
             return
-        argv, cwd, done = self.queue.pop(0)
+        argv, cwd, done, quiet = self.queue.pop(0)
+        self._quiet = quiet
         self._buf = b""
         p = QProcess(self)
         p.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
@@ -287,6 +325,8 @@ class CommandRunner(QObject):
             return
         data = bytes(self.proc.readAllStandardOutput())
         self._buf += data
+        if getattr(self, "_quiet", False):
+            return
         self.output.emit(ANSI.sub("", self._decode(data)).replace("\r\n", "\n").replace("\r", "\n"))
 
     def _finished(self, code, done):
@@ -296,7 +336,12 @@ class CommandRunner(QObject):
         text = ANSI.sub("", self._decode(self._buf)).replace("\r\n", "\n")
         self.proc.deleteLater()
         self.proc = None
-        self.output.emit(f"[exit code {code}]\n")
+        if getattr(self, "_quiet", False):
+            if code != 0:
+                tail = "\n".join(text.strip().splitlines()[-6:])
+                self.output.emit(f"{tail}\n[failed, exit code {code}]\n")
+        else:
+            self.output.emit(f"[exit code {code}]\n")
         if done is not None:
             done(code, text)
         self._next()
@@ -332,6 +377,14 @@ def _q(a: str) -> str:
     return f'"{a}"' if " " in a else a
 
 
+def _short(path: str) -> str:
+    """A long interpreter path shortened for the info lines (the full one is in the log)."""
+    if len(path) <= 70:
+        return path
+    p = Path(path)
+    return f"{p.anchor}...\\{p.parent.parent.name}\\{p.parent.name}\\{p.name}"
+
+
 # ===================================================================== dialog
 class PackagesDialog(QDialog):
     def __init__(self, win, plugin=None):
@@ -357,6 +410,18 @@ class PackagesDialog(QDialog):
         top.addWidget(QLabel("Language:"))
         top.addWidget(self.lang, 1)
         top.addWidget(self.btn_init)
+        # Python: packages go into the project's own virtual environment (.venv) by default
+        self.env = QComboBox()
+        self.env.addItem("Project virtual environment (.venv) - recommended", "venv")
+        self.env.addItem("Global interpreter (shared by every project)", "global")
+        self.env.setToolTip("The project's .venv keeps its packages separate from other projects. It is "
+                            "created on the first install; Run and Debug then use it automatically.")
+        self.env_label = QLabel("Install into:")
+        env_row = QHBoxLayout()
+        env_row.addWidget(self.env_label)
+        env_row.addWidget(self.env, 1)
+        self.folder_lbl = ElidedLabel()
+        self.folder_lbl.setProperty("radRole", "muted")
 
         # --- Browse tab
         self.query = QLineEdit(placeholderText="Search packages (Enter)")
@@ -369,6 +434,9 @@ class PackagesDialog(QDialog):
         srow.addWidget(self.query, 1)
         srow.addWidget(self.btn_search)
         srow.addWidget(self.btn_web)
+        self.search_hint = QLabel()
+        self.search_hint.setWordWrap(True)
+        self.search_hint.setProperty("radRole", "muted")
         self.results = QTreeWidget()
         self.results.setHeaderLabels(["Package", "Version", "Description"])
         self.results.setColumnWidth(0, 220)
@@ -391,6 +459,7 @@ class PackagesDialog(QDialog):
         browse = QWidget()
         bl = QVBoxLayout(browse)
         bl.addLayout(srow)
+        bl.addWidget(self.search_hint)
         bl.addWidget(self.results, 1)
         bl.addLayout(irow)
 
@@ -446,11 +515,14 @@ class PackagesDialog(QDialog):
         split.setSizes([400, 160])
         lay = QVBoxLayout(self)
         lay.addLayout(top)
+        lay.addLayout(env_row)
         lay.addWidget(self.info)
+        lay.addWidget(self.folder_lbl)
         lay.addWidget(split, 1)
         lay.addLayout(bottom)
 
         self.lang.currentIndexChanged.connect(lambda _i: self._on_language())
+        self.env.currentIndexChanged.connect(lambda _i: self._on_env())
         if plugin is not None and plugin in self.plugins:
             self.lang.setCurrentIndex(self.plugins.index(plugin))
         self._on_language()
@@ -467,10 +539,29 @@ class PackagesDialog(QDialog):
     def folder(self) -> Path:
         return self.win.project.folder
 
-    def interpreter(self) -> str:
+    def _env_key(self) -> str:
+        return "packages/env/" + str(self.folder()).replace("\\", "/").replace("/", "|")
+
+    def uses_venv(self) -> bool:
+        return is_python(self.plugin) and self.env.currentData() == "venv"
+
+    def base_interpreter(self) -> str:
         return plugin_interpreter(self.win, self.plugin)
 
+    def interpreter(self) -> str:
+        """Python with "Install into: .venv": the venv's python ("" until it is created)."""
+        if self.uses_venv():
+            return venv_python(self.folder())
+        return self.base_interpreter()
+
+    def _on_env(self):
+        if not getattr(self, "_env_loading", False):
+            self.win.settings.setValue(self._env_key(), self.env.currentData())
+        self._on_language()
+
     def tool_path(self) -> str:
+        if self.uses_venv() and not self.interpreter():
+            return self.base_interpreter()              # pip of the venv-to-be (created on install)
         return resolve_tool(self.pm.tool, self.interpreter()) if self.pm else ""
 
     def manifest_path(self) -> Path | None:
@@ -478,6 +569,18 @@ class PackagesDialog(QDialog):
 
     def _on_language(self):
         pm = self.pm
+        py = is_python(self.plugin)
+        self.env.setVisible(py)
+        self.env_label.setVisible(py)
+        if py:
+            self._env_loading = True
+            saved = str(self.win.settings.value(self._env_key(), "") or "")
+            if not saved:       # an existing .venv or a new project: venv; old projects keep the global one
+                saved = "venv"
+            self.env.setCurrentIndex(max(0, self.env.findData(saved)))
+            self._env_loading = False
+        self.folder_lbl.set_full_text(f"Project folder: {self.folder()}")
+        self.search_hint.setText(self._search_hint())
         self.results.clear()
         self.installed.clear()
         self.version.clear()
@@ -491,17 +594,28 @@ class PackagesDialog(QDialog):
             return
         tool = self.tool_path()
         interp = self.interpreter()
-        lines = [f"<b>{pm.name}</b>: " + (tool or f"<span style='color:#C0392B'>'{pm.tool}' was not found "
-                                                   "(install it or set the path in Tools &gt; Options)</span>")]
-        if "{interpreter}" in " ".join(pm.install_cmd or []) and interp:
+        from html import escape
+        from .. import theme
+        err, note = theme.color("error"), theme.color("note")
+        lines = [f"<b>{pm.name}</b>: " + (escape(_short(tool)) if tool else
+                                          f"<span style='color:{err}'>'{pm.tool}' was not found "
+                                          "(install it or set the path in Tools &gt; Options)</span>")]
+        if self.uses_venv():
+            if interp:
+                lines.append("Environment: project <b>.venv</b> (Run and Debug use it too)")
+            else:
+                lines.append(f"Environment: <span style='color:{note}'>no .venv yet - it is created with "
+                             f"{escape(_short(self.base_interpreter()) or 'Python')} on the first install</span>")
+        elif "{interpreter}" in " ".join(pm.install_cmd or []) and interp:
             own = Path(interp).resolve() == Path(sys.executable).resolve()
-            lines.append(f"Interpreter: {interp}" + ("  <i>(the IDE's own Python)</i>" if own else ""))
+            lines.append(f"Interpreter: {escape(_short(interp))}" +
+                         ("  <i>(the IDE's own Python - packages are shared with the IDE)</i>" if own else
+                          "  <i>(global - shared by every project)</i>"))
         mp = self.manifest_path()
         if mp is not None:
             lines.append(f"Manifest: {pm.manifest} " + ("(found)" if mp.exists() else
-                                                         "<span style='color:#C07000'>(missing - it is created "
+                                                         f"<span style='color:{note}'>(missing - it is created "
                                                          "on the first install)</span>"))
-        lines.append(f"Folder: {self.folder()}")
         self.info.setText("<br>".join(lines))
         ok = bool(tool)
         self.btn_init.setVisible(mp is not None)
@@ -513,8 +627,22 @@ class PackagesDialog(QDialog):
         self.btn_uninstall.setEnabled(ok and bool(pm.uninstall_cmd))
         self.btn_update.setEnabled(ok and bool(pm.install_cmd))
         self.btn_refresh.setEnabled(ok)
-        if ok:
+        if ok and self.uses_venv() and not interp:
+            self._fill_installed([])
+            self._log("No project .venv yet: the Installed list is empty until the first install.\n")
+        elif ok:
             self.refresh_installed()
+
+    def _search_hint(self) -> str:
+        pm = self.pm
+        if pm is None:
+            return ""
+        if is_python(self.plugin):
+            return ("Type the exact package name (for example <b>requests</b>) and press Enter: pip shows the "
+                    "versions you can install. Open Website searches pypi.org by keyword.")
+        if pm.search_cmd:
+            return "Type a package name or keyword and press Enter."
+        return "Open Website to find packages, then type the name below and Install."
 
     def _native_key(self) -> str:
         return Path(self.pm.tool).stem.lower() if self.pm else ""
@@ -532,13 +660,36 @@ class PackagesDialog(QDialog):
         self.out.ensureCursorVisible()
 
     def _argv(self, cmd, **kw) -> list[str]:
-        return build_argv(cmd, self.pm, self.interpreter(), **kw)
+        return build_argv(cmd, self.pm, self.interpreter() or self.base_interpreter(), **kw)
 
-    def _run(self, cmd, done=None, **kw):
+    def _run(self, cmd, done=None, quiet: bool = False, **kw):
         argv = self._argv(cmd, **kw)
         if not argv:
             return
-        self.runner.run(argv, str(self.folder()), done)
+        self.runner.run(argv, str(self.folder()), done, quiet)
+
+    def ensure_venv(self, then) -> None:
+        """Create <project>/.venv with the chosen Python when it is missing, then call *then*."""
+        if not self.uses_venv() or self.interpreter():
+            then()
+            return
+        base = self.base_interpreter()
+        if not base:
+            QMessageBox.warning(self, "Virtual environment", "No Python interpreter was found to create the "
+                                "project's .venv (Tools > Options > Languages).")
+            return
+        self._log("Creating the project's virtual environment (.venv)...\n")
+
+        def done(code, _text):
+            if code == 0 and self.interpreter():
+                self._log(f"Created .venv ({_short(self.interpreter())})\n")
+                self.win.log(f"[packages] created {self.folder() / '.venv'}")
+                self._on_language()
+                then()
+            else:
+                self.status.setText("Could not create the .venv (see the log)")
+        from ..app import real_python
+        self.runner.run([real_python(base), "-m", "venv", ".venv"], str(self.folder()), done, True)
 
     # ------------------------------------------------------------ installed
     def refresh_installed(self):
@@ -555,9 +706,12 @@ class PackagesDialog(QDialog):
             if mp is not None and mp.exists():
                 self._fill_installed(parse_packages(mp.read_text(encoding="utf-8", errors="replace")))
             return
-        self._run(pm.list_cmd, lambda code, text: self._fill_installed(parse_packages(text)) if code == 0 else None)
+        self._run(pm.list_cmd, lambda code, text: self._fill_installed(parse_packages(text), log=True)
+                  if code == 0 else None, quiet=True)
 
-    def _fill_installed(self, rows):
+    def _fill_installed(self, rows, log: bool = False):
+        if log:
+            self._log(f"{len(rows)} package(s) installed in this environment.\n")
         self.installed.setSortingEnabled(False)
         self.installed.clear()
         for name, ver, desc in rows:
@@ -604,7 +758,8 @@ class PackagesDialog(QDialog):
             if not q and "{query}" in " ".join(pm.search_cmd):
                 return
             self._run(pm.search_cmd, lambda code, text: self._fill_results(parse_packages(text),
-                                                                           available_versions(text)), query=q)
+                                                                           available_versions(text)),
+                      quiet=True, query=q)
         elif pm.search_url:
             self.open_website()
 
@@ -666,8 +821,9 @@ class PackagesDialog(QDialog):
         if not re.match(r"^[\w@./:+\-\[\],]+$", name):
             QMessageBox.warning(self, "Install", f"'{name}' is not a valid package name.")
             return
-        self.create_manifest(then=lambda: self._run(pm.install_cmd, lambda code, text: self._after_change(
-            code, name, version, True), name=name, version=version))
+        self.ensure_venv(lambda: self.create_manifest(then=lambda: self._run(
+            pm.install_cmd, lambda code, text: self._after_change(code, name, version, True, text),
+            quiet=True, name=name, version=version)))
 
     def uninstall(self, name: str | None = None):
         pm = self.pm
@@ -680,12 +836,16 @@ class PackagesDialog(QDialog):
             name = it.text(0)
             if QMessageBox.question(self, "Uninstall", f"Uninstall '{name}'?") != QMessageBox.StandardButton.Yes:
                 return
-        self._run(pm.uninstall_cmd, lambda code, text: self._after_change(code, name, "", False), name=name)
+        self._run(pm.uninstall_cmd, lambda code, text: self._after_change(code, name, "", False, text),
+                  quiet=True, name=name)
 
-    def _after_change(self, code: int, name: str, version: str, installed: bool):
+    def _after_change(self, code: int, name: str, version: str, installed: bool, text: str = ""):
         if code != 0:
             self.status.setText(f"{'Install' if installed else 'Uninstall'} of {name} failed (exit code {code})")
             return
+        summary = next((ln.strip() for ln in reversed(text.splitlines())
+                        if ln.strip().lower().startswith(("successfully", "requirement already satisfied"))), "")
+        self._log((summary or f"{name} {'installed' if installed else 'uninstalled'}") + "\n")
         self.status.setText(f"{name} {'installed' if installed else 'uninstalled'}")
         self.win.log(f"[packages] {self.pm.name}: {name} {'installed' if installed else 'uninstalled'}")
         mp = self.manifest_path()
@@ -699,7 +859,7 @@ class PackagesDialog(QDialog):
                 update_requirements(mp, name, ver if installed else None)
                 self._on_language_info()
         if self.pm.list_cmd and not NATIVE_LIST.get(self._native_key()):
-            self._run(self.pm.list_cmd, refreshed)
+            self._run(self.pm.list_cmd, refreshed, quiet=True)
         else:
             self.refresh_installed()
             refreshed()

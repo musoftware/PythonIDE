@@ -9,6 +9,7 @@ solution). The same templates appear in File > New Project (Web group) through
 wraps their creator so the New Project route shows a progress window instead of freezing the IDE."""
 from __future__ import annotations
 
+import re
 import threading
 from pathlib import Path
 
@@ -79,6 +80,16 @@ def run_with_progress(parent, title: str, fn):
     return box.get("result")
 
 
+def _status_detail(msg: str, ok: bool) -> str:
+    """'Ready.' from gallery.check() would read 'Ready: Ready.' - keep only what adds information."""
+    m = msg.strip()
+    if ok:
+        m = re.sub(r"^ready\s*[.:]?\s*", "", m, flags=re.I).strip()
+        m = re.sub(r"^\((.*)\)\.?$", r"\1", m).strip()
+        return (m[:1].upper() + m[1:]) if m else "everything needed is installed."
+    return m
+
+
 class AppGalleryDialog(QDialog):
     def __init__(self, win, preselect: str = ""):
         super().__init__(win)
@@ -107,7 +118,9 @@ class AppGalleryDialog(QDialog):
         self.list.setResizeMode(QListWidget.ResizeMode.Adjust)
         self.list.setWordWrap(True)
         for t in gallery.TEMPLATES:
-            icon = self.style().standardIcon(getattr(QStyle.StandardPixmap, gallery.ICONS.get(t.id, "SP_FileIcon")))
+            from ..icons import TEMPLATE_BADGES, badge
+            letters, colour = TEMPLATE_BADGES.get(t.id, (t.title[:2], "#5A6B82"))
+            icon = badge(letters, colour, 40)
             it = QListWidgetItem(icon, t.title)
             it.setData(Qt.ItemDataRole.UserRole, t.id)
             it.setToolTip(t.description)
@@ -231,7 +244,8 @@ class AppGalleryDialog(QDialog):
             self.name.setText(self._unique_name(t.default_name))
         from html import escape
         feats = "".join(f"<li>{escape(f)}</li>" for f in t.features)
-        color = "#2E9E4F" if ok else "#D93025"
+        from .. import theme
+        color = theme.color("success") if ok else theme.color("error")
         lang = {"php-web": "PHP Web Site", "static-web": "HTML / CSS / JavaScript Site",
                 "node-web": "Node.js Web Site"}.get(t.language, t.language)
         self.details.setText(
@@ -239,7 +253,8 @@ class AppGalleryDialog(QDialog):
             + (f"<ul>{feats}</ul>" if feats else "")
             + f"<p><b>Project type:</b> {escape(lang)}<br><b>Web root:</b> {escape(t.root)}"
               f"<br><b>Start page:</b> {escape(t.start)}</p>"
-              f"<p style='color:{color}'><b>{'Ready' if ok else 'Not available'}:</b> {escape(msg)}</p>")
+              f"<p style='color:{color}'><b>{'Ready' if ok else 'Not available'}:</b> "
+              f"{escape(_status_detail(msg, ok))}</p>")
         self.create_btn.setEnabled(ok and self._thread is None)
         self._update_where()
 
@@ -355,7 +370,12 @@ def _start_page_button(win) -> None:
         return
     for i in range(win.tabs.count()):
         page = win.tabs.widget(i)
-        if isinstance(page, StartPage) and not getattr(page, "_rad_gallery", False):
+        if isinstance(page, StartPage) and not getattr(page, "_rad_gallery", False) and hasattr(page, "add_section"):
+            sec = page.add_section("Web Sites")
+            page.add_link(sec, "App Gallery... (PHP, WordPress, Laravel, Bootstrap, Node.js sites)",
+                          lambda: show_app_gallery(win), "Create a web site from a ready-made template")
+            page._rad_gallery = True
+        elif isinstance(page, StartPage) and not getattr(page, "_rad_gallery", False):
             b = QPushButton("App Gallery... (PHP, WordPress, Laravel, Bootstrap, Node.js sites)")
             b.setMinimumHeight(30)
             b.clicked.connect(lambda _=False: show_app_gallery(win))

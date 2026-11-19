@@ -735,7 +735,12 @@ def _start_page_templates(win):
     from ..app import StartPage
     for i in range(win.tabs.count()):
         page = win.tabs.widget(i)
-        if isinstance(page, StartPage) and not getattr(page, "_rad_templates", False):
+        if isinstance(page, StartPage) and not getattr(page, "_rad_templates", False) and hasattr(page, "add_section"):
+            sec = page.add_section("New project from a template")
+            for tid, title, desc in TEMPLATES:
+                page.add_link(sec, title + "...", lambda t=tid: new_from_template(win, t), desc)
+            page._rad_templates = True
+        elif isinstance(page, StartPage) and not getattr(page, "_rad_templates", False):
             lay = page.layout()
             box = QGroupBox("New project from a template")
             bl = QVBoxLayout(box)

@@ -11,7 +11,8 @@ from pathlib import Path
 
 from PyQt6.QtCore import QRegularExpression, Qt, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut, QTextCursor, QTextDocument
-from PyQt6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QDockWidget, QFormLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QCheckBox, QDialog, QDockWidget, QFormLayout, QHBoxLayout,
+                             QMessageBox,
                              QLabel, QLineEdit, QToolButton, QToolTip, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
@@ -248,23 +249,127 @@ class FindBar(QWidget):
 
 # =================================================================== find in files
 class FindInFilesDialog(QDialog):
-    def __init__(self, parent, text=""):
+    """Find and Replace (Visual Studio "Find in Files"): what, replacement, where, file types and options.
+    exec() returns Accepted; .action() then says "find" (Find All) or "replace" (Replace All)."""
+    SCOPES = [("document", "Current document"), ("project", "Current project"),
+              ("solution", "Entire solution"), ("folder", "Folder...")]
+    HISTORY = "find/history"
+
+    def __init__(self, parent, text="", scope: str = "project"):
         super().__init__(parent)
-        self.setWindowTitle("Find in Files")
-        self.text = QLineEdit(text)
-        self.case = QCheckBox("Match case")
-        self.regex = QCheckBox("Use regular expressions")
+        from PyQt6.QtWidgets import QComboBox, QGroupBox, QPushButton
+        self.win = parent
+        self._action = "find"
+        self.setWindowTitle("Find and Replace")
+        self.setMinimumWidth(520)
+        settings = getattr(parent, "settings", None)
+        hist = settings.value(self.HISTORY, []) if settings is not None else []
+        hist = [hist] if isinstance(hist, str) else list(hist or [])
+        self.what = QComboBox()
+        self.what.setEditable(True)
+        self.what.addItems(hist[:15])
+        self.what.setEditText(text)
+        self.what.lineEdit().setPlaceholderText("Text or regular expression to find")
+        self.text = self.what.lineEdit()                  # (kept: older callers read dlg.text.text())
         self.replace = QLineEdit()
-        self.replace.setPlaceholderText("(leave empty to only find)")
-        lay = QFormLayout(self)
-        lay.addRow("Find what:", self.text)
-        lay.addRow("Replace with:", self.replace)
-        lay.addRow(self.case)
-        lay.addRow(self.regex)
-        box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        box.accepted.connect(self.accept)
-        box.rejected.connect(self.reject)
-        lay.addRow(box)
+        self.replace.setPlaceholderText("Replacement (Replace All only)")
+        self.scope = QComboBox()
+        for key, title in self.SCOPES:
+            self.scope.addItem(title, key)
+        self.scope.setCurrentIndex(max(0, self.scope.findData(scope)))
+        self.folder = QLineEdit()
+        self.folder.setPlaceholderText("Folder to search")
+        proj = getattr(parent, "project", None)
+        if proj is not None:
+            self.folder.setText(str(proj.folder))
+        self.btn_folder = QPushButton("...")
+        self.btn_folder.setFixedWidth(30)
+        self.btn_folder.setToolTip("Choose the folder")
+        self.btn_folder.clicked.connect(self._pick_folder)
+        frow = QHBoxLayout()
+        frow.setContentsMargins(0, 0, 0, 0)
+        frow.addWidget(self.folder, 1)
+        frow.addWidget(self.btn_folder)
+        self.types = QComboBox()
+        self.types.setEditable(True)
+        self.types.addItems(["*.*", "*.py;*.pyw", "*.ring", "*.bas;*.frm", "*.cs", "*.js;*.ts",
+                             "*.php;*.html;*.css;*.js", "*.html;*.htm", "*.txt;*.md;*.json"])
+        self.types.setToolTip("File name patterns separated by ';' (used for folders and web sites)")
+        self.case = QCheckBox("Match &case")
+        self.word = QCheckBox("Match &whole word")
+        self.regex = QCheckBox("Use &regular expressions")
+        opts = QGroupBox("Find options")
+        ol = QVBoxLayout(opts)
+        for c in (self.case, self.word, self.regex):
+            ol.addWidget(c)
+        form = QFormLayout()
+        form.addRow("Fi&nd what:", self.what)
+        form.addRow("Re&place with:", self.replace)
+        form.addRow("&Look in:", self.scope)
+        self.folder_row = QWidget()
+        self.folder_row.setLayout(frow)
+        form.addRow("", self.folder_row)
+        form.addRow("File &types:", self.types)
+        self.b_find = QPushButton("&Find All")
+        self.b_find.setDefault(True)
+        self.b_replace = QPushButton("Replace &All")
+        b_close = QPushButton("Close")
+        self.b_find.clicked.connect(lambda: self._done("find"))
+        self.b_replace.clicked.connect(lambda: self._done("replace"))
+        b_close.clicked.connect(self.reject)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        for b in (self.b_find, self.b_replace, b_close):
+            buttons.addWidget(b)
+        lay = QVBoxLayout(self)
+        lay.addLayout(form)
+        lay.addWidget(opts)
+        lay.addLayout(buttons)
+        self.scope.currentIndexChanged.connect(lambda _i: self._sync())
+        self.what.editTextChanged.connect(lambda _t: self._sync())
+        self._sync()
+        self.what.setFocus()
+        self.what.lineEdit().selectAll()
+
+    def _sync(self):
+        key = self.scope.currentData()
+        self.folder_row.setVisible(key == "folder")
+        self.types.setEnabled(key in ("folder", "project", "solution"))
+        has = bool(self.what.currentText())
+        self.b_find.setEnabled(has)
+        self.b_replace.setEnabled(has)
+
+    def _pick_folder(self):
+        from PyQt6.QtWidgets import QFileDialog
+        d = QFileDialog.getExistingDirectory(self, "Look in", self.folder.text())
+        if d:
+            self.folder.setText(d)
+
+    def _done(self, action: str):
+        self._action = action
+        settings = getattr(self.win, "settings", None)
+        t = self.what.currentText()
+        if settings is not None and t:
+            hist = [t] + [self.what.itemText(i) for i in range(self.what.count()) if self.what.itemText(i) != t]
+            settings.setValue(self.HISTORY, hist[:15])
+        self.accept()
+
+    def action(self) -> str:
+        return self._action
+
+    def scope_key(self) -> str:
+        return self.scope.currentData()
+
+    def patterns(self) -> list[str]:
+        pats = [p.strip() for p in re.split(r"[;,]", self.types.currentText()) if p.strip()]
+        return pats or ["*.*"]
+
+    def regex_pattern(self):
+        """The compiled pattern (raises re.error for a bad regular expression)."""
+        pat = self.what.currentText() if self.regex.isChecked() else re.escape(self.what.currentText())
+        if self.word.isChecked():
+            pat = rf"\b(?:{pat})\b"
+        return re.compile(pat, 0 if self.case.isChecked() else re.I)
 
 
 # =================================================================== install
@@ -393,6 +498,9 @@ def _goto(win, file: str, line: int):
     if not file or not win.project:
         return
     ed = win._editor_for_file(file)
+    if ed is None and Path(file).is_absolute() and Path(file).is_file():
+        opener = getattr(win, "open_any_file", None) or getattr(win, "open_file", None)
+        ed = opener(Path(file)) if opener is not None else None
     if ed is not None:
         ed.goto_line(max(0, line - 1))
 
@@ -407,40 +515,165 @@ def goto_line_dialog(win):
         cv.editor.goto_line(n - 1)
 
 
-def find_in_files(win):
-    if not win.project:
-        return
+SKIP_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".radide_backup", "_deleted", "vendor",
+             ".idea", ".vs", "bin", "obj", "dist", "build"}
+
+
+def _match_types(name: str, patterns: list[str]) -> bool:
+    import fnmatch
+    return any(p in ("*", "*.*") or fnmatch.fnmatch(name.lower(), p.lower()) for p in patterns)
+
+
+def _open_editors(win) -> dict:
+    """normcase(absolute path) -> editor, for every open code tab of every project."""
+    import os
+    out = {}
+    states = win.project_states() if hasattr(win, "project_states") else []
+    for st in states:
+        folder = Path(st["project"].folder)
+        for name, cv in st["codeviews"].items():
+            fp = win.plugin_for_form(name) if st["project"] is win.project else None
+            path = getattr(cv.editor, "path", None) or (folder / fp.code_file(name) if fp else None)
+            if path is not None:
+                out[os.path.normcase(str(Path(path).resolve()))] = cv.editor
+        for mod, mv in st["modviews"].items():
+            path = getattr(mv, "path", None) or folder / mod
+            out[os.path.normcase(str(Path(path).resolve()))] = mv.editor
+    return out
+
+
+def _walk(folder: Path, patterns: list[str], limit: int = 5000):
+    import os
+    n = 0
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        for f in files:
+            if _match_types(f, patterns):
+                yield Path(root) / f
+                n += 1
+                if n >= limit:
+                    return
+
+
+def _project_files(win, project, patterns) -> list[Path]:
+    folder = Path(project.folder)
+    if getattr(project, "kind", "") == "website":
+        return list(_walk(folder, patterns))
+    from .languages import plugin_for_form
+    names = [plugin_for_form(project, f).code_file(f) for f in project.forms] + list(project.modules)
+    return [folder / n for n in names if _match_types(n, patterns)]
+
+
+def search_targets(win, scope: str, patterns: list[str], folder: str = "") -> list[tuple[str, Path | None, str]]:
+    """(display name, absolute path or None, text) of the files to search. Open editors give their
+    current (unsaved) text."""
+    import os
+    editors = _open_editors(win)
+    out: list[tuple[str, Path | None, str]] = []
+
+    def add(path: Path, display: str):
+        key = os.path.normcase(str(path.resolve()))
+        ed = editors.get(key)
+        if ed is not None:
+            out.append((display, path, ed.text()))
+            return
+        try:
+            if path.stat().st_size > 2_000_000:
+                return
+            data = path.read_bytes()
+        except OSError:
+            return
+        if b"\0" in data[:4096]:
+            return                                  # binary
+        out.append((display, path, data.decode("utf-8", errors="replace")))
+
+    if scope == "document":
+        cv = win._current_code()
+        ed = getattr(cv, "editor", None)
+        if ed is not None:
+            path = getattr(ed, "path", None) or getattr(cv, "path", None)
+            name = Path(path).name if path else win.tabs.tabText(win.tabs.currentIndex()).rstrip("*")
+            out.append((name, Path(path) if path else None, ed.text()))
+        return out
+    if scope == "folder":
+        base = Path(folder) if folder else (Path(win.project.folder) if win.project else None)
+        if base is None or not base.is_dir():
+            return out
+        for p in _walk(base, patterns):
+            add(p, str(p))
+        return out
+    projects = [win.project] if scope == "project" or not hasattr(win, "projects") else win.projects()
+    for proj in projects:
+        if proj is None:
+            continue
+        multi = scope == "solution" and len(projects) > 1
+        for p in _project_files(win, proj, patterns):
+            if not p.exists() and os.path.normcase(str(p.resolve())) not in editors:
+                continue
+            own = proj is win.project and not multi and getattr(proj, "kind", "") != "website"
+            add(p, p.name if own else str(p))        # the project's own files by name, others by path
+    return out
+
+
+def find_in_files(win, scope: str | None = None):
+    if not win.project and scope != "folder":
+        win.statusBar().showMessage("Open a project first (or use Look in: Folder...)", 4000)
     cv = win._current_code()
-    sel = cv.editor.textCursor().selectedText() if cv else ""
-    dlg = FindInFilesDialog(win, sel)
+    sel = ""
+    try:
+        sel = cv.editor.selectedText() if cv is not None and hasattr(cv.editor, "selectedText") else ""
+    except Exception:  # noqa: BLE001
+        sel = ""
+    if "\n" in sel or " " in sel:
+        sel = ""
+    dlg = FindInFilesDialog(win, sel, scope or ("project" if win.project else "folder"))
     if not dlg.exec() or not dlg.text.text():
         return
-    flags = 0 if dlg.case.isChecked() else re.I
-    pat = dlg.text.text() if dlg.regex.isChecked() else re.escape(dlg.text.text())
     try:
-        rx = re.compile(pat, flags)
+        rx = dlg.regex_pattern()
     except re.error as e:
-        win.log(f"bad pattern: {e}")
+        QMessageBox.warning(win, "Find and Replace", f"The regular expression is not valid:\n{e}")
         return
-    texts = _project_texts(win)
+    replace = dlg.action() == "replace"
+    repl = dlg.replace.text()
+    if not dlg.regex.isChecked():
+        repl = repl.replace("\\", "\\\\")          # a literal replacement (no group references)
+    targets = search_targets(win, dlg.scope_key(), dlg.patterns(), dlg.folder.text().strip())
+    editors = _open_editors(win)
     win.find_results.clear()
-    hits = 0
-    for fname, text in texts.items():
+    hits = files_hit = changed_files = 0
+    import os
+    for display, path, text in targets:
         lines = text.splitlines()
         changed = False
+        found = False
         for i, ln in enumerate(lines, 1):
             if rx.search(ln):
                 hits += 1
-                win.find_results.addTopLevelItem(QTreeWidgetItem([fname, str(i), ln.strip()[:200]]))
-                if dlg.replace.text():
-                    lines[i - 1] = rx.sub(dlg.replace.text(), ln)
+                found = True
+                win.find_results.addTopLevelItem(QTreeWidgetItem([display, str(i), ln.strip()[:200]]))
+                if replace:
+                    lines[i - 1] = rx.sub(repl, ln)
                     changed = True
+        files_hit += found
         if changed:
+            changed_files += 1
             new = "\n".join(lines) + ("\n" if text.endswith("\n") else "")
-            ed = win._editor_for_file(fname)
+            ed = editors.get(os.path.normcase(str(path.resolve()))) if path is not None else None
+            if ed is None and path is None:
+                ed = getattr(win._current_code(), "editor", None)
             if ed is not None:
                 win._replace_code(type("CV", (), {"editor": ed})(), new)
-    win.dock_find.setWindowTitle(f"Find Results ({hits} matches)")
+            elif path is not None:
+                try:
+                    path.write_text(new, encoding="utf-8")
+                except OSError as e:
+                    win.log(f"*** Replace: cannot write {path}: {e}")
+    what = f"{hits} match{'es' if hits != 1 else ''} in {files_hit} file{'s' if files_hit != 1 else ''}"
+    if replace:
+        what += f", replaced in {changed_files} file{'s' if changed_files != 1 else ''}"
+    win.dock_find.setWindowTitle(f"Find Results ({what})")
+    win.statusBar().showMessage(f"Find: {what} ({len(targets)} files searched)", 5000)
     win.dock_find.show()
     win.dock_find.raise_()
 

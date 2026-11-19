@@ -11,7 +11,9 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QF
                              QPushButton, QScrollArea, QSpinBox, QTabWidget, QVBoxLayout, QWidget)
 
 DEFAULTS = {"theme": "Light", "editor_font": "Consolas", "editor_font_size": 10, "tab_width": 4,
-            "grid_size": 8, "snap": True, "autosave_seconds": 60}
+            "grid_size": 8, "snap": True, "autosave_seconds": 60, "ui_font_size": 9,
+            "show_start_page": True, "reopen_last": False, "confirm_unsaved": True}
+LAYOUTS = [("vs", "Visual Studio"), ("vscode", "VS Code"), ("agent", "Agent")]
 KEY = "options/"
 # extra Options pages added by other features: hook(dialog) -> (widget, title, apply_fn) or None
 PAGE_HOOKS: list = []
@@ -175,6 +177,13 @@ def apply_theme(win):
     T.apply(get(win, "theme"))
     t = T.current()
     win.setStyleSheet("")                  # the app-wide sheet (theme.APP_STYLE) does the chrome
+    from PyQt6.QtWidgets import QApplication
+    app = QApplication.instance()
+    size = max(7, min(16, get(win, "ui_font_size")))
+    if app is not None and app.font().pointSize() != size:
+        f = app.font()
+        f.setPointSize(size)
+        app.setFont(f)
     mono = f"QPlainTextEdit {{ background: {t['base']}; color: {t['text']}; }}"
     for name in ("output", "immediate"):
         w = getattr(win, name, None)
@@ -251,12 +260,18 @@ def _on_tab_changed(win, *_):
 
 
 # ===================================================================== dialog
+def _section(title: str) -> QLabel:
+    lbl = QLabel(title)
+    lbl.setStyleSheet("font-weight: bold; padding-top: 8px;")
+    return lbl
+
+
 class OptionsDialog(QDialog):
     def __init__(self, win):
         super().__init__(win)
         self.win = win
         self.setWindowTitle("Options")
-        self.resize(620, 460)
+        self.resize(680, 520)
         tabs = QTabWidget()
 
         # Environment
@@ -267,14 +282,42 @@ class OptionsDialog(QDialog):
         self.theme.addItems(T.THEME_NAMES)
         self.theme.setCurrentText(get(win, "theme"))
         f.addRow("Color theme:", self.theme)
+        self.layout_mode = QComboBox()
+        for mode, title in LAYOUTS:
+            self.layout_mode.addItem(title, mode)
+        wb = getattr(win, "workbench", None)
+        cur = getattr(wb, "mode", None) or str(win.settings.value("workbench/mode", "vs") or "vs")
+        self.layout_mode.setCurrentIndex(max(0, self.layout_mode.findData(cur)))
+        self.layout_mode.setToolTip("Visual Studio: menus, tool bars and docked windows. VS Code: Activity Bar, "
+                                    "Side Bar and Panel. Agent: the AI Agent Manager is the main surface.")
+        f.addRow("Workbench layout:", self.layout_mode)
+        self.ui_font = QSpinBox()
+        self.ui_font.setRange(7, 16)
+        self.ui_font.setSuffix(" pt")
+        self.ui_font.setValue(get(win, "ui_font_size"))
+        f.addRow("Menu and window font size:", self.ui_font)
+        f.addRow(_section("Start-up and closing"))
+        self.show_start = QCheckBox("Show the Start Page on startup")
+        self.show_start.setChecked(get(win, "show_start_page"))
+        f.addRow(self.show_start)
+        self.reopen = QCheckBox("Reopen the last solution on startup")
+        self.reopen.setChecked(get(win, "reopen_last"))
+        f.addRow(self.reopen)
+        self.confirm = QCheckBox("Ask before closing with unsaved changes (otherwise they are saved)")
+        self.confirm.setChecked(get(win, "confirm_unsaved"))
+        f.addRow(self.confirm)
+        f.addRow(_section("Backups"))
         self.autosave = QSpinBox()
         self.autosave.setRange(0, 3600)
         self.autosave.setSuffix(" s")
         self.autosave.setSpecialValueText("Off")
         self.autosave.setValue(get(win, "autosave_seconds"))
         f.addRow("Auto-save backup every:", self.autosave)
-        f.addRow(QLabel("<small>Auto-save writes unsaved editor contents to the project's .radide_backup folder "
-                        "(crash recovery); your files are only written by Save.</small>"))
+        note = QLabel("Auto-save writes unsaved editor contents to the project's .radide_backup folder "
+                      "(crash recovery); your files are only written by Save.")
+        note.setWordWrap(True)
+        T.role(note, "muted")
+        f.addRow(note)
         tabs.addTab(env, "Environment")
 
         # Editor
@@ -374,6 +417,11 @@ class OptionsDialog(QDialog):
 
     def restore_defaults(self):
         self.theme.setCurrentText(DEFAULTS["theme"])
+        self.layout_mode.setCurrentIndex(0)
+        self.ui_font.setValue(DEFAULTS["ui_font_size"])
+        self.show_start.setChecked(DEFAULTS["show_start_page"])
+        self.reopen.setChecked(DEFAULTS["reopen_last"])
+        self.confirm.setChecked(DEFAULTS["confirm_unsaved"])
         self.autosave.setValue(DEFAULTS["autosave_seconds"])
         self.font.setCurrentFont(QFont(DEFAULTS["editor_font"]))
         self.size.setValue(DEFAULTS["editor_font_size"])
@@ -384,6 +432,10 @@ class OptionsDialog(QDialog):
     def apply(self):
         s = self.win.settings
         s.setValue(KEY + "theme", self.theme.currentText())
+        s.setValue(KEY + "ui_font_size", self.ui_font.value())
+        s.setValue(KEY + "show_start_page", self.show_start.isChecked())
+        s.setValue(KEY + "reopen_last", self.reopen.isChecked())
+        s.setValue(KEY + "confirm_unsaved", self.confirm.isChecked())
         s.setValue(KEY + "autosave_seconds", self.autosave.value())
         s.setValue(KEY + "editor_font", self.font.currentFont().family())
         s.setValue(KEY + "editor_font_size", self.size.value())
@@ -403,6 +455,16 @@ class OptionsDialog(QDialog):
             except Exception as ex:  # noqa: BLE001
                 self.win.log(f"[options] page apply failed: {ex}")
         apply_all(self.win)
+        self._apply_layout()
+
+    def _apply_layout(self):
+        mode = self.layout_mode.currentData()
+        wb = getattr(self.win, "workbench", None)
+        if wb is not None and hasattr(wb, "set_mode"):
+            if getattr(wb, "mode", None) != mode:
+                wb.set_mode(mode)
+        else:
+            self.win.settings.setValue("workbench/mode", mode)
 
     def accept(self):
         self.apply()

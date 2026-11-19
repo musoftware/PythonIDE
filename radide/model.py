@@ -50,6 +50,9 @@ class Control:
                        json.loads(json.dumps(states)) if isinstance(states, dict) else {})
 
 
+FORM_VERSION = 2      # 2: Button TextAlign defaults to Center (see Form.from_dict)
+
+
 @dataclass
 class Form:
     props: dict = field(default_factory=lambda: {k: p.default for k, p in FORM_PROPS.items()})
@@ -165,7 +168,7 @@ class Form:
 
     # ------------------------------------------------------------ io
     def to_dict(self) -> dict:
-        d = {"version": 1, "props": self.props,
+        d = {"version": FORM_VERSION, "props": self.props,
              "controls": [c.to_dict() for c in self.controls]}
         for k, v in self.extra.items():
             if k not in d and v not in (None, {}, []):
@@ -177,6 +180,12 @@ class Form:
         f = Form()
         f.props.update(d.get("props", {}))
         f.controls = [Control.from_dict(c) for c in d.get("controls", [])]
+        if int(d.get("version", 1) or 1) < 2:
+            # version 1 gave Buttons the Label default TextAlign "Left" (captions drawn at the left edge);
+            # a Button's caption is centred like in VB / WinForms
+            for c in f.controls:
+                if c.type == "Button" and c.props.get("TextAlign") == "Left":
+                    c.props["TextAlign"] = "Center"
         f.extra = {k: json.loads(json.dumps(v)) for k, v in d.items()
                    if k not in ("version", "props", "controls")}
         return f

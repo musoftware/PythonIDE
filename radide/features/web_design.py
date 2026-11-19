@@ -55,7 +55,13 @@ def install(win) -> None:
     a2.setToolTip("Open the active HTML / PHP page in Split view (design + code)")
     a2.triggered.connect(lambda: open_active_in_design(win, "split"))
     win.a_split_view = a2
-    tb = next((t for t in win.findChildren(QToolBar) if t.objectName() == "Standard"), None)
+    from ..icons import icon
+    a.setIcon(icon("design"))
+    a.setIconText("Design")
+    a2.setIcon(icon("split"))
+    a2.setIconText("Split")
+    a2.setToolTip("Open the active HTML / PHP page in Split view (design + code)")
+    tb =next((t for t in win.findChildren(QToolBar) if t.objectName() == "Standard"), None)
     if tb is not None:
         tb.addSeparator()
         tb.addAction(a)

@@ -147,6 +147,7 @@ QTabWidget::pane {{ border: 1px solid {border}; }}
 QToolBar {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 {toolbar1}, stop:1 {toolbar2});
             border-bottom: 1px solid {toolbar_border}; spacing: 2px; }}
 QToolBar QToolButton {{ color: {bar_text}; }}
+QToolBar QToolButton:disabled {{ color: {disabled}; }}
 QMenuBar {{ background: {toolbar1}; color: {bar_text}; }}
 QMenuBar::item {{ background: transparent; padding: 3px 8px; }}
 QMenuBar::item:selected {{ background: {menu_sel}; color: {menu_sel_text}; }}
@@ -157,6 +158,9 @@ QMenu::item:disabled {{ color: {disabled}; }}
 QMenu::separator {{ height: 1px; background: {border}; margin: 3px 6px; }}
 QStatusBar {{ background: {status}; color: {status_text}; }}
 QStatusBar QLabel {{ color: {status_text}; }}
+QStatusBar::item {{ border: none; }}
+QStatusBar QToolButton {{ color: {status_text}; padding: 0px 6px; }}
+QStatusBar QToolButton::menu-indicator {{ image: none; width: 0px; }}
 QHeaderView::section {{ background: {header}; color: {header_text}; border: 0;
                         border-right: 1px solid {border}; border-bottom: 1px solid {border}; padding: 3px; }}
 QToolTip {{ background: {tooltip}; color: {tooltip_text}; border: 1px solid {border}; }}
