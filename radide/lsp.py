@@ -3,12 +3,18 @@
 Ready-made language servers give completion, hover, signature help, go to
 definition and live diagnostics. SERVERS lists the command lines tried for
 each Monaco language id; the first one whose executable exists is used.
+
+Web servers (HTML/CSS/JSON from vscode-langservers-extracted, PHP from
+intelephense, JS/TS from typescript-language-server) are looked up first in the
+IDE's private npm folder ``%LOCALAPPDATA%\\RADIDE\\lsp`` (``install_web_servers()``
+runs ``npm install --prefix`` there), then on PATH.
 """
 from __future__ import annotations
 
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -16,18 +22,37 @@ from PyQt6.QtCore import QObject, QProcess, pyqtSignal
 
 VENV_PY = sys.executable
 
-# language id -> list of candidate argv (first available wins) + install hint
+LSP_HOME = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "RADIDE" / "lsp"
+WEB_PACKAGES = ["vscode-langservers-extracted", "intelephense", "typescript@5", "typescript-language-server"]
+
+_HTML = [["npm:vscode-langservers-extracted/vscode-html-language-server", "--stdio"],
+         ["vscode-html-language-server", "--stdio"]]
+_CSS = [["npm:vscode-langservers-extracted/vscode-css-language-server", "--stdio"],
+        ["vscode-css-language-server", "--stdio"]]
+_JSON = [["npm:vscode-langservers-extracted/vscode-json-language-server", "--stdio"],
+         ["vscode-json-language-server", "--stdio"]]
+_TS = [["npm:typescript-language-server/typescript-language-server", "--stdio"],
+       ["typescript-language-server", "--stdio"]]
+_WEB_HINT = "Tools > Install Web Language Servers (npm install --prefix %LOCALAPPDATA%\\RADIDE\\lsp)"
+
+# language id -> list of candidate argv (first available wins) + install hint.
+# "npm:<package>/<bin>" = a bin of a package installed under LSP_HOME (run with node).
 SERVERS: dict[str, tuple[list[list[str]], str]] = {
     "python": ([[VENV_PY, "-m", "pylsp"], ["pyright-langserver", "--stdio"]], "pip install python-lsp-server"),
-    "javascript": ([["typescript-language-server", "--stdio"]], "npm i -g typescript typescript-language-server"),
-    "typescript": ([["typescript-language-server", "--stdio"]], "npm i -g typescript typescript-language-server"),
+    "javascript": (_TS, _WEB_HINT),
+    "typescript": (_TS, _WEB_HINT),
+    "html": (_HTML, _WEB_HINT),
+    "css": (_CSS, _WEB_HINT),
+    "scss": (_CSS, _WEB_HINT),
+    "less": (_CSS, _WEB_HINT),
+    "json": (_JSON, _WEB_HINT),
     "csharp": ([["csharp-ls"]], "dotnet tool install -g csharp-ls"),
     "java": ([["jdtls"]], "install Eclipse JDT Language Server (jdtls)"),
     "rust": ([["rust-analyzer"]], "rustup component add rust-analyzer"),
     "c": ([["clangd"]], "install clangd (LLVM)"),
     "cpp": ([["clangd"]], "install clangd (LLVM)"),
     "go": ([["gopls"]], "go install golang.org/x/tools/gopls@latest"),
-    "php": ([["intelephense", "--stdio"]], "npm i -g intelephense"),
+    "php": ([["npm:intelephense/intelephense", "--stdio"], ["intelephense", "--stdio"]], _WEB_HINT),
     "dart": ([["dart", "language-server", "--protocol=lsp"]], "comes with the Dart SDK"),
     "lua": ([["lua-language-server"]], "install lua-language-server"),
     "ruby": ([["solargraph", "stdio"]], "gem install solargraph"),
@@ -35,9 +60,31 @@ SERVERS: dict[str, tuple[list[list[str]], str]] = {
     "powershell": ([], "PowerShell Editor Services is not supported yet"),
 }
 
-# LSP CompletionItemKind -> Monaco CompletionItemKind
-LSP_TO_MONACO = {1: 18, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 7, 9: 8, 10: 9, 11: 12, 12: 13, 13: 15,
-                 14: 17, 15: 27, 16: 19, 17: 20, 18: 21, 19: 23, 20: 16, 21: 14, 22: 6, 23: 10, 24: 11, 25: 24}
+# languages that share one server process (per project root)
+SERVER_GROUP = {"scss": "css", "less": "css", "typescript": "javascript"}
+
+# Monaco language id -> LSP languageId sent in didOpen
+LSP_LANGUAGE_ID = {"rad-fortran-bridge": "fortran"}
+
+
+def server_key(language: str) -> str:
+    return SERVER_GROUP.get(language, language)
+
+
+def _npm_bin(spec: str) -> list[str] | None:
+    """'npm:<package>/<bin>' -> [node, <script>] for a package installed under LSP_HOME."""
+    pkg, _, binname = spec[4:].rpartition("/")
+    pdir = LSP_HOME / "node_modules" / pkg
+    try:
+        meta = json.loads((pdir / "package.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    b = meta.get("bin")
+    script = b if isinstance(b, str) else (b or {}).get(binname)
+    node = shutil.which("node")
+    if not script or not node or not (pdir / script).exists():
+        return None
+    return [node, str((pdir / script).resolve())]
 
 
 def server_command(language: str) -> list[str] | None:
@@ -50,13 +97,99 @@ def server_command(language: str) -> list[str] | None:
                 return argv
             except ImportError:
                 continue
+        if exe.startswith("npm:"):
+            base = _npm_bin(exe)
+            if base:
+                return [*base, *argv[1:]]
+            continue
         if shutil.which(exe):
             return [shutil.which(exe), *argv[1:]]
     return None
 
 
+def display_name(argv: list[str]) -> str:
+    """A readable server name: 'intelephense', 'vscode-html-language-server', 'pylsp', ..."""
+    if not argv:
+        return ""
+    first = Path(argv[0])
+    if first.stem.lower() == "node" and len(argv) > 1:
+        script = Path(argv[1])
+        parts = script.parts
+        if "node_modules" in parts:
+            i = len(parts) - 1 - parts[::-1].index("node_modules")
+            pkg = parts[i + 1] if i + 1 < len(parts) else script.stem
+            return script.name if script.parent.name == "bin" else pkg
+        return script.stem
+    if first.resolve() == Path(VENV_PY).resolve() and len(argv) > 2 and argv[1] == "-m":
+        return argv[2]
+    return first.stem
+
+
 def install_hint(language: str) -> str:
     return SERVERS.get(language, ([], ""))[1]
+
+
+def web_servers_installed() -> dict[str, bool]:
+    return {lang: server_command(lang) is not None for lang in ("html", "css", "json", "php", "javascript")}
+
+
+def install_web_servers(log=print) -> bool:
+    """npm install the web language servers into LSP_HOME (blocking; run it in a thread)."""
+    npm = shutil.which("npm")
+    if not npm:
+        log("npm was not found - install Node.js first.")
+        return False
+    LSP_HOME.mkdir(parents=True, exist_ok=True)
+    cmd = [npm, "install", "--prefix", str(LSP_HOME), "--no-fund", "--no-audit", *WEB_PACKAGES]
+    log("> " + " ".join(cmd))
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    log((p.stdout or "") + (p.stderr or ""))
+    return p.returncode == 0
+
+
+def initialization_options(language: str, root: Path) -> dict:
+    """Server-specific initializationOptions."""
+    key = server_key(language)
+    if key == "html":
+        return {"provideFormatter": True, "embeddedLanguages": {"css": True, "javascript": True},
+                "configurationSection": ["html", "css", "javascript"]}
+    if key in ("css", "json"):
+        return {"provideFormatter": True}
+    if key == "php":
+        store = LSP_HOME / "intelephense-storage"
+        store.mkdir(parents=True, exist_ok=True)
+        return {"storagePath": str(store), "globalStoragePath": str(store), "clearCache": False}
+    if key == "javascript":
+        tsserver = LSP_HOME / "node_modules" / "typescript" / "lib" / "tsserver.js"
+        opts: dict = {"preferences": {"includeCompletionsForModuleExports": True}}
+        if tsserver.exists():
+            opts["tsserver"] = {"path": str(tsserver)}
+        return opts
+    return {}
+
+
+def workspace_settings(language: str) -> dict:
+    """Answers for workspace/configuration requests (by section)."""
+    return {
+        "html": {"validate": {"scripts": True, "styles": True}, "suggest": {"html5": True},
+                 "format": {"enable": True}, "hover": {"documentation": True, "references": True},
+                 "autoClosingTags": True},
+        "css": {"validate": True, "completion": {"triggerPropertyValueCompletion": True}},
+        "scss": {"validate": True}, "less": {"validate": True},
+        "javascript": {"validate": {"enable": True}}, "typescript": {"validate": {"enable": True}},
+        "js/ts": {"implicitProjectConfig": {"strictNullChecks": False, "experimentalDecorators": False}},
+        "json": {"validate": {"enable": True}, "format": {"enable": True}},
+        "intelephense": {"files": {"maxSize": 5000000, "associations": ["*.php", "*.phtml"],
+                                   "exclude": ["**/.git/**", "**/node_modules/**", "**/.radide_backup/**"]},
+                         "diagnostics": {"enable": True}, "completion": {"insertUseDeclaration": True},
+                         "format": {"enable": True}, "environment": {"phpVersion": "8.1.0"}},
+    }
+
+
+# LSP CompletionItemKind -> Monaco CompletionItemKind
+LSP_TO_MONACO = {1: 18, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 7, 9: 8, 10: 9, 11: 12, 12: 13, 13: 15,
+                 14: 17, 15: 27, 16: 19, 17: 20, 18: 21, 19: 23, 20: 16, 21: 14, 22: 6, 23: 10, 24: 11, 25: 24}
 
 
 def path_uri(p: Path) -> str:
@@ -66,6 +199,7 @@ def path_uri(p: Path) -> str:
 class LspClient(QObject):
     diagnostics = pyqtSignal(str, list)        # file path, [{line, col, endLine, endCol, message, severity}]
     log = pyqtSignal(str)
+    ready = pyqtSignal()                       # initialize answered (capabilities known)
 
     def __init__(self, language: str, root: Path, argv: list[str], parent=None):
         super().__init__(parent)
@@ -81,6 +215,8 @@ class LspClient(QObject):
         self._id = 0
         self._callbacks: dict[int, callable] = {}
         self._versions: dict[str, int] = {}
+        self._lang_ids: dict[str, str] = {}
+        self._last_text: dict[str, str] = {}
         self._initialized = False
         self._queue: list[dict] = []
         self.capabilities: dict = {}
@@ -91,16 +227,20 @@ class LspClient(QObject):
         if not self.proc.waitForStarted(5000):
             return False
         self._request("initialize", {
-            "processId": os.getpid(), "rootUri": path_uri(self.root),
+            "processId": os.getpid(), "rootUri": path_uri(self.root), "rootPath": str(self.root),
+            "clientInfo": {"name": "RAD IDE"},
+            "initializationOptions": initialization_options(self.language, self.root),
             "workspaceFolders": [{"uri": path_uri(self.root), "name": self.root.name}],
             "capabilities": {
                 "textDocument": {
-                    "completion": {"completionItem": {"snippetSupport": True, "documentationFormat": ["plaintext", "markdown"]}},
+                    "completion": {"completionItem": {"snippetSupport": True, "insertReplaceSupport": False,
+                                                      "documentationFormat": ["plaintext", "markdown"]},
+                                   "contextSupport": True},
                     "hover": {"contentFormat": ["plaintext", "markdown"]},
                     "signatureHelp": {"signatureInformation": {"documentationFormat": ["plaintext"]}},
                     "publishDiagnostics": {}, "definition": {}, "synchronization": {"didSave": True},
                 },
-                "workspace": {"workspaceFolders": True},
+                "workspace": {"workspaceFolders": True, "configuration": True},
             }}, self._on_initialized, force=True)
         return True
 
@@ -142,6 +282,7 @@ class LspClient(QObject):
         for msg in self._queue:
             self._send(msg)
         self._queue.clear()
+        self.ready.emit()
 
     def _read(self):
         self._buf += bytes(self.proc.readAllStandardOutput())
@@ -184,21 +325,42 @@ class LspClient(QObject):
             except Exception:  # noqa: BLE001
                 path = p["uri"]
             self.diagnostics.emit(path, out)
-        elif "id" in msg and method:                 # server -> client request: answer with null
+        elif method in ("window/logMessage", "window/showMessage"):
+            self.log.emit(str((msg.get("params") or {}).get("message", "")))
+        elif "id" in msg and method == "workspace/configuration":
+            conf = workspace_settings(self.language)
+            items = (msg.get("params") or {}).get("items", [])
+            res = []
+            for it in items:
+                val = conf
+                for part in (it.get("section") or "").split("."):
+                    if part:
+                        val = val.get(part, {}) if isinstance(val, dict) else {}
+                res.append(val if it.get("section") else conf)
+            self._send({"jsonrpc": "2.0", "id": msg["id"], "result": res})
+        elif "id" in msg and method:                 # other server -> client requests: answer with null
             self._send({"jsonrpc": "2.0", "id": msg["id"], "result": None})
 
     # ------------------------------------------------------------ documents
     def did_open(self, path: Path, text: str, language_id: str):
         uri = path_uri(path)
+        if uri in self._versions:                  # re-open (e.g. language changed)
+            self.did_close(path)
+        language_id = LSP_LANGUAGE_ID.get(language_id, language_id)
         self._versions[uri] = 1
+        self._lang_ids[uri] = language_id
+        self._last_text[uri] = text
         self._notify("textDocument/didOpen", {"textDocument": {"uri": uri, "languageId": language_id,
                                                                "version": 1, "text": text}})
 
     def did_change(self, path: Path, text: str):
         uri = path_uri(path)
         if uri not in self._versions:
-            self.did_open(path, text, self.language)
+            self.did_open(path, text, self._lang_ids.get(uri, self.language))
             return
+        if self._last_text.get(uri) == text:
+            return
+        self._last_text[uri] = text
         self._versions[uri] += 1
         self._notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": self._versions[uri]},
                                                 "contentChanges": [{"text": text}]})
@@ -209,6 +371,7 @@ class LspClient(QObject):
     def did_close(self, path: Path):
         uri = path_uri(path)
         self._versions.pop(uri, None)
+        self._last_text.pop(uri, None)
         self._notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
     # ------------------------------------------------------------ features
@@ -226,12 +389,25 @@ class LspClient(QObject):
                 if isinstance(doc, dict):
                     doc = doc.get("value", "")
                 ins = it.get("insertText") or it.get("label")
+                rng = None
                 te = it.get("textEdit")
-                if isinstance(te, dict) and te.get("newText"):
+                if isinstance(te, dict) and te.get("newText") is not None:
                     ins = te["newText"]
-                out.append({"label": it.get("label", ""), "kind": LSP_TO_MONACO.get(it.get("kind", 1), 18),
-                            "detail": it.get("detail", ""), "documentation": doc, "insertText": ins,
-                            "snippet": it.get("insertTextFormat") == 2, "sortText": it.get("sortText")})
+                    r = te.get("range") or te.get("replace") or te.get("insert")
+                    if r and r["start"]["line"] == r["end"]["line"] == line:
+                        rng = [r["start"]["line"], r["start"]["character"], r["end"]["line"], r["end"]["character"]]
+                extra = [{"range": [e["range"]["start"]["line"], e["range"]["start"]["character"],
+                                    e["range"]["end"]["line"], e["range"]["end"]["character"]], "text": e["newText"]}
+                         for e in it.get("additionalTextEdits") or []]
+                label = it.get("label", "")
+                detail = it.get("detail") or ""
+                ld = it.get("labelDetails") or {}
+                if ld.get("detail") and ld["detail"] not in detail:
+                    detail = (ld["detail"] + " " + detail).strip()
+                out.append({"label": label, "kind": LSP_TO_MONACO.get(it.get("kind", 1), 18),
+                            "detail": detail,"documentation": doc, "insertText": ins,
+                            "snippet": it.get("insertTextFormat") == 2, "sortText": it.get("sortText"),
+                            "filterText": it.get("filterText"), "range": rng, "additionalTextEdits": extra})
             cb(out)
         self._request("textDocument/completion", self._pos(path, line, col), done)
 
@@ -285,7 +461,7 @@ class LspManager(QObject):
         self.clients: dict[tuple[str, str], LspClient | None] = {}
 
     def client_for(self, language: str, root: Path) -> LspClient | None:
-        key = (language, str(root))
+        key = (server_key(language), str(root))
         if key in self.clients:
             c = self.clients[key]
             return c if c is not None and c.running() else None

@@ -683,11 +683,12 @@ class PythonTkPlugin(LanguagePlugin):
         dialogs = [c for c in form.nonvisual() if c.type in DIALOG_KIND]
         client = "self._client" if strip is not None else "self.root"
         specs = place_specs(form)
+        blend = self._blend(form, "tk")      # Expression Blend: states / storyboards / bindings (8.7)
         L = [HEADER.format(form=n),
              "import os",
              "import tkinter as tk",
              "from tkinter import ttk",
-             self._runtime(form).rstrip("\n"), "", "",
+             self._runtime(form).rstrip("\n") + (blend["runtime"].rstrip("\n") if blend else ""), "", "",
              f"class {n}Designer:",
              "    def __init__(self, master=None):",
              "        self.root = tk.Tk() if master is None else tk.Toplevel(master)",
@@ -757,10 +758,25 @@ class PythonTkPlugin(LanguagePlugin):
             L.append(f"        self._bind(self.root, \"<FocusOut>\", \"{n}_Deactivate\", own=True)")
         if fe & {"FormClosing", "FormClosed"}:
             L.append("        self.root.protocol(\"WM_DELETE_WINDOW\", self._on_close)")
+        if blend:
+            L += blend["init"]
         L.append(f"        self.root.after(0, self._ev(\"{n}_Load\"))")
+        if blend:
+            L += blend["after_load"]
         L.append(DISPATCH.replace("{form}", n).rstrip("\n"))
+        if blend:
+            L += blend["methods"]
         L.append("")
         return "\n".join(L)
+
+    @staticmethod
+    def _blend(form: Form, toolkit: str):
+        """Visual states, storyboards and data bindings (radide/features/states.py), or None."""
+        try:
+            from ..features.states import python_blend
+        except ImportError:
+            return None
+        return python_blend(form, toolkit)
 
     @staticmethod
     def _runtime(form: Form) -> str:

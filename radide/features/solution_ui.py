@@ -57,6 +57,8 @@ def _plugin(project):
 
 
 def _kind_label(project) -> str:
+    if getattr(project, "kind", "") == "website":
+        return "Web Site"
     return "Class Library" if project.is_library else "Application"
 
 
@@ -114,6 +116,11 @@ def fill_tree(win) -> None:
         _fill_project(win, sln, root, entry.name, project, st["plugin"], project is startup, bold)
     tree.addTopLevelItem(root)
     tree.expandAll()
+    try:                                  # website folder trees: collapse folders (CONTRACTS 8.1)
+        from .web_workspace import after_fill
+        after_fill(win)
+    except Exception as e:  # noqa: BLE001
+        _log(win, f"[web] {e}")
 
 
 def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> None:
@@ -127,6 +134,10 @@ def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> No
                   ("\nStartUp Project" if is_startup else ""))
     if is_startup:
         pi.setFont(0, bold)
+    if getattr(project, "kind", "") == "website":      # web site: its folder tree (CONTRACTS 8.1)
+        from .web_workspace import fill_site
+        fill_site(win, pi, project)
+        return
     # References
     refs = QTreeWidgetItem(pi, ["References"])
     refs.setData(0, ROLE, ("references", name))
@@ -220,6 +231,10 @@ def build_menu(win, item) -> QMenu | None:
     if project is not None:
         win.activate_project(project)
     sln = win.sln
+    if kind in ("webfile", "webfolder", "webplaceholder") or (kind == "project" and project is not None and
+                                                             getattr(project, "kind", "") == "website"):
+        from .web_workspace import build_site_menu       # CONTRACTS 8.1
+        return build_site_menu(win, item, kind, name, project)
     m = QMenu(win)
     if kind == "solution":
         add = m.addMenu("Add")
@@ -573,7 +588,10 @@ def create_project_from_dialog(win, dlg):
     folder = dlg.folder()
     adding = dlg.adding_to_solution() and win.sln is not None
     try:
-        if template == "library":
+        if getattr(get_plugin(language), "project_kind", "") == "website":     # CONTRACTS 8.1
+            from ..web_site.project import create_website
+            project = create_website(folder, name, language, template)
+        elif template == "library":
             project = create_library_project(folder, name, language)
         else:
             project = create_project(folder, name, language)

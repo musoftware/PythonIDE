@@ -15,6 +15,8 @@
 <div id="editor"></div>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <script src="monaco/vs/loader.js"></script>
+<script src="emmet/emmet-monaco.min.js"></script>
+<script src="snippets.js"></script>
 <script>
 // RAD IDE <-> Monaco bridge. Python side: radide/monaco_editor.py (object "rad").
 require.config({ paths: { vs: 'monaco/vs' } });
@@ -38,23 +40,46 @@ require(['vs/editor/editor.main'], function () {
     function ask(fn) { return new Promise(res => { const id = nextId++; waiting.set(id, res); fn(id); }); }
     window.radResolve = function (id, value) { const r = waiting.get(id); if (r) { waiting.delete(id); r(value); } };
 
-    // ---------------- providers (registered once per language)
-    const registered = new Set();
-    function ensureProviders(lang) {
-      if (registered.has(lang)) return; registered.add(lang);
-      monaco.languages.registerCompletionItemProvider(lang, {
-        triggerCharacters: ['.'],
+    // ---------------- providers (registered once per language; re-registered when the
+    // language server announces other trigger characters)
+    const DEFAULT_TRIGGERS = { html: ['.', ':', '<', '"', '=', '/'], php: ['$', '>', ':', '\\', '/', "'", '"', '.', '<'],
+      css: [':', '-', '@', '.', '#', ' '], scss: [':', '-', '@', '$', '.', '#'], less: [':', '-', '@', '.', '#'],
+      json: ['"', ':'], javascript: ['.', '"', "'", '/', '@', '<'], typescript: ['.', '"', "'", '/', '@', '<'] };
+    const providers = new Map();          // lang -> {completion, triggers}
+    const toRange = (r, pos, w) => r ? new monaco.Range(r[0] + 1, r[1] + 1, r[2] + 1, r[3] + 1)
+                                     : new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
+    function registerCompletion(lang, triggers) {
+      return monaco.languages.registerCompletionItemProvider(lang, {
+        triggerCharacters: triggers,
         provideCompletionItems: async (model, pos) => {
+          if (model !== editor.getModel()) return { suggestions: [] };
           const items = await ask(id => rad.jsComplete(id, pos.lineNumber - 1, pos.column - 1)) || [];
           const w = model.getWordUntilPosition(pos);
-          const range = new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
-          return { suggestions: items.map(i => ({ label: i.label, kind: i.kind, detail: i.detail || '',
-            documentation: i.documentation || '', insertText: i.insertText || i.label,
-            insertTextRules: i.snippet ? 4 : 0, range: range, sortText: i.sortText })) };
+          return { suggestions: items.map(i => {
+            let range = toRange(i.range, pos, w);
+            if (!range.containsPosition(pos) && !(range.getEndPosition().equals(pos))) range = toRange(null, pos, w);
+            return { label: i.label, kind: i.kind, detail: i.detail || '',
+              documentation: i.documentation ? { value: i.documentation } : '', insertText: i.insertText || i.label,
+              insertTextRules: i.snippet ? 4 : 0, range: range, sortText: i.sortText || undefined,
+              filterText: i.filterText || undefined,
+              additionalTextEdits: (i.additionalTextEdits || []).map(e => ({ range: toRange(e.range), text: e.text })) };
+          }) };
         } });
+    }
+    function ensureProviders(lang, triggers) {
+      triggers = triggers || (providers.get(lang) || {}).triggers || DEFAULT_TRIGGERS[lang] || ['.'];
+      const known = providers.get(lang);
+      if (known) {
+        if (known.triggers.join('') === triggers.join('')) return;
+        known.completion.dispose();
+        known.completion = registerCompletion(lang, triggers); known.triggers = triggers;
+        return;
+      }
+      providers.set(lang, { completion: registerCompletion(lang, triggers), triggers: triggers });
       monaco.languages.registerSignatureHelpProvider(lang, {
         signatureHelpTriggerCharacters: ['(', ','],
         provideSignatureHelp: async (model, pos) => {
+          if (model !== editor.getModel()) return null;
           const tip = await ask(id => rad.jsSignature(id, pos.lineNumber - 1, pos.column - 1));
           if (!tip) return null;
           return { value: { signatures: [{ label: tip, parameters: [] }], activeSignature: 0, activeParameter: 0 },
@@ -65,9 +90,82 @@ require(['vs/editor/editor.main'], function () {
           const w = model.getWordAtPosition(pos); if (!w) return null;
           const c = editor.getScrolledVisiblePosition(pos);
           const text = await ask(id => rad.jsHover(id, w.word, c ? c.left : 0, c ? c.top : 0));
-          return text ? { contents: [{ value: '`' + text + '`' }] } : null;
+          return text ? { contents: [{ value: text.indexOf('\n') >= 0 ? text : '`' + text + '`' }] } : null;
         } });
     }
+    window.radSetTriggers = function (lang, triggers) { if (triggers && triggers.length) ensureProviders(lang, triggers); };
+
+    // A language server is attached: switch off Monaco's own (worker based) completion/hover/diagnostics
+    // for that language so items and markers are not doubled.
+    window.radSetLspActive = function (lang, on) {
+      const L = monaco.languages;
+      const defs = { html: L.html && L.html.htmlDefaults, css: L.css && L.css.cssDefaults,
+        scss: L.css && L.css.scssDefaults, less: L.css && L.css.lessDefaults, json: L.json && L.json.jsonDefaults,
+        javascript: L.typescript && L.typescript.javascriptDefaults, typescript: L.typescript && L.typescript.typescriptDefaults };
+      const d = defs[lang];
+      if (!d || !d.setModeConfiguration) return;
+      if (!d._radOrig) d._radOrig = Object.assign({}, d.modeConfiguration);
+      const cfg = Object.assign({}, d._radOrig);
+      if (on) { cfg.completionItems = false; cfg.hovers = false; cfg.diagnostics = false; cfg.signatureHelp = false; }
+      d.setModeConfiguration(cfg);
+      if (on) monaco.editor.getModelMarkers({}).filter(m => m.owner !== 'rad' && m.owner !== 'emmet')
+        .forEach(m => monaco.editor.setModelMarkers(editor.getModel(), m.owner, []));
+    };
+
+    // ---------------- Emmet (emmet-monaco-es, MIT) for html/php/css/scss/less
+    const EMMET_LANGS = ['html', 'php', 'css', 'scss', 'less'];
+    const emmetProviders = {};
+    if (window.emmetMonaco) {
+      const origReg = monaco.languages.registerCompletionItemProvider;
+      monaco.languages.registerCompletionItemProvider = function (lang, prov) {
+        (emmetProviders[lang] = emmetProviders[lang] || []).push(prov);
+        return origReg.call(monaco.languages, lang, prov);
+      };
+      try {
+        emmetMonaco.emmetHTML(monaco, ['html', 'php']);
+        emmetMonaco.emmetCSS(monaco, ['css', 'scss', 'less']);
+      } catch (e) { console.error('emmet: ' + e); }
+      finally { monaco.languages.registerCompletionItemProvider = origReg; }
+    }
+    const emmetLang = editor.createContextKey('radEmmetLang', false);
+    // Expand the Emmet abbreviation before the cursor; force = also inside running text.
+    window.radEmmetExpand = function (force) {
+      const model = editor.getModel(), pos = editor.getPosition();
+      for (const p of emmetProviders[model.getLanguageId()] || []) {
+        let res;
+        try { res = p.provideCompletionItems(model, pos, { triggerKind: 0 }); } catch (e) { res = null; }
+        const item = res && res.suggestions && res.suggestions.find(s => s.detail === 'Emmet abbreviation');
+        if (!item) continue;
+        const r = item.range.replace || item.range.insert || item.range;
+        const before = model.getLineContent(pos.lineNumber).substring(0, r.startColumn - 1);
+        if (!force && before.trim() !== '' && !/[>}]\s*$/.test(before)) return false;   // a word inside running text
+        editor.pushUndoStop();
+        editor.executeEdits('emmet', [{ range: new monaco.Range(r.startLineNumber, r.startColumn, r.endLineNumber, r.endColumn), text: '' }]);
+        editor.setPosition({ lineNumber: r.startLineNumber, column: r.startColumn });
+        editor.getContribution('snippetController2').insert(item.insertText);
+        editor.pushUndoStop();
+        return true;
+      }
+      return false;
+    };
+    editor.addCommand(monaco.KeyCode.Tab, () => { if (!radEmmetExpand(false)) editor.trigger('keyboard', 'tab', null); },
+      'radEmmetLang && editorTextFocus && !editorReadonly && !editorHasSelection && !suggestWidgetVisible && !inSnippetMode && !hasOtherSuggestions');
+    editor.addAction({ id: 'rad.emmet.expand', label: 'Emmet: Expand Abbreviation',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
+      run: () => { if (!radEmmetExpand(true)) editor.trigger('rad', 'tab', null); } });
+
+    // ---------------- HTML / PHP / CSS snippets (radide/web/snippets.js)
+    const SN = window.RAD_SNIPPETS || {};
+    Object.keys(SN).forEach(lang => {
+      monaco.languages.registerCompletionItemProvider(lang, {
+        provideCompletionItems: (model, pos) => {
+          const w = model.getWordUntilPosition(pos);
+          const range = new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
+          return { suggestions: SN[lang].map(s => ({ label: s.prefix, kind: monaco.languages.CompletionItemKind.Snippet,
+            detail: s.description + ' (snippet)', documentation: { value: '```\n' + s.body + '\n```' },
+            insertText: s.body, insertTextRules: 4, range: range, sortText: '~' + s.prefix })) };
+        } });
+    });
 
     // custom languages (Ring, Fortran, ...) from the plugin's syntax settings
     window.radRegisterLanguage = function (spec) {
@@ -123,11 +221,18 @@ require(['vs/editor/editor.main'], function () {
     };
     window.radSetText = function (text, lang) {
       muted = true;
-      ensureProviders(lang);
-      monaco.editor.setModelLanguage(editor.getModel(), lang || 'plaintext');
+      window.radSetLanguage(lang);
       editor.setValue(text);
+      editor.getModel().setEOL(monaco.editor.EndOfLineSequence.LF);   // the Python mirror uses \n
       muted = false;
     };
+    window.radSetLanguage = function (lang) {
+      lang = lang || 'plaintext';
+      ensureProviders(lang);
+      monaco.editor.setModelLanguage(editor.getModel(), lang);
+      emmetLang.set(EMMET_LANGS.indexOf(lang) >= 0 && !!emmetProviders[lang]);
+    };
+    window.radLanguages = () => monaco.languages.getLanguages().map(l => l.id);
     window.radSetReadOnly = ro => editor.updateOptions({ readOnly: ro });
     window.radSetCursor = (l, c) => { editor.setPosition({ lineNumber: l + 1, column: c + 1 }); };
     window.radSetSelection = (l1, c1, l2, c2) => editor.setSelection(new monaco.Range(l1 + 1, c1 + 1, l2 + 1, c2 + 1));

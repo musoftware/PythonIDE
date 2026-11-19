@@ -622,6 +622,10 @@ class MainWindow(QMainWindow):
             from .features.solution_ui import open_proxy
             open_proxy(self, name)
             return
+        if kind in ("webfile", "webfolder"):              # website folder tree (CONTRACTS 8.1)
+            from .features.web_workspace import on_tree_activate
+            on_tree_activate(self, kind, name)
+            return
         if kind == "design":
             self.open_designer(name)
         elif kind == "code":
@@ -786,6 +790,8 @@ class MainWindow(QMainWindow):
 
     def _close_tab(self, idx: int):
         w = self.tabs.widget(idx)
+        if hasattr(w, "maybe_close") and not w.maybe_close():     # e.g. Design View: "Save changes?"
+            return
         self.tabs.removeTab(idx)
         if isinstance(w, StartPage):
             w.deleteLater()
@@ -821,7 +827,7 @@ class MainWindow(QMainWindow):
             a.setEnabled(has)
         self.a_run.setEnabled(has and (not running or paused))
         self.a_run_nodebug.setEnabled(has and not running)
-        self.a_stop.setEnabled(running)
+        self.a_stop.setEnabled(running or getattr(self, "web_server", None) is not None)
         for a in (self.a_step_into, self.a_step_over, self.a_step_out):
             a.setEnabled(paused)
         cvp = getattr(getattr(cv, "editor", None), "plugin", None) or self.plugin
@@ -1093,6 +1099,10 @@ class MainWindow(QMainWindow):
 
     def project_properties(self):
         if not self.project:
+            return
+        if getattr(self.project, "kind", "") == "website":
+            from .features.web_workspace import site_settings
+            site_settings(self, self.project)
             return
         from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout
         dlg = QDialog(self)
@@ -1440,6 +1450,10 @@ class MainWindow(QMainWindow):
             from .features.solution_ui import prepare_run
             if not prepare_run(self):
                 return
+        if getattr(self.project, "kind", "") == "website":      # web site: DevServer + Preview (CONTRACTS 8.1)
+            from .features.web_workspace import run_website
+            run_website(self, self.project, debug=debug)
+            return
         interp = self._interpreter()
         if not interp:
             self.log("No interpreter configured (Tools > Interpreter Path...)")
@@ -1606,6 +1620,9 @@ class MainWindow(QMainWindow):
     def stop_project(self):
         if self.session is not None:
             self.session.stop()
+        if getattr(self, "web_server", None) is not None:    # web site dev server (CONTRACTS 8.1)
+            from .features.web_workspace import stop_website
+            stop_website(self)
 
     def _on_finished(self, code):
         self._clear_current_line()

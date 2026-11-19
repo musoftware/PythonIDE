@@ -180,3 +180,96 @@ their workers. Editing works per project (each code file uses its own project's 
 | refs-dotnet-java | csharp_bridge.py, java_bridge.py, powershell_bridge.py (+ clients) |
 | refs-native | c_bridge.py, cpp_bridge.py, rust_bridge.py, fortran_bridge.py, go_bridge.py (+ clients, radgui.f90) |
 | refs-scripting | lua_bridge.py, ruby_bridge.py, perl_bridge.py, dart_bridge.py (+ clients) |
+
+## 8. Web workspace (WebMatrix + Expression Web) and Expression Blend features - round 3
+
+**User request:** the user loved Microsoft **WebMatrix** and **Microsoft Expression** (Web, Blend) and asked to
+"build everything that is missing" compared with them, including "a complete project in PHP". RAD IDE so far
+only had desktop forms; this round adds real **web site** development plus Blend-style visual states/animation.
+
+### 8.1 Web Site projects (owner: web-core)
+- New plugins (each `LanguagePlugin`, `kind="website"` projects): `php-web` ("PHP Web Site"), `static-web`
+  ("HTML / CSS / JavaScript Site"), `node-web` ("Node.js Web Site (Express)"). File: `radide/languages/<id>.py`.
+- `project.radproj`: `"kind": "website"`, `"language": "<plugin id>"`, `"web": {"root": ".", "start": "index.php",
+  "port": 0}` (0 = choose a free port). A website project has **no forms**; its files are the whole folder tree.
+- Dev server: `radide/web_site/server.py` `DevServer(project_folder, plugin)` with `start() -> url`, `stop()`,
+  `url`, Qt signal `request(dict)` (method, path, status, ms, size) parsed from the server log
+  (`php -S 127.0.0.1:<port> -t <root>` for PHP, a Python static server for static-web, `node <start>` for node-web
+  with PORT env). Live reload: after a save the preview reloads.
+- IDE (minimal hooks in app.py / solution_ui, rest in `radide/features/web_workspace.py`):
+  Solution Explorer shows the **folder tree** of website projects (folders, files, right-click New File / New
+  Folder / Rename / Delete / Open in Browser / Open in Design View); `win.open_file(path)` opens any file in a
+  Monaco tab (language by extension); **Run (F5/Ctrl+F5)** of a website starts the DevServer and shows the
+  **Preview dock** (`win.web_preview`, QWebEngineView with address bar, back/forward/reload, device-size combo,
+  "Open in external browser"); **Requests dock** lists the server requests (WebMatrix "Requests" view);
+  Stop stops the server. A web project can be a solution project like any other.
+- New Project dialog: a "Web" group with PHP Web Site / HTML Site / Node.js Site and their templates (see 8.5).
+
+### 8.2 Design view (owner: web-design) - Expression Web
+`radide/web_site/design.py` + assets in `radide/web/grapes/` (GrapesJS, BSD licence; get it with
+`npm pack grapesjs@<version>` into scratch and copy the dist files; also grapesjs-preset-webpage / blocks-basic
+if useful). `DesignView(win, path)` tab for .html/.htm/.php files: **Design**, **Split** (design + Monaco code,
+synced) and **Code** modes; Blocks, Layers, **Style Manager = CSS Properties panel**, Traits; saving writes the HTML
+back (PHP code blocks `<?php ... ?>` must be preserved - protect them as non-editable components); CSS goes to the
+page's own <style> or a linked stylesheet if the page has one. Opened from the explorer menu "Open in Design View"
+and from a "Design" button when an HTML/PHP file is active.
+
+### 8.3 Databases (owner: web-db) - WebMatrix Databases workspace
+`radide/web_site/databases.py` + `radide/features/databases.py`: Databases dock/tab with connections (SQLite file,
+MySQL, PostgreSQL) stored in the project (`project.radproj` "databases": [...], passwords NOT stored in plain text
+- keep them in QSettings with a warning or ask each time). Native browser: tables list, table data grid (edit/insert/
+delete rows), schema view, SQL query window with results; SQLite via `sqlite3`, MySQL via PyMySQL / PostgreSQL via
+psycopg if installed (pip into the IDE venv is allowed: `.venv\Scripts\python.exe -m pip install pymysql`).
+Also bundle **Adminer** (single PHP file, download from the official GitHub release into `radide/web/adminer/`)
+and offer "Open in Adminer" served by `php -S` in the Preview dock.
+
+### 8.4 Publish, Reports, SuperPreview (owner: web-tools)
+- `radide/web_site/publish.py`: publish profiles (FTP, FTPS, SFTP via paramiko if installed, local folder copy);
+  upload only changed files (size+mtime or hash cache), dry-run listing, exclusions (.git, .radide_backup...),
+  progress in the Output window. Profile dialog; passwords not in the project file.
+- `radide/web_site/reports.py`: **SEO report** crawler over the running DevServer (title, meta description, h1,
+  img alt, broken links/4xx/5xx, duplicate titles, page size, load time), results dock with click-to-open; plus
+  "Lighthouse report" via `npx lighthouse <url> --output=html` when available (opens the HTML report in Preview).
+- `radide/web_site/superpreview.py`: **SuperPreview** window: the same URL side by side at two sizes/engines
+  (phone/tablet/desktop presets, rotate), overlay/onion-skin compare, and "Open in Chrome / Edge / Firefox" for
+  installed browsers.
+- Menu entries via a feature module (`radide/features/web_tools.py`).
+
+### 8.5 App Gallery and the complete PHP project (owner: web-gallery)
+`radide/web_site/gallery.py` + `radide/web_site/templates/`: templates for New Project / "App Gallery" dialog:
+PHP Empty Site, **PHP Starter Site** (layout include, pages, contact form), **PHP + SQLite Data App** (login with
+password_hash, session, CRUD list/add/edit/delete, PDO prepared statements, CSRF token), HTML Bootstrap site
+(Bootstrap via CDN or bundled), Node Express site, Laravel (via `composer create-project` when composer exists),
+WordPress (download latest zip from wordpress.org + "SQLite Database Integration" plugin so no MySQL is needed -
+only if downloads work; otherwise say so). Create **samples/HelloPHPSite** = the PHP + SQLite Data App, verified by
+running `php -S` and real HTTP requests (register/login/CRUD).
+
+### 8.6 Web IntelliSense (owner: web-intellisense)
+Monaco + LSP for web files: HTML/CSS/JSON via `vscode-langservers-extracted` (npm), PHP via `intelephense` (npm),
+JS/TS via typescript-language-server (npm) - install into a private folder `%LOCALAPPDATA%\RADIDE\lsp\node_modules`
+with `npm install --prefix` (allowed) and teach `radide/lsp.py` SERVERS to find them there; **Emmet** in Monaco
+(`emmet-monaco-es` bundled into `radide/web/`), "Open as PHP" for any file, PHP/HTML snippets. Owner: radide/lsp.py,
+radide/monaco_editor.py, radide/web/editor.html.
+
+### 8.7 Expression Blend features for the form designer (owner: blend)
+`radide/features/states.py`, `radide/features/timeline.py` (+ targeted edits in designer.py, document.py,
+properties.py, model.py, python_tk.py, python_qt.py, vbrun.py): **Visual States** - a States panel (Normal,
+MouseOver, Pressed, Disabled, Focused per control + custom form-level states) storing property overrides in the
+.form (`"states": {...}` per control and form), designer shows the selected state, generated code switches states
+automatically (hover/press) and exposes `GoToState(name)`; **Storyboards** - an Objects and Timeline panel with
+keyframes on Left/Top/Width/Height/BackColor/ForeColor/Opacity, play in the designer, generated code runs them
+(`Storyboard1.Begin()`); **Sample data / data binding** - a Data panel: a JSON/CSV data source in the project, bind
+a control property (Text, Items, Value) to a field, design-time sample values. Implement fully for python-tk and
+python-qt; for other languages generate nothing new (ignore states) without breaking them.
+
+### 8.8 Round-3 ownership
+| Owner | Files |
+|---|---|
+| web-core | radide/web_site/__init__.py, server.py, project.py; radide/languages/php_web.py, static_web.py, node_web.py; radide/features/web_workspace.py; small hooks in app.py, features/solution_ui.py, dialogs.py |
+| web-design | radide/web_site/design.py, radide/web/grapes/ |
+| web-db | radide/web_site/databases.py, radide/features/databases.py, radide/web/adminer/ |
+| web-tools | radide/web_site/publish.py, reports.py, superpreview.py, radide/features/web_tools.py |
+| web-gallery | radide/web_site/gallery.py, radide/web_site/templates/, samples/HelloPHPSite |
+| web-intellisense | radide/lsp.py, radide/monaco_editor.py, radide/web/editor.html, radide/web/emmet/ |
+| blend | radide/features/states.py, timeline.py, databinding.py (+ targeted edits listed in 8.7) |
+| qa (after all) | integration fixes anywhere (small edits) |

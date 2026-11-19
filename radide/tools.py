@@ -503,8 +503,8 @@ def autosave(win):
              for n, cv in win.codeviews.items()]
     views += [(m, mv.editor) for m, mv in win.modviews.items()]
     for fname, ed in views:
-        if ed.isModified():
-            backup.mkdir(exist_ok=True)
+        if ed.isModified() and not Path(fname).is_absolute() and ".." not in Path(fname).parts:
+            (backup / fname).parent.mkdir(parents=True, exist_ok=True)   # website files: css/site.css
             (backup / fname).write_text(ed.text(), encoding="utf-8")
 
 
@@ -514,18 +514,28 @@ def offer_restore(win):
     backup = win.project.folder / ".radide_backup"
     if not backup.exists():
         return
-    newer = [b for b in backup.iterdir()
-             if (win.project.folder / b.name).exists() and b.stat().st_mtime > (win.project.folder / b.name).stat().st_mtime
-             and b.read_text(encoding="utf-8") != (win.project.folder / b.name).read_text(encoding="utf-8")]
+    def name(b):                     # relative path (website files live in sub-folders)
+        return b.relative_to(backup).as_posix()
+    files = [b for b in backup.rglob("*") if b.is_file()]
+    newer = [b for b in files
+             if (win.project.folder / name(b)).is_file() and
+             b.stat().st_mtime > (win.project.folder / name(b)).stat().st_mtime
+             and b.read_text(encoding="utf-8") != (win.project.folder / name(b)).read_text(encoding="utf-8")]
     if newer and QMessageBox.question(
             win, "Recover", "Unsaved changes from a previous session were found for:\n  " +
-            "\n  ".join(b.name for b in newer) + "\n\nRestore them?") == QMessageBox.StandardButton.Yes:
+            "\n  ".join(name(b) for b in newer) + "\n\nRestore them?") == QMessageBox.StandardButton.Yes:
         for b in newer:
-            ed = win._editor_for_file(b.name)
+            ed = win._editor_for_file(b.name) if "/" not in name(b) else None
+            if ed is None and hasattr(win, "open_file"):          # website files (CONTRACTS 8.1)
+                ed = win.open_file(win.project.folder / name(b))
             if ed is not None:
                 ed.setText(b.read_text(encoding="utf-8"))
+    import shutil
     for b in backup.iterdir():
-        b.unlink()
+        if b.is_dir():
+            shutil.rmtree(b, ignore_errors=True)
+        else:
+            b.unlink()
 
 
 def hover_value(win, editor, word: str, global_pos):

@@ -19,6 +19,8 @@ from .controls import CONTROL_TYPES, FORM_PROPS, menu_names
 class Control:
     type: str
     props: dict
+    # Visual States (Expression Blend, CONTRACTS 8.7): state name -> {property: value}
+    states: dict = field(default_factory=dict)
 
     @property
     def name(self) -> str:
@@ -33,20 +35,27 @@ class Control:
         return CONTROL_TYPES[self.type]
 
     def to_dict(self) -> dict:
-        return {"type": self.type, "props": self.props}
+        d = {"type": self.type, "props": self.props}
+        if self.states:
+            d["states"] = self.states
+        return d
 
     @staticmethod
     def from_dict(d: dict) -> "Control":
         ctype = CONTROL_TYPES[d["type"]]
         props = ctype.default_props("")
         props.update(json.loads(json.dumps(d.get("props", {}))))
-        return Control(d["type"], props)
+        states = d.get("states")
+        return Control(d["type"], props,
+                       json.loads(json.dumps(states)) if isinstance(states, dict) else {})
 
 
 @dataclass
 class Form:
     props: dict = field(default_factory=lambda: {k: p.default for k, p in FORM_PROPS.items()})
     controls: list[Control] = field(default_factory=list)
+    # other top-level keys of the .form (Blend: "states", "storyboards", "datasources", "bindings")
+    extra: dict = field(default_factory=dict)
 
     @property
     def name(self) -> str:
@@ -156,14 +165,20 @@ class Form:
 
     # ------------------------------------------------------------ io
     def to_dict(self) -> dict:
-        return {"version": 1, "props": self.props,
-                "controls": [c.to_dict() for c in self.controls]}
+        d = {"version": 1, "props": self.props,
+             "controls": [c.to_dict() for c in self.controls]}
+        for k, v in self.extra.items():
+            if k not in d and v not in (None, {}, []):
+                d[k] = v
+        return d
 
     @staticmethod
     def from_dict(d: dict) -> "Form":
         f = Form()
         f.props.update(d.get("props", {}))
         f.controls = [Control.from_dict(c) for c in d.get("controls", [])]
+        f.extra = {k: json.loads(json.dumps(v)) for k, v in d.items()
+                   if k not in ("version", "props", "controls")}
         return f
 
     def snapshot(self) -> str:
@@ -198,7 +213,7 @@ class Project:
     extra: dict = field(default_factory=dict, repr=False, compare=False)
 
     FILE = "project.radproj"
-    KINDS = ("app", "library")
+    KINDS = ("app", "library", "website")      # website: CONTRACTS 8.1 (radide/web_site/project.py)
     _KNOWN = ("name", "language", "forms", "startup", "modules", "form_languages", "kind", "references",
               "reference_files")
 

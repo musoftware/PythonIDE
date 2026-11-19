@@ -1,0 +1,12 @@
+Adminer 6.3.0 - https://www.adminer.org/ - https://github.com/vrana/adminer
+Copyright 2007 Jakub Vrana
+
+adminer.php is the unmodified release file "adminer-6.3.0.php" from
+https://github.com/vrana/adminer/releases/tag/v6.3.0
+(SHA-256 641e1a31e8cc333a309e202ef9446e1fd38c2069ed5f9ee509b80d70089d0503).
+
+Adminer is licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0) or the GNU General Public License,
+version 2 (https://www.gnu.org/licenses/gpl-2.0.html) - one or the other.
+
+index.php is RAD IDE's launcher (automatic login from the IDE); it is not part of Adminer.

@@ -1,0 +1,3 @@
+emmet-monaco-es 5.7.0 (MIT, https://github.com/troy351/emmet-monaco-es)
+Copied from `npm pack emmet-monaco-es@5.7.0` dist/emmet-monaco.min.js (UMD build, global `emmetMonaco`).
+Loaded by radide/web/editor.html.

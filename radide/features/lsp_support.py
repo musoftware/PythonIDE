@@ -16,10 +16,19 @@ def install(win) -> None:
     win._lsp_editors = {}            # resolved path -> editor
 
     def attach(ed):
-        if not hasattr(ed, "_js") or win.project is None or getattr(ed, "lsp", None) is not None:
+        if not hasattr(ed, "_js") or getattr(ed, "lsp", None) is not None:
+            return
+        if not getattr(ed, "_rad_lang_hook", False) and hasattr(ed, "languageChanged"):
+            ed._rad_lang_hook = True           # "Open as PHP" / Language Mode: attach the new language's server
+            ed.languageChanged.connect(lambda _lang, e=ed: QTimer.singleShot(0, lambda: attach(e)))
+        if win.project is not None:
+            root = Path(win.project.folder)
+        elif Path(ed.path).is_absolute():
+            root = Path(ed.path).parent        # a loose file without a project
+        else:
             return
         lang = ed.language_id()
-        client = win.lsp_manager.client_for(lang, win.project.folder)
+        client = win.lsp_manager.client_for(lang, root)
         if client is None:
             return
         ed.lsp = client
@@ -30,8 +39,11 @@ def install(win) -> None:
             client.diagnostics.connect(lambda path, diags: show_diags(path, diags))
             client.log.connect(lambda _t: None)
         client.did_open(ed.path, ed.text(), lang)
-        ed.definitionRequested.connect(lambda line, col, e=ed: definition(e, line, col))
-        win.statusBar().showMessage(f"Language server: {Path(client.argv[0]).name} ({lang})", 4000)
+        if not getattr(ed, "_rad_def_hook", False):
+            ed._rad_def_hook = True
+            ed.definitionRequested.connect(lambda line, col, e=ed: definition(e, line, col))
+        from ..lsp import display_name
+        win.statusBar().showMessage(f"Language server: {display_name(client.argv)} ({lang})", 4000)
 
     def show_diags(path, diags):
         ed = win._lsp_editors.get(str(Path(path).resolve()).lower())
@@ -56,8 +68,21 @@ def install(win) -> None:
                 if target is not None:
                     target.goto_line(target_line)
                     return
+            if callable(getattr(win, "open_file", None)) and p.is_file():
+                try:
+                    if win.open_file(p, target_line + 1) is not None:
+                        return
+                except Exception:  # noqa: BLE001
+                    pass
             win.statusBar().showMessage(f"Defined in {p} line {target_line + 1}", 6000)
         ed.lsp.definition(ed.path, line, col, done)
+
+    # every Monaco editor of this window (also files opened by win.open_file) gets a server when ready
+    try:
+        from ..monaco_editor import MonacoEditor
+        MonacoEditor.ready_hooks.append(lambda ed: attach(ed) if ed.window() is win else None)
+    except ImportError:                      # QtWebEngine missing: the built-in editor has no LSP
+        pass
 
     # wrap the IDE's editor factories so new editors get a server
     orig_codeview = win._codeview

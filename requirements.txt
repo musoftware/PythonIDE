@@ -2,5 +2,9 @@
 PyQt6-QScintilla>=2.14
 jedi>=0.19
 pyflakes>=3.0
+# optional (Databases workspace: MySQL / PostgreSQL connections): pymysql>=1.1, psycopg[binary]>=3.1
+# Site > Publish over SFTP (FTP/FTPS/folder need nothing extra)
+paramiko>=3.4
+# tests of Publish only (local FTP/FTPS server): pyftpdlib>=2.0, pyopenssl>=24
 # optional: PySide6-Essentials (Python/Qt projects and importing Qt programs), pyinstaller (Build EXE), pywin32 (VB CreateObject)
 

@@ -22,6 +22,7 @@ LANGUAGE_GROUPS = [
     ("Ring", ["ring-qt"]),
     (".NET", ["csharp-bridge", "powershell-bridge"]),
     ("Java", ["java-bridge"]),
+    ("Web", ["php-web", "static-web", "node-web"]),          # web site projects (CONTRACTS 8.1)
     ("Web & Script", ["javascript", "typescript", "php"]),
     ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "fortran-bridge", "go-bridge"]),
     ("Scripting", ["lua-bridge", "ruby-bridge", "perl-bridge", "dart-bridge"]),
@@ -32,7 +33,8 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "php": ("PHP", "#4F5D95"), "c-bridge": ("C", "#555555"), "cpp-bridge": ("C++", "#F34B7D"),
          "rust-bridge": ("Rs", "#B7410E"), "fortran-bridge": ("F", "#4D41B1"), "go-bridge": ("Go", "#00ADD8"),
          "lua-bridge": ("Lua", "#000080"), "ruby-bridge": ("Rb", "#CC342D"), "perl-bridge": ("Pl", "#0298C3"),
-         "dart-bridge": ("Dt", "#00B4AB")}
+         "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
+         "node-web": ("N", "#3C873A")}
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
                   "data": "SP_FileDialogDetailedView", "console": "SP_CommandLink",
                   "library": "SP_DriveHDIcon"}
@@ -185,6 +187,7 @@ class NewProjectDialog(QDialog):
         lay.addWidget(hint)
         lay.addWidget(buttons)
 
+        self.langs.currentItemChanged.connect(lambda *_: self._sync_templates())
         self.langs.currentItemChanged.connect(lambda *_: self._update_desc())
         self.templates.currentItemChanged.connect(lambda *_: self._on_template())
         self.templates.itemDoubleClicked.connect(lambda *_: self._accept())
@@ -212,6 +215,51 @@ class NewProjectDialog(QDialog):
         if first is not None and first.childCount():
             self.langs.setCurrentItem(first.child(0))
         self._update_desc()
+
+    # ------------------------------------------------------------ web site templates (CONTRACTS 8.1)
+    def _sync_templates(self):
+        """Web site languages (php-web, static-web, node-web) show their own templates."""
+        li = self.langs.currentItem()
+        pid = li.data(0, Qt.ItemDataRole.UserRole) if li is not None else None
+        plugin = self._plugins.get(pid) if pid else None
+        web = getattr(plugin, "project_kind", "") == "website"
+        mode = pid if web else ""
+        if mode == getattr(self, "_templates_mode", ""):
+            return
+        was_web = bool(getattr(self, "_templates_mode", ""))
+        self._templates_mode = mode
+        if web:
+            try:
+                from .web_site.project import templates_for
+                items = [(t.id, t.title, t.description, t.icon) for t in templates_for(pid)]
+            except Exception:  # noqa: BLE001
+                items = []
+        else:
+            items = [(tid, title, desc, TEMPLATE_ICONS.get(tid, "SP_FileIcon"))
+                     for tid, title, desc in self._template_list]
+        self.templates.blockSignals(True)
+        self.templates.clear()
+        for tid, title, desc, icon in items:
+            it = QListWidgetItem(self.style().standardIcon(getattr(QStyle.StandardPixmap, icon,
+                                                                   QStyle.StandardPixmap.SP_FileIcon)), title)
+            it.setData(Qt.ItemDataRole.UserRole, tid)
+            it.setToolTip(desc)
+            self.templates.addItem(it)
+        self.templates.setCurrentRow(0)
+        self.templates.blockSignals(False)
+        import re as _re
+        cur = self.name.text()
+        if web and _re.fullmatch(r"[A-Za-z]*(Application|Entry|Library)\d*|WebSite\d*", cur or "WebSite1"):
+            self.name.setText(self._unique_name("WebSite"))
+        elif not web and was_web and _re.fullmatch(r"WebSite\d*", cur):
+            self.name.setText(self._unique_name("WindowsApplication"))
+
+    def _unique_name(self, base: str) -> str:
+        i = 1
+        loc = Path(self.location.text())
+        while (loc / f"{base}{i}").exists():
+            i += 1
+        return f"{base}{i}"
 
     def _lang_item(self, group, plugin):
         from PyQt6.QtWidgets import QTreeWidgetItem

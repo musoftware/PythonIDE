@@ -103,6 +103,7 @@ class FormDocument(QObject):
         restored = Form.from_dict(json.loads(snap))
         self.form.props = restored.props
         self.form.controls = restored.controls
+        self.form.extra = restored.extra          # Blend states / storyboards / data bindings
         self.selection = [c for c in (self.form.find(n) for n in names) if c]
         self.structureChanged.emit()
         self.controlChanged.emit(None)

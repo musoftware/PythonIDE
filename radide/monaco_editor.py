@@ -27,7 +27,65 @@ MONACO_LANG = {".py": "python", ".pyw": "python", ".js": "javascript", ".mjs": "
                ".rb": "ruby", ".pl": "perl", ".lua": "lua", ".dart": "dart", ".ps1": "powershell",
                ".bas": "vb", ".frm": "vb", ".pas": "pascal", ".kt": "kotlin", ".swift": "swift",
                ".r": "r", ".sql": "sql", ".json": "json", ".html": "html", ".css": "css", ".md": "markdown",
-               ".sh": "shell", ".bat": "bat", ".xml": "xml", ".yaml": "yaml", ".yml": "yaml"}
+               ".sh": "shell", ".bat": "bat", ".xml": "xml", ".yaml": "yaml", ".yml": "yaml",
+               # web files (section 8.6): each id maps to a language server in radide/lsp.py
+               ".htm": "html", ".xhtml": "html", ".shtml": "html", ".phtml": "php", ".php3": "php",
+               ".php4": "php", ".php5": "php", ".phps": "php", ".inc": "php", ".scss": "scss", ".less": "less",
+               ".jsx": "javascript", ".cjs": "javascript", ".tsx": "typescript", ".mts": "typescript",
+               ".cts": "typescript", ".jsonc": "json", ".webmanifest": "json", ".svg": "xml",
+               ".twig": "twig", ".cshtml": "razor", ".hbs": "handlebars", ".ini": "ini", ".toml": "ini",
+               ".dockerfile": "dockerfile", ".graphql": "graphql", ".vue": "html"}
+
+# "Language Mode" choices offered in the editor menu (Open as PHP / HTML / ...)
+LANGUAGE_CHOICES = [("PHP", "php"), ("HTML", "html"), ("CSS", "css"), ("SCSS", "scss"), ("Less", "less"),
+                    ("JavaScript", "javascript"), ("TypeScript", "typescript"), ("JSON", "json"),
+                    ("XML", "xml"), ("Markdown", "markdown"), ("SQL", "sql"), ("Python", "python"),
+                    ("YAML", "yaml"), ("Shell", "shell"), ("Batch", "bat"), ("Plain Text", "plaintext")]
+_OVERRIDES_KEY = "editor/languageOverrides"
+
+
+def _settings():
+    from PyQt6.QtCore import QCoreApplication, QSettings
+    org = QCoreApplication.organizationName()        # same rule as radide.app.ide_settings()
+    if org.upper().startswith("RADIDE-TEST"):
+        return QSettings(org, QCoreApplication.applicationName() or org)
+    return QSettings("RADIDE", "RADIDE")
+
+
+def _path_key(path: Path) -> str:
+    try:
+        return str(Path(path).resolve()).lower()
+    except OSError:
+        return str(path).lower()
+
+
+def language_overrides() -> dict[str, str]:
+    """path -> Monaco language id chosen with "Open as ..." (remembered in QSettings)."""
+    try:
+        data = json.loads(_settings().value(_OVERRIDES_KEY, "{}") or "{}")
+        return data if isinstance(data, dict) else {}
+    except (TypeError, ValueError):
+        return {}
+
+
+def set_language_override(path: Path, lang: str | None) -> None:
+    data = language_overrides()
+    if lang:
+        data[_path_key(path)] = lang
+    else:
+        data.pop(_path_key(path), None)
+    _settings().setValue(_OVERRIDES_KEY, json.dumps(data))
+
+
+def language_for_path(path: Path) -> str:
+    """Monaco language id for a file: the user's "Open as" choice, else by extension ("custom" if unknown)."""
+    lang = language_overrides().get(_path_key(path))
+    if lang:
+        return lang
+    p = Path(path)
+    if p.name.lower() == "dockerfile":
+        return "dockerfile"
+    return MONACO_LANG.get(p.suffix.lower(), "custom")
 
 KIND = {"keyword": 17, "function": 1, "method": 0, "class": 5, "variable": 4, "property": 9,
         "module": 8, "control": 4, "event": 10, "param": 4, "instance": 4, "statement": 17}
@@ -81,7 +139,11 @@ class _Bridge(QObject):
 
 
 class MonacoEditor(QWebEngineView):
+    # callables(editor) run once each editor's page is ready (radide/features/lsp_support.py attaches servers)
+    ready_hooks: list = []
+
     breakpointToggled = pyqtSignal(int, bool)
+    languageChanged = pyqtSignal(str)        # new Monaco language id ("Open as PHP", ...)
     contextMenuAboutToShow = pyqtSignal(object)
     modificationChanged = pyqtSignal(bool)
     hoverWord = pyqtSignal(str, object)
@@ -93,7 +155,8 @@ class MonacoEditor(QWebEngineView):
         self.plugin = plugin
         self.path = Path(path)
         self.names: dict[str, str] = {}
-        self.lsp = None                      # radide.lsp.LspClient (optional)
+        self._lsp = None                     # radide.lsp.LspClient (optional), see the lsp property
+        self._lang_override = language_overrides().get(_path_key(self.path))   # "Open as ..." choice
         self._text = ""
         self._modified = False
         self._ready = False
@@ -133,6 +196,56 @@ class MonacoEditor(QWebEngineView):
             self.page().runJavaScript(code)
         self._pending.clear()
         self._push_breakpoints()
+        for hook in list(MonacoEditor.ready_hooks):
+            try:
+                hook(self)
+            except Exception as e:  # noqa: BLE001 - a hook must never break the editor
+                print(f"[monaco] ready hook failed: {e}")
+
+    # ------------------------------------------------------------ language server / language mode
+    @property
+    def lsp(self):
+        return self._lsp
+
+    @lsp.setter
+    def lsp(self, client):
+        """Attach (or detach with None) a radide.lsp.LspClient. Monaco's built-in workers for the
+        same language are switched off while a server is attached, and the server's completion
+        trigger characters are used."""
+        self._lsp = client
+        lang = self.language_id()
+        self._js(f"radSetLspActive({json.dumps(lang)}, {json.dumps(client is not None)});")
+        if client is None:
+            return
+        if getattr(client, "_initialized", False):
+            self._push_triggers(client)
+        elif hasattr(client, "ready"):
+            client.ready.connect(lambda c=client: self._push_triggers(c) if self._lsp is c else None)
+
+    def _push_triggers(self, client):
+        trig = ((getattr(client, "capabilities", None) or {}).get("completionProvider") or {}).get("triggerCharacters")
+        if trig:
+            self._js(f"radSetTriggers({json.dumps(self.language_id())}, {json.dumps(list(trig))});")
+
+    def set_language(self, lang: str | None, remember: bool = True) -> None:
+        """Change the language of this file ("Open as PHP"); None = back to automatic (by extension).
+        The language server is detached and languageChanged is emitted so a new one can attach."""
+        if remember:
+            set_language_override(self.path, lang)
+        self._lang_override = lang
+        old = self._lsp
+        if old is not None:
+            try:
+                old.did_close(self.path)
+            except Exception:  # noqa: BLE001
+                pass
+            self._js(f"radSetLspActive({json.dumps(self.language_id())}, false);")
+            self._lsp = None
+        new = self.language_id()
+        if self.language() == "custom":
+            self._js(f"radRegisterLanguage({json.dumps(self._monarch())});")
+        self._js(f"radSetMarkers([]); radSetLanguage({json.dumps(new)});")
+        self.languageChanged.emit(new)
 
     def _on_js_text(self, text: str):
         if text == self._text:
@@ -146,6 +259,11 @@ class MonacoEditor(QWebEngineView):
             self.lsp.did_change(self.path, text)
 
     def language(self) -> str:
+        lang = getattr(self, "_lang_override", None)
+        if lang:
+            return lang
+        if self.path.name.lower() == "dockerfile":
+            return "dockerfile"
         return MONACO_LANG.get(self.path.suffix.lower(), "custom")
 
     def language_id(self) -> str:
@@ -389,6 +507,25 @@ class MonacoEditor(QWebEngineView):
     def contextMenuEvent(self, e):
         pass          # Monaco shows its own; ours comes from jsContextMenu
 
+    def emmet_expand(self):
+        self._js("radEditor.focus(); radEmmetExpand(true);")
+
+    def add_language_menu(self, menu: QMenu) -> QMenu:
+        """'Open as PHP' + a 'Language Mode' submenu (choose the language of this file)."""
+        cur = self.language_id()
+        if cur != "php":
+            menu.addAction("Open as PHP", lambda: self.set_language("php"))
+        sub = menu.addMenu("Language Mode")
+        auto = sub.addAction("Auto Detect (by extension)", lambda: self.set_language(None))
+        auto.setCheckable(True)
+        auto.setChecked(not self._lang_override)
+        sub.addSeparator()
+        for title, lid in LANGUAGE_CHOICES:
+            a = sub.addAction(title, lambda lid=lid: self.set_language(lid))
+            a.setCheckable(True)
+            a.setChecked(lid == cur)
+        return sub
+
     def _context_menu(self, line: int, x: int, y: int):
         m = QMenu(self)
         for text, cmd in (("Cut", "cut"), ("Copy", "copy"), ("Paste", "paste")):
@@ -396,6 +533,10 @@ class MonacoEditor(QWebEngineView):
         m.addSeparator()
         m.addAction("Go to Definition", lambda: self.definitionRequested.emit(*self._cursor))
         m.addAction("Format Document", lambda: self._js("radEditor.trigger('rad', 'editor.action.formatDocument');"))
+        if self.language_id() in ("html", "php", "css", "scss", "less"):
+            m.addAction("Emmet: Expand Abbreviation\tTab", self.emmet_expand)
+        m.addSeparator()
+        self.add_language_menu(m)
         m.addAction("Command Palette...", lambda: self._js("radEditor.focus(); radEditor.trigger('rad', 'editor.action.quickCommand');"))
         self.contextMenuAboutToShow.emit(m)
         m.exec(self.mapToGlobal(QPoint(x, y)))

@@ -364,6 +364,9 @@ class PythonQtPlugin(PythonTkPlugin):
             runtime += DIALOG_RT.rstrip("\n")
         if "ActiveX" in types:
             runtime += AX_RT.rstrip("\n")
+        blend = self._blend(form, "qt")      # Expression Blend: states / storyboards / bindings (8.7)
+        if blend:
+            runtime += blend["runtime"].rstrip("\n")
         L = [HEADER.format(form=n), "import os", "import sys  # noqa: F401", "",
              "from PySide6.QtCore import QObject, QEvent, Qt, QTimer, QDate, QTime  # noqa: F401",
              "from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPixmap  # noqa: F401",
@@ -423,8 +426,15 @@ class PythonQtPlugin(PythonTkPlugin):
                     L.append(f"        _place(self.{c.name}, {self._parent_expr(form, c, client)}, "
                              f"{_spec(places[c.name])})")
         L += self._filter("self", n, None, used(None), form)
-        L += ["", f"        QTimer.singleShot(0, self._ev(\"{n}_Load\"))",
-              DISPATCH.replace("{form}", n).rstrip("\n"), ""]
+        if blend:
+            L += blend["init"]
+        L += ["", f"        QTimer.singleShot(0, self._ev(\"{n}_Load\"))"]
+        if blend:
+            L += blend["after_load"]
+        L.append(DISPATCH.replace("{form}", n).rstrip("\n"))
+        if blend:
+            L += blend["methods"]
+        L.append("")
         return "\n".join(L)
 
     @staticmethod
