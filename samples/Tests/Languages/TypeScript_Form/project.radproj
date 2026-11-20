@@ -1,0 +1,9 @@
+{
+  "name": "DbgTs",
+  "language": "typescript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

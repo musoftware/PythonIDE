@@ -1,0 +1,22 @@
+{
+  "name": "NativeRust",
+  "projects": [
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "MathRs",
+      "path": "MathRs"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "RsApp",
+      "path": "RsApp"
+    }
+  ],
+  "startup": "PyApp"
+}

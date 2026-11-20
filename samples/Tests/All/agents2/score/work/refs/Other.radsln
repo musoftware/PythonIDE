@@ -1,0 +1,14 @@
+{
+  "name": "Other",
+  "projects": [
+    {
+      "name": "App",
+      "path": "App"
+    },
+    {
+      "name": "Deep",
+      "path": "Deep"
+    }
+  ],
+  "startup": "App"
+}

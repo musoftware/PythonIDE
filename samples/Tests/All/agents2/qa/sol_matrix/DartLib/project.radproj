@@ -1,0 +1,10 @@
+{
+  "name": "DartLib",
+  "language": "dart-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "DartLib.dart"
+  ],
+  "kind": "library"
+}

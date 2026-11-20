@@ -1,0 +1,27 @@
+{
+  "name": "PsApp",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PsMain.ps1"
+  ],
+  "references": [
+    "CsLib",
+    "JLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.ps1"
+    ],
+    "JLib": [
+      "JLib.ref.ps1"
+    ],
+    "PyLib": [
+      "PyLib.ref.ps1"
+    ]
+  }
+}

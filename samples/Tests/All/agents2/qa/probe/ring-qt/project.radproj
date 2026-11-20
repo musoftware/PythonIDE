@@ -1,0 +1,10 @@
+{
+  "name": "L_ring_qt",
+  "language": "ring-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_ring_qt.ring"
+  ],
+  "kind": "library"
+}

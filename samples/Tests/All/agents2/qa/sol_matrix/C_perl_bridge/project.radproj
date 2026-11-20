@@ -1,0 +1,75 @@
+{
+  "name": "C_perl_bridge",
+  "language": "perl-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PlCons.pl"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLibRef.pm"
+    ],
+    "VbLib": [
+      "VbLibRef.pm"
+    ],
+    "RingLib": [
+      "RingLibRef.pm"
+    ],
+    "JsLib": [
+      "JsLibRef.pm"
+    ],
+    "TsLib": [
+      "TsLibRef.pm"
+    ],
+    "CLib": [
+      "CLibRef.pm"
+    ],
+    "CppLib": [
+      "CppLibRef.pm"
+    ],
+    "RustLib": [
+      "RustLibRef.pm"
+    ],
+    "FortLib": [
+      "FortLibRef.pm"
+    ],
+    "PerlLib": [
+      "PerlLibRef.pm"
+    ],
+    "DartLib": [
+      "DartLibRef.pm"
+    ],
+    "JavaLib": [
+      "JavaLibRef.pm"
+    ],
+    "PhpLib": [
+      "PhpLibRef.pm"
+    ],
+    "PsLib": [
+      "PsLibRef.pm"
+    ],
+    "PyLib": [
+      "PyLibRef.pm"
+    ]
+  }
+}

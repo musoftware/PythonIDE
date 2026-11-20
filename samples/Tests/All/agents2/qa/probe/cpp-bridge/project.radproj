@@ -1,0 +1,10 @@
+{
+  "name": "L_cpp_bridge",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_cpp_bridge.cpp"
+  ],
+  "kind": "library"
+}

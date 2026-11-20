@@ -1,0 +1,18 @@
+{
+  "name": "Demo",
+  "projects": [
+    {
+      "name": "App",
+      "path": "App"
+    },
+    {
+      "name": "CsLib",
+      "path": "CsLib"
+    },
+    {
+      "name": "VbLib",
+      "path": "VbLib"
+    }
+  ],
+  "startup": "App"
+}

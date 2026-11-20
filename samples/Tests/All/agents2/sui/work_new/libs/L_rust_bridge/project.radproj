@@ -1,0 +1,10 @@
+{
+  "name": "L_rust_bridge",
+  "language": "rust-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_rust_bridge.rs"
+  ],
+  "kind": "library"
+}

@@ -1,3 +1,13 @@
+# StaticBootstrapSite
+
+**static-web** - Bootstrap template from the App Gallery: 3 pages, CSS/JS assets, live reload.
+
+**Try it:** Open, F5. Edit index.html - the preview reloads. Try Design/Split view.
+
+*Origin:* agents3 web-gallery (copied from the IDE's test runs, build output removed).
+
+---
+
 # Boot Site
 
 HTML Bootstrap Site (RAD IDE App Gallery): `index.html`, `about.html`, `contact.html` with

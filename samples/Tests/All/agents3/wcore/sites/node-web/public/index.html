@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>SiteNode</title>
+    <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<header><h1>SiteNode</h1></header>
+<main>
+    <p>Served by Node.js. Server time: <span id="time">...</span></p>
+</main>
+<script>
+fetch('/api/time').then(r => r.json()).then(d => document.getElementById('time').textContent = d.time);
+</script>
+<p>EDITED</p></body>
+</html>

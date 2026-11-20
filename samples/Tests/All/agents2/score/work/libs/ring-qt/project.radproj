@@ -1,0 +1,10 @@
+{
+  "name": "MathLib",
+  "language": "ring-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "MathLib.ring"
+  ],
+  "kind": "library"
+}

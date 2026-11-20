@@ -1,0 +1,10 @@
+{
+  "name": "L_php",
+  "language": "php",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_php.php"
+  ],
+  "kind": "library"
+}

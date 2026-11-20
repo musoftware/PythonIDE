@@ -1,0 +1,75 @@
+{
+  "name": "C_csharp_bridge",
+  "language": "csharp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CsCons.cs"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.cs"
+    ],
+    "VbLib": [
+      "VbLib.ref.cs"
+    ],
+    "RingLib": [
+      "RingLib.ref.cs"
+    ],
+    "JsLib": [
+      "JsLib.ref.cs"
+    ],
+    "TsLib": [
+      "TsLib.ref.cs"
+    ],
+    "CLib": [
+      "CLib.ref.cs"
+    ],
+    "CppLib": [
+      "CppLib.ref.cs"
+    ],
+    "RustLib": [
+      "RustLib.ref.cs"
+    ],
+    "FortLib": [
+      "FortLib.ref.cs"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.cs"
+    ],
+    "DartLib": [
+      "DartLib.ref.cs"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.cs"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.cs"
+    ],
+    "PsLib": [
+      "PsLib.ref.cs"
+    ],
+    "PyLib": [
+      "PyLib.ref.cs"
+    ]
+  }
+}

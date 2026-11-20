@@ -1,0 +1,75 @@
+{
+  "name": "C_java_bridge",
+  "language": "java-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "JCons.java"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.java"
+    ],
+    "VbLib": [
+      "VbLib.ref.java"
+    ],
+    "RingLib": [
+      "RingLib.ref.java"
+    ],
+    "JsLib": [
+      "JsLib.ref.java"
+    ],
+    "TsLib": [
+      "TsLib.ref.java"
+    ],
+    "CLib": [
+      "CLib.ref.java"
+    ],
+    "CppLib": [
+      "CppLib.ref.java"
+    ],
+    "RustLib": [
+      "RustLib.ref.java"
+    ],
+    "FortLib": [
+      "FortLib.ref.java"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.java"
+    ],
+    "DartLib": [
+      "DartLib.ref.java"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.java"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.java"
+    ],
+    "PsLib": [
+      "PsLib.ref.java"
+    ],
+    "PyLib": [
+      "PyLib.ref.java"
+    ]
+  }
+}

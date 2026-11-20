@@ -1,0 +1,30 @@
+{
+  "name": "UiSol",
+  "projects": [
+    {
+      "name": "App",
+      "path": "App"
+    },
+    {
+      "name": "CsLib",
+      "path": "CsLib"
+    },
+    {
+      "name": "VbLib",
+      "path": "VbLib"
+    },
+    {
+      "name": "JsLib",
+      "path": "JsLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "VbApp",
+      "path": "VbApp"
+    }
+  ],
+  "startup": "App"
+}

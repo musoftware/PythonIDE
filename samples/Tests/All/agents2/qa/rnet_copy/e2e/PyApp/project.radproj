@@ -1,0 +1,27 @@
+{
+  "name": "PyApp",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "pymain.py"
+  ],
+  "references": [
+    "CsLib",
+    "JLib",
+    "PsLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.py"
+    ],
+    "JLib": [
+      "JLib.py"
+    ],
+    "PsLib": [
+      "PsLib.py"
+    ]
+  }
+}

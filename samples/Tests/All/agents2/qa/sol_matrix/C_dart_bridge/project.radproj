@@ -1,0 +1,75 @@
+{
+  "name": "C_dart_bridge",
+  "language": "dart-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "DartCons.dart"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "cslib_ref.dart"
+    ],
+    "VbLib": [
+      "vblib_ref.dart"
+    ],
+    "RingLib": [
+      "ringlib_ref.dart"
+    ],
+    "JsLib": [
+      "jslib_ref.dart"
+    ],
+    "TsLib": [
+      "tslib_ref.dart"
+    ],
+    "CLib": [
+      "clib_ref.dart"
+    ],
+    "CppLib": [
+      "cpplib_ref.dart"
+    ],
+    "RustLib": [
+      "rustlib_ref.dart"
+    ],
+    "FortLib": [
+      "fortlib_ref.dart"
+    ],
+    "PerlLib": [
+      "perllib_ref.dart"
+    ],
+    "DartLib": [
+      "dartlib_ref.dart"
+    ],
+    "JavaLib": [
+      "javalib_ref.dart"
+    ],
+    "PhpLib": [
+      "phplib_ref.dart"
+    ],
+    "PsLib": [
+      "pslib_ref.dart"
+    ],
+    "PyLib": [
+      "pylib_ref.dart"
+    ]
+  }
+}

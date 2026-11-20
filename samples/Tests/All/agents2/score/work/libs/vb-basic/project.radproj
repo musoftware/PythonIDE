@@ -1,0 +1,10 @@
+{
+  "name": "MathLib",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "MathLib.bas"
+  ],
+  "kind": "library"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "L_javascript",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_javascript.js"
+  ],
+  "kind": "library"
+}

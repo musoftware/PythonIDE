@@ -1,0 +1,10 @@
+{
+  "name": "L_python_qt",
+  "language": "python-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_python_qt.py"
+  ],
+  "kind": "library"
+}

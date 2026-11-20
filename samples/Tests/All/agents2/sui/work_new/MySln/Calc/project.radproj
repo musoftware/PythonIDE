@@ -1,0 +1,10 @@
+{
+  "name": "Calc",
+  "language": "csharp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "Calc.cs"
+  ],
+  "kind": "library"
+}

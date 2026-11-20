@@ -1,0 +1,1 @@
+<?php header('Location: /about.php'); http_response_code(302);

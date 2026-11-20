@@ -1,0 +1,10 @@
+{
+  "name": "L_go_bridge",
+  "language": "go-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_go_bridge.go"
+  ],
+  "kind": "library"
+}

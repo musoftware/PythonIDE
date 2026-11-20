@@ -1,3 +1,13 @@
+# ExpressSite_Node
+
+**node-web (Express)** - Node/Express site with a JSON notes API (data/notes.json) and static front end.
+
+**Try it:** Open, F5 - the IDE runs `npm install` (node_modules was removed) and starts server.js.
+
+*Origin:* agents3 web-gallery (copied from the IDE's test runs, build output removed).
+
+---
+
 # Express Site
 
 Node.js Express site (RAD IDE App Gallery).

@@ -13,7 +13,6 @@ class frmGreeter(frmGreeterDesigner):
         self.lbl1003.setText('Type a name and press Greet')
 
     def mnuHelpAbout_Click(self):
-        from PyQt6.QtWidgets import QMessageBox
         QMessageBox.information(self, 'About Greeter', 'Greeter 1.0 - made with MinGW')
 
     def btnGreet_Click(self):

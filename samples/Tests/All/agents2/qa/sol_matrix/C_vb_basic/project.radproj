@@ -1,0 +1,75 @@
+{
+  "name": "C_vb_basic",
+  "language": "vb-basic",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "VbCons.bas"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.bas"
+    ],
+    "VbLib": [
+      "VbLib.ref.bas"
+    ],
+    "RingLib": [
+      "RingLib.ref.bas"
+    ],
+    "JsLib": [
+      "JsLib.ref.bas"
+    ],
+    "TsLib": [
+      "TsLib.ref.bas"
+    ],
+    "CLib": [
+      "CLib.ref.bas"
+    ],
+    "CppLib": [
+      "CppLib.ref.bas"
+    ],
+    "RustLib": [
+      "RustLib.ref.bas"
+    ],
+    "FortLib": [
+      "FortLib.ref.bas"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.bas"
+    ],
+    "DartLib": [
+      "DartLib.ref.bas"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.bas"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.bas"
+    ],
+    "PsLib": [
+      "PsLib.ref.bas"
+    ],
+    "PyLib": [
+      "PyLib.ref.bas"
+    ]
+  }
+}

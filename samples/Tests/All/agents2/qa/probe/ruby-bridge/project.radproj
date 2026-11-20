@@ -1,0 +1,10 @@
+{
+  "name": "L_ruby_bridge",
+  "language": "ruby-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_ruby_bridge.rb"
+  ],
+  "kind": "library"
+}

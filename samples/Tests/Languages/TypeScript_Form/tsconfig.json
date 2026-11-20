@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "none",
+    "strict": false,
+    "noEmit": true,
+    "allowJs": false,
+    "types": []
+  },
+  "include": ["*.ts"]
+}

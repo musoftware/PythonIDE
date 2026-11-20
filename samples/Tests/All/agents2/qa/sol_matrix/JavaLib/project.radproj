@@ -1,0 +1,10 @@
+{
+  "name": "JavaLib",
+  "language": "java-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "JavaLib.java"
+  ],
+  "kind": "library"
+}

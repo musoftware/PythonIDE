@@ -1,0 +1,75 @@
+{
+  "name": "C_rust_bridge",
+  "language": "rust-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "RustCons.rs"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib_ref.rs"
+    ],
+    "VbLib": [
+      "VbLib_ref.rs"
+    ],
+    "RingLib": [
+      "RingLib_ref.rs"
+    ],
+    "JsLib": [
+      "JsLib_ref.rs"
+    ],
+    "TsLib": [
+      "TsLib_ref.rs"
+    ],
+    "CLib": [
+      "CLib_ref.rs"
+    ],
+    "CppLib": [
+      "CppLib_ref.rs"
+    ],
+    "RustLib": [
+      "RustLib_ref.rs"
+    ],
+    "FortLib": [
+      "FortLib_ref.rs"
+    ],
+    "PerlLib": [
+      "PerlLib_ref.rs"
+    ],
+    "DartLib": [
+      "DartLib_ref.rs"
+    ],
+    "JavaLib": [
+      "JavaLib_ref.rs"
+    ],
+    "PhpLib": [
+      "PhpLib_ref.rs"
+    ],
+    "PsLib": [
+      "PsLib_ref.rs"
+    ],
+    "PyLib": [
+      "PyLib_ref.rs"
+    ]
+  }
+}

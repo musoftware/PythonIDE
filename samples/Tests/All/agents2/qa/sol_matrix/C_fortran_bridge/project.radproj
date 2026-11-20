@@ -1,0 +1,75 @@
+{
+  "name": "C_fortran_bridge",
+  "language": "fortran-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "FCons.f90"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib_ref.f90"
+    ],
+    "VbLib": [
+      "VbLib_ref.f90"
+    ],
+    "RingLib": [
+      "RingLib_ref.f90"
+    ],
+    "JsLib": [
+      "JsLib_ref.f90"
+    ],
+    "TsLib": [
+      "TsLib_ref.f90"
+    ],
+    "CLib": [
+      "CLib_ref.f90"
+    ],
+    "CppLib": [
+      "CppLib_ref.f90"
+    ],
+    "RustLib": [
+      "RustLib_ref.f90"
+    ],
+    "FortLib": [
+      "FortLib_ref.f90"
+    ],
+    "PerlLib": [
+      "PerlLib_ref.f90"
+    ],
+    "DartLib": [
+      "DartLib_ref.f90"
+    ],
+    "JavaLib": [
+      "JavaLib_ref.f90"
+    ],
+    "PhpLib": [
+      "PhpLib_ref.f90"
+    ],
+    "PsLib": [
+      "PsLib_ref.f90"
+    ],
+    "PyLib": [
+      "PyLib_ref.f90"
+    ]
+  }
+}

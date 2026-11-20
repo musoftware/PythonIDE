@@ -1,0 +1,12 @@
+{
+  "name": "App",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "references": [
+    "MathLib"
+  ]
+}

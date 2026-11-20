@@ -1,0 +1,10 @@
+{
+  "name": "FortLib",
+  "language": "fortran-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "FortLib.f90"
+  ],
+  "kind": "library"
+}

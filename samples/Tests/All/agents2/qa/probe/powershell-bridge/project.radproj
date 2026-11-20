@@ -1,0 +1,10 @@
+{
+  "name": "L_powershell_bridge",
+  "language": "powershell-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_powershell_bridge.ps1"
+  ],
+  "kind": "library"
+}

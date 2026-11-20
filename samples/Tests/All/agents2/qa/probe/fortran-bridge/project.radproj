@@ -1,0 +1,10 @@
+{
+  "name": "L_fortran_bridge",
+  "language": "fortran-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_fortran_bridge.f90"
+  ],
+  "kind": "library"
+}

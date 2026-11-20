@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "ExpoApp1",
+    "slug": "expo-app1",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "org.radide.expoapp1"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}

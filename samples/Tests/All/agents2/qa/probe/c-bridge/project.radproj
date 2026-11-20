@@ -1,0 +1,10 @@
+{
+  "name": "L_c_bridge",
+  "language": "c-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_c_bridge.c"
+  ],
+  "kind": "library"
+}

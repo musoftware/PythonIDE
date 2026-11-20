@@ -1,0 +1,15 @@
+{
+  "name": "SiteNode",
+  "language": "node-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "server.js",
+    "port": 0,
+    "live_reload": true,
+    "template": "t-node"
+  }
+}

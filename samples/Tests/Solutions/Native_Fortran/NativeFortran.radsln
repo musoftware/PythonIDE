@@ -1,0 +1,22 @@
+{
+  "name": "NativeFortran",
+  "projects": [
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "MathF",
+      "path": "MathF"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "FApp",
+      "path": "FApp"
+    }
+  ],
+  "startup": "PyApp"
+}

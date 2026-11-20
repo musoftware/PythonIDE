@@ -1,0 +1,10 @@
+{
+  "name": "CLib",
+  "language": "c-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "CLib.c"
+  ],
+  "kind": "library"
+}

@@ -1,0 +1,75 @@
+{
+  "name": "C_ring_qt",
+  "language": "ring-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "RingCons.ring"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.ring"
+    ],
+    "VbLib": [
+      "VbLib.ref.ring"
+    ],
+    "RingLib": [
+      "RingLib.ref.ring"
+    ],
+    "JsLib": [
+      "JsLib.ref.ring"
+    ],
+    "TsLib": [
+      "TsLib.ref.ring"
+    ],
+    "CLib": [
+      "CLib.ref.ring"
+    ],
+    "CppLib": [
+      "CppLib.ref.ring"
+    ],
+    "RustLib": [
+      "RustLib.ref.ring"
+    ],
+    "FortLib": [
+      "FortLib.ref.ring"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.ring"
+    ],
+    "DartLib": [
+      "DartLib.ref.ring"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.ring"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.ring"
+    ],
+    "PsLib": [
+      "PsLib.ref.ring"
+    ],
+    "PyLib": [
+      "PyLib.ref.ring"
+    ]
+  }
+}

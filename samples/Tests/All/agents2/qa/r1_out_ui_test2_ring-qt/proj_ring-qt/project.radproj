@@ -1,0 +1,9 @@
+{
+  "name": "Demo",
+  "language": "ring-qt",
+  "forms": [
+    "MainForm"
+  ],
+  "startup": "MainForm",
+  "modules": []
+}

@@ -1,0 +1,10 @@
+{
+  "name": "SitePhp",
+  "projects": [
+    {
+      "name": "SitePhp",
+      "path": "SitePhp"
+    }
+  ],
+  "startup": "SitePhp"
+}

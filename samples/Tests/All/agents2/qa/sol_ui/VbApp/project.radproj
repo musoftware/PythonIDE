@@ -1,0 +1,21 @@
+{
+  "name": "VbApp",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Sub Main",
+  "modules": [
+    "Main.bas"
+  ],
+  "references": [
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.bas"
+    ],
+    "CsLib": [
+      "CsLib.ref.bas"
+    ]
+  }
+}

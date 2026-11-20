@@ -1,0 +1,10 @@
+{
+  "name": "MathLib",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "MathLib.py"
+  ],
+  "kind": "library"
+}

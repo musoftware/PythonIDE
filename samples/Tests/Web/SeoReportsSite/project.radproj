@@ -1,0 +1,14 @@
+{
+  "name": "SeoReportsSite",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.php",
+    "port": 0,
+    "live_reload": true
+  }
+}

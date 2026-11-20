@@ -1,0 +1,10 @@
+{
+  "name": "Lib",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "Lib.py"
+  ],
+  "kind": "library"
+}

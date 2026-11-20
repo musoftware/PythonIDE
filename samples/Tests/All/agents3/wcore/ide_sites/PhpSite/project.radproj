@@ -1,0 +1,16 @@
+{
+  "name": "PhpSite",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "about.php",
+    "port": 0,
+    "live_reload": true,
+    "template": "php-empty",
+    "router": ""
+  }
+}

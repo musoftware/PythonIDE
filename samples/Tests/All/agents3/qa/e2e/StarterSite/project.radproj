@@ -1,0 +1,15 @@
+{
+  "name": "StarterSite",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "public",
+    "start": "index.php",
+    "port": 0,
+    "live_reload": true,
+    "template": "php-starter"
+  }
+}

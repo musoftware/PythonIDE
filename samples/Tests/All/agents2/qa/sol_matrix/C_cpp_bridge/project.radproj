@@ -1,0 +1,75 @@
+{
+  "name": "C_cpp_bridge",
+  "language": "cpp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CppCons.cpp"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.hpp"
+    ],
+    "VbLib": [
+      "VbLib.ref.hpp"
+    ],
+    "RingLib": [
+      "RingLib.ref.hpp"
+    ],
+    "JsLib": [
+      "JsLib.ref.hpp"
+    ],
+    "TsLib": [
+      "TsLib.ref.hpp"
+    ],
+    "CLib": [
+      "CLib.ref.hpp"
+    ],
+    "CppLib": [
+      "CppLib.ref.hpp"
+    ],
+    "RustLib": [
+      "RustLib.ref.hpp"
+    ],
+    "FortLib": [
+      "FortLib.ref.hpp"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.hpp"
+    ],
+    "DartLib": [
+      "DartLib.ref.hpp"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.hpp"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.hpp"
+    ],
+    "PsLib": [
+      "PsLib.ref.hpp"
+    ],
+    "PyLib": [
+      "PyLib.ref.hpp"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "L_java_bridge",
+  "language": "java-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_java_bridge.java"
+  ],
+  "kind": "library"
+}

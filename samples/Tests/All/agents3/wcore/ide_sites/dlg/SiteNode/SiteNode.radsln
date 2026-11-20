@@ -1,0 +1,10 @@
+{
+  "name": "SiteNode",
+  "projects": [
+    {
+      "name": "SiteNode",
+      "path": "SiteNode"
+    }
+  ],
+  "startup": "SiteNode"
+}

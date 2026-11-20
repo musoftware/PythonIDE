@@ -1,0 +1,10 @@
+{
+  "name": "CV",
+  "language": "csharp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "CV.cs"
+  ],
+  "kind": "library"
+}

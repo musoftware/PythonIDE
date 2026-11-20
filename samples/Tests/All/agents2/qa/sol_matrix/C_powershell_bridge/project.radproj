@@ -1,0 +1,75 @@
+{
+  "name": "C_powershell_bridge",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PsCons.ps1"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.ps1"
+    ],
+    "VbLib": [
+      "VbLib.ref.ps1"
+    ],
+    "RingLib": [
+      "RingLib.ref.ps1"
+    ],
+    "JsLib": [
+      "JsLib.ref.ps1"
+    ],
+    "TsLib": [
+      "TsLib.ref.ps1"
+    ],
+    "CLib": [
+      "CLib.ref.ps1"
+    ],
+    "CppLib": [
+      "CppLib.ref.ps1"
+    ],
+    "RustLib": [
+      "RustLib.ref.ps1"
+    ],
+    "FortLib": [
+      "FortLib.ref.ps1"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.ps1"
+    ],
+    "DartLib": [
+      "DartLib.ref.ps1"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.ps1"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.ps1"
+    ],
+    "PsLib": [
+      "PsLib.ref.ps1"
+    ],
+    "PyLib": [
+      "PyLib.ref.ps1"
+    ]
+  }
+}

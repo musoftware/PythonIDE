@@ -1,0 +1,14 @@
+{
+  "name": "X",
+  "projects": [
+    {
+      "name": "App",
+      "path": "App"
+    },
+    {
+      "name": "JsLib",
+      "path": "JsLib"
+    }
+  ],
+  "startup": "App"
+}

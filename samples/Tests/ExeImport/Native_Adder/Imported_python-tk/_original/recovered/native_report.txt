@@ -1,0 +1,55 @@
+Machine: x64   image base 0x140000000   entry point 0x140001030
+
+Imports (60 functions from 11 DLLs):
+  KERNEL32.dll: DeleteCriticalSection, EnterCriticalSection, FreeLibrary, GetLastError, GetModuleHandleA, GetProcAddress, GetStartupInfoA, InitializeCriticalSection, IsDBCSLeadByte, LeaveCriticalSection, LoadLibraryA, SetUnhandledExceptionFilter, Sleep, TlsGetValue, VirtualProtect, VirtualQuery
+  api-ms-win-crt-convert-l1-1-0.dll: atoi
+  api-ms-win-crt-environment-l1-1-0.dll: __p__environ
+  api-ms-win-crt-heap-l1-1-0.dll: _set_new_mode, calloc, free, malloc
+  api-ms-win-crt-locale-l1-1-0.dll: _configthreadlocale
+  api-ms-win-crt-math-l1-1-0.dll: __setusermatherr
+  api-ms-win-crt-private-l1-1-0.dll: __C_specific_handler, memcpy
+  api-ms-win-crt-runtime-l1-1-0.dll: __p___argc, __p___argv, __p__acmdln, _cexit, _configure_narrow_argv, _crt_atexit, _exit, _initialize_narrow_environment, _set_app_type, _initterm, _initterm_e, _set_invalid_parameter_handler, abort, exit, signal
+  api-ms-win-crt-stdio-l1-1-0.dll: __acrt_iob_func, __p__commode, __p__fmode, __stdio_common_vfprintf, __stdio_common_vsprintf, fflush, setvbuf
+  api-ms-win-crt-string-l1-1-0.dll: strlen, strncmp
+  USER32.dll: CreateWindowExA, DefWindowProcA, DispatchMessageA, GetDlgItemTextA, GetMessageA, LoadCursorA, PostQuitMessage, RegisterClassA, SetDlgItemTextA, TranslateMessage
+
+Functions found: 35; program functions: 6
+  0x140001760 sub_140001760 (772 bytes): CreateWindowExA, DefWindowProcA, GetDlgItemTextA, atoi, sprintf, SetDlgItemTextA, PostQuitMessage
+  0x140001A64 sub_140001A64 (307 bytes): LoadCursorA, RegisterClassA, CreateWindowExA
+  0x140001FF0 sub_140001FF0 (100 bytes): __acrt_iob_func, printf, abort
+  0x140002055 sub_140002055 (734 bytes): sub_1400032CB, sub_140001FF0, sub_140003417, VirtualQuery, VirtualProtect, GetLastError
+  0x140002452 sub_140002452 (894 bytes): sub_14000240B, sub_140001FF0
+  0x140003720 sub_140003720 (55 bytes): __acrt_iob_func, printf, _exit
+
+Strings (31 found, first 31):
+  'libgcc_s_dw2-1.dll'
+  '__register_frame_info'
+  '__deregister_frame_info'
+  'First number:'
+  'STATIC'
+  'EDIT'
+  'Second number:'
+  'BUTTON'
+  'Sum = %d'
+  'RadCalc'
+  'Adder'
+  'Argument domain error (DOMAIN)'
+  'Argument singularity (SIGN)'
+  'Overflow range error (OVERFLOW)'
+  'Partial loss of significance (PLOSS)'
+  'Total loss of significance (TLOSS)'
+  'The result is too small to be represented (UNDERFLOW)'
+  'Unknown error'
+  '_matherr(): %s in %s(%g, %g)  (retval=%g)\n'
+  'Mingw-w64 runtime failure:\n'
+  'Address %p has no image-section'
+  '  VirtualQuery failed for %d bytes at address %p'
+  '  VirtualProtect failed with code 0x%x'
+  '  Unknown pseudo relocation protocol version %d.\n'
+  '  Unknown pseudo relocation bit size %d.\n'
+  '%d bit pseudo relocation at %p out of range, targeting %p, yielding the value %p.\n'
+  'runtime error %d\n'
+  'GCC: (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0'
+  'GCC: (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0'
+  'GCC: (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0'
+  'GCC: (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0'

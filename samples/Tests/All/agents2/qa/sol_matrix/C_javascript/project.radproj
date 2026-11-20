@@ -1,0 +1,75 @@
+{
+  "name": "C_javascript",
+  "language": "javascript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "JsCons.js"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.js"
+    ],
+    "VbLib": [
+      "VbLib.ref.js"
+    ],
+    "RingLib": [
+      "RingLib.ref.js"
+    ],
+    "JsLib": [
+      "JsLib.ref.js"
+    ],
+    "TsLib": [
+      "TsLib.ref.js"
+    ],
+    "CLib": [
+      "CLib.ref.js"
+    ],
+    "CppLib": [
+      "CppLib.ref.js"
+    ],
+    "RustLib": [
+      "RustLib.ref.js"
+    ],
+    "FortLib": [
+      "FortLib.ref.js"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.js"
+    ],
+    "DartLib": [
+      "DartLib.ref.js"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.js"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.js"
+    ],
+    "PsLib": [
+      "PsLib.ref.js"
+    ],
+    "PyLib": [
+      "PyLib.ref.js"
+    ]
+  }
+}

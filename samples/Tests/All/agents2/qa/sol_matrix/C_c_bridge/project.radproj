@@ -1,0 +1,90 @@
+{
+  "name": "C_c_bridge",
+  "language": "c-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CCons.c"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.h",
+      "CsLib.ref.c"
+    ],
+    "VbLib": [
+      "VbLib.ref.h",
+      "VbLib.ref.c"
+    ],
+    "RingLib": [
+      "RingLib.ref.h",
+      "RingLib.ref.c"
+    ],
+    "JsLib": [
+      "JsLib.ref.h",
+      "JsLib.ref.c"
+    ],
+    "TsLib": [
+      "TsLib.ref.h",
+      "TsLib.ref.c"
+    ],
+    "CLib": [
+      "CLib.ref.h",
+      "CLib.ref.c"
+    ],
+    "CppLib": [
+      "CppLib.ref.h",
+      "CppLib.ref.c"
+    ],
+    "RustLib": [
+      "RustLib.ref.h",
+      "RustLib.ref.c"
+    ],
+    "FortLib": [
+      "FortLib.ref.h",
+      "FortLib.ref.c"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.h",
+      "PerlLib.ref.c"
+    ],
+    "DartLib": [
+      "DartLib.ref.h",
+      "DartLib.ref.c"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.h",
+      "JavaLib.ref.c"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.h",
+      "PhpLib.ref.c"
+    ],
+    "PsLib": [
+      "PsLib.ref.h",
+      "PsLib.ref.c"
+    ],
+    "PyLib": [
+      "PyLib.ref.h",
+      "PyLib.ref.c"
+    ]
+  }
+}

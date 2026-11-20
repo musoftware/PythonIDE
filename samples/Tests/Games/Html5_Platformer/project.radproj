@@ -1,0 +1,21 @@
+{
+  "name": "H5platformer",
+  "language": "html5-game",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.html",
+    "port": 0,
+    "live_reload": true
+  },
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "H5platformer",
+    "start_scene": "Level1"
+  }
+}

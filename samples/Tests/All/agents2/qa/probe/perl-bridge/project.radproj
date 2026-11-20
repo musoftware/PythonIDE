@@ -1,0 +1,10 @@
+{
+  "name": "L_perl_bridge",
+  "language": "perl-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_perl_bridge.pl"
+  ],
+  "kind": "library"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "SiteStatic",
+  "projects": [
+    {
+      "name": "SiteStatic",
+      "path": "SiteStatic"
+    }
+  ],
+  "startup": "SiteStatic"
+}

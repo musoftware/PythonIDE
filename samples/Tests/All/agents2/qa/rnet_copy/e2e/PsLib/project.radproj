@@ -1,0 +1,10 @@
+{
+  "name": "PsLib",
+  "language": "powershell-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "PsLib.ps1"
+  ],
+  "kind": "library"
+}

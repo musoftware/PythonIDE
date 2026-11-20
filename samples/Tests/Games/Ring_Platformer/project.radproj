@@ -1,0 +1,17 @@
+{
+  "name": "RGplatformer",
+  "language": "ring-game",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.ring",
+    "Level1.ring"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "RGplatformer",
+    "start_scene": "Level1"
+  }
+}

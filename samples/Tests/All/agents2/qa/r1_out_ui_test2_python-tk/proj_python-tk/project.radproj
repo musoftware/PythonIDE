@@ -1,0 +1,9 @@
+{
+  "name": "Demo",
+  "language": "python-tk",
+  "forms": [
+    "MainForm"
+  ],
+  "startup": "MainForm",
+  "modules": []
+}

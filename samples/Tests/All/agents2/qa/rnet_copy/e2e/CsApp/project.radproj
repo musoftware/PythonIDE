@@ -1,0 +1,27 @@
+{
+  "name": "CsApp",
+  "language": "csharp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "AppMain.cs"
+  ],
+  "references": [
+    "PyLib",
+    "JLib",
+    "PsLib"
+  ],
+  "reference_files": {
+    "PyLib": [
+      "PyLib.ref.cs"
+    ],
+    "JLib": [
+      "JLib.ref.cs"
+    ],
+    "PsLib": [
+      "PsLib.ref.cs"
+    ]
+  }
+}

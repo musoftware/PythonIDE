@@ -1,0 +1,10 @@
+{
+  "name": "L_typescript",
+  "language": "typescript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_typescript.ts"
+  ],
+  "kind": "library"
+}

@@ -1,0 +1,1 @@
+<?php header('Content-Type: application/json'); session_start();$_SESSION['n']=($_SESSION['n']??0)+1; echo json_encode(['post'=>$_POST['x']??null,'sqlite'=>extension_loaded('pdo_sqlite'),'n'=>$_SESSION['n']]);

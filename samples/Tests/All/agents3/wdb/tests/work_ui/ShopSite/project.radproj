@@ -1,0 +1,14 @@
+{
+  "name": "ShopSite",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "databases": [
+    {
+      "name": "shop",
+      "kind": "sqlite",
+      "path": "App_Data/shop.db"
+    }
+  ]
+}

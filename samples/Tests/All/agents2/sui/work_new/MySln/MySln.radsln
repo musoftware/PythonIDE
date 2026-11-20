@@ -1,0 +1,18 @@
+{
+  "name": "MySln",
+  "projects": [
+    {
+      "name": "App1",
+      "path": "App1"
+    },
+    {
+      "name": "Calc",
+      "path": "Calc"
+    },
+    {
+      "name": "Tool",
+      "path": "Tool"
+    }
+  ],
+  "startup": "App1"
+}

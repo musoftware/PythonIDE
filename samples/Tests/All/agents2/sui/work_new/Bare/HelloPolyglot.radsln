@@ -1,0 +1,14 @@
+{
+  "name": "HelloPolyglot",
+  "projects": [
+    {
+      "name": "HelloPolyglot",
+      "path": "."
+    },
+    {
+      "name": "L_vb_basic",
+      "path": "../libs/L_vb_basic"
+    }
+  ],
+  "startup": "HelloPolyglot"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "App",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "references": [
+    "CsLib",
+    "VbLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.py"
+    ],
+    "VbLib": [
+      "VbLib.py"
+    ]
+  }
+}

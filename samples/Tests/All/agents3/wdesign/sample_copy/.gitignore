@@ -1,0 +1,4 @@
+# runtime data (database, sessions)
+data/*.sqlite
+data/*.sqlite-*
+data/sessions/

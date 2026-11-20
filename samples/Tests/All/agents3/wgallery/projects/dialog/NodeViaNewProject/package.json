@@ -1,0 +1,13 @@
+{
+  "name": "nodevianewproject",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NodeViaNewProject - Express web site created by the RAD IDE App Gallery",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

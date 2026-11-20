@@ -1,0 +1,10 @@
+{
+  "name": "L_dart_bridge",
+  "language": "dart-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "L_dart_bridge.dart"
+  ],
+  "kind": "library"
+}

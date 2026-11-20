@@ -1,0 +1,13 @@
+# Managed by RAD IDE: the [[bin]] tables are regenerated on every run; edit [dependencies] freely (cargo add <crate>).
+
+[package]
+name = "dbgrust"
+version = "0.1.0"
+edition = "2021"
+autobins = false
+
+[dependencies]
+
+[[bin]]
+name = "radapp"
+path = "_radmain.rs"

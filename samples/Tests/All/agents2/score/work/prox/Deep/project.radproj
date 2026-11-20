@@ -1,0 +1,10 @@
+{
+  "name": "Deep",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "Deep.py"
+  ],
+  "kind": "library"
+}

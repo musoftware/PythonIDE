@@ -1,0 +1,1 @@
+{"name": "Site", "language": "python-tk", "forms": [], "startup": "", "modules": [], "databases": [{"name": "site", "kind": "sqlite", "path": "App_Data/site.db"}]}

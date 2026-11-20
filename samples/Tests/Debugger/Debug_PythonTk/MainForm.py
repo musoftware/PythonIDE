@@ -9,7 +9,10 @@ class MainForm(MainFormDesigner):
         print("load done", nX)
 
     def btnHello_Click(self):
-        pass
+        total = 0
+        for i in range(10):
+            total += i * i          # conditional breakpoint here: i == 5
+        print("sum of squares", total)
 
     def mnuFileExit_Click(self):
         pass

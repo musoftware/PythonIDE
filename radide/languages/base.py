@@ -167,6 +167,11 @@ class LanguagePlugin:
     #       wait   eval|text   done
     #   IDE -> agent : c (continue) s (step into) n (step over) o (step out)
     #       q (quit)  e <expr>  b <file>|<line>  B <file>|<line>
+    # Optional (expandable Locals/Watch, radide/debug_extras.py; pyagent + VB implement them):
+    #   agent -> IDE : ref|name|handle (the var just sent has children)
+    #       kid|name|type|value|handle-or-0 ... kend     watch|type|handle-or-0|value
+    #   IDE -> agent : k <handle> (children)   w <expr> (Watch value)
+    #   A condition "@@bp {json}" carries hit count / logpoint (debug_extras.parse_bp).
     supports_debug: bool = False
 
     # ----------------------------------------------------------- packages / polyglot

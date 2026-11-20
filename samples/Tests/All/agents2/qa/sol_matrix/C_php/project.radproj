@@ -1,0 +1,75 @@
+{
+  "name": "C_php",
+  "language": "php",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PhpCons.php"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.php"
+    ],
+    "VbLib": [
+      "VbLib.ref.php"
+    ],
+    "RingLib": [
+      "RingLib.ref.php"
+    ],
+    "JsLib": [
+      "JsLib.ref.php"
+    ],
+    "TsLib": [
+      "TsLib.ref.php"
+    ],
+    "CLib": [
+      "CLib.ref.php"
+    ],
+    "CppLib": [
+      "CppLib.ref.php"
+    ],
+    "RustLib": [
+      "RustLib.ref.php"
+    ],
+    "FortLib": [
+      "FortLib.ref.php"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.php"
+    ],
+    "DartLib": [
+      "DartLib.ref.php"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.php"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.php"
+    ],
+    "PsLib": [
+      "PsLib.ref.php"
+    ],
+    "PyLib": [
+      "PyLib.ref.php"
+    ]
+  }
+}

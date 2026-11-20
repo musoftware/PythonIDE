@@ -1,0 +1,22 @@
+{
+  "name": "Old",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "kind": "library",
+  "references": [
+    "A",
+    "B"
+  ],
+  "reference_files": {
+    "A": [
+      "A.py"
+    ]
+  },
+  "custom": {
+    "x": 1
+  }
+}

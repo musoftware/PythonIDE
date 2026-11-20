@@ -6,7 +6,9 @@ Speaks the RAD IDE line protocol on stdout/stdin (see languages/base.py).
 Runs standalone: uses only the standard library.
 """
 import bdb
+import json
 import os
+import re
 import queue
 import sys
 import threading
@@ -37,12 +39,57 @@ def short(value, limit=200):
     return r if len(r) <= limit else r[:limit] + "..."
 
 
+def has_children(value):
+    if isinstance(value, (str, bytes, int, float, complex, bool, type(None))):
+        return False
+    if isinstance(value, (list, tuple, dict, set, frozenset)):
+        return len(value) > 0
+    return hasattr(value, "__dict__") and not callable(value) and bool(vars(value))
+
+
+def children_of(value, limit=300):
+    """[(name, child)] of a list / tuple / dict / set / object with attributes."""
+    if isinstance(value, dict):
+        return [(f"[{short(k, 60)}]", v) for k, v in list(value.items())[:limit]]
+    if isinstance(value, (list, tuple)):
+        return [(f"[{i}]", v) for i, v in enumerate(value[:limit])]
+    if isinstance(value, (set, frozenset)):
+        return [(f"<{i}>", v) for i, v in enumerate(list(value)[:limit])]
+    try:
+        items = list(vars(value).items())
+    except TypeError:
+        return []
+    return [(k, v) for k, v in items[:limit] if not k.startswith("__")]
+
+
+def parse_bp(text):
+    """condition string -> (cond, hit, log); "@@bp {json}" carries hit count / logpoint."""
+    if text and text.startswith("@@bp "):
+        try:
+            d = json.loads(text[5:])
+            return d.get("cond") or None, d.get("hit") or "", d.get("log") or ""
+        except ValueError:
+            pass
+    return text or None, "", ""
+
+
+def hit_ok(hit, count):
+    m = re.fullmatch(r"\s*(==|>=|>|%|=)?\s*(\d+)\s*", hit or "")
+    if not m:
+        return True
+    op, n = m.group(1) or "==", int(m.group(2))
+    return {"==": count == n, "=": count == n, ">=": count >= n, ">": count > n}.get(op, n > 0 and count % n == 0)
+
+
 class Agent(bdb.Bdb):
     def __init__(self, root):
         super().__init__()
         self.root = os.path.normcase(os.path.abspath(root))
         self.commands = queue.Queue()
         self.by_name = {}            # basename -> canonical path, for breakpoints
+        self.handles = {}            # handle -> value (expandable Locals / Watch), reset at each stop
+        self.extra = {}              # (path, line) -> (hit, log)
+        self.hits = {}               # (path, line) -> times the breakpoint was reached (condition true)
 
     # ----------------------------------------------------------- filtering
     def in_project(self, filename):
@@ -74,17 +121,19 @@ class Agent(bdb.Bdb):
         try:
             parts = spec.split("|")
             name, line = parts[0], parts[1]
-            cond = "|".join(parts[2:]) or None
+            cond, hit, log = parse_bp("|".join(parts[2:]))
             path = os.path.join(self.root, name)
             for f in os.listdir(self.root):
                 if f.lower() == name.lower():
                     path = os.path.join(self.root, f)
             path = self.canonic(path)
-            if remove:
-                self.clear_break(path, int(line))
-            else:
-                self.clear_break(path, int(line))
+            self.clear_break(path, int(line))
+            self.extra.pop((path, int(line)), None)
+            self.hits.pop((path, int(line)), None)
+            if not remove:
                 self.set_break(path, int(line), cond=cond)
+                if hit or log:
+                    self.extra[(path, int(line))] = (hit, log)
         except Exception as e:  # noqa: BLE001
             send("log", f"breakpoint error: {e}")
 
@@ -94,17 +143,51 @@ class Agent(bdb.Bdb):
 
     def user_line(self, frame):
         reason = "breakpoint" if self.break_here(frame) else "step"
+        if reason == "breakpoint":
+            key = (self.canonic(frame.f_code.co_filename), frame.f_lineno)
+            self.hits[key] = self.hits.get(key, 0) + 1
+            hit, log = self.extra.get(key, ("", ""))
+            if hit and not hit_ok(hit, self.hits[key]):
+                if self.stopframe is _NEVER or self.stopframe is self.botframe:
+                    return                   # running: this hit does not count yet
+                reason = "step"
+            elif log:
+                _out.write(self.format_log(log, frame) + "\n")
+                _out.flush()
+                if self.stopframe is _NEVER or self.stopframe is self.botframe:
+                    return                   # a logpoint prints and goes on
+                reason = "step"
         self.interact(frame, reason)
+
+    def format_log(self, message, frame):
+        def rep(m):
+            try:
+                return str(eval(m.group(1), frame.f_globals, frame.f_locals))
+            except Exception as e:  # noqa: BLE001
+                return f"<{type(e).__name__}: {e}>"
+        return re.sub(r"\{([^{}]+)\}", rep, message)
+
+    def handle(self, value):
+        """Handle for an expandable value (0 = no children)."""
+        if not has_children(value):
+            return 0
+        h = len(self.handles) + 1
+        self.handles[h] = value
+        return h
 
     def user_exception(self, frame, exc_info):
         pass
 
     def interact(self, frame, reason):
         send("stop", frame.f_code.co_filename, frame.f_lineno, reason)
+        self.handles = {}
         for name, value in frame.f_locals.items():
             if name.startswith("__"):
                 continue
             send("var", name, type(value).__name__, short(value))
+            h = self.handle(value)
+            if h:
+                send("ref", name, h)
             if name == "self":
                 for k, v in list(vars(value).items())[:60] if hasattr(value, "__dict__") else []:
                     if not k.startswith("_"):
@@ -132,6 +215,24 @@ class Agent(bdb.Bdb):
             if cmd == "q":
                 self.set_quit()
                 os._exit(0)
+            if cmd.startswith("k "):
+                try:
+                    value = self.handles.get(int(cmd[2:].strip()))
+                except ValueError:
+                    value = None
+                for name, child in children_of(value) if value is not None else []:
+                    send("kid", name, type(child).__name__, short(child), self.handle(child))
+                send("kend")
+                send("wait")
+                continue
+            if cmd.startswith("w "):
+                try:
+                    v = eval(cmd[2:], frame.f_globals, frame.f_locals)
+                    send("watch", type(v).__name__, self.handle(v), short(v, 2000))
+                except Exception as e:  # noqa: BLE001
+                    send("watch", "", 0, f"{type(e).__name__}: {e}")
+                send("wait")
+                continue
             if cmd.startswith("e "):
                 try:
                     try:

@@ -18,6 +18,8 @@ class StopInfo:
     reason: str
     variables: list[tuple[str, str, str]] = field(default_factory=list)   # name, type, value
     frames: list[tuple[str, str, int]] = field(default_factory=list)      # func, file, line
+    refs: dict = field(default_factory=dict)      # variable name -> child handle (expandable in Locals)
+    thread_id: int = 0
 
 
 def _unescape(s: str) -> str:
@@ -51,6 +53,32 @@ class Session(QObject):
         self.proc.errorOccurred.connect(self._on_error)
         self.user_stopped = False
         self._spec = spec
+        self._kid_cbs: list = []          # children() callbacks waiting for "kend"
+        self._kids: list = []
+        self._watch_cbs: list = []        # watch() callbacks waiting for "watch"
+
+    # ------------------------------------------------------------ expandable values (debug_extras)
+    def children(self, ref, cb) -> None:
+        """cb([(name, type, value, child_ref or 0)]) for handle *ref* (agent command 'k <ref>')."""
+        if not self.paused or not self.running():
+            cb([])
+            return
+        self._kid_cbs.append(cb)
+        self.send(f"k {ref}")
+
+    def watch(self, expr: str, cb) -> None:
+        """cb(value, type, ref) for a Watch expression (agent command 'w <expr>')."""
+        if not self.paused or not self.running():
+            cb("(the program must be paused at a breakpoint)", "", 0)
+            return
+        self._watch_cbs.append(cb)
+        self.send("w " + expr)
+
+    def threads(self, cb) -> None:
+        cb([(1, "Main Thread")])
+
+    def select_thread(self, tid) -> None:
+        pass
 
     def start(self) -> None:
         self.proc.start(self._spec.program, self._spec.args)
@@ -141,6 +169,17 @@ class Session(QObject):
             self._pending.variables.append((parts[0], parts[1], "|".join(parts[2:])))
         elif kind == "frame" and self._pending and len(parts) >= 3:
             self._pending.frames.append((parts[0], parts[1], int(parts[2])))
+        elif kind == "ref" and self._pending and len(parts) >= 2:
+            self._pending.refs[parts[0]] = parts[1]
+        elif kind == "kid" and len(parts) >= 4:
+            self._kids.append((parts[0], parts[1], parts[2], parts[3] if parts[3] not in ("", "0") else 0))
+        elif kind == "kend":
+            kids, self._kids = self._kids, []
+            if self._kid_cbs:
+                self._kid_cbs.pop(0)(kids)
+        elif kind == "watch" and len(parts) >= 3:
+            if self._watch_cbs:
+                self._watch_cbs.pop(0)("|".join(parts[2:]), parts[0], parts[1] if parts[1] not in ("", "0") else 0)
         elif kind == "wait":
             self.paused = True
             if self._pending is not None:

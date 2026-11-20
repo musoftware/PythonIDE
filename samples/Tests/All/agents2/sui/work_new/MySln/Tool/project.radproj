@@ -1,0 +1,9 @@
+{
+  "name": "Tool",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Program",
+  "modules": [
+    "Program.bas"
+  ]
+}

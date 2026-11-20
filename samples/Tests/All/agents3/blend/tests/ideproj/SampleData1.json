@@ -1,0 +1,58 @@
+[
+  {
+    "Name": "Amira Hassan",
+    "Email": "amira@example.com",
+    "Age": 29,
+    "City": "Cairo",
+    "Active": true
+  },
+  {
+    "Name": "Omar Khaled",
+    "Email": "omar@example.com",
+    "Age": 34,
+    "City": "Alexandria",
+    "Active": true
+  },
+  {
+    "Name": "Lina Farouk",
+    "Email": "lina@example.com",
+    "Age": 22,
+    "City": "Giza",
+    "Active": false
+  },
+  {
+    "Name": "Youssef Adel",
+    "Email": "youssef@example.com",
+    "Age": 41,
+    "City": "Luxor",
+    "Active": true
+  },
+  {
+    "Name": "Nour Samir",
+    "Email": "nour@example.com",
+    "Age": 27,
+    "City": "Aswan",
+    "Active": true
+  },
+  {
+    "Name": "Karim Mostafa",
+    "Email": "karim@example.com",
+    "Age": 38,
+    "City": "Mansoura",
+    "Active": false
+  },
+  {
+    "Name": "Sara Ibrahim",
+    "Email": "sara@example.com",
+    "Age": 31,
+    "City": "Tanta",
+    "Active": true
+  },
+  {
+    "Name": "Hany Fathy",
+    "Email": "hany@example.com",
+    "Age": 45,
+    "City": "Suez",
+    "Active": true
+  }
+]

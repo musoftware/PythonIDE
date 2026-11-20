@@ -1,0 +1,20 @@
+{
+  "name": "ExpoApp1",
+  "language": "expo",
+  "forms": [
+    "MainScreen",
+    "DetailsScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "expo": {
+    "device": "emulator-5554"
+  },
+  "databases": [
+    {
+      "name": "site",
+      "kind": "sqlite",
+      "path": "C:\\Users\\Mahmo\\Documents\\site.db"
+    }
+  ]
+}

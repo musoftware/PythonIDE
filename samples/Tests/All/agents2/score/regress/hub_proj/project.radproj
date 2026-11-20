@@ -1,0 +1,13 @@
+{
+  "name": "Hub",
+  "language": "javascript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Calc.js",
+    "CalcT.ts",
+    "CalcP.php"
+  ]
+}

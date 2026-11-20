@@ -1,0 +1,10 @@
+{
+  "name": "MathLib",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "MathLib.js"
+  ],
+  "kind": "library"
+}

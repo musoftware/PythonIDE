@@ -1,0 +1,23 @@
+{
+  "name": "App",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "m.py"
+  ],
+  "references": [
+    "JV",
+    "CV"
+  ],
+  "reference_files": {
+    "JV": [
+      "JV.py"
+    ],
+    "CV": [
+      "CV.py"
+    ]
+  }
+}

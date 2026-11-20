@@ -1,0 +1,14 @@
+{
+  "name": "Solo",
+  "projects": [
+    {
+      "name": "Solo",
+      "path": "."
+    },
+    {
+      "name": "Lib",
+      "path": "../Lib"
+    }
+  ],
+  "startup": "Solo"
+}

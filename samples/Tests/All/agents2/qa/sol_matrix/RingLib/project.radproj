@@ -1,0 +1,10 @@
+{
+  "name": "RingLib",
+  "language": "ring-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "RingLib.ring"
+  ],
+  "kind": "library"
+}

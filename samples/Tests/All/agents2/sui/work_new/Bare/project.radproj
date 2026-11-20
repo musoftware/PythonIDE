@@ -1,0 +1,16 @@
+{
+  "name": "HelloPolyglot",
+  "language": "python-tk",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "MathVB.bas",
+    "TextRing.ring"
+  ],
+  "form_languages": {
+    "Form2": "ring-qt"
+  }
+}

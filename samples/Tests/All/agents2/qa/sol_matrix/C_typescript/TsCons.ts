@@ -1,0 +1,15 @@
+function T_CsLib(): any { return CsLib.Add(2, 3); }
+function T_VbLib(): any { return VbLib.Add(2, 3); }
+function T_RingLib(): any { return RingLib.Add(2, 3); }
+function T_JsLib(): any { return JsLib.Add(2, 3); }
+function T_TsLib(): any { return TsLib.Add(2, 3); }
+function T_CLib(): any { return CLib.Add(2, 3); }
+function T_CppLib(): any { return CppLib.Add(2, 3); }
+function T_RustLib(): any { return RustLib.add(2, 3); }
+function T_FortLib(): any { return FortLib.add(2, 3); }
+function T_PerlLib(): any { return PerlLib.Add(2, 3); }
+function T_DartLib(): any { return DartLib.Add(2, 3); }
+function T_JavaLib(): any { return JavaLib.add(2, 3); }
+function T_PhpLib(): any { return PhpLib.Add(2, 3); }
+function T_PsLib(): any { return PsLib.Add(2, 3); }
+function T_PyLib(): any { return PyLib.Add(2, 3); }

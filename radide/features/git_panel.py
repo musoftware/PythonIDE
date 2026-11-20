@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, QProcessEnvironment, Qt, QTimer
+from PyQt6.QtCore import QProcess, QProcessEnvironment, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import (QDockWidget, QHBoxLayout, QInputDialog, QLabel, QMessageBox, QPlainTextEdit,
                              QPushButton, QSplitter, QTabWidget, QToolButton, QTreeWidget, QTreeWidgetItem,
@@ -207,6 +207,8 @@ class DiffHighlighter(QSyntaxHighlighter):
 
 # ===================================================================== panel
 class GitPanel(QWidget):
+    refreshed = pyqtSignal()
+
     def __init__(self, win):
         super().__init__()
         self.win = win
@@ -301,6 +303,12 @@ class GitPanel(QWidget):
             b.setEnabled(not busy)
 
     def refresh(self):
+        try:
+            self._refresh()
+        finally:
+            self.refreshed.emit()        # git_full.py (branches, conflicts banner, ...) listens
+
+    def _refresh(self):
         g = self.git
         if g is None or not g.exe:
             self.branch.setText("" if g is None else "git not found")
@@ -416,6 +424,11 @@ class GitPanel(QWidget):
     def commit(self, message: str | None = None):
         if self.git is None or not self.git.is_repo():
             return False
+        override = getattr(self, "commit_override", None)      # git_full.py: "Amend" checkbox
+        if callable(override):
+            r = override(message if isinstance(message, str) else None)
+            if r is not None:
+                return r
         msg = (message if isinstance(message, str) else self.msg.toPlainText()).strip()
         if not msg:
             QMessageBox.information(self, "Git", "Enter a commit message first.")

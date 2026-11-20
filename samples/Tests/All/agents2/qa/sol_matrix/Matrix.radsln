@@ -1,0 +1,126 @@
+{
+  "name": "Matrix",
+  "projects": [
+    {
+      "name": "CsLib",
+      "path": "CsLib"
+    },
+    {
+      "name": "VbLib",
+      "path": "VbLib"
+    },
+    {
+      "name": "RingLib",
+      "path": "RingLib"
+    },
+    {
+      "name": "JsLib",
+      "path": "JsLib"
+    },
+    {
+      "name": "TsLib",
+      "path": "TsLib"
+    },
+    {
+      "name": "CLib",
+      "path": "CLib"
+    },
+    {
+      "name": "CppLib",
+      "path": "CppLib"
+    },
+    {
+      "name": "RustLib",
+      "path": "RustLib"
+    },
+    {
+      "name": "FortLib",
+      "path": "FortLib"
+    },
+    {
+      "name": "PerlLib",
+      "path": "PerlLib"
+    },
+    {
+      "name": "DartLib",
+      "path": "DartLib"
+    },
+    {
+      "name": "JavaLib",
+      "path": "JavaLib"
+    },
+    {
+      "name": "PhpLib",
+      "path": "PhpLib"
+    },
+    {
+      "name": "PsLib",
+      "path": "PsLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "C_vb_basic",
+      "path": "C_vb_basic"
+    },
+    {
+      "name": "C_python_tk",
+      "path": "C_python_tk"
+    },
+    {
+      "name": "C_csharp_bridge",
+      "path": "C_csharp_bridge"
+    },
+    {
+      "name": "C_ring_qt",
+      "path": "C_ring_qt"
+    },
+    {
+      "name": "C_javascript",
+      "path": "C_javascript"
+    },
+    {
+      "name": "C_typescript",
+      "path": "C_typescript"
+    },
+    {
+      "name": "C_php",
+      "path": "C_php"
+    },
+    {
+      "name": "C_java_bridge",
+      "path": "C_java_bridge"
+    },
+    {
+      "name": "C_powershell_bridge",
+      "path": "C_powershell_bridge"
+    },
+    {
+      "name": "C_perl_bridge",
+      "path": "C_perl_bridge"
+    },
+    {
+      "name": "C_dart_bridge",
+      "path": "C_dart_bridge"
+    },
+    {
+      "name": "C_c_bridge",
+      "path": "C_c_bridge"
+    },
+    {
+      "name": "C_cpp_bridge",
+      "path": "C_cpp_bridge"
+    },
+    {
+      "name": "C_rust_bridge",
+      "path": "C_rust_bridge"
+    },
+    {
+      "name": "C_fortran_bridge",
+      "path": "C_fortran_bridge"
+    }
+  ],
+  "startup": "C_vb_basic"
+}

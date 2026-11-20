@@ -1,0 +1,30 @@
+{
+  "name": "NativeC",
+  "projects": [
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "MathC",
+      "path": "MathC"
+    },
+    {
+      "name": "TextCpp",
+      "path": "TextCpp"
+    },
+    {
+      "name": "PyApp",
+      "path": "PyApp"
+    },
+    {
+      "name": "CApp",
+      "path": "CApp"
+    },
+    {
+      "name": "CppApp",
+      "path": "CppApp"
+    }
+  ],
+  "startup": "PyApp"
+}

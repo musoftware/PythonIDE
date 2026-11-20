@@ -1,0 +1,10 @@
+{
+  "name": "RustLib",
+  "language": "rust-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "RustLib.rs"
+  ],
+  "kind": "library"
+}

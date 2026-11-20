@@ -1,3 +1,13 @@
+# ShopSite_PhpSqlite
+
+**php-web + SQLite** - Complete PHP data app: register/login (password_hash, throttling, CSRF), products CRUD, SQLite database (created on first request), Databases workspace entry, Publish profile.
+
+**Try it:** Open, press F5 (PHP dev server + preview). Register, log in, add products. View > Databases shows `app`. Site > Publish: choose a destination folder for the `Local folder` profile (left empty on purpose).
+
+*Origin:* agents4 QA e2e (publish to a local folder) (copied from the IDE's test runs, build output removed).
+
+---
+
 # ShopSite
 
 A complete PHP + SQLite data application created by the RAD IDE App Gallery

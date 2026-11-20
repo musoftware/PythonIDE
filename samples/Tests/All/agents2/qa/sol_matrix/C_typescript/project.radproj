@@ -1,0 +1,75 @@
+{
+  "name": "C_typescript",
+  "language": "typescript",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "TsCons.ts"
+  ],
+  "references": [
+    "CsLib",
+    "VbLib",
+    "RingLib",
+    "JsLib",
+    "TsLib",
+    "CLib",
+    "CppLib",
+    "RustLib",
+    "FortLib",
+    "PerlLib",
+    "DartLib",
+    "JavaLib",
+    "PhpLib",
+    "PsLib",
+    "PyLib"
+  ],
+  "reference_files": {
+    "CsLib": [
+      "CsLib.ref.ts"
+    ],
+    "VbLib": [
+      "VbLib.ref.ts"
+    ],
+    "RingLib": [
+      "RingLib.ref.ts"
+    ],
+    "JsLib": [
+      "JsLib.ref.ts"
+    ],
+    "TsLib": [
+      "TsLib.ref.ts"
+    ],
+    "CLib": [
+      "CLib.ref.ts"
+    ],
+    "CppLib": [
+      "CppLib.ref.ts"
+    ],
+    "RustLib": [
+      "RustLib.ref.ts"
+    ],
+    "FortLib": [
+      "FortLib.ref.ts"
+    ],
+    "PerlLib": [
+      "PerlLib.ref.ts"
+    ],
+    "DartLib": [
+      "DartLib.ref.ts"
+    ],
+    "JavaLib": [
+      "JavaLib.ref.ts"
+    ],
+    "PhpLib": [
+      "PhpLib.ref.ts"
+    ],
+    "PsLib": [
+      "PsLib.ref.ts"
+    ],
+    "PyLib": [
+      "PyLib.ref.ts"
+    ]
+  }
+}

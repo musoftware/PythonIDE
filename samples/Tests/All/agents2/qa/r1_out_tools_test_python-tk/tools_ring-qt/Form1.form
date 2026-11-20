@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "props": {
+    "Name": "Form1",
+    "Text": "Form1",
+    "Width": 400,
+    "Height": 300,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": []
+}

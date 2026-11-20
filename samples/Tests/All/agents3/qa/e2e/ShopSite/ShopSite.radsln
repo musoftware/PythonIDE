@@ -1,0 +1,10 @@
+{
+  "name": "ShopSite",
+  "projects": [
+    {
+      "name": "ShopSite",
+      "path": "ShopSite"
+    }
+  ],
+  "startup": "ShopSite"
+}

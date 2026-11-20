@@ -21,12 +21,12 @@
   ],
   "publish": [
     {
-      "name": "Local",
+      "name": "Local folder",
       "kind": "folder",
       "host": "",
       "port": 0,
       "user": "",
-      "remote_dir": "C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents4\\qa\\e2e\\published",
+      "remote_dir": "",
       "site_url": "",
       "local_dir": "",
       "passive": true,
