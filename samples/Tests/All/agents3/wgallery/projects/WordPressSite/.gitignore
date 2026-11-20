@@ -1,0 +1,10 @@
+# WordPress core comes from wordpress.org: run get_wordpress_core.bat (or .py) after cloning.
+/wordpress/*
+!/wordpress/wp-config.php
+!/wordpress/wp-content/
+/wordpress/wp-content/*
+!/wordpress/wp-content/plugins/
+/wordpress/wp-content/plugins/*
+!/wordpress/wp-content/plugins/sqlite-database-integration/
+!/wordpress/wp-content/db.php
+!/wordpress/wp-content/uploads/

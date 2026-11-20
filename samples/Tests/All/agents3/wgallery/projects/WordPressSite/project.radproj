@@ -1,0 +1,18 @@
+{
+  "name": "My Blog",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "wordpress",
+    "start": "index.php",
+    "port": 0,
+    "live_reload": true,
+    "template": "wordpress"
+  },
+  "wordpress": {
+    "sqlite_plugin": "2.2.23"
+  }
+}
