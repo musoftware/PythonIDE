@@ -64,11 +64,13 @@ def _composer_argv(args: list[str], php: str) -> list[str]:
 
 
 def pick_php(log=None) -> str:
-    """Newest installed PHP that Laravel accepts (>= 8.3); installs PHP 8.4 into the toolchains when none."""
+    """PHP for a new Laravel project: the newest RAD IDE toolchain PHP >= 8.3 (official build, php.ini with the
+    extensions, matching Xdebug), else the newest other install >= 8.3, else PHP 8.4 is installed."""
     from .. import php_toolchain as tc
-    inst = tc.newest(">=8.3")
-    if inst is not None:
-        return inst.path
+    ok = [i for i in tc.detect_installs() if i.bits == 64 and tc.vtuple(i.version)[:2] >= MIN_PHP]
+    own = [i for i in ok if str(Path(i.path)).lower().startswith(str(tc.PHP_ROOT).lower())]
+    if own or ok:
+        return (own or ok)[0].path
     if log:
         log("[laravel] no PHP >= 8.3 found - installing PHP 8.4 (official windows.php.net build) ...")
     return tc.install_php("8.4", log)
@@ -146,17 +148,16 @@ def create_laravel(folder, name: str, log=None, kind: str = "app", db: str = "sq
             raise RuntimeError("composer install failed:\n" + "\n".join(out.splitlines()[-12:]))
     configure_project(folder, name, php, log, db=db, db_conn=db_conn)
     if kind == "api":
-        composer = tc.find_composer()
-        run_php(folder, ["artisan", "install:api", "--without-migration-prompt", "--no-interaction",
-                         f"--composer={composer}"], timeout=timeout, log=log, php=php)
-        write_api_example(folder)
+        install_api(folder, php, log, timeout)
     code, _out = run_php(folder, ["artisan", "migrate", "--force", "--no-interaction"], 600, log, php)
     if code != 0:
         log("[laravel] migrate failed - check the database settings in .env, then Artisan > migrate.")
     if ide_helper:
         install_ide_helper(folder, php, log, timeout)
     log(f"[laravel] Laravel {laravel_version(folder) or ''} is ready: web root public/, F5 runs it.")
-    return {"root": "public", "start": "/", "framework": "laravel", "php": "auto", "port": 0, "live_reload": True}
+    own = str(Path(php)).lower().startswith(str(tc.PHP_ROOT).lower())
+    return {"root": "public", "start": "/", "framework": "laravel", "port": 0, "live_reload": True,
+            "php": tc.series_of(tc.php_version(php)) if own else "auto"}
 
 
 def configure_project(folder: Path, name: str, php: str, log, db: str = "sqlite", db_conn: dict | None = None):
@@ -215,6 +216,29 @@ def _gitignore(folder: Path, names) -> None:
     missing = [n for n in names if n not in text.split()]
     if missing:
         gi.write_text(text.rstrip("\n") + "\n" + "\n".join(missing) + "\n", encoding="utf-8", newline="\n")
+
+
+def install_api(folder: Path, php: str, log, timeout: int = 1200) -> bool:
+    """``artisan install:api`` (routes/api.php + Laravel Sanctum) with the IDE's Composer, the HasApiTokens trait on
+    User and an /api/status example. Laravel runs ``php <--composer>`` for a file, so it gets composer.phar."""
+    from .. import php_toolchain as tc
+    folder = Path(folder)
+    opt = f"--composer={tc.COMPOSER_PHAR}" if tc.COMPOSER_PHAR.is_file() else "--composer=global"
+    run_php(folder, ["artisan", "install:api", "--without-migration-prompt", "--no-interaction", opt],
+            timeout=timeout, log=log, php=php)
+    if not composer_requires(folder, "laravel/sanctum"):
+        log("[laravel] Sanctum is missing after install:api - composer require laravel/sanctum ...")
+        run_logged(_composer_argv(["require", "laravel/sanctum", "--no-interaction", "--no-progress", "--no-ansi"],
+                                  php), folder, log, timeout, tc.composer_env(php))
+    user = folder / "app" / "Models" / "User.php"
+    text = read_text(user)
+    if text and "HasApiTokens" not in text:
+        text = text.replace("use Illuminate\\Notifications\\Notifiable;",
+                            "use Illuminate\\Notifications\\Notifiable;\nuse Laravel\\Sanctum\\HasApiTokens;", 1)
+        text = re.sub(r"(\n\s*use )(HasFactory)", r"\1HasApiTokens, \2", text, count=1)
+        user.write_text(text, encoding="utf-8", newline="\n")
+    write_api_example(folder)
+    return composer_requires(folder, "laravel/sanctum")
 
 
 def write_api_example(folder: Path) -> None:
@@ -1451,6 +1475,6 @@ def definition(folder, path, text: str, line: int, col: int) -> tuple[str, int] 
 
 
 __all__ = ["BLADE_DIRECTIVES", "LaravelIndex", "artisan_argv", "artisan_commands", "complete", "complete_items",
-           "CREATE_OPTIONS", "configure_project", "create_laravel", "definition", "expr_type", "generate_ide_helper", "index",
+           "CREATE_OPTIONS", "configure_project", "create_laravel", "install_api", "definition", "expr_type", "generate_ide_helper", "index",
            "install_ide_helper", "is_blade", "is_laravel", "laravel_version", "migration_tables", "needs_setup",
            "parse_routes_file", "pick_php", "route_list", "router", "set_env_values", "var_type", "view_name_of"]

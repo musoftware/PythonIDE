@@ -8,10 +8,38 @@ from __future__ import annotations
 
 import re
 
-from ..importers.exe.dotnet import P_ATOM, PyEmitter, Untranslatable, pystr
+from ..importers.exe.dotnet import P_ATOM, PyEmitter, Untranslatable, cs_date_format, cs_format_spec, pystr
 
 
-class QtEmitter(PyEmitter):
+class CsNumbersMixin:
+    """C# prints a double without a format like 100 / 0.1 / 115.25 ("G"); Python's f"{x}" prints 100.0."""
+
+    def fstring(self, parts) -> str:
+        out = []
+        for p in parts:
+            if isinstance(p, str):
+                out.append(p.replace("{", "{{").replace("}", "}}").replace("\\", "\\\\").replace("\n", "\n")
+                           .replace('"', '\\"'))
+                continue
+            node, fmt, _raw = p
+            if node[0] == "rawexpr":
+                raise Untranslatable("interpolated string")
+            code, kind = self.ex(node)
+            code = code.replace('"', "'")
+            spec = cs_format_spec(fmt) if fmt else ""
+            if fmt and not spec:
+                spec = cs_date_format(fmt) if re.search(r"[yMdHhms]", fmt) else ""
+            if not fmt and kind == "float":
+                spec = ".15g"
+            out.append("{" + code + (":" + spec if spec else "") + "}")
+        return 'f"' + "".join(out) + '"'
+
+
+class TkEmitter(CsNumbersMixin, PyEmitter):
+    """python-tk: the .exe importer's emitter + C#-like number formatting."""
+
+
+class QtEmitter(CsNumbersMixin, PyEmitter):
     """Translate parsed C# statements into Python lines for a python-qt (PySide6) form class."""
 
     # ------------------------------------------------------------------ setters

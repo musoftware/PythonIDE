@@ -2926,6 +2926,10 @@ def parse_winforms(cls: WinFormsClass, all_forms: set[str] | None = None) -> tup
                     ctrls[name] = {"wtype": wtype, "props": {}, "parent": "", "menu": []}
                     order.append(name)
                 continue
+            if tgt[0] == "name":            # "Text = ...;" - a form property (designer of .NET 6+, no "this.")
+                if tgt[1] not in ctrls and tgt[1] not in menus and tgt[1] not in tabpages:
+                    form_extra[tgt[1]] = _lit(val)
+                continue
             if tgt[0] != "member":
                 continue
             owner_node, prop = tgt[1], tgt[2]

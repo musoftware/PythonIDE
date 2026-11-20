@@ -182,7 +182,7 @@ class GameDesigner:
     def _make_menu(self) -> None:
         win = self.win
         mb = win.menuBar()
-        self.menu = m = mb.addMenu("&Game")
+        self.menu = m = mb.addMenu("Ga&me")
         before = next((a for a in mb.actions() if a.text().replace("&", "") in ("Tools", "Window", "Help")), None)
         if before is not None:
             mb.insertMenu(before, m)

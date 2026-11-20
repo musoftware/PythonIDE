@@ -221,10 +221,51 @@ class ProjectContext:
 
 
 def read_text(path: Path) -> str:
+    """Text of a source file: UTF-8 (with or without BOM) or the ANSI code page VB6 / old IDEs wrote
+    (cp1256 Arabic vs cp1252 Western is guessed like radide/foreign/vb6_project.decode_vb)."""
     raw = Path(path).read_bytes()
-    for enc in ("utf-8-sig", "cp1252"):
+    try:
+        from ..foreign.vb6_project import decode_vb
+        return decode_vb(raw)[0]
+    except Exception:  # noqa: BLE001 - the adapter is optional
+        pass
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw[3:].decode("utf-8", errors="replace")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    words = len(re.findall(rb"[\xc0-\xff]{3,}", raw))
+    singles = len(re.findall(rb"(?<![\x80-\xff])[\x80-\xff](?![\x80-\xff])", raw))
+    for enc in (("cp1256", "cp1252") if words > singles else ("cp1252", "cp1256")):
         try:
             return raw.decode(enc)
         except UnicodeDecodeError:
             continue
     return raw.decode("latin-1")
+
+
+def event_handler_names(form: FormInfo, mod, form_name: str) -> dict:
+    """lower VB6 event procedure name -> (new handler name, "form" | "ctl" | "array", neutral event).
+    Used to rename the procedures and the direct calls to them (cmdAdd_Click from another procedure)."""
+    out = {}
+    for p in mod.procs.values():
+        base = p.name.split(":")[-1]
+        ctrl, _, vbev = base.rpartition("_")
+        if p.kind != "sub" or not ctrl:
+            continue
+        if ctrl in ("form", "mdiform"):
+            nev = vb_event_to_neutral("Form", vbev)
+            if nev:
+                out[base] = (f"{form_name}_{nev}", "form", nev)
+        elif form.controls.get(ctrl):
+            c = form.controls[ctrl]
+            nev = vb_event_to_neutral(c.type, vbev)
+            if nev:
+                out[base] = (f"{c.name}_{nev}", "ctl", nev)
+        elif form.arrays.get(ctrl):
+            a = form.arrays[ctrl]
+            nev = vb_event_to_neutral(a[1], vbev)
+            if nev:
+                out[base] = (f"{a[0]}_{nev}", "array", nev)
+    return out

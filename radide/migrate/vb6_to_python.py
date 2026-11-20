@@ -16,8 +16,8 @@ import re
 from ..controls import CONTROL_TYPES, FORM_EVENTS, event_args
 from ..importers.exe.dotnet import pystr
 from ..runtimes import vbparse
-from .vbcommon import FormInfo, ModInfo, Notes, ProjectContext, comments_of, proc_ranges, strip_suffix, \
-    vb_event_to_neutral
+from .vbcommon import FormInfo, ModInfo, Notes, ProjectContext, comments_of, event_handler_names, proc_ranges, \
+    strip_suffix, vb_event_to_neutral
 
 PY_KEYWORDS = {"and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif",
                "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
@@ -30,7 +30,7 @@ COMPAT_FUNCS = {n.lower(): n for n in (
     "CStr Str Val CInt CLng CByte CDbl CSng CCur CDec CBool CVar CDate Int Fix Round Sgn Sqr Exp Log Sin Cos Tan "
     "Atn Hex Oct IsNumeric IsEmpty IsNull IsArray IsDate Choose RGB QBColor Len Left Right Mid InStr InStrRev "
     "Replace Split Join UCase LCase Trim LTrim RTrim Space String StrReverse StrComp StrConv Chr ChrW Asc AscW "
-    "Format FormatNumber FormatCurrency Array UBound LBound MsgBox InputBox DoEvents Beep Shell Now Date Time Timer "
+    "IIf Abs Format FormatNumber FormatCurrency Array UBound LBound MsgBox InputBox DoEvents Beep Shell Now Date Time Timer "
     "Year Month Day Hour Minute Second Weekday DateSerial TimeSerial DateAdd DateDiff Environ Command CurDir "
     "ChDir MkDir RmDir Kill FileCopy FileLen Dir FreeFile EOF LOF Rnd Randomize End").split()}
 FUNC_KIND = {"cstr": "str", "str": "str", "val": "num", "cint": "int", "clng": "int", "cbyte": "int", "cdbl": "float",
@@ -202,6 +202,9 @@ class PyTranslator:
         if lower in self.consts:
             c = self.consts[lower]
             return (c[0], c[1], "const") if isinstance(c, tuple) else (c, None, "const")
+        ev = getattr(self, "event_names", {}).get(lower)
+        if ev is not None:
+            return f"self.{ev[0]}", None, "proc"
         if lower in self.procs:
             disp, pk = self.procs[lower]
             return (disp if self.kind == "bas" else f"self.{disp}"), None,                 ("prop" if pk in ("get", "let", "set") else "proc")
@@ -370,6 +373,23 @@ class PyTranslator:
         raise Untranslatable(f"operator {op}")
 
     # ------------------------------------------------------------------ objects
+    def var_type(self, node) -> str | None:
+        """Declared VB type (lower, without New) of a variable node, or None."""
+        if node[0] != "name":
+            return None
+        low = node[2]
+        entry = self.locals.get(low) or (self.fields.get(low) if low not in self.locals else None)
+        if not entry or entry[2]:
+            return None
+        return type_base(entry[1] or "")
+
+    def var_class(self, node):
+        """ModInfo of the VB6 class a variable is declared with (Dim st As New CStack)."""
+        t = self.var_type(node)
+        if t and self.ctx.is_class(t):
+            return self.ctx.modules[t]
+        return None
+
     def obj_ref(self, node):
         """What *node* refers to as an object: ("control", CtlInfo) | ("element", code, type) |
         ("form",) | ("formclass", name) | ("module", name) | ("class", name) | ("compat", name) | ("expr", e)."""
@@ -456,6 +476,13 @@ class PyTranslator:
         if ref[0] == "class":
             raise Untranslatable(f"class member {ref[1]}.{raw}")
         e = ref[1]
+        cls = self.var_class(obj)
+        if cls is not None:                     # obj.Method of a VB6 class instance: a Function without ()
+            m = cls.members.get(prop)
+            if m and m[1] == "proc":
+                return f"{self.wrap(e, P_ATOM)}.{m[0]}()", None, P_ATOM
+            if m:
+                return f"{self.wrap(e, P_ATOM)}.{m[0]}", None, P_ATOM
         if e[1] == "ctlarray":
             if prop == "count":
                 return f"len({e[0]})", "int", P_ATOM
@@ -487,6 +514,8 @@ class PyTranslator:
         """(code, kind) reading VB property *prop* (lower) of control *c*."""
         s, t = f"self.{c.name}", c.type
         q = self.qt
+        if prop == "simpletext" and t == "Label":          # MSComctlLib.StatusBar imported as a Label
+            prop = "caption"
         if t == "Timer":
             if prop == "enabled":
                 return (f"{s}.isActive()" if q else f"{s}.Enabled"), "bool"
@@ -547,6 +576,8 @@ class PyTranslator:
 
     def ctl_set(self, c, prop, v, vkind, line) -> list[str]:
         s, t, q = f"self.{c.name}", c.type, self.qt
+        if prop == "simpletext" and t == "Label":          # MSComctlLib.StatusBar imported as a Label
+            prop = "caption"
         sv = v if vkind == "str" else f"CStr({v})"
         lit = v in ("True", "False")
         if t == "Timer":
@@ -681,6 +712,8 @@ class PyTranslator:
                     if prop:
                         return f"vb_get({elem}, {pystr(prop.capitalize())})", None, P_ATOM
                     return elem, None, P_ATOM
+            if what in ("local", "field", "modvar") and args and self.var_type(func) == "collection":
+                return f"{code}({self.args_code(args)})", None, P_ATOM      # Collection: c(2) / c("key")
             if what in ("local", "field", "modvar", "modmember", "ret", "unknown") and args:
                 if what == "ret":
                     # recursive call of the function itself
@@ -1485,6 +1518,7 @@ def translate_form_code(ctx: ProjectContext, form: FormInfo, text: str, toolkit:
                                     f"self.{aname}[index]")
     handlers: list[str] = []
     has_load = False
+    tr.event_names = event_handler_names(form, mod, form.name)
     for p in mod.procs.values():
         base = p.name.split(":")[-1]
         tr.start_proc(p)

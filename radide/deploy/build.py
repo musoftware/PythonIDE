@@ -300,7 +300,10 @@ def _host_build(folder: Path, cfg: PublishConfig, work: Path, launcher: str, log
     if not tools.ensure_pyinstaller(py, log):
         raise BuildError("PyInstaller is not installed in the IDE's Python")
     hidden = ["radide.runtimes.vbrun", "radide.runtimes.vbfso", "radide.languages.python_tk",
-              "radide.languages._refs", *uhidden]
+              "radide.languages._refs", *uhidden,
+              # the generated Tk designer code is exec'd at run time: PyInstaller cannot see its imports
+              "tkinter.ttk", "tkinter.font", "tkinter.filedialog", "tkinter.colorchooser", "tkinter.messagebox",
+              "tkinter.simpledialog", "tkinter.scrolledtext"]
     return pyinstaller(py, script, folder, cfg, work, log, paths=[IDE_ROOT, *upaths], hidden=hidden,
                        excludes=HOST_EXCLUDES, hooks=uhooks, icon=make_icon(folder, cfg, gen, log))
 

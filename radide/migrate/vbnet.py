@@ -156,6 +156,9 @@ def parse_vb_classes(text: str, file: str = "") -> list[VbClass]:
             i += 1
             s = s[:-2] + " " + lines[i].strip()
         i += 1
+        # leading attributes (classic VS designer: "<DesignerGenerated()> _ Partial Class X",
+        # "<DebuggerStepThrough()> _ Private Sub InitializeComponent()") - and a BOM on line 1
+        s = re.sub(r"^﻿?\s*(?:<[^<>]*>\s*)+(?=\S)", "", s.lstrip("﻿"))
         low = s.lower()
         if cur is None:
             m = re.match(r"^(?:(?:Public|Private|Friend|Partial|NotInheritable|MustInherit)\s+)*(?:Class|Module)\s+"

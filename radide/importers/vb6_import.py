@@ -295,6 +295,17 @@ def _comment_code(code: str) -> str:
 
 
 def import_vb6(source: Path, dest: Path, language: str = "vb-basic") -> ImportReport:
+    if language in ("python-tk", "python-qt") and not (Path(dest).exists() and any(Path(dest).iterdir())):
+        try:            # VB6 code translated to Python by rules (radide/migrate, File > Migrate Project)
+            from ..migrate.engine import Options, load_source, migrate
+            res = migrate(load_source(Path(source)), Options(language, Path(dest)))
+            rep = ImportReport(Project.load(Path(dest)), res.stats.get("forms", 0), res.stats.get("controls", 0),
+                               res.stats.get("handlers", 0))
+            rep.warnings = [f"{n.where()}: {n.text}" for n in res.notes.items if n.level in ("approx", "manual")]
+            rep.warnings.append(f"Full report: {res.report_path}")
+            return rep
+        except Exception:  # noqa: BLE001 - fall back to the VB6 code kept as comments (below)
+            pass
     report = ImportReport()
     if source.suffix.lower() == ".vbp":
         info = parse_vbp(source)

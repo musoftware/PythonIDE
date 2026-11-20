@@ -62,10 +62,15 @@ def framework_items(ed, line: int, col: int) -> list[dict] | None:
     if fn is None:
         return None
     try:
-        return fn(fw[1], ed.path, ed.text(), line, col)
+        items = fn(fw[1], ed.path, ed.text(), line, col)
     except Exception as e:  # noqa: BLE001 - completion must never break typing
         print(f"[php frameworks] completion failed: {e}")
         return None
+    # project items first, before the language server's ('!' sorts before 0-9 a-z), in the provider's order
+    # (config keys as declared, model columns before relations ...)
+    for i, it in enumerate(items or []):
+        it["sortText"] = "!" + str(it.get("sortText") or f"{i:05d}")
+    return items
 
 
 def framework_definition(ed, line: int, col: int) -> tuple[str, int] | None:
@@ -475,7 +480,7 @@ class LaravelPanel(QWidget):
         self._repl_buf = ""
         self._repl_wait = False
         self.routes_data: list[dict] = []
-        self._queue: list[list[str]] = []          # artisan commands waiting for the running one
+        self._queue: list[tuple[list[str], bool]] = []   # (args, quiet) waiting for the running command
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
         top = QHBoxLayout()
@@ -683,11 +688,14 @@ class LaravelPanel(QWidget):
             return self.choose("tinker")
         return self.run_artisan(args)
 
-    def run_artisan(self, args: list[str], wait: bool = False) -> bool:
+    def run_artisan(self, args: list[str], wait: bool = False, quiet: bool = False) -> bool:
+        """``php artisan <args>`` -> Output tab + Output window. Commands are queued while one runs. *quiet*
+        (automatic refreshes such as ide-helper:models after migrate) keeps last_output / last_exit of the
+        user's command and does not switch tabs."""
         if self.project is None:
             return False
         if self.proc is not None and self.proc.state() != QProcess.ProcessState.NotRunning:
-            self._queue.append(list(args))         # runs when the current command ends
+            self._queue.append((list(args), quiet))  # runs when the current command ends
             self.win.statusBar().showMessage(f"php artisan {' '.join(args)}: queued", 4000)
             if wait:
                 self.wait()
@@ -700,11 +708,12 @@ class LaravelPanel(QWidget):
                                 "db:seed", "db:wipe") and "--force" not in args:
             args = [*args, "--force"]
         argv = [*common.php_ext_args(php), "artisan", *args, "--no-interaction", "--ansi"]
-        self.tabs.setCurrentWidget(self.output)
+        if not quiet:
+            self.tabs.setCurrentWidget(self.output)
+            self.last_output = ""
+            self.last_exit = None
         self.output.appendPlainText(f"> php artisan {' '.join(args)}")
         self.win.log(f"[artisan] php artisan {' '.join(args)}")
-        self.last_output = ""
-        self.last_exit = None
         p = QProcess(self)
         p.setWorkingDirectory(str(self.folder()))
         e = QProcessEnvironment.systemEnvironment()
@@ -715,7 +724,8 @@ class LaravelPanel(QWidget):
 
         def read():
             text = common.ANSI.sub("", bytes(p.readAllStandardOutput()).decode("utf-8", "replace").replace("\r\n", "\n"))
-            self.last_output += text
+            if not quiet:
+                self.last_output += text
             self.output.moveCursor(self.output.textCursor().MoveOperation.End)
             self.output.insertPlainText(text)
             self.output.ensureCursorVisible()
@@ -723,21 +733,35 @@ class LaravelPanel(QWidget):
 
         def done(code, _status):
             read()
-            self.last_exit = code
             self.output.appendPlainText(f"--- exit code {code} ---\n")
             self.win.log(f"[artisan] {args[0] if args else ''}: exit code {code}")
-            if code == 0:
-                self._after_command(args, self.last_output)
-            if self._queue:
-                nxt = self._queue.pop(0)
-                QTimer.singleShot(0, lambda: self.run_artisan(nxt))
+            if not quiet:
+                self.last_exit = code
+                if code == 0:
+                    self._after_command(args, self.last_output)
+            self._next_queued()
+
+        def failed(err):
+            if err == QProcess.ProcessError.FailedToStart:
+                if not quiet:
+                    self.last_exit = -1
+                    self.last_output = f"cannot start {php}"
+                self.output.appendPlainText(f"*** cannot start {php}\n")
+                self.win.log(f"*** [artisan] cannot start {php}")
+                self._next_queued()
         p.readyReadStandardOutput.connect(read)
         p.finished.connect(done)
+        p.errorOccurred.connect(failed)
         self.proc = p
         p.start(php, argv)
         if wait:
             self.wait()
         return True
+
+    def _next_queued(self) -> None:
+        if self._queue:
+            args, quiet = self._queue.pop(0)
+            self.run_artisan(args, quiet=quiet)              # at once: wait() never sees a gap
 
     def wait(self, ms: int = 300000) -> int | None:
         if self.proc is not None:
@@ -766,7 +790,7 @@ class LaravelPanel(QWidget):
         if name.startswith(("migrate", "db:", "make:", "route:", "install:")):
             QTimer.singleShot(0, self.fill_routes)
             if name.startswith(("migrate", "make:model")) and (self.folder() / "_ide_helper_models.php").exists():
-                QTimer.singleShot(200, lambda: self.ide_helper(models_only=True))
+                self.run_artisan(["ide-helper:models", "--nowrite"], quiet=True)   # intelephense: new columns
 
     def ide_helper(self, models_only: bool = False) -> None:
         if self.project is None:

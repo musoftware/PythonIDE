@@ -394,7 +394,8 @@ class VBDialect(CSharpDialect):
         return f"Friend WithEvents {name} As {typ}"
 
     def comment_line(self, text: str) -> str:
-        return f"' {text}" if text else "' "
+        sp = " " if getattr(getattr(self, "style", None), "comment_space", False) else ""
+        return f"'{sp}{text}"
 
     def resources_decl(self, cls: str) -> str:
         t = "System.ComponentModel.ComponentResourceManager"

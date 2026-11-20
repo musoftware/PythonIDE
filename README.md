@@ -311,3 +311,18 @@ project (F5 passes the ones the IDE knows as `RADIDE_DB_<CONNECTION>_PASSWORD`).
   **Extract Method / Variable** (pylsp-rope, typescript, rust-analyzer ...), **Find All References (Shift+F12)**
   dock. Code: `radide/features/refactor.py`.
 - Samples: `samples/Tests/Testing/` (one project per framework, each with a test that fails on purpose).
+
+## Publish / Create Installer (Build menu)
+
+- **Build > Publish / Create Installer... (Ctrl+Alt+F5)** - one dialog (saved in the project's `publish.json`):
+  name, version, publisher, icon, build kind (automatic: Python Tk/Qt via PyInstaller, VB6 via the bundled VB
+  runtime, GUI Bridge languages, Ring, Flutter, or an already built folder), install for the current user (no
+  admin) or all users, desktop / Start menu shortcuts, setup languages (English, Arabic, ...), license and
+  read-me pages, file association, portable zip, optional code signing (signtool) and update check.
+- **Publish** builds in the background (log in the Output window) and makes `<Program>-<version>-setup.exe`
+  with **Inno Setup** in `<project>\Publish`. Inno Setup is downloaded once, portably, into
+  `%LOCALAPPDATA%\RADIDE\tools\innosetup` when missing. The setup adds an uninstaller in Apps & features and
+  supports the usual silent switches: `setup.exe /VERYSILENT /SUPPRESSMSGBOXES /CURRENTUSER [/DIR=...]`,
+  `unins000.exe /VERYSILENT`.
+- Code: `radide/deploy/build.py` (build), `radide/deploy/inno.py` (setup script + publish chain),
+  `radide/features/installer.py` (menu + dialog).

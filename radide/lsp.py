@@ -60,7 +60,7 @@ SERVERS: dict[str, tuple[list[list[str]], str]] = {
     "ruby": ([["ruby-lsp"], ["solargraph", "stdio"]], "Tools > Language Servers... (gem install ruby-lsp)"),
     "rad-fortran-bridge": ([["fortls"]], "pip install fortls"),
     "powershell": ([], "Tools > Language Servers... (PowerShell Editor Services release zip)"),
-    "perl": ([["pls"]], "Tools > Language Servers... (cpanm PLS with Strawberry Perl)"),
+    "perl": ([["pls"]], "PLS (Linux / macOS); on Windows the Perl plugin's own IntelliSense is used"),
     # Django / Jinja templates (radide/features/python_web.py): HTML IntelliSense from the HTML server
     "django-html": (_HTML, _WEB_HINT),
     "jinja-html": (_HTML, _WEB_HINT),
@@ -122,7 +122,11 @@ def display_name(argv: list[str]) -> str:
     """A readable server name: 'intelephense', 'vscode-html-language-server', 'pylsp', ..."""
     if not argv:
         return ""
+    if any(str(a).endswith("Start-EditorServices.ps1") for a in argv):    # lsp_servers.py (via its relay)
+        return "PowerShell Editor Services"
     first = Path(argv[0])
+    if first.stem.lower() in ("ruby", "perl") and len(argv) > 1:          # ruby-lsp / solargraph script
+        return Path(argv[1]).name
     if first.stem.lower() == "node" and len(argv) > 1:
         script = Path(argv[1])
         parts = script.parts

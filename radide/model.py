@@ -172,7 +172,10 @@ class Form:
     # ------------------------------------------------------------ edits
     def add(self, type_name: str, x: int, y: int, parent: str = "") -> Control:
         ctype = CONTROL_TYPES[type_name]
-        name = self.unique_name(ctype.prefix)
+        prefix = ctype.prefix
+        if self.extra.get("camel_names"):        # e.g. C# WinForms (Visual Studio names it button1)
+            prefix = prefix[:1].lower() + prefix[1:]
+        name = self.unique_name(prefix)
         props = ctype.default_props(name)
         if not ctype.nonvisual:
             props["Left"], props["Top"] = x, y

@@ -230,8 +230,9 @@ only had desktop forms; this round adds real **web site** development plus Blend
   a `radPhpFw` channel object (F12 / Ctrl+click via a definition provider + `registerEditorOpener`).
   **Laravel** (`frameworks/laravel.py`, owner: laravel): templates "Laravel App" / "Laravel API" (gallery ids
   `laravel`, `laravel-api`; `create_laravel()` = composer create-project, .env + key:generate, SQLite or the local
-  MariaDB / PostgreSQL server, migrate, `install:api`, barryvdh/laravel-ide-helper); `web = {"root": "public",
-  "start": "/", "framework": "laravel", "php": "auto"}`; Blade language `radide/web/blade.js` (`*.blade.php`);
+  MariaDB / PostgreSQL server, migrate, `install:api` + Sanctum, barryvdh/laravel-ide-helper); `web = {"root":
+  "public", "start": "/", "framework": "laravel", "php": "8.4"}` (the newest RAD IDE toolchain PHP >= 8.3 it was
+  created with, else "auto"); Blade language `radide/web/blade.js` (`*.blade.php`);
   Laravel panel (Artisan form from `artisan list --format=json`, Routes from `route:list --json`, Tinker =
   `frameworks/laravel_repl.php` persistent REPL); opening a project without vendor/ offers composer install / .env /
   key / database + migrate --seed / npm install + build (`win.prepare_laravel()`). Sample:

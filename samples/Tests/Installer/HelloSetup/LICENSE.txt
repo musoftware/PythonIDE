@@ -1,0 +1,2 @@
+Hello Setup - sample program made with RAD IDE.
+Free to use, copy and change. No warranty.

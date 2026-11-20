@@ -12,10 +12,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..controls import CONTROL_TYPES
+from ..controls import CONTROL_TYPES, menu_names
 from ..runtimes import vbparse
-from .vbcommon import FormInfo, Notes, ProjectContext, comments_of, proc_ranges, read_text, strip_suffix, \
-    vb_event_to_neutral
+from .vbcommon import FormInfo, Notes, ProjectContext, comments_of, event_handler_names, proc_ranges, read_text, \
+    strip_suffix, vb_event_to_neutral
 from .vb6_to_python import DEFAULT_PROP, Untranslatable, code_part
 
 WF_TYPE = {"Button": "Button", "Label": "Label", "TextBox": "TextBox", "CheckBox": "CheckBox",
@@ -179,6 +179,8 @@ class VBNetTranslator:
 
     def prop_get(self, name, t, prop, line) -> str:
         p = prop.lower()
+        if p == "simpletext" and t == "Label":
+            p = "text"
         if p in ("caption", "text"):
             return f"{name}.Text"
         if p == "value":
@@ -202,6 +204,8 @@ class VBNetTranslator:
 
     def prop_set(self, name, t, prop, v, line) -> str:
         p = prop.lower()
+        if p == "simpletext" and t == "Label":
+            p = "text"
         if p in ("caption", "text"):
             return f"{name}.Text = {v}"
         if p == "value":
@@ -258,9 +262,15 @@ class VBNetTranslator:
                 return f"(Me.{prop.capitalize()} * 15)"
             return f"Me.{self.spell(prop, raw)}"
         if t[0] == "app":
-            return {"path": "Application.StartupPath", "title": "Application.ProductName",
-                    "exename": "IO.Path.GetFileNameWithoutExtension(Application.ExecutablePath)"}.get(
-                prop, f"My.Application.Info.{_cls(raw)}")
+            got = {"path": "Application.StartupPath", "title": "Application.ProductName",
+                   "exename": "IO.Path.GetFileNameWithoutExtension(Application.ExecutablePath)",
+                   "major": "CInt(Application.ProductVersion.Split(\".\"c)(0))",
+                   "minor": "CInt(Application.ProductVersion.Split(\".\"c)(1))",
+                   "revision": "CInt(Application.ProductVersion.Split(\".\"c)(2))",
+                   "previnstance": "False"}.get(prop)
+            if got is None:
+                raise Untranslatable(f"App.{raw}")
+            return got
         if obj[0] == "name" and obj[2] in ("screen", "printer", "clipboard"):
             if obj[2] == "clipboard" and prop in ("gettext",):
                 return "Clipboard.GetText()"
@@ -285,6 +295,16 @@ class VBNetTranslator:
                 return f"IIf({self.args(args)})"
             if low in ("loadpicture", "createobject"):
                 raise Untranslatable(f"{self.spell(low)}()")
+            ev = getattr(self, "event_names", {}).get(low)
+            if ev is not None:
+                h, kind, nev = ev
+                args_t = WF_EVENT_ARGS.get(nev, "EventArgs")
+                if args_t != "EventArgs":
+                    raise Untranslatable(f"direct call of the event procedure {self.spell(low)}")
+                if kind == "array" and args:
+                    aname = h.rsplit("_", 1)[0]
+                    return f"{h}({aname}({self.ex(args[0])}), EventArgs.Empty)"
+                return f"{h}(Nothing, EventArgs.Empty)"
             if low == "format":
                 return f"Format({self.args(args)})"
             return f"{self.name(low, func[3] if len(func) > 3 else '')}({self.args(args)})"
@@ -418,7 +438,7 @@ class VBNetTranslator:
             if func[0] == "name" and func[2] == "randomize":
                 return ["Randomize()"]
             code = self.ex(call)
-            return [code if not code.startswith("Call New") else code[5:]]
+            return [code]
         if k in ("dim", "static"):
             return self.dims(s[2], "Dim" if k == "dim" else "Static")
         if k == "const":
@@ -643,6 +663,14 @@ def form_code_vbnet(ctx: ProjectContext, fi: FormInfo, text: str, file: str, not
         return (f"Public Class {fi.name}\n" + "\n".join("    ' " + ln for ln in code.splitlines() if ln.strip()) +
                 "\nEnd Class\n"), 0
     tr.decl_lines = [d[1] for d in mod.decls]
+    tr.event_names = event_handler_names(fi, mod, fi.name)
+    menu_items = {n.lower(): n for c in fi.form.controls if c.type == "MenuStrip"
+                  for n in menu_names(c.props.get("Items", []))}
+    for p in mod.procs.values():
+        base = p.name.split(":")[-1]
+        ctrl, _, vbev = base.rpartition("_")
+        if p.kind == "sub" and vbev == "click" and ctrl in menu_items and base not in tr.event_names:
+            tr.event_names[base] = (f"{menu_items[ctrl]}_Click", "menu", "Click")
     out = [f"Public Class {fi.name}", ""]
     first = min([r[0] for r in tr.ranges] or [10 ** 9])
     for ln, (c, whole) in sorted(tr.comments.items()):
@@ -673,7 +701,9 @@ def form_code_vbnet(ctx: ProjectContext, fi: FormInfo, text: str, file: str, not
         body_pre: list[str] = []
         try:
             target = None
-            if p.kind == "sub" and ctrl:
+            if p.kind == "sub" and ctrl and base in tr.event_names and tr.event_names[base][1] == "menu":
+                target = ("menu", "Click", menu_items[ctrl])
+            elif p.kind == "sub" and ctrl:
                 if ctrl in ("form", "mdiform"):
                     nev = vb_event_to_neutral("Form", vbev)
                     if nev:
@@ -708,6 +738,9 @@ def form_code_vbnet(ctx: ProjectContext, fi: FormInfo, text: str, file: str, not
             elif target[0] == "ctl":
                 hname = f"{target[2].name}_{nev}"
                 handles = f"{target[2].name}.{wf_ev}"
+            elif target[0] == "menu":
+                hname = f"{target[2]}_Click"
+                handles = f"{target[2]}.Click"
             else:
                 aname, atype, items = target[2]
                 hname = f"{aname}_{nev}"
@@ -788,7 +821,19 @@ def module_vbnet(ctx: ProjectContext, name: str, text: str, kind: str, file: str
             if kind == "cls" and p.name in ("class_terminate",):
                 head = "Protected Overrides Sub Finalize()"
                 tr.note("approx", p.line, "Class_Terminate became Finalize (runs at garbage collection)")
-            out += ["", "    " + head] + tr.block(p.body, 2) + [f"    End {kw}"]
+            body = tr.block(p.body, 2)
+            if kind == "bas" and p.name == "main":
+                # VB6 Sub Main shows the first form and returns; .NET needs Application.Run for the message loop
+                for i, ln in enumerate(body):
+                    m = re.match(r"^(\s*)Call New (\w+)\(\)\.Show\(\)\s*$", ln)
+                    if m:
+                        body[i] = f"{m.group(1)}Application.Run(New {m.group(2)}())"
+                        tr.note("rules", p.line, f"Sub Main: {m.group(2)}.Show became Application.Run(New "
+                                                 f"{m.group(2)}()) (the message loop of the program)")
+                        break
+                head = "Public Sub Main()"
+                body = ["        Application.EnableVisualStyles()"] + body
+            out += ["", "    " + head] + body + [f"    End {kw}"]
         except Untranslatable as e:
             notes.add("manual", file, p.line, f"{p.display}: not translated ({e})")
     for pname, kinds in props.items():
@@ -848,6 +893,8 @@ def designer_vb(form) -> str:
             L.append(B + f"Me.{c.name} = New System.Windows.Forms.Timer(Me.components)")
         else:
             L.append(B + f"Me.{c.name} = New System.Windows.Forms.{t}()")
+    menu_lines, menu_fields = _menu_items(form, ctrls)
+    L += [B + ln for ln in menu_lines[0]]
     containers = [c for c in ctrls if c.ctype.container]
     for c in containers:
         L.append(B + f"Me.{c.name}.SuspendLayout()")
@@ -863,6 +910,7 @@ def designer_vb(form) -> str:
                 L.append(f"{s}.Enabled = True")
             continue
         if c.type == "MenuStrip":
+            L += [B + ln for ln in menu_lines[1].get(c.name, [])]
             L.append(f"{s}.Location = New System.Drawing.Point(0, 0)")
             L.append(f"{s}.Name = {vbstr(c.name)}")
             continue
@@ -942,6 +990,7 @@ def designer_vb(form) -> str:
     for c in ctrls:
         t = WF_TYPE[c.type]
         L.append(f"    Friend WithEvents {c.name} As System.Windows.Forms.{t}")
+    L += [f"    Friend WithEvents {n} As System.Windows.Forms.{t}" for n, t in menu_fields]
     L.append("End Class")
     return "\n".join(L) + "\n"
 
@@ -952,13 +1001,14 @@ VBPROJ = """<Project Sdk="Microsoft.NET.Sdk">
     <OutputType>WinExe</OutputType>
     <TargetFramework>{tfm}</TargetFramework>
     <RootNamespace>{name}</RootNamespace>
-    <StartupObject>Sub Main</StartupObject>
+    <StartupObject>{startup_object}</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
     <OptionStrict>Off</OptionStrict>
     <OptionExplicit>On</OptionExplicit>
     <OptionInfer>On</OptionInfer>
     <AssemblyTitle>{title}</AssemblyTitle>
     <Product>{title}</Product>
+    <Version>{version}</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -997,7 +1047,7 @@ def _tfm() -> str:
 
 
 def write_vbnet_project(src, dest: Path, notes: Notes, stats: dict, progress, opts) -> Path:
-    from .engine import _ident, _sub_main_form, vb6_context
+    from .engine import _ident, vb6_context
     ctx = vb6_context(src)
     name = _ident(src.name, "Project")
     for sf in src.forms:
@@ -1018,14 +1068,39 @@ def write_vbnet_project(src, dest: Path, notes: Notes, stats: dict, progress, op
         (dest / f"{vbn}.vb").write_text(module_vbnet(ctx, vbn, read_text(p), kind, p.name, notes), encoding="utf-8")
         stats["modules"] += 1
         notes.add("rules", p.name, 0, f"{'module' if kind == 'bas' else 'class'} {vbn} -> {vbn}.vb")
-    startup = src.startup if src.startup != "Sub Main" else (_sub_main_form(src, notes) or
-                                                            (src.forms[0].name if src.forms else "Form1"))
-    (dest / "Program.vb").write_text(PROGRAM.format(startup=startup), encoding="utf-8")
-    title = (src.extra.get("vbp") or {}).get("name") or name
+    vbp = src.extra.get("vbp") or {}
+    main_mod = None
+    if src.startup == "Sub Main":
+        for mname, p, kind in src.modules:
+            if kind == "bas" and re.search(r"^\s*(?:Public\s+|Private\s+)?Sub\s+Main\s*\(", read_text(p), re.I | re.M):
+                main_mod = mname
+                break
+    if main_mod:
+        startup_object = f"{name}.{main_mod}"
+        notes.add("rules", f"{main_mod}.vb", 0, f"the program starts with Sub Main of {main_mod} (like the VB6 project)")
+    else:
+        startup = src.startup if src.startup and src.startup != "Sub Main" else \
+            (src.forms[0].name if src.forms else "Form1")
+        (dest / "Program.vb").write_text(PROGRAM.format(startup=startup), encoding="utf-8")
+        startup_object = f"{name}.Program"
+    title = vbp.get("title") or vbp.get("name") or name
+    version = _vbp_version(src.path) if src.path.suffix.lower() == ".vbp" else "1.0.0"
     proj = dest / f"{name}.vbproj"
-    proj.write_text(VBPROJ.format(tfm=_tfm(), name=name, title=title), encoding="utf-8")
+    proj.write_text(VBPROJ.format(tfm=_tfm(), name=name, title=title, startup_object=startup_object,
+                                  version=version), encoding="utf-8")
     notes.add("info", proj.name, 0, "build with `dotnet build` (or open it in Visual Studio / with File > Open Project)")
     return proj
+
+
+def _vbp_version(vbp: Path) -> str:
+    text = read_text(vbp)
+    parts = []
+    for key in ("MajorVer", "MinorVer", "RevisionVer"):
+        m = re.search(rf"^\s*{key}\s*=\s*(\d+)", text, re.I | re.M)
+        parts.append(m.group(1) if m else "0")
+    if parts == ["0", "0", "0"]:
+        parts[0] = "1"
+    return ".".join(parts)
 
 
 def build_check(proj: Path, timeout: int = 600) -> tuple[bool, str]:
@@ -1040,3 +1115,40 @@ def build_check(proj: Path, timeout: int = 600) -> tuple[bool, str]:
 
 
 __all__ = ["write_vbnet_project", "designer_vb", "form_code_vbnet", "module_vbnet", "build_check", "CONTROL_TYPES"]
+
+
+def _menu_items(form, ctrls):
+    """((creation lines, {menu strip: property lines}), [(field, type)]) for the MenuStrip items."""
+    create, props, fields = [], {}, []
+    seq = [0]
+
+    def walk(items, owner):
+        names = []
+        lines = props.setdefault(owner, [])
+        for it in items or []:
+            if it.get("Text") == "-":
+                seq[0] += 1
+                nm = f"ToolStripSeparator{seq[0]}"
+                create.append(f"Me.{nm} = New System.Windows.Forms.ToolStripSeparator()")
+                fields.append((nm, "ToolStripSeparator"))
+                names.append(nm)
+                continue
+            nm = it.get("Name") or f"ToolStripMenuItem{len(fields) + 1}"
+            create.append(f"Me.{nm} = New System.Windows.Forms.ToolStripMenuItem()")
+            fields.append((nm, "ToolStripMenuItem"))
+            names.append(nm)
+            lines.append(f"Me.{nm}.Name = {vbstr(nm)}")
+            lines.append(f"Me.{nm}.Text = {vbstr(it.get('Text', nm))}")
+            if it.get("Items"):
+                sub = walk(it["Items"], owner)
+                lines.append(f"Me.{nm}.DropDownItems.AddRange(New System.Windows.Forms.ToolStripItem() "
+                             f"{{{', '.join('Me.' + x for x in sub)}}})")
+        return names
+
+    for c in ctrls:
+        if c.type != "MenuStrip":
+            continue
+        top = walk(c.props.get("Items", []), c.name)
+        props.setdefault(c.name, []).append(f"Me.{c.name}.Items.AddRange(New System.Windows.Forms.ToolStripItem() "
+                                            f"{{{', '.join('Me.' + x for x in top)}}})")
+    return (create, props), fields

@@ -516,7 +516,7 @@ def translate_widget(w) -> None:
             return
         if isinstance(w, (QMenu, QMenuBar, QToolBar)):
             for a in w.actions():
-                translate_action(a, menubar=isinstance(w, QMenuBar))
+                translate_action(a, menubar=True if isinstance(w, QMenuBar) else None)   # None: a menu-bar menu shown elsewhere keeps (&F)
             if isinstance(w, QMenu):
                 translate_action(w.menuAction(), menubar=None)
         if w.isWindow() or isinstance(w, (QDockWidget, QToolBar)):
@@ -635,7 +635,7 @@ class _Filter(QObject):
             elif t == QEvent.Type.ActionAdded:
                 from PyQt6.QtWidgets import QMenuBar, QWidget
                 if isinstance(obj, QWidget) and not _skipped(obj):
-                    translate_action(ev.action(), menubar=isinstance(obj, QMenuBar))
+                    translate_action(ev.action(), menubar=True if isinstance(obj, QMenuBar) else None)
         except Exception:  # noqa: BLE001 - translation must never break the IDE
             pass
         return False

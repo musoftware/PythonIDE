@@ -1,0 +1,9 @@
+Type=Exe
+Module=modSem; modSem.bas
+Class=CStack; CStack.cls
+Startup="Sub Main"
+Title="Semantics"
+Name="Semantics"
+MajorVer=1
+MinorVer=0
+RevisionVer=0

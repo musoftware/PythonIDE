@@ -68,7 +68,7 @@ class NotebookFeature:
             sub.addSeparator()
             sub.addAction("Open Notebook...", self.open_dialog)
             sub.addAction("Import Python Script as Notebook...", self.import_py)
-        m = win.menuBar().addMenu("Note&book")
+        m = win.menuBar().addMenu("&Notebook")
         self.menu = m
         m.menuAction().setVisible(False)
         A = m.addAction

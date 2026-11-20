@@ -70,7 +70,23 @@ def missing(engine: str, plugin=None) -> str | None:
     if engine == "luaagent":
         return "" if LUA_AGENT.exists() else "radide/debug/raddbg_agent.lua is missing"
     if engine == "perlagent":
-        return "" if (PERL_AGENT_LIB / "Devel" / "RadDbg.pm").exists() else "Devel/RadDbg.pm is missing"
+        if not (PERL_AGENT_LIB / "Devel" / "RadDbg.pm").exists():
+            return "Devel/RadDbg.pm is missing"
+        perl = plugin.tool() if plugin is not None else ""
+        if perl and os.name == "nt":
+            if perl not in _CACHE:
+                import subprocess
+                try:
+                    r = subprocess.run([perl, "-e", "print $^O"], capture_output=True, text=True, timeout=20,
+                                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    osname = r.stdout.strip()
+                except (OSError, ValueError, subprocess.SubprocessError):
+                    osname = ""
+                _CACHE[perl] = "" if osname in ("MSWin32", "") else (
+                    f"{perl} is an {osname} perl (Git for Windows) - debugging needs a native Windows perl: "
+                    "Strawberry Perl in %LOCALAPPDATA%\\RADIDE\\toolchains\\strawberry")
+            return _CACHE[perl]
+        return ""
     if engine == "pses":
         from .lsp_servers import find_powershell, find_pses
         if not find_pses():
@@ -125,72 +141,16 @@ def make_dap(engine: str, bs):
         ep = _ENDPOINTS.pop(bs.port, None)
         return AgentSession(ep, engine, cwd, bps, bs)
     if engine == "pses":
-        from .lsp_servers import pses_args
+        from .lsp_servers import PSES_RELAY, pses_args
         argv = pses_args("-Stdio -DebugServiceOnly")
         if os.name == "nt":       # Enter-PSHostProcess needs a console: start PSES through the relay
-            argv = [sys.executable, "-u", "-c", _PSES_RELAY, *argv]
+            argv = [sys.executable, "-u", "-c", PSES_RELAY, *argv]
         d = make_pses_dap()(argv, "PowerShell",
                             {"type": "PowerShell", "request": "attach", "processId": bs.pid, "runspaceId": 1},
                             cwd, None, bps, bs)
         d.break_on_exception = False
         return d
     raise ValueError(engine)
-
-
-# PSES' attach (Enter-PSHostProcess + Debug-Runspace) hangs when PSES has no console of its own, which is
-# how QProcess starts children on Windows. The relay starts it in a new, hidden console and copies the
-# DAP bytes between its own stdin/stdout and PSES.
-_PSES_RELAY = r"""
-import subprocess, sys, threading
-si = subprocess.STARTUPINFO()
-si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-si.wShowWindow = 0
-p = subprocess.Popen(sys.argv[1:], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                     creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=si)
-try:                       # PSES dies with the relay (job object, kill on close) - no orphans
-    import ctypes
-    from ctypes import wintypes
-    k = ctypes.WinDLL("kernel32", use_last_error=True)
-    k.CreateJobObjectW.restype = wintypes.HANDLE
-    k.OpenProcess.restype = wintypes.HANDLE
-    class LIMIT(ctypes.Structure):
-        _fields_ = [("a", ctypes.c_int64), ("b", ctypes.c_int64), ("LimitFlags", wintypes.DWORD),
-                    ("c", ctypes.c_size_t), ("d", ctypes.c_size_t), ("e", wintypes.DWORD),
-                    ("f", ctypes.c_size_t), ("g", wintypes.DWORD), ("h", wintypes.DWORD)]
-    class EXT(ctypes.Structure):
-        _fields_ = [("basic", LIMIT), ("io", ctypes.c_uint64 * 6), ("p1", ctypes.c_size_t),
-                    ("p2", ctypes.c_size_t), ("p3", ctypes.c_size_t), ("p4", ctypes.c_size_t)]
-    job = k.CreateJobObjectW(None, None)
-    info = EXT()
-    info.basic.LimitFlags = 0x2000
-    k.SetInformationJobObject(wintypes.HANDLE(job), 9, ctypes.byref(info), ctypes.sizeof(info))
-    h = k.OpenProcess(0x0101, False, p.pid)
-    k.AssignProcessToJobObject(wintypes.HANDLE(job), wintypes.HANDLE(h))
-except Exception:
-    pass
-def up():
-    try:
-        while True:
-            b = sys.stdin.buffer.read1(65536)
-            if not b:
-                break
-            p.stdin.write(b)
-            p.stdin.flush()
-    except OSError:
-        pass
-    try:
-        p.stdin.close()
-    except OSError:
-        pass
-threading.Thread(target=up, daemon=True).start()
-while True:
-    b = p.stdout.read1(65536)
-    if not b:
-        break
-    sys.stdout.buffer.write(b)
-    sys.stdout.buffer.flush()
-sys.exit(p.wait())
-"""
 
 
 def make_pses_dap():
@@ -247,22 +207,119 @@ def make_pses_dap():
 
         def _resume_attach_break(self):
             self._attach_break = False
-            # PSES resumes a Debug-Runspace break reliably only after the stack was read (as VS Code does)
-            self._request("stackTrace", {"threadId": self.thread_id, "startFrame": 0, "levels": 1},
-                          lambda _b, _m: self._request("continue", {"threadId": self.thread_id}))
+            self._request("continue", {"threadId": self.thread_id})
+
+        # Conditions / hit counts / logpoints do not survive Debug-Runspace (PSES builds the breakpoint action
+        # in its own runspace): plain breakpoints go to PSES and the IDE checks the rest at each stop.
+        def _bp_list(self, path, lines):
+            return [{"line": n} for n in sorted(lines)]
+
+        def _check_stop(self, reason):
+            from .debug_extras import hit_ok, parse_bp
+
+            def got(b, _m):
+                frames = b.get("stackFrames") or []
+                top = next((f for f in frames if f.get("name") != "<Breakpoint>"), frames[0] if frames else None)
+                if not top:
+                    super(PsesDap, self)._on_stopped(reason)
+                    return
+                key = (os.path.normcase(os.path.normpath(top.get("source", {}).get("path", ""))), top.get("line", 0))
+                spec = next((c for (p, n), c in self.conditions.items()
+                             if (os.path.normcase(os.path.normpath(p)), n) == key), "")
+                d = parse_bp(spec)
+                if not (d["cond"] or d["hit"] or d["log"]):
+                    super(PsesDap, self)._on_stopped(reason)
+                    return
+                fid = top.get("id")
+
+                def after_cond(ok):
+                    if not ok:
+                        self._request("continue", {"threadId": self.thread_id})
+                        return
+                    self._hits[key] = self._hits.get(key, 0) + 1
+                    if d["hit"] and not hit_ok(d["hit"], self._hits[key]):
+                        self._request("continue", {"threadId": self.thread_id})
+                        return
+                    if d["log"]:
+                        import re
+                        text = re.sub(r"\{([^{}]+)\}", r"$(\1)", d["log"]).replace('"', '`"')
+                        self._request("evaluate", {"expression": f'"{text}"', "frameId": fid, "context": "watch"},
+                                      lambda eb, em: (self.output.emit((eb.get("result", "") if em.get("success", True)
+                                                                        else d["log"]).strip('"') + "\n"),
+                                                      self._request("continue", {"threadId": self.thread_id})))
+                        return
+                    super(PsesDap, self)._on_stopped(reason)
+                if d["cond"]:
+                    self._request("evaluate", {"expression": f"[bool]({d['cond']})", "frameId": fid, "context": "watch"},
+                                  lambda eb, em: after_cond(em.get("success", True) and
+                                                            str(eb.get("result", "")).strip().lower() in ("$true", "true")))
+                else:
+                    after_cond(True)
+            self._request("stackTrace", {"threadId": self.thread_id, "startFrame": 0, "levels": 3}, got)
 
         def _on_stopped(self, reason):
+            if not hasattr(self, "_hits"):
+                self._hits = {}
+            if not self._attach_break and reason == "breakpoint" and self.conditions:
+                self._check_stop(reason)
+                return
             if self._attach_break:
-                if getattr(self, "_bps_set", True):
-                    self._resume_attach_break()
-                else:
-                    self._attach_break = "stopped"
+                # read the stack at once (as VS Code does): PSES finishes setting the breakpoints and resumes
+                # the Debug-Runspace break reliably only after that
+                def got(_b, _m):
+                    if getattr(self, "_bps_set", True):
+                        self._resume_attach_break()
+                    else:
+                        self._attach_break = "stopped"
+                self._request("stackTrace", {"threadId": self.thread_id}, got)
                 return
             super()._on_stopped(reason)
 
         def set_break_on_exception(self, on: bool):
             self.break_on_exception = on
             self._request("setExceptionBreakpoints", {"filters": ["Error"] if on else []})
+
+        # PSES changes breakpoints of an attached runspace only while it is stopped, and slowly: a resume sent
+        # right after a change would overtake it. Changes made while the program runs apply at its next stop.
+        def set_breakpoint(self, filename: str, line: int, on: bool, cond: str = ""):
+            path = str((self.cwd / filename).resolve())
+            lines = self.breakpoints.setdefault(path, set())
+            (lines.add if on else lines.discard)(line)
+            if on and cond:
+                self.conditions[(path, line)] = cond
+            else:
+                self.conditions.pop((path, line), None)
+            self._bp_pending = getattr(self, "_bp_pending", 0) + 1
+
+            def done(_b, _m):
+                self._bp_pending -= 1
+                if self._bp_pending == 0 and getattr(self, "_queued", None):
+                    cmd, self._queued = self._queued, None
+                    self._request(cmd, {"threadId": self.thread_id})
+            self._request("setBreakpoints", {"source": {"path": path}, "breakpoints": self._bp_list(path, lines)}, done)
+
+        def _resume(self, command):
+            if self.paused and getattr(self, "_bp_pending", 0) > 0:
+                self.paused = False
+                self._queued = command
+                self.resumed.emit()
+                return
+            super()._resume(command)
+
+        def _emit_stop(self, info):
+            # PSES scopes: Autos (the function's own variables) + Local/Script/Global full of automatic
+            # variables ($MaximumAliasCount, ...). Show the Autos as the locals; drop PSES' "<Breakpoint>" frame.
+            autos = [(n[5:], t, v) for n, t, v in info.variables if n.startswith("Auto.")]
+            if autos:
+                info.refs = {k[5:]: r for k, r in info.refs.items() if k.startswith("Auto.")}
+                info.variables = autos
+            else:
+                keep = {"$e", "$args"}
+                info.variables = [x for x in info.variables if "." not in x[0] and (x[0] in keep or not
+                                  x[0].lstrip("$")[:1].isupper())]
+            if info.frames and info.frames[0][0] == "<Breakpoint>" and len(info.frames) > 1:
+                info.frames = info.frames[1:]
+            super()._emit_stop(info)
 
     return PsesDap
 

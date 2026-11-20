@@ -168,7 +168,8 @@ def read_ui(path: Path, live: bool = True) -> tuple[Form, UiContext]:
         if item is not None or (ctx.is_main and cls in ("QStatusBar", "QToolBar")):
             props["NativeLayout"] = True          # placed by a layout / by QMainWindow
         if not ct.nonvisual:
-            g = _value(_prop(w, "geometry"))
+            # a layout child's own "geometry" (QFormBuilder writes one) is not where the layout puts it
+            g = _value(_prop(w, "geometry")) if item is None else None
             if geoms and name in geoms:
                 g = geoms[name]
             if g:

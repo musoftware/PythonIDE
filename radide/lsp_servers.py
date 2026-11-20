@@ -8,7 +8,7 @@ with ``server_env(language)`` added to its environment. Everything is portable a
     ruby        ruby-lsp (or solargraph)  gem install ruby-lsp   (GEM_HOME = tools\\ruby-gems)
     lua         lua-language-server       official GitHub release zip (sha256 checked)  -> tools\\lua-language-server
     powershell  PowerShell Editor Services official GitHub release zip (sha256 checked) -> tools\\pses (LSP + DAP)
-    perl        PLS (Perl Language Server) cpanm PLS into tools\\perl-pls with Strawberry Perl
+    perl        PLS (Perl Language Server) cpanm PLS into tools\\perl-pls (Linux / macOS only: PLS needs fork(), missing on Windows)
                 (toolchains\\strawberry, portable zip) - or Perl::LanguageServer when found on PATH
 
 The Go / Ruby / Perl toolchains are looked up on PATH first, then in ``%LOCALAPPDATA%\\RADIDE\\toolchains``.
@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -133,6 +134,62 @@ def _ruby_script(name: str) -> str:
     return _first(GEM_HOME / "bin" / name)
 
 
+# PSES needs a console of its own (QProcess starts children without one on Windows): its attach
+# (Enter-PSHostProcess) hangs and the language server stops answering after initialize. The relay starts it in a new, hidden console and copies the
+# DAP bytes between its own stdin/stdout and PSES.
+PSES_RELAY = r"""
+import subprocess, sys, threading
+si = subprocess.STARTUPINFO()
+si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+si.wShowWindow = 0
+p = subprocess.Popen(sys.argv[1:], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                     creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=si)
+try:                       # PSES dies with the relay (job object, kill on close) - no orphans
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateJobObjectW.restype = wintypes.HANDLE
+    k.OpenProcess.restype = wintypes.HANDLE
+    class LIMIT(ctypes.Structure):
+        _fields_ = [("a", ctypes.c_int64), ("b", ctypes.c_int64), ("LimitFlags", wintypes.DWORD),
+                    ("c", ctypes.c_size_t), ("d", ctypes.c_size_t), ("e", wintypes.DWORD),
+                    ("f", ctypes.c_size_t), ("g", wintypes.DWORD), ("h", wintypes.DWORD)]
+    class EXT(ctypes.Structure):
+        _fields_ = [("basic", LIMIT), ("io", ctypes.c_uint64 * 6), ("p1", ctypes.c_size_t),
+                    ("p2", ctypes.c_size_t), ("p3", ctypes.c_size_t), ("p4", ctypes.c_size_t)]
+    job = k.CreateJobObjectW(None, None)
+    info = EXT()
+    info.basic.LimitFlags = 0x2000
+    k.SetInformationJobObject(wintypes.HANDLE(job), 9, ctypes.byref(info), ctypes.sizeof(info))
+    h = k.OpenProcess(0x0101, False, p.pid)
+    k.AssignProcessToJobObject(wintypes.HANDLE(job), wintypes.HANDLE(h))
+except Exception:
+    pass
+def up():
+    try:
+        while True:
+            b = sys.stdin.buffer.read1(65536)
+            if not b:
+                break
+            p.stdin.write(b)
+            p.stdin.flush()
+    except OSError:
+        pass
+    try:
+        p.stdin.close()
+    except OSError:
+        pass
+threading.Thread(target=up, daemon=True).start()
+while True:
+    b = p.stdout.read1(65536)
+    if not b:
+        break
+    sys.stdout.buffer.write(b)
+    sys.stdout.buffer.flush()
+sys.exit(p.wait())
+"""
+
+
 def pses_args(stdio_mode: str = "-Stdio", session_file: Path | None = None) -> list[str]:
     """powershell argv that starts PSES (language server: -Stdio; debug adapter: -Stdio -DebugServiceOnly)."""
     logs = TOOLS / "pses" / "logs"
@@ -166,10 +223,13 @@ def server_command(language: str) -> list[str] | None:
         return [p, "stdio"] if p else None
     if language == "powershell":
         if find_pses() and find_powershell():
-            return pses_args("-Stdio")
+            argv = pses_args("-Stdio")
+            return [sys.executable, "-u", "-c", PSES_RELAY, *argv] if os.name == "nt" else argv
         return None
     if language == "perl":
         perl = find_perl()
+        if os.name == "nt":                  # PLS / Perl::LanguageServer need fork(): not on Windows
+            return None
         if perl and find_pls():
             return [perl, find_pls()]
         p = _which("pls")
@@ -247,7 +307,7 @@ def install_hint(language: str) -> str:
         "ruby": "gem install ruby-lsp into tools\\ruby-gems (needs Ruby: toolchains\\ruby)",
         "lua": "official lua-language-server release zip -> tools\\lua-language-server",
         "powershell": "official PowerShellEditorServices release zip -> tools\\pses",
-        "perl": "cpanm PLS into tools\\perl-pls (needs Strawberry Perl: toolchains\\strawberry)",
+        "perl": "cpanm PLS into tools\\perl-pls (Linux / macOS - PLS needs fork())",
     }.get(language, "")
 
 
@@ -259,7 +319,9 @@ def can_install(language: str) -> str:
         return "" if find_ruby() else "Ruby was not found"
     if language == "perl":
         perl = find_perl()
-        return "" if perl and "strawberry" in perl.lower() else "Strawberry Perl was not found"
+        if os.name == "nt":
+            return "PLS needs fork(), which Windows perl lacks - the Perl plugin's IntelliSense is used"
+        return "" if perl else "perl was not found"
     if language in RELEASES:
         return "" if os.name == "nt" else "the pinned release is the Windows build"
     return "unknown language"

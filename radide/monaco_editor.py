@@ -533,6 +533,9 @@ class MonacoEditor(QWebEngineView):
     def _complete(self, req: int, line: int, col: int):
         items = []
         extra = self._extra_completions(line, col)
+        if any(i.get("exclusive") for i in extra):      # e.g. inside route('...'): no need to wait for the server
+            self._js(f"radResolve({req}, {json.dumps(extra)});")
+            return
         try:
             if self.lsp is not None and self.lsp.running():
                 self.lsp.completion(self.path, self._text, line, col,

@@ -262,6 +262,8 @@ def write_project_file(folder: Path, name: str, t: WebTemplate, **extra) -> Path
     """project.radproj of a website project (the same format as web_site.project.create_website)."""
     data = {"name": name, "language": t.language, "forms": [], "startup": "", "modules": [],
             "kind": "website", "web": web_block(t)}
+    if extra.get("web_php"):                         # Laravel: the PHP series the project was created with
+        data["web"]["php"] = extra.pop("web_php")
     data.update(extra)
     path = folder / PROJECT_FILE
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -300,7 +302,7 @@ def build_files(template_id: str, folder: Path, name: str, log: Log | None = Non
     folder = Path(folder).resolve()
     log = log or (lambda _s: None)
     if t.builder == "composer-laravel":
-        _create_laravel(t, folder, name, log, timeout)
+        return _create_laravel(t, folder, name, log, timeout)
     elif t.builder == "wordpress":
         return _create_wordpress(t, folder, name, log, Path(cache_dir) if cache_dir else default_cache_dir(),
                                  timeout)
@@ -423,13 +425,14 @@ def _version_tuple(v: str) -> tuple[int, ...]:
 
 
 # ===================================================================== Laravel
-def _create_laravel(t: WebTemplate, folder: Path, name: str, log: Log, timeout: int) -> None:
+def _create_laravel(t: WebTemplate, folder: Path, name: str, log: Log, timeout: int) -> dict:
     """Laravel App / API (radide/web_site/frameworks/laravel.py does the work)."""
     from .frameworks.laravel import create_laravel
     if folder.exists() and not any(folder.iterdir()):
         folder.rmdir()                         # empty (checked) - composer wants to create it
-    create_laravel(folder, display_name(name), log=log, kind="api" if t.id == "laravel-api" else "app",
-                   timeout=timeout)
+    web = create_laravel(folder, display_name(name), log=log, kind="api" if t.id == "laravel-api" else "app",
+                         timeout=timeout)
+    return {"web_php": web.get("php", "auto")}
 
 
 def configure_laravel_env(text: str, app_name: str) -> str:
@@ -551,6 +554,8 @@ def site_creator(t: WebTemplate) -> Callable[[Path, str], dict]:
     def create_site(folder: Path, name: str) -> dict:
         extra = build_files(t.id, Path(folder), name, lambda s: progress_log(s))
         web = {k: v for k, v in web_block(t).items() if k in ("root", "start", "framework", "php")}
+        if extra.get("web_php"):                    # Laravel: the PHP series the project was created with
+            web["php"] = extra.pop("web_php")
         if extra:
             web["gallery"] = extra
         return web

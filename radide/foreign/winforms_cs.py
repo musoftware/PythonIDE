@@ -25,6 +25,17 @@ Public API (also used by radide.features.foreign_projects):
     add_event_handler(code, form, owner, event) -> (code, line)   handler in Form1.cs / Form1.vb
     PLUGIN (winforms-cs), see also winforms_vb.PLUGIN (winforms-vb): language plugins for
     project.form_languages - double-click creates handlers, Save writes the Designer file.
+
+Designer hooks (optional plugin attributes, used by radide/properties.py and radide/toolbox.py):
+    plugin.designer_profile          {"labels": {type: WinForms name}, "allowed": set} -> toolbox
+    plugin.property_label(name, c)   .NET name of a neutral property (Location.X, Size.Width, Font.Bold)
+    plugin.type_label(c)             System.Windows.Forms.Button ... in the Properties description
+    form.extra["camel_names"]        model.Form.add names new controls button1 (C# files that do)
+
+Layout: SplitContainer panels are pseudo Panel controls named "split1.Panel1" (hidden prop _wfp, never
+written); children of TableLayoutPanel / FlowLayoutPanel keep their stored Location (no RAD dock/anchor);
+the loaded form is run through radide/layout.relayout so the designer and the writer's baseline agree.
+VB: deleting / renaming a control also fixes the Handles clauses of Form1.vb (disk + open editor).
 """
 from __future__ import annotations
 
@@ -93,7 +104,14 @@ EVENT_SIG = {
 }
 FORMS_NS = "System.Windows.Forms"
 DRAWING_NS = "System.Drawing"
-HIDDEN = ("_wf", "_wft")         # hidden control props: original name / original .NET type
+HIDDEN = ("_wf", "_wft", "_wfp")  # hidden control props: original name / original .NET type / split panel of
+LAYOUT_PANELS = {"TableLayoutPanel", "FlowLayoutPanel"}   # .NET places their children (cells / flow)
+# neutral property -> how the Properties window names it for a WinForms form (.NET names)
+NET_PROPERTY_LABELS = {
+    "Left": "Location.X", "Top": "Location.Y", "Width": "Size.Width", "Height": "Size.Height",
+    "FontName": "Font.Name", "FontSize": "Font.Size", "FontBold": "Font.Bold", "FontItalic": "Font.Italic",
+    "ToolTip": "ToolTip on toolTip1", "Parent": "Parent (Controls.Add)", "TabPage": "Parent TabPage index",
+}
 
 
 def short(t: str) -> str:
@@ -375,7 +393,8 @@ class CSharpDialect:
         return f"private {typ} {name};"
 
     def comment_line(self, text: str) -> str:
-        return f"// {text}" if text else "// "
+        sp = " " if getattr(getattr(self, "style", None), "comment_space", True) else ""
+        return f"//{sp}{text}"
 
     def resources_decl(self, cls: str) -> str:
         t = "System.ComponentModel.ComponentResourceManager"
@@ -393,6 +412,7 @@ class Style:
     me: str = "this."          # "this." / "Me." / ""
     qualified: bool = True     # System.Windows.Forms.Button vs Button
     inline_arrays: bool = False  # new T[] { a, b } on one line (VS 2022) vs one element per line (older VS)
+    comment_space: bool = True   # block headers "// " + "// button1" (C#) vs "'" + "'Button1" (VB)
 
 
 # ============================================================================ parsed designer file
@@ -463,6 +483,8 @@ class DesignerDoc:
             st.kind = "decl"
             if "ComponentResourceManager" in node[1]:
                 self.resources_idx = i
+            # locals (TreeNode treeNode1 = ..., ListViewItem ...): their assignments are not form props
+            known.update(n for n, _init in node[2])
             return
         if node[0] != "expr":
             return
@@ -637,7 +659,16 @@ class DesignerDoc:
                     inline += 1
         if not inline and not multi:
             inline = 0 if me_count >= bare and qual >= short_ else 1    # no example: follow the file's era
-        return Style(me if me_count >= bare else "", qual >= short_, inline > multi)
+        spaced = tight = 0
+        for st in self.stmts:
+            if st.kind == "comment":
+                t = st.text.rstrip("\r\n").lstrip()
+                if t in ("'", "//"):
+                    tight += 1
+                elif t in ("' ", "// "):
+                    spaced += 1
+        space = spaced > tight if spaced != tight else self.d.lang != "vb"
+        return Style(me if me_count >= bare else "", qual >= short_, inline > multi, space)
 
     def value(self, owner: str, prop: str):
         idx = self._props_of(owner).get(prop)
@@ -848,6 +879,16 @@ class Loader:
             ctrl = self.control(name, c, offset, font_for(name))
             if ctrl is not None:
                 form.controls.append(ctrl)
+        self._split_panels(form)
+        for ctrl in form.controls:
+            par = doc.parent_of.get(ctrl.name, "")
+            if par in doc.controls and short(doc.controls[par]["wtype"]) in LAYOUT_PANELS:
+                # cells / flow: .NET computes the place; RAD shows the stored Location and
+                # does not re-dock or re-anchor them
+                if "Dock" in ctrl.props:
+                    ctrl.props["Dock"] = "None"
+                if "Anchor" in ctrl.props:
+                    ctrl.props["Anchor"] = "Top, Left"
         # containers before children, original order otherwise
         by = {c.name: c for c in form.controls}
         ordered, seen = [], set()
@@ -863,9 +904,51 @@ class Loader:
         for c in form.controls:
             place(c)
         form.controls = ordered
+        # the designer snaps docked / anchored controls (radide/layout.py): do it here so the form
+        # the designer shows and the baseline the writer compares with are the same
+        try:
+            from ..layout import relayout
+            relayout(form)
+        except Exception:  # noqa: BLE001
+            pass
         form.extra["winforms"] = {"designer": str(doc.path), "lang": doc.d.lang, "offset": offset,
                                   "class": doc.cls_name}
+        if doc.d.lang == "cs":
+            # Visual Studio names new C# controls button1 / textBox1 (VB: Button1) - follow the file
+            names = [n for n in doc.controls if n != "components"]
+            lower = sum(1 for n in names if n[:1].islower())
+            form.extra["camel_names"] = lower * 2 >= len(names)
         return form
+
+    def _split_panels(self, form: Form) -> None:
+        """SplitContainer: its Panel1 / Panel2 become pseudo Panel controls ("split1.Panel1", hidden prop
+        _wfp) so children keep their .NET coordinates and dock inside their panel; never written."""
+        doc = self.doc
+        for c in list(form.controls):
+            if not doc.is_split(c.name):
+                continue
+            w, h = int(c.props.get("Width", 0)), int(c.props.get("Height", 0))
+            ox, oy = doc.split_offset(c.name)
+            dist = doc.value(c.name, "SplitterDistance")
+            dist = _int(dist) if isinstance(dist, (int, float)) else 50
+            if oy:
+                rects = [(0, 0, w, dist), (0, oy, w, max(0, h - oy))]
+                anchors = ["Top, Left, Right", "Top, Bottom, Left, Right"]
+            else:
+                rects = [(0, 0, dist, h), (ox, 0, max(0, w - ox), h)]
+                anchors = ["Top, Bottom, Left", "Top, Bottom, Left, Right"]
+            idx = form.controls.index(c) + 1
+            for i, ((x, y, pw, ph), anc) in enumerate(zip(rects, anchors), 1):
+                pn = f"{c.name}.Panel{i}"
+                props = CONTROL_TYPES["Panel"].default_props(pn)
+                props.update({"Parent": c.name, "Left": x, "Top": y, "Width": pw, "Height": ph, "_wfp": c.name})
+                if "Anchor" in props:
+                    props["Anchor"] = anc
+                for k in ("FontName", "FontSize", "FontBold", "FontItalic"):
+                    if k in props and k in c.props:
+                        props[k] = c.props[k]
+                form.controls.insert(idx, Control("Panel", props))
+                idx += 1
 
     def control(self, name: str, c: dict, offset: int, font) -> Control | None:
         doc = self.doc
@@ -900,9 +983,8 @@ class Loader:
                 p["Left"], p["Top"] = _int(loc[1]), _int(loc[2]) - (offset if par == "" else 0)
             else:
                 p["Left"], p["Top"] = 0, -offset if par == "" else 0
-            if par and doc.is_split(par) and doc.parent_expr.get(name, "").endswith(".Panel2"):
-                ox, oy = doc.split_offset(par)
-                p["Left"], p["Top"] = p["Left"] + ox, p["Top"] + oy
+            if par and doc.is_split(par) and doc.parent_expr.get(name, "").endswith((".Panel1", ".Panel2")):
+                p["Parent"] = f"{par}.{doc.parent_expr[name].rsplit('.', 1)[1]}"    # pseudo panel (build)
             if isinstance(size, tuple) and len(size) >= 3:
                 p["Width"], p["Height"] = _int(size[1]), _int(size[2])
         if ct.has_text and not ct.nonvisual:
@@ -1060,6 +1142,7 @@ class Renderer:
         d = doc.d
         # 1. renames (identifiers in InitializeComponent + fields), then re-parse as the new baseline
         renames = self._renames(doc)
+        self.renamed = dict(renames)
         if renames:
             text = _apply_renames(doc, renames)
             if self.resx is not None:
@@ -1093,14 +1176,26 @@ class Renderer:
         cur = self.form
         bmap = {c.name: c for c in base.controls}
         cmap = {c.name: c for c in cur.controls}
+        # pseudo panels of SplitContainers are not in the file (their geometry follows SplitterDistance)
+        for c in list(cur.controls):
+            if c.props.get("_wfp"):
+                b = bmap.get(c.name)
+                if b is not None and any(b.props.get(k) != c.props.get(k) for k in ("Left", "Top", "Width",
+                                                                                      "Height")):
+                    self.report.append(f"{c.name}: panel geometry follows SplitterDistance - not written")
+        bmap = {n: c for n, c in bmap.items() if not c.props.get("_wfp")}
+        cmap = {n: c for n, c in cmap.items() if not c.props.get("_wfp")}
         # 2. deleted controls
-        for name in [n for n in bmap if n not in cmap]:
+        self.deleted = [n for n in bmap if n not in cmap]
+        for name in self.deleted:
             self._delete_control(name)
         # 3. form props
         self._form_props(base.props, cur.props)
         # 4. changed controls / reparenting
         new_names = []
         for c in cur.controls:
+            if c.props.get("_wfp"):
+                continue
             if c.name in bmap:
                 self._update_control(bmap[c.name], c)
             elif c.type in NEUTRAL_TO_WF or (c.props.get("_wft") and c.type == "Panel"):
@@ -1266,8 +1361,8 @@ class Renderer:
     # ---------------------------------------------------------------- renames
     def _renames(self, doc: DesignerDoc) -> dict[str, str]:
         base = Loader(doc, self.resx, extract=False).build()
-        bnames = {c.name: c for c in base.controls}
-        cur = self.form.controls
+        bnames = {c.name: c for c in base.controls if not c.props.get("_wfp")}
+        cur = [c for c in self.form.controls if not c.props.get("_wfp")]
         cnames = {c.name for c in cur}
         removed = [n for n in bnames if n not in cnames]
         added = [c for c in cur if c.name not in bnames]
@@ -1711,7 +1806,7 @@ class Renderer:
         if not p.get("Parent"):
             return x, y + self._new_offset()
         np = self._net_parent(c)
-        if np.endswith(".Panel2") and self.doc.is_split(np.split(".")[0]):
+        if self.doc.is_split(p["Parent"]) and np.endswith(".Panel2"):
             ox, oy = self.doc.split_offset(np.split(".")[0])
             return x - ox, y - oy
         return x, y
@@ -1720,6 +1815,9 @@ class Renderer:
         par = c.props.get("Parent") or ""
         if not par:
             return ""
+        pc = self.form.find(par)
+        if pc is not None and pc.props.get("_wfp"):          # pseudo panel: split1.Panel2
+            return f"{pc.props.get('Parent') or pc.props['_wfp']}.{par.rsplit('.', 1)[-1]}"
         if self.doc.is_split(par):
             # SplitContainer: children live on Panel1 / Panel2 (Controls.Add on the container throws)
             ox, oy = self.doc.split_offset(par)
@@ -1872,8 +1970,18 @@ class Renderer:
         if "FontName" in p:
             base_font = self._ambient_font(c)
             mine = (p["FontName"], int(p["FontSize"]), bool(p["FontBold"]), bool(p["FontItalic"]))
-            if base_font != mine:
-                props["Font"] = self.v_font(p["FontName"], float(p["FontSize"]), p["FontBold"], p["FontItalic"])
+            dflt = ct.default_props(c.name)
+            untouched = mine == (dflt.get("FontName"), int(dflt.get("FontSize", 0) or 0), False, False)
+            if base_font != mine and not untouched:      # the toolbox default = inherit the form's font
+                name, size = p["FontName"], float(p["FontSize"])
+                if (name, int(size)) == (dflt.get("FontName"), int(dflt.get("FontSize", 0) or 0)):
+                    name, size = base_font[0], float(base_font[1])     # only Bold / Italic was set
+                    amb = _font_of(self.doc.value("", "Font"))
+                    if amb is not None and int(round(amb[1])) == int(size):
+                        size = amb[1]                                  # keep 8.25F
+                    elif name == "Microsoft Sans Serif" and int(size) == 8:
+                        size = 8.25
+                props["Font"] = self.v_font(name, size, p["FontBold"], p["FontItalic"])
         for key in ("BackColor", "ForeColor"):
             if p.get(key):
                 props[key] = self.v_color(p[key])
@@ -2245,11 +2353,13 @@ def _mask_vb(s: str) -> str:
                 out[k] = " "
             i = j + 1
             continue
-        if s[i] == "'":
-            for k in range(i, len(s)):
-                if out[k] != "\n":
-                    out[k] = " "
-            break
+        if s[i] == "'":                      # comment: to the end of the line
+            k = i
+            while k < len(s) and s[k] != "\n":
+                out[k] = " "
+                k += 1
+            i = k
+            continue
         i += 1
     return "".join(out)
 
@@ -2278,6 +2388,9 @@ def _apply_renames(doc: DesignerDoc, renames: dict[str, str]) -> str:
         # strings: "old" and "old.Prop" (Name / resource keys)
         for o, n in renames.items():
             seg2 = re.sub(r'"' + re.escape(o) + r'(\.[\w.]+)?"', lambda m, n=n: f'"{n}{m.group(1) or ""}"', seg2)
+            # the "// button1" / "'Button1" header of its property block
+            seg2 = re.sub(r"(?m)^([ \t]*(?://|')[ \t]*)" + re.escape(o) + r"([ \t]*\r?)$",
+                          lambda m, n=n: f"{m.group(1)}{n}{m.group(2)}", seg2)
         out = out[:a] + seg2 + out[b:]
     return out
 
@@ -2366,6 +2479,53 @@ def load_form(path) -> Form:
     return form
 
 
+def _patch_handles(code: str, deleted: set, renames: dict) -> str:
+    low_del = {n.lower() for n in deleted}
+    low_ren = {o.lower(): n for o, n in renames.items()}
+
+    def fix(m):
+        kept = []
+        for part in m.group(2).split(","):
+            ref = part.strip()
+            owner, _, ev = ref.rpartition(".")
+            if owner.lower() in low_del:
+                continue
+            if owner.lower() in low_ren:
+                ref = f"{low_ren[owner.lower()]}.{ev}"
+            kept.append(ref)
+        return f"{m.group(1)}Handles {', '.join(kept)}" if kept else m.group(1).rstrip(" \t")
+    return re.sub(r"(?im)^([^'\n]*\)[ \t]*)Handles[ \t]+([\w.]+(?:[ \t]*,[ \t]*[\w.]+)*)", fix, code)
+
+
+def _fix_vb_handles(code_path: Path, deleted: set, renames: dict) -> None:
+    """Update the Handles clauses of Form1.vb on disk and in an open IDE editor of it."""
+    try:
+        from PyQt6.QtWidgets import QApplication
+        wins = [w for w in QApplication.topLevelWidgets() if hasattr(w, "codeviews")] \
+            if QApplication.instance() else []
+    except Exception:  # noqa: BLE001
+        wins = []
+    for w in wins:
+        for cv in list(getattr(w, "codeviews", {}).values()):
+            if Path(str(getattr(cv, "path", ""))).resolve() != code_path.resolve():
+                continue
+            ed = cv.editor
+            new = _patch_handles(ed.text(), deleted, renames)
+            if new != ed.text():
+                was = ed.isModified()
+                w._replace_code(cv, new)
+                ed.setModified(was)
+    try:
+        raw = code_path.read_bytes()
+    except OSError:
+        return
+    bom = raw.startswith(b"\xef\xbb\xbf")
+    text = raw[3:].decode("utf-8") if bom else raw.decode("utf-8", errors="surrogateescape")
+    new = _patch_handles(text, deleted, renames)
+    if new != text:
+        code_path.write_bytes((b"\xef\xbb\xbf" if bom else b"") + new.encode("utf-8", errors="surrogateescape"))
+
+
 def _code_file_of(designer: Path) -> Path:
     stem = designer.name.split(".")[0]
     ext = ".vb" if designer.name.lower().endswith(".vb") else ".cs"
@@ -2409,6 +2569,9 @@ def save_form(form: Form, path=None) -> list[str]:
         dp.write_bytes((b"\xef\xbb\xbf" if s.bom else b"") + data)
     if r.resx is not None and r.resx.modified:
         r.resx.save()
+    if s.dialect.lang == "vb" and (getattr(r, "deleted", None) or getattr(r, "renamed", None)):
+        # like Visual Studio: Handles clauses of deleted controls go, renamed ones follow the rename
+        _fix_vb_handles(_code_file_of(dp), set(r.deleted), r.renamed)
     if text != s.text or (r.resx is not None):
         s.reload()
     # after a save the file is the new baseline: original names / offset follow it
@@ -2516,9 +2679,24 @@ class WinFormsCSPlugin(LanguagePlugin):
     block_comment = ("/*", "*/")
     string_quotes = ['"', "'"]
     dialect_lang = "cs"
+    # Toolbox (radide/toolbox.py TOOL_STATE.set_profile): the WinForms names of the controls the
+    # writer can create; the others (no WinForms equivalent) are hidden while a WinForms form is shown
+    designer_profile = {"name": "Windows Forms", "labels": dict(NEUTRAL_TO_WF), "allowed": set(NEUTRAL_TO_WF)}
 
     def __init__(self):
         self._pending: dict[str, tuple] = {}
+
+    # Properties window: .NET property names for the neutral model's properties
+    def property_label(self, name: str, ctrl: Control | None) -> str | None:
+        if ctrl is not None and ctrl.type == "StatusBar" and name == "Text":
+            return "Items[0].Text"
+        if ctrl is not None and ctrl.type == "Timer" and name == "Enabled":
+            return "Enabled"
+        return NET_PROPERTY_LABELS.get(name)
+
+    def type_label(self, ctrl: Control) -> str:
+        wt = ctrl.props.get("_wft") or NEUTRAL_TO_WF.get(ctrl.type) or ctrl.type
+        return wt if "." in wt else f"{FORMS_NS}.{wt}"
 
     def code_file(self, form_name: str) -> str:
         return f"{form_name}{self.code_ext}"

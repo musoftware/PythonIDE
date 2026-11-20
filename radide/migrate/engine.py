@@ -163,7 +163,7 @@ def load_source(path) -> MigrationSource:
         return load_vbproj(p)
     if ext in (".dproj", ".dpr", ".lpi", ".lpr", ".dfm", ".lfm"):
         return load_pascal(p)
-    if ext == ".ui":
+    if ext in (".ui", ".pyproject", ".pro"):
         return load_qt_ui(p)
     raise MigrationError(f"{p.name}: this kind of project cannot be migrated yet "
                          "(it can still be opened in place with File > Open Project)")
@@ -450,14 +450,27 @@ def _pascal_method(code: str, name: str) -> tuple[str, int]:
 
 
 def load_qt_ui(path: Path) -> MigrationSource:
+    """A Qt Designer .ui form, or every .ui of a Qt / PySide project (.pyproject, .pro)."""
     from ..foreign import qt_ui
-    form, _ctx = qt_ui.read_ui(path, live=False)
-    if not form.props.get("Name"):
-        form.props["Name"] = path.stem
+    uis = [path] if path.suffix.lower() == ".ui" else sorted(path.parent.rglob("*.ui"))
+    uis = [u for u in uis if not any(p.lower() in SKIP_DIRS for p in u.relative_to(path.parent).parts[:-1])]
+    if not uis:
+        raise MigrationError(f"{path.name}: no Qt Designer .ui form found")
     src = MigrationSource("qt-ui", "none", path.stem, path, path.parent)
-    src.forms.append(SourceForm(form.name, form, path, None, "", extra={"files": [path]}))
-    src.startup = form.name
-    src.notes.add("info", path.name, 0, "a Qt Designer form has no event code - only the form is migrated")
+    used = set()
+    for ui in uis:
+        form, _ctx = qt_ui.read_ui(ui, live=False)
+        name = _ident(form.props.get("Name") or ui.stem, "Form")
+        while name.lower() in used:
+            name += "_"
+        used.add(name.lower())
+        form.props["Name"] = name
+        src.forms.append(SourceForm(name, form, ui, None, "", extra={"files": [ui]}))
+        src.notes.add("info", ui.name, 0, "a Qt Designer form has no event code - the form is migrated; the "
+                                          "project's Python/C++ code stays in _original for reference")
+    for f in sorted(path.parent.glob("*.py")) + sorted(path.parent.glob("*.cpp")):
+        src.modules.append((f.stem, f, "py" if f.suffix == ".py" else "cpp"))
+    src.startup = src.forms[0].name
     return src
 
 
@@ -528,7 +541,7 @@ def plan(src: MigrationSource, target: str) -> list[PlanRow]:
                                 "exact" if c.type != "ActiveX" else "manual"))
         handlers = sf.handlers or {k: v for k, v in (sf.extra.get("procs") or {}).items()}
         for h in handlers:
-            rows.append(PlanRow("Events", f"{sf.name}.{h}", f"code -> {target}",
+            rows.append(PlanRow("Code", f"{sf.name}.{h}", f"code -> {target}",
                                 "exact" if (src.language == "vb6" and target == "vb-basic") else code_how))
     for name, p, kind in src.modules:
         rows.append(PlanRow("Modules", name, f"{p.name} ({kind}) -> {target}",
@@ -559,14 +572,15 @@ def migrate(src: MigrationSource, opts: Options, progress=None) -> MigrationResu
         from .vb6_to_vbnet import write_vbnet_project
         if src.language != "vb6":
             raise MigrationError("VB.NET output is available for VB6 projects")
+        if opts.mode == "inplace":
+            _check_inplace(dest, [REPORT, "Program.vb", f"{_ident(src.name, 'Project')}.vbproj"] +
+                           [f"{sf.name}{x}" for sf in src.forms for x in (".vb", ".Designer.vb")] +
+                           [f"{n}.vb" for n, _p, _k in src.modules])
         project_file = write_vbnet_project(src, dest, notes, stats, progress, opts)
     else:
         planned = _planned_files(src, target)
         if opts.mode == "inplace":
-            clash = [n for n in planned if (dest / n).exists()]
-            if clash:
-                raise MigrationError("In-place migration would overwrite files of the project: " +
-                                     ", ".join(clash[:8]) + " - migrate into a new folder instead")
+            _check_inplace(dest, planned)
         project_file = _write_rad_project(src, target, dest, notes, stats, progress, opts)
     if opts.keep_original and opts.mode != "inplace":
         _copy_original(src, dest / "_original", progress)
@@ -576,6 +590,27 @@ def migrate(src: MigrationSource, opts: Options, progress=None) -> MigrationResu
     rp.write_text(report, encoding="utf-8")
     progress("Done.")
     return MigrationResult(True, dest, project_file, rp, report, notes, target, stats)
+
+
+def _write_form(form: Form, path: Path) -> None:
+    """Write the neutral .form JSON (never through model.FORM_STORES: a foreign-project store could take
+    the path for a native form file of the original project and overwrite it)."""
+    Path(path).write_text(json.dumps(form.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _check_inplace(dest: Path, planned: list[str]) -> None:
+    clash = [n for n in planned if (dest / n).exists()]
+    if clash:
+        raise MigrationError("In-place migration would overwrite files of the project: " +
+                             ", ".join(clash[:8]) + " - migrate into a new folder instead")
+    try:
+        from .. import model
+        claimed = [n for n in planned if n.endswith(".form") and model._form_store(dest / n) is not None]
+    except Exception:  # noqa: BLE001
+        claimed = []
+    if claimed:
+        raise MigrationError("In place, the IDE would take " + ", ".join(claimed[:5]) + " for the native forms of "
+                             "the original project (opened in place) - migrate into a new folder instead")
 
 
 def _planned_files(src: MigrationSource, target: str) -> list[str]:
@@ -631,6 +666,9 @@ def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
     plugin = get_plugin(target)
     if src.language == "vb6" and target == "vb-basic":
         return _vb6_keep(src, dest, notes, stats, progress)
+    if opts.code == "comments":
+        notes.add("info", src.path.name, 0, "event code kept as comments (option 'Keep the original code as "
+                                            "comments only')")
     project = Project(dest, _ident(src.name, "Project"), target)
     python = target in ("python-tk", "python-qt")
     toolkit = "qt" if target == "python-qt" else "tk"
@@ -643,7 +681,9 @@ def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
         form = sf.form
         is_startup = sf.name == startup or (not startup and not project.forms)
         code = None
-        if python and src.language == "vb6":
+        if opts.code == "comments":
+            pass                                   # the original code as comments only (generic writer)
+        elif python and src.language == "vb6":
             code = _vb6_form_python(ctx, sf, toolkit, plugin, is_startup, notes)
         elif python and src.language == "csharp":
             code = _cs_form_python(sf, target, plugin, notes, opts, progress)
@@ -658,7 +698,7 @@ def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
             code = _generic_form_code(src, sf, target, plugin, is_startup, notes, opts, progress)
         elif opts.code == "rules+ai":
             code = _ai_fix(src, sf, target, code, notes, progress)
-        form.save(project.form_path(sf.name))
+        _write_form(form, project.form_path(sf.name))
         (dest / plugin.code_file(sf.name)).write_text(code, encoding="utf-8")
         try:
             (dest / plugin.designer_file(sf.name)).write_text(plugin.generate_designer(form, code), encoding="utf-8")
@@ -689,7 +729,9 @@ def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
         progress(f"Module {p.name} ...")
         text = read_text(p)
         out_name = None
-        if python and kind in ("bas", "cls") and ctx is not None:
+        if opts.code == "comments":
+            pass
+        elif python and kind in ("bas", "cls") and ctx is not None:
             from .vb6_to_python import translate_class, translate_module
             mi = ctx.modules.get((name if kind == "bas" else _vb_name(p) or name).lower())
             if mi is not None:
@@ -771,6 +813,7 @@ def _assemble_python(plugin, form: Form, is_startup: bool, members: list[str], i
     code = "\n".join(lines)
     code = re.sub(r"\n{3,}(    (?:def|@property))", r"\n\n\1", code)
     code = re.sub(r"\n{4,}", "\n\n\n", code)
+    code = re.sub(r"\n+if __name__ ==", "\n\n\nif __name__ ==", code)
     return code
 
 
@@ -793,11 +836,11 @@ def _vb6_form_python(ctx, sf: SourceForm, toolkit, plugin, is_startup, notes) ->
 
 def _cs_form_python(sf: SourceForm, target, plugin, notes, opts, progress) -> str | None:
     from ..importers.exe import dotnet
-    from .cs_qt import QtEmitter, qt_code_fixups
+    from .cs_qt import QtEmitter, TkEmitter, qt_code_fixups
     cls, wiring = sf.extra.get("cls"), sf.extra.get("wiring") or {}
     if cls is None:
         return None
-    em = QtEmitter if target == "python-qt" else None
+    em = QtEmitter if target == "python-qt" else TkEmitter
     tr = dotnet.translate_form_class(cls, sf.form.to_dict(), wiring, sf.extra.get("all_forms") or {sf.name}, target,
                                      emitter_cls=em)
     code = tr["code"]
@@ -847,6 +890,9 @@ def _vbnet_form_python(sf: SourceForm, toolkit, plugin, is_startup, notes) -> st
         notes.add(n.level, n.file, linemap.get(n.line, 0) if n.line else 0, n.text)
     code = _assemble_python(plugin, sf.form, is_startup, r["members"], r["imports"])
     sf.extra["stats"] = r["stats"]
+    st = r["stats"]
+    notes.add("rules", sf.code_file.name, 0, f"{sf.name}: VB.NET -> VB6 -> Python: {st.get('rules', 0)} statement(s) "
+                                             f"translated by rules, {st.get('manual', 0)} left as TODO")
     try:
         compile(code, plugin.code_file(sf.name), "exec")
     except SyntaxError as e:
@@ -918,6 +964,8 @@ def _generic_form_code(src, sf: SourceForm, target, plugin, is_startup, notes, o
         if new_body is None:
             new_body = [f"{cm} TODO: translate the original {lang_name} code of {meth} ({fname}:{line})"] + \
                 [f"{cm} {ln.rstrip()}" if ln.strip() else cm for ln in body.splitlines()]
+            if plugin.code_ext == ".py":
+                new_body.append("pass")
             if body.strip():
                 notes.add("manual", fname, line, f"{meth} kept as {lang_name} comments in {hname} - translate it")
         try:
@@ -951,7 +999,8 @@ def _ai_handler(body: str, lang_name: str, target: str, sf: SourceForm, progress
     code, who = ai_translate(body, lang_name, target, ctx, progress)
     if not code:
         return None
-    return code.rstrip().splitlines()
+    import textwrap
+    return textwrap.dedent(code.expandtabs(4)).strip("\n").splitlines()
 
 
 def _ai_fix(src, sf: SourceForm, target, code: str, notes: Notes, progress) -> str:

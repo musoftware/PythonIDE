@@ -441,7 +441,8 @@ class ImageFeature:
             st = getattr(win, "_pstates", {}).get(key)
             project = st["project"] if st else None
             if project is None or getattr(project, "kind", "app") == "website" or \
-                    callable(getattr(project, "fill_solution_tree", None)):     # foreign projects: own tree
+                    callable(getattr(project, "fill_solution_tree", None)) or \
+                    (getattr(project, "extra", None) or {}).get("foreign"):      # foreign projects (VB6 mirror too)
                 continue
             if any((it.child(i).data(0, ROLE) or ("",))[0] == "resources" for i in range(it.childCount())):
                 continue
