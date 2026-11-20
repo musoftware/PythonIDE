@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>RingWebDemo</title>
+<style>body{font-family:Segoe UI,Arial;margin:40px;max-width:640px} input{padding:6px;width:70%}
+button{padding:6px 14px}</style></head>
+<body>
+<h1>RingWebDemo</h1>
+<p>Served by Ring (RingHTTPLib). JSON API: <a href="/api/hello">/api/hello</a></p>
+<form method="post" action="/messages">
+  <input name="text" placeholder="Write a message"> <button>Send</button>
+</form>
+<ul>{messages}</ul>
+</body>
+</html>

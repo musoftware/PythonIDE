@@ -327,7 +327,17 @@ def help_target(plugin_id: str, word: str, control_type: str = "") -> tuple[str,
         if w in getattr(sys, "stdlib_module_names", ()):
             return "url", f"https://docs.python.org/3/library/{w}.html"
         return "url", "https://docs.python.org/3/search.html?q=" + quote_plus(w)
-    if plugin_id == "ring-qt":
+    if plugin_id.startswith("ring"):            # ring-qt / ring-game / ring-web
+        try:                                    # the exact page of the function / class / keyword (ring_index.py)
+            from ..languages import ring_index
+            topic = ring_index.doc_topic(w)
+            dd = ring_index.docs_dir()
+            if topic and dd is not None:
+                return "local", str(dd / topic.split("#")[0]) + ("#" + topic.split("#", 1)[1] if "#" in topic else "")
+            if topic:
+                return "url", f"https://ring-lang.github.io/doc{ring_version()}/{topic}"
+        except Exception:  # noqa: BLE001 - fall back to the search below
+            pass
         if re.match(r"^q[A-Za-z]\w+$", w, re.I) and w[1:2].isalpha() and lw.startswith("q") and len(w) > 2:
             return "url", f"https://doc.qt.io/qt-5/{lw}.html"
         local = ring_local_docs()

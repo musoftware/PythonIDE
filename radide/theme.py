@@ -190,6 +190,39 @@ def _complete() -> None:
 
 _complete()
 
+BUILTIN_THEMES = ("System", "Light", "Blue", "Dark", "High Contrast")
+
+
+def add_theme(name: str, t: dict, base: str | None = None) -> str:
+    """Add (or replace) a colour theme at run time (VS Code colour themes: radide/vsx/contrib_themes.py).
+    Tokens missing from *t* come from *base* (default: Dark for dark themes, else Light); the name then
+    appears in Tools > Options > Color theme. Built-in names cannot be replaced."""
+    if name in BUILTIN_THEMES:
+        raise ValueError(f"'{name}' is a built-in theme name")
+    import copy
+    base = base if base in THEMES else ("Dark" if t.get("dark") else "Light")
+    full = copy.deepcopy(THEMES[base])
+    for part in ("code", "chrome"):
+        if isinstance(t.get(part), dict):
+            full[part] = dict(full[part], **t[part])
+    full.update({k: v for k, v in t.items() if k not in ("code", "chrome")})
+    THEMES[name] = full
+    if name not in THEME_NAMES:
+        THEME_NAMES.append(name)
+    return name
+
+
+def remove_theme(name: str) -> None:
+    """Remove a theme added with add_theme (the IDE falls back to Light when it was in use)."""
+    if name in BUILTIN_THEMES or name not in THEMES:
+        return
+    was_current = _manager.name == name
+    THEMES.pop(name, None)
+    if name in THEME_NAMES:
+        THEME_NAMES.remove(name)
+    if was_current:
+        _manager.apply("Light")
+
 
 def system_is_dark() -> bool:
     app = QApplication.instance()
@@ -357,4 +390,4 @@ def css_vars(t: dict | None = None) -> str:
 
 __all__ = ["THEME_NAMES", "THEMES", "FORM_STYLE", "apply", "current", "current_name", "is_dark", "color",
            "monaco_theme", "stylesheet", "role", "css_vars", "changed", "manager", "light_form_palette",
-           "palette_for", "resolve", "system_is_dark"]
+           "palette_for", "resolve", "system_is_dark", "add_theme", "remove_theme", "BUILTIN_THEMES"]

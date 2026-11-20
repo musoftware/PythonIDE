@@ -585,6 +585,15 @@ def find_references(win, ed, line=None, col=None):
         _status(win, "Find All References: put the cursor on a name first")
         return
     if _client(ed) is None:
+        plugin = getattr(ed, "plugin", None)
+        try:                   # the plugin's own references (Ring: comments and strings skipped)
+            own = plugin.references(ed.text(), line, c1, Path(str(ed.path)), getattr(ed, "names", None)) \
+                if plugin is not None and hasattr(plugin, "references") else None
+        except Exception:  # noqa: BLE001
+            own = None
+        if own is not None:
+            _panel(win).show_refs(name, own)
+            return
         _panel(win).show_refs(name, _text_refs(win, ed, name), " (text search: no language server)")
         return
 

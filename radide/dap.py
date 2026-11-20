@@ -22,6 +22,9 @@ from .debugger import StopInfo
 
 def _python_adapter():
     import importlib.util
+    if getattr(sys, "frozen", False):           # release build: debugpy of the real Python (radide/paths.py)
+        from .paths import python_has_module
+        return [sys.executable, "-m", "debugpy.adapter"] if python_has_module(sys.executable, "debugpy") else None
     if importlib.util.find_spec("debugpy") is None:
         return None
     return [sys.executable, "-m", "debugpy.adapter"]

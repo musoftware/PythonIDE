@@ -1,0 +1,10 @@
+{
+  "name": "RingLibDemo",
+  "language": "ring-app",
+  "forms": [],
+  "startup": "test",
+  "modules": [
+    "ringLibDemo.ring",
+    "test.ring"
+  ]
+}

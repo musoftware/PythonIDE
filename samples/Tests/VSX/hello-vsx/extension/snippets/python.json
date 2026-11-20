@@ -1,0 +1,1 @@
+{ "Hello main": { "prefix": "hellomain", "body": ["def main():", "    print(\"${1:Hello VSX}\")", "", "if __name__ == \"__main__\":", "    main()"], "description": "Hello VSX main" } }

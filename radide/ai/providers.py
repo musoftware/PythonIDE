@@ -241,7 +241,8 @@ def settings() -> QSettings:
     org = QCoreApplication.organizationName()
     if org.upper().startswith("RADIDE-TEST"):
         return QSettings(org, QCoreApplication.applicationName() or org)
-    return QSettings("RADIDE", "RADIDE")
+    from ..paths import qsettings      # an INI file in <install>\settings for a portable build
+    return qsettings()
 
 
 def _service() -> str:

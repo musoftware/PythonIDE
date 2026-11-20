@@ -272,6 +272,27 @@ class LanguagePlugin:
         """Signature help for the call around (line, col), or ""."""
         return ""
 
+    # Optional LSP-style hooks (Ring implements them in radide/languages/ring_intel.py). Callers use them when a
+    # plugin overrides them and no language server is attached.
+    def hover(self, code: str, line: int, col: int, path: Path,
+              names: dict[str, str] | None = None) -> str:
+        """Hover text (Markdown) for the word at (line, col), or ""."""
+        return ""
+
+    def definition(self, code: str, line: int, col: int, path: Path,
+                   names: dict[str, str] | None = None) -> tuple[str, int] | None:
+        """Go to Definition: (file path, 0-based line) or None."""
+        return None
+
+    def references(self, code: str, line: int, col: int, path: Path,
+                   names: dict[str, str] | None = None) -> list[tuple[str, int, int]] | None:
+        """Find All References: [(file path, 0-based line, 0-based column)], or None = not supported."""
+        return None
+
+    def document_symbols(self, code: str) -> list[dict]:
+        """Outline: [{name, kind, line (0-based), detail, children: [...]}]."""
+        return []
+
 
 def quote(s: str, quotes=('"', "'")) -> str:
     """Return a string literal using a quote char not present in *s*."""

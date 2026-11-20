@@ -46,7 +46,8 @@ def has_ipykernel(python: str, refresh: bool = False) -> tuple[bool, str]:
     if not refresh and key in _IPYK_CACHE:
         return _IPYK_CACHE[key]
     try:
-        if os.path.normcase(os.path.abspath(python)) == os.path.normcase(os.path.abspath(sys.executable)):
+        if os.path.normcase(os.path.abspath(python)) == os.path.normcase(os.path.abspath(sys.executable)) \
+                and not getattr(sys, "frozen", False):     # release build: sys.executable is a real Python
             import ipykernel
             import jupyter_client
             assert jupyter_client

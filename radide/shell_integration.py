@@ -607,15 +607,22 @@ def status(target: Target | None = None) -> dict:
 
 
 # ----------------------------------------------------------------------------------- installer / pythonw helpers
-def inno_lines(exe: str = "RADIDE.exe") -> list[str]:
+def inno_lines(exe: str = "RADIDE.exe", tasks: dict[str, str] | None = None, status_msg: str = "",
+               if_owner: bool = False) -> list[str]:
     """[Run] / [UninstallRun] lines for an Inno Setup script of the RAD IDE itself: the installed exe
-    writes (and removes) exactly the keys above, so there is one source of truth."""
-    return ["[Run]",
-            f'Filename: "{{app}}\\{exe}"; Parameters: "--register --quiet --no-uninstall-entry"; '
-            'Flags: runhidden waituntilterminated; StatusMsg: "Registering file types..."',
+    writes (and removes) exactly the keys above, so there is one source of truth.
+    *tasks*: {Inno task condition: "option,option"} - one --register line per condition with
+    ``--shell-options`` (e.g. {"assoc and not explorer": "file_assoc"}); without it one plain --register.
+    *if_owner*: the uninstaller keeps a registration that belongs to another copy (``--if-owner``)."""
+    msg = status_msg or "Registering file types..."
+    base = f'Filename: "{{app}}\\{exe}"; Parameters: "--register --quiet --no-uninstall-entry'
+    flags = f'"; Flags: runhidden waituntilterminated; StatusMsg: "{msg}"'
+    run = [base + flags] if not tasks else \
+        [base + f" --shell-options {opts}" + flags + f"; Tasks: {cond}" for cond, opts in tasks.items()]
+    return ["[Run]", *run,
             "", "[UninstallRun]",
-            f'Filename: "{{app}}\\{exe}"; Parameters: "--unregister --quiet"; Flags: runhidden waituntilterminated; '
-            'RunOnceId: "RADIDEUnregister"']
+            f'Filename: "{{app}}\\{exe}"; Parameters: "--unregister --quiet{" --if-owner" if if_owner else ""}"; '
+            'Flags: runhidden waituntilterminated; RunOnceId: "RADIDEUnregister"']
 
 
 def no_console_children() -> None:

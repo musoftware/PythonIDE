@@ -1,0 +1,9 @@
+{
+  "name": "RingWebDemo",
+  "language": "ring-app",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.ring"
+  ]
+}

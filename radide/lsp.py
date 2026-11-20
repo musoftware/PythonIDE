@@ -49,7 +49,8 @@ SERVERS: dict[str, tuple[list[list[str]], str]] = {
     "json": (_JSON, _WEB_HINT),
     "csharp": ([["csharp-ls"]], "dotnet tool install -g csharp-ls"),
     "java": ([["jdtls"]], "install Eclipse JDT Language Server (jdtls)"),
-    "rust": ([["rust-analyzer"]], "rustup component add rust-analyzer"),
+    # rust: the real binary of the rustup component (radide/rust_tools.py), not the ~/.cargo/bin proxy
+    "rust": ([["rust-analyzer"]], "rustup component add rust-analyzer rust-src"),
     "c": ([["clangd"]], "install clangd (LLVM)"),
     "cpp": ([["clangd"]], "install clangd (LLVM)"),
     # go / lua / ruby / powershell / perl: radide/lsp_servers.py (IDE tools folder) is asked first
@@ -99,10 +100,19 @@ def server_command(language: str) -> list[str] | None:
     argv = lsp_servers.server_command(language)
     if argv:
         return argv
+    if language == "rust":
+        from .rust_tools import rust_analyzer
+        ra = rust_analyzer()
+        return [ra] if ra else None
     cands, _hint = SERVERS.get(language, ([], ""))
     for argv in cands:
         exe = argv[0]
         if exe == VENV_PY:
+            if getattr(sys, "frozen", False):      # release build: pylsp of the real Python (radide/paths.py)
+                from .paths import python_has_module
+                if python_has_module(VENV_PY, argv[2]):
+                    return argv
+                continue
             try:
                 __import__(argv[2].replace("-", "_"))
                 return argv
@@ -181,6 +191,9 @@ def initialization_options(language: str, root: Path) -> dict:
         if tsserver.exists():
             opts["tsserver"] = {"path": str(tsserver)}
         return opts
+    if key == "rust":
+        from .rust_tools import ra_initialization_options
+        return ra_initialization_options(root)
     from . import lsp_servers
     return lsp_servers.initialization_options(key)
 
@@ -198,7 +211,12 @@ def workspace_settings(language: str, root=None) -> dict:
     """Answers for workspace/configuration requests (by section)."""
     php_version = _php_version_for(root) if server_key(language) == "php" else "8.1.0"
     from . import lsp_servers           # Lua / powershell / gopls sections
+    extra: dict = {}
+    if server_key(language) == "rust":
+        from .rust_tools import ra_settings
+        extra["rust-analyzer"] = ra_settings()
     return {
+        **extra,
         **lsp_servers.workspace_settings(),
         "html": {"validate": {"scripts": True, "styles": True}, "suggest": {"html5": True},
                  "format": {"enable": True}, "hover": {"documentation": True, "references": True},
@@ -246,6 +264,8 @@ class LspClient(QObject):
     diagnostics = pyqtSignal(str, list)        # file path, [{line, col, endLine, endCol, message, severity}]
     log = pyqtSignal(str)
     ready = pyqtSignal()                       # initialize answered (capabilities known)
+    # other server notifications (method, params): experimental/serverStatus (rust-analyzer), $/progress ...
+    notification = pyqtSignal(str, object)
     # server -> client request method -> handler(client, params) -> result (radide/features/refactor.py)
     request_handlers: dict = {}
     last_error = ""                            # message of the last error response
@@ -294,7 +314,10 @@ class LspClient(QObject):
                                                       "documentationFormat": ["plaintext", "markdown"]},
                                    "contextSupport": True},
                     "hover": {"contentFormat": ["plaintext", "markdown"]},
-                    "signatureHelp": {"signatureInformation": {"documentationFormat": ["plaintext"]}},
+                    "signatureHelp": {"signatureInformation": {
+                        "documentationFormat": ["markdown", "plaintext"],
+                        "parameterInformation": {"labelOffsetSupport": True}, "activeParameterSupport": True}},
+                    "inlayHint": {"dynamicRegistration": False},
                     "publishDiagnostics": {}, "definition": {}, "synchronization": {"didSave": True},
                     # refactoring UI (radide/features/refactor.py) and Format Document
                     "rename": {"prepareSupport": True}, "references": {}, "formatting": {},
@@ -307,7 +330,9 @@ class LspClient(QObject):
                 "workspace": {"workspaceFolders": True, "configuration": True, "applyEdit": True,
                               "workspaceEdit": {"documentChanges": True,
                                                 "resourceOperations": ["create", "rename", "delete"]},
-                              "executeCommand": {}},
+                              "executeCommand": {}, "inlayHint": {"refreshSupport": True}},
+                "window": {"workDoneProgress": True},
+                "experimental": {"serverStatusNotification": True},
             }}, self._on_initialized, force=True)
         return True
 
@@ -390,10 +415,13 @@ class LspClient(QObject):
                 if _rad_star_import_noise(d.get("message", "")):
                     continue
                 r = d["range"]
+                code = d.get("code")
                 out.append({"line": r["start"]["line"], "col": r["start"]["character"],
                             "endLine": r["end"]["line"], "endCol": r["end"]["character"],
                             "message": d.get("message", ""),
-                            "severity": {1: "error", 2: "warning"}.get(d.get("severity", 3), "info")})
+                            "severity": {1: "error", 2: "warning"}.get(d.get("severity", 3), "info"),
+                            "source": d.get("source") or "", "code": code if isinstance(code, (str, int)) else
+                            ((code or {}).get("value", "") if isinstance(code, dict) else "")})
             try:
                 path = str(Path(QUrlLike.to_path(p["uri"])))
             except Exception:  # noqa: BLE001
@@ -401,6 +429,10 @@ class LspClient(QObject):
             self.diagnostics.emit(path, out)
         elif method in ("window/logMessage", "window/showMessage"):
             self.log.emit(str((msg.get("params") or {}).get("message", "")))
+        elif method and "id" not in msg:             # other notifications (experimental/serverStatus ...)
+            if method == "experimental/serverStatus":
+                self.server_status = msg.get("params") or {}
+            self.notification.emit(method, msg.get("params"))
         elif "id" in msg and method == "workspace/configuration":
             conf = workspace_settings(self.language, self.root)
             items = (msg.get("params") or {}).get("items", [])
@@ -420,6 +452,8 @@ class LspClient(QObject):
             self._send({"jsonrpc": "2.0", "id": msg["id"], "result": res})
         elif "id" in msg and method:                 # other server -> client requests: answer with null
             self._send({"jsonrpc": "2.0", "id": msg["id"], "result": None})
+            if method.endswith("/refresh"):          # workspace/inlayHint/refresh, workspace/diagnostic/refresh
+                self.notification.emit(method, msg.get("params"))
 
     # ------------------------------------------------------------ documents
     def did_open(self, path: Path, text: str, language_id: str):
@@ -514,6 +548,48 @@ class LspClient(QObject):
             cb(s.get("label", ""))
         self._request("textDocument/signatureHelp", self._pos(path, line, col), done)
 
+    def signature_info(self, path: Path, line: int, col: int, cb):
+        """Full signature help: {label, documentation, parameters: [[start, end] | label], activeParameter}
+        (or None) - Monaco shows the active parameter in bold."""
+        def done(result):
+            if not result or not result.get("signatures"):
+                cb(None)
+                return
+            sigs = result["signatures"]
+            s = sigs[min(result.get("activeSignature") or 0, len(sigs) - 1)]
+            doc = s.get("documentation") or ""
+            if isinstance(doc, dict):
+                doc = doc.get("value", "")
+            params = []
+            for prm in s.get("parameters") or []:
+                lab = prm.get("label")
+                params.append(lab if isinstance(lab, (str, list)) else "")
+            active = s.get("activeParameter", result.get("activeParameter")) or 0
+            cb({"label": s.get("label", ""), "documentation": doc, "parameters": params,
+                "activeParameter": active})
+        self._request("textDocument/signatureHelp", self._pos(path, line, col), done)
+
+    def inlay_hints(self, path: Path, l1: int, l2: int, cb, end_col: int = 0):
+        """textDocument/inlayHint for lines l1..l2 -> [{line, col, label, kind, left, right}] (cb gets [])."""
+        if not (self.capabilities or {}).get("inlayHintProvider"):
+            cb([])
+            return
+
+        def done(result):
+            out = []
+            for h in result or []:
+                lab = h.get("label")
+                if isinstance(lab, list):
+                    lab = "".join(part.get("value", "") for part in lab if isinstance(part, dict))
+                pos = h.get("position") or {}
+                out.append({"line": pos.get("line", 0), "col": pos.get("character", 0), "label": str(lab or ""),
+                            "kind": h.get("kind") or 0, "left": bool(h.get("paddingLeft")),
+                            "right": bool(h.get("paddingRight"))})
+            cb(out)
+        self._request("textDocument/inlayHint", {"textDocument": {"uri": path_uri(path)},
+                                                 "range": {"start": {"line": l1, "character": 0},
+                                                           "end": {"line": l2, "character": end_col}}}, done)
+
     def definition(self, path: Path, line: int, col: int, cb):
         def done(result):
             if not result:
@@ -541,6 +617,9 @@ class LspManager(QObject):
         self.clients: dict[tuple[str, str], LspClient | None] = {}
 
     def client_for(self, language: str, root: Path) -> LspClient | None:
+        if server_key(language) == "rust":         # one rust-analyzer per cargo workspace (members share it)
+            from .rust_tools import workspace_root
+            root = workspace_root(root)
         key = (server_key(language), str(root))
         if key in self.clients:
             c = self.clients[key]

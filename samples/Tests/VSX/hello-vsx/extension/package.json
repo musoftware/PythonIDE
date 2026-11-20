@@ -1,0 +1,20 @@
+{
+  "name": "hello-vsx",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "publisher": "radide-tests",
+  "version": "1.0.0",
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": { "vscode": "^1.60.0" },
+  "categories": ["Snippets", "Themes"],
+  "extensionDependencies": ["dracula-theme.theme-dracula"],
+  "contributes": {
+    "snippets": [{ "language": "python", "path": "./snippets/python.json" }],
+    "themes": [{ "label": "%theme.label%", "uiTheme": "vs-dark", "path": "./themes/hello-dark.json" }],
+    "configuration": {
+      "title": "Hello VSX",
+      "properties": { "helloVsx.greeting": { "type": "string", "default": "Hello", "description": "%config.greeting%" } }
+    }
+  }
+}

@@ -327,6 +327,23 @@ project (F5 passes the ones the IDE knows as `RADIDE_DB_<CONNECTION>_PASSWORD`).
 - Code: `radide/deploy/build.py` (build), `radide/deploy/inno.py` (setup script + publish chain),
   `radide/features/installer.py` (menu + dialog).
 
+## Releases of RAD IDE itself (setup + portable)
+
+- GitHub Releases (`https://github.com/musoftware/PythonIDE/releases`), one per tag `vX.Y.Z`:
+  `RADIDE-X.Y.Z-setup-win64.exe` (Inno Setup; per user in `%LOCALAPPDATA%\Programs\RADIDE` by default or
+  for all users; optional desktop icon, file associations and Explorer "Open with RAD IDE"; English/Arabic),
+  `RADIDE-X.Y.Z-portable-win64.zip` (`portable.flag` beside `RADIDE.exe`: settings in `.\settings` as INI,
+  nothing in the registry, no automatic shell registration) and `SHA256SUMS.txt`.
+- Build locally: `.venv\Scripts\python tools\build_ide_release.py --version X.Y.Z [--no-installer] [--no-zip]`
+  (output `dist/release`). CI: `.github/workflows/release.yml` builds and publishes when a `v*` tag is pushed;
+  the notes come from the matching `## [X.Y.Z]` section of `CHANGELOG.md`. The version lives in
+  `radide/__init__.py` (`__version__`; About box, Help > Check for Updates).
+- The frozen IDE has no Python of its own for the programs it starts: at start-up it picks a real Python
+  (`RADIDE_PYTHON`, setting `options/ide_python`, the py launcher, `python` on PATH, the usual install folders;
+  `radide/paths.py`) for user projects, pylsp, debugpy, Jupyter kernels, PyInstaller and the runtime helpers.
+  Install `python-lsp-server` / `debugpy` / `ipykernel` into that Python for IntelliSense / DAP debugging /
+  notebooks. Without any Python, RADIDE.exe answers simple `-c` / `-m` / script command lines itself.
+
 ## License
 
 RAD IDE is free and open source under the **MIT License** - © 2026 Musoftware ([musoftwares.com](https://musoftwares.com)).

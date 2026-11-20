@@ -59,6 +59,8 @@ require(['vs/editor/editor.main'], function () {
       css: [':', '-', '@', '.', '#', ' '], scss: [':', '-', '@', '$', '.', '#'], less: [':', '-', '@', '.', '#'],
       json: ['"', ':'], javascript: ['.', '"', "'", '/', '@', '<'], typescript: ['.', '"', "'", '/', '@', '<'] };
     const providers = new Map();          // lang -> {completion, triggers}
+    const inlayEmitter = new monaco.Emitter();
+    window.radRefreshInlayHints = () => inlayEmitter.fire();
     const toRange = (r, pos, w) => r ? new monaco.Range(r[0] + 1, r[1] + 1, r[2] + 1, r[3] + 1)
                                      : new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
     function registerCompletion(lang, triggers) {
@@ -95,14 +97,30 @@ require(['vs/editor/editor.main'], function () {
           if (model !== editor.getModel()) return null;
           const tip = await ask(id => rad.jsSignature(id, pos.lineNumber - 1, pos.column - 1));
           if (!tip) return null;
+          if (typeof tip === 'object') {        // language server: parameters + docs (radide/lsp.py signature_info)
+            return { value: { signatures: [{ label: tip.label,
+              documentation: tip.documentation ? { value: tip.documentation } : undefined,
+              parameters: (tip.parameters || []).map(p => ({ label: p })) }],
+              activeSignature: 0, activeParameter: tip.activeParameter || 0 }, dispose() {} };
+          }
           return { value: { signatures: [{ label: tip, parameters: [] }], activeSignature: 0, activeParameter: 0 },
                    dispose() {} };
+        } });
+      // inlay hints (types / parameter names) from the language server (rust-analyzer ...): radide/lsp.py
+      monaco.languages.registerInlayHintsProvider(lang, {
+        onDidChangeInlayHints: inlayEmitter.event,
+        provideInlayHints: async (model, range) => {
+          if (model !== editor.getModel() || typeof rad.jsInlayHints !== 'function') return { hints: [], dispose() {} };
+          const list = await ask(id => rad.jsInlayHints(id, range.startLineNumber - 1, range.endLineNumber)) || [];
+          return { hints: list.map(h => ({ position: { lineNumber: h.line + 1, column: h.col + 1 }, label: h.label,
+            kind: h.kind || undefined, paddingLeft: !!h.left, paddingRight: !!h.right })), dispose() {} };
         } });
       monaco.languages.registerHoverProvider(lang, {
         provideHover: async (model, pos) => {
           const w = model.getWordAtPosition(pos); if (!w) return null;
           const c = editor.getScrolledVisiblePosition(pos);
-          const text = await ask(id => rad.jsHover(id, w.word, c ? c.left : 0, c ? c.top : 0));
+          const text = await ask(id => rad.jsHover(id, w.word, c ? c.left : 0, c ? c.top : 0,
+                                                   pos.lineNumber - 1, pos.column - 1));
           return text ? { contents: [{ value: text.indexOf('\n') >= 0 ? text : '`' + text + '`' }] } : null;
         } });
     }

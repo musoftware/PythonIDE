@@ -2302,8 +2302,10 @@ def main(argv=None):
     elif win.option("reopen_last", False) and win.recent_projects():
         win.open_project(Path(win.recent_projects()[0]), ask=False)
     win.show()
-    hook = os.environ.get("RADIDE_STARTUP_SCRIPT")   # smoke tests of release builds: run a script with win/app
-    if hook and Path(hook).is_file():
+    # smoke tests of release builds: run a script with win/app - only in test runs (RADIDE-TEST settings),
+    # never in a normal user session
+    hook = os.environ.get("RADIDE_STARTUP_SCRIPT")
+    if hook and Path(hook).is_file() and QCoreApplication.organizationName().upper().startswith("RADIDE-TEST"):
         QTimer.singleShot(0, lambda: exec(compile(Path(hook).read_text(encoding="utf-8"), hook, "exec"),  # noqa: S102
                                           {"win": win, "app": app, "__file__": hook}))
     return app.exec()

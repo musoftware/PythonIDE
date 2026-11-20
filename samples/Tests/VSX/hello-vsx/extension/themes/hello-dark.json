@@ -1,0 +1,5 @@
+{ "name": "Hello Dark", "type": "dark",
+  "colors": { "editor.background": "#1B1F2A", "editor.foreground": "#E6E6E6" },
+  "tokenColors": [ { "scope": "comment", "settings": { "foreground": "#6A9955", "fontStyle": "italic" } },
+                   { "scope": ["keyword", "storage"], "settings": { "foreground": "#FF79C6" } },
+                   { "scope": "string", "settings": { "foreground": "#F1FA8C" } } ] }

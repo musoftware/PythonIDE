@@ -1,0 +1,1 @@
+{ "displayName": "Hello VSX (RAD IDE test)", "description": "A tiny test extension: a Python snippet, a dark theme and a setting.", "theme.label": "Hello Dark", "config.greeting": "Greeting text" }

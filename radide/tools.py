@@ -66,7 +66,13 @@ def check_project(project, plugin, texts: dict[str, str]) -> list[Diag]:
                 parse_module(text, Path(fname).stem)
             except VBSyntaxError as e:
                 out.append(Diag("Error", f"Syntax error: {e.msg}", fname, e.line))
-        elif pid == "ring-qt":
+        elif pid.startswith("ring"):          # ring-qt / ring-game / ring-web: ring <file> -norun
+            if callable(getattr(plugin, "syntax_check", None)):
+                for f, ln, msg in plugin.syntax_check(project.folder, fname, text):
+                    d = Diag("Error", msg, f or fname, ln)
+                    if d not in out:          # a loaded file's error is reported by every file that loads it
+                        out.append(d)
+                continue
             ring = plugin.find_interpreter("")
             if not ring:
                 continue
@@ -477,6 +483,11 @@ def run_checks(win, show=False) -> list[Diag]:
             diags += check_project(win.project, fp, texts)
     except Exception as e:  # noqa: BLE001 - never break saving
         diags = [Diag("Warning", f"checker failed: {e}", "", 1)]
+    for provider in list(getattr(win, "diag_providers", [])):   # e.g. language-server diagnostics (rust_ide.py)
+        try:
+            diags += provider(win) or []
+        except Exception:  # noqa: BLE001
+            pass
     win.error_list.clear()
     for d in diags:
         it = QTreeWidgetItem([d.severity, d.message, d.file, str(d.line)])
@@ -711,7 +722,42 @@ def goto_definition(win):
     if m is None:
         return
     word = m.group()
-    if (getattr(ed, "plugin", None) or win.plugin).id.startswith("python"):
+    plugin = getattr(ed, "plugin", None) or win.plugin
+    finder = getattr(type(plugin), "definition", None)
+    if finder is not None and getattr(finder, "__qualname__", "").split(".")[0] != "LanguagePlugin":
+        try:                     # the plugin's own Go to Definition (Ring: also into the Ring library files)
+            names = ed.names if isinstance(getattr(ed, "names", None), dict) else None
+            res = plugin.definition(ed.text(), line, col, Path(str(ed.path)), names)
+        except Exception:  # noqa: BLE001 - fall back to the text search below
+            res = None
+        if res:
+            target, target_line = Path(res[0]), int(res[1])
+            same = False
+            try:
+                same = target.resolve() == Path(str(ed.path)).resolve()
+            except OSError:
+                pass
+            if same:
+                ed.goto_line(target_line)
+                return
+            if target.parent.resolve() == win.project.folder.resolve() and win._editor_for_file(target.name):
+                win._editor_for_file(target.name).goto_line(target_line)
+                return
+            opener = getattr(win, "open_file", None) or getattr(win, "open_any_file", None)
+            if opener is not None and target.is_file():
+                try:
+                    opened = opener(target, target_line + 1)
+                except TypeError:
+                    opened = opener(target)
+                if opened is not None:
+                    try:
+                        opened.goto_line(target_line)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return
+            win.statusBar().showMessage(f"{word}: defined in {target} line {target_line + 1}", 6000)
+            return
+    if plugin.id.startswith("python"):
         try:
             import jedi
             script = jedi.Script(ed.text(), path=str(ed.path), project=jedi.Project(str(win.project.folder)))

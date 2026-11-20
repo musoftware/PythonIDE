@@ -1,0 +1,91 @@
+# Builds the Windows release of RAD IDE for a version tag and publishes it as a GitHub Release:
+#   git tag v0.1.0 && git push origin v0.1.0
+# Assets: RADIDE-<ver>-setup-win64.exe, RADIDE-<ver>-portable-win64.zip, SHA256SUMS.txt
+# Notes:  the "## [<ver>]" section of CHANGELOG.md
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (X.Y.Z) - builds the artifacts only, no release"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" -replace '^[vV]', '' } else { "${{ inputs.version }}" }
+          if ($v -notmatch '^\d+\.\d+\.\d+') { throw "bad version '$v'" }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Building RAD IDE $v"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements-release.txt
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements-release.txt
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe", "$env:ProgramFiles\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found after choco install" }
+          "ISCC=$($iscc.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Check
+        run: python -m pyflakes radide tools
+
+      - name: Build
+        run: python tools/build_ide_release.py --version ${{ steps.ver.outputs.version }} --out dist/release --iscc "${{ env.ISCC }}"
+
+      - name: Release notes
+        shell: python
+        run: |
+          import re, pathlib
+          ver = "${{ steps.ver.outputs.version }}"
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          m = re.search(r"^## \[" + re.escape(ver) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          body = m.group(1).strip() if m else f"RAD IDE {ver}"
+          body += "\n\n---\nRAD IDE (c) Musoftware - https://musoftwares.com - MIT License"
+          pathlib.Path("dist/release/NOTES.md").write_text(body + "\n", encoding="utf-8")
+          print(body)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RADIDE-${{ steps.ver.outputs.version }}
+          path: |
+            dist/release/*.exe
+            dist/release/*.zip
+            dist/release/SHA256SUMS.txt
+          retention-days: 14
+
+      - name: GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RAD IDE ${{ steps.ver.outputs.version }}
+          body_path: dist/release/NOTES.md
+          prerelease: ${{ contains(steps.ver.outputs.version, '-') }}
+          files: |
+            dist/release/RADIDE-${{ steps.ver.outputs.version }}-setup-win64.exe
+            dist/release/RADIDE-${{ steps.ver.outputs.version }}-portable-win64.zip
+            dist/release/SHA256SUMS.txt

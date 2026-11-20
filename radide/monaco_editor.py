@@ -43,6 +43,9 @@ LANGUAGE_CHOICES = [("PHP", "php"), ("HTML", "html"), ("CSS", "css"), ("SCSS", "
                     ("XML", "xml"), ("Markdown", "markdown"), ("SQL", "sql"), ("Python", "python"),
                     ("YAML", "yaml"), ("Shell", "shell"), ("Batch", "bat"), ("Plain Text", "plaintext")]
 _OVERRIDES_KEY = "editor/languageOverrides"
+# exact file names (lower-case) -> Monaco language id ("cargo.lock" -> "toml"): VS Code extensions'
+# contributes.languages[].filenames (radide/vsx/contrib_languages.py); checked before MONACO_LANG
+MONACO_FILENAMES: dict[str, str] = {}
 
 
 def _settings():
@@ -50,7 +53,8 @@ def _settings():
     org = QCoreApplication.organizationName()        # same rule as radide.app.ide_settings()
     if org.upper().startswith("RADIDE-TEST"):
         return QSettings(org, QCoreApplication.applicationName() or org)
-    return QSettings("RADIDE", "RADIDE")
+    from .paths import qsettings      # an INI file in <install>\settings for a portable build
+    return qsettings()
 
 
 def _path_key(path: Path) -> str:
@@ -84,6 +88,8 @@ def language_for_path(path: Path) -> str:
     if lang:
         return lang
     p = Path(path)
+    if p.name.lower() in MONACO_FILENAMES:
+        return MONACO_FILENAMES[p.name.lower()]
     if p.name.lower() == "dockerfile":
         return "dockerfile"
     return MONACO_LANG.get(p.suffix.lower(), "custom")
@@ -131,9 +137,13 @@ class _Bridge(QObject):
     def jsSignature(self, req, line, col):
         self.ed._signature(req, line, col)
 
-    @pyqtSlot(int, str, int, int)
-    def jsHover(self, req, word, x, y):
-        self.ed._hover(req, word, x, y)
+    @pyqtSlot(int, str, int, int, int, int)
+    def jsHover(self, req, word, x, y, line=-1, col=-1):
+        self.ed._hover(req, word, x, y, line, col)
+
+    @pyqtSlot(int, int, int)
+    def jsInlayHints(self, req, l1, l2):
+        self.ed._inlay_hints(req, l1, l2)
 
     @pyqtSlot(int, int, int)
     def jsContextMenu(self, line, x, y):
@@ -325,6 +335,8 @@ class MonacoEditor(QWebEngineView):
         lang = getattr(self, "_lang_override", None)
         if lang:
             return lang
+        if self.path.name.lower() in MONACO_FILENAMES:
+            return MONACO_FILENAMES[self.path.name.lower()]
         if self.path.name.lower() == "dockerfile":
             return "dockerfile"
         return MONACO_LANG.get(self.path.suffix.lower(), "custom")
@@ -567,6 +579,15 @@ class MonacoEditor(QWebEngineView):
         return extra + [i for i in (items or []) if i.get("label") not in labels]
 
     def _signature(self, req: int, line: int, col: int):
+        lsp = self.lsp
+        if lsp is not None and lsp.running() and hasattr(lsp, "signature_info") and (getattr(lsp, "capabilities", None) or {}).get("signatureHelpProvider"):
+            try:          # language server: real signatures with parameter docs
+                lsp.did_change(self.path, self._text)
+                lsp.signature_info(self.path, line, col,
+                                   lambda res: self._js(f"radResolve({req}, {json.dumps(res or None)});"))
+                return
+            except Exception:  # noqa: BLE001 - fall back to the plugin's calltip
+                pass
         tip = ""
         try:
             tip = self.plugin.calltip(self._text, line, col, self.path, self.names) or ""
@@ -575,9 +596,47 @@ class MonacoEditor(QWebEngineView):
         tip = re.sub(r"<[^>]+>", "", tip)
         self._js(f"radResolve({req}, {json.dumps(tip)});")
 
-    def _hover(self, req: int, word: str, x: int, y: int):
+    def _hover(self, req: int, word: str, x: int, y: int, line: int = -1, col: int = -1):
         self.hoverWord.emit(word, self.mapToGlobal(QPoint(x, y)))
-        self._js(f"radResolve({req}, null);")
+        lsp = self.lsp
+        if line >= 0 and lsp is not None and lsp.running() and (getattr(lsp, "capabilities", None) or {}).get("hoverProvider"):
+            try:          # language server hover: signature + documentation (markdown)
+                lsp.hover(self.path, line, col, lambda text: self._js(f"radResolve({req}, {json.dumps(text or None)});"))
+                return
+            except Exception:  # noqa: BLE001
+                pass
+        text = ""
+        if line >= 0 and lsp is None:
+            try:          # the plugin's own hover (Ring: radide/languages/ring_intel.py)
+                text = self.plugin.hover(self._text, line, col, self.path, self.names) or ""
+            except Exception:  # noqa: BLE001 - hover must never break the editor
+                text = ""
+        self._js(f"radResolve({req}, {json.dumps(text or None)});")
+
+    # inlay hints: callable(editor) -> bool decides per editor (radide/features/rust_ide.py: Rust setting)
+    inlay_hints_enabled = None
+
+    def _inlay_hints(self, req: int, l1: int, l2: int):
+        lsp = self.lsp
+        on = MonacoEditor.inlay_hints_enabled
+        try:
+            ok = lsp is not None and lsp.running() and hasattr(lsp, "inlay_hints") and (on is None or on(self))
+        except Exception:  # noqa: BLE001
+            ok = False
+        if not ok:
+            self._js(f"radResolve({req}, []);")
+            return
+        lsp.did_change(self.path, self._text)
+        lines = self._text.split("\n")          # the range must stay inside the document (rust-analyzer rejects
+        last = max(0, len(lines) - 1)           # "line N col 0" past the last line)
+        end_col = 0
+        if l2 > last:
+            l2, end_col = last, len(lines[last].encode("utf-16-le")) // 2
+        lsp.inlay_hints(self.path, min(l1, last), l2,
+                        lambda hints: self._js(f"radResolve({req}, {json.dumps(hints or [])});"), end_col)
+
+    def refresh_inlay_hints(self) -> None:
+        self._js("if (window.radRefreshInlayHints) radRefreshInlayHints();")
 
     # ------------------------------------------------------------ AI inline completions
     def _inline_complete(self, req: int, line: int, col: int, explicit: bool):

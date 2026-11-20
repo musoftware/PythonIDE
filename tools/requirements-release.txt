@@ -1,0 +1,29 @@
+# What the frozen RAD IDE (tools/build_ide_release.py, .github/workflows/release.yml) bundles.
+# Packages only USER programs need (pygame, pymunk, kivy, ursina, PySide6, debugpy, pylsp, ipykernel, black,
+# ruff, ...) are NOT bundled: the frozen IDE runs projects, language servers, debug adapters and kernels with
+# a real Python installed on the machine (radide/paths.py).
+
+# required
+PyQt6>=6.6
+PyQt6-WebEngine>=6.6
+PyQt6-QScintilla>=2.14
+jedi>=0.19
+pyflakes>=3.0
+pyinstaller>=6.10
+
+# optional features (the IDE starts without them; the feature reports what is missing)
+paramiko>=3.4            # Site > Publish over SFTP, remote development
+keyring>=25              # AI keys in the Windows credential store
+pygments>=2.17           # AI chat code colours
+pefile>=2023.2           # File > Import > Program (.exe / .dll)
+capstone>=5.0            # disassembler of the exe importer
+Pillow>=10.0             # icon / image editor, resources
+python-barcode>=0.15     # reports: barcodes
+qrcode>=7.4              # reports: QR codes
+openpyxl>=3.1            # reports: Excel export
+pyodbc>=5.0              # Data Sources: ODBC
+jupyter_client>=8.0      # notebooks: talking to kernels (ipykernel itself lives in the user's Python)
+nbformat>=5.9            # notebooks: format checks
+markdown>=3.5            # notebooks: markdown cells
+pycrdt>=0.12             # Live Share collaboration
+pywin32>=306             # VB CreateObject, shortcuts

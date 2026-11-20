@@ -41,14 +41,18 @@ CHAIN = {
     **{lang: ["clang-format", "lsp"] for lang in CLANG_LANGS},
     "go": ["gofmt", "lsp"], "rust": ["rustfmt", "lsp"], "dart": ["dart", "lsp"],
     "php": ["php-cs-fixer", "lsp"],
+    # Ring (.ring files use the plugin's Monaco language rad-<plugin id>): the built-in Ring re-indenter
+    **{f"rad-{pid}": ["ring"] for pid in ("ring-qt", "ring-app", "ring-script", "ring-game")},
 }
 LANG_TITLES = {"python": "Python", "javascript": "JavaScript", "typescript": "TypeScript", "html": "HTML",
                "css": "CSS", "scss": "SCSS", "less": "Less", "json": "JSON", "markdown": "Markdown",
                "yaml": "YAML", "c": "C", "cpp": "C++", "java": "Java", "csharp": "C#", "go": "Go",
-               "rust": "Rust", "dart": "Dart", "php": "PHP"}
+               "rust": "Rust", "dart": "Dart", "php": "PHP", "rad-ring-qt": "Ring (RingQt)",
+               "rad-ring-app": "Ring (Console / Web / Library)", "rad-ring-script": "Ring (script)",
+               "rad-ring-game": "Ring (game)"}
 TITLES = {"auto": "Automatic", "ruff": "Ruff", "black": "Black", "prettier": "Prettier",
           "prettier-npx": "Prettier (npx, downloads on first use)", "clang-format": "clang-format",
-          "gofmt": "gofmt", "rustfmt": "rustfmt", "dart": "dart format", "php-cs-fixer": "PHP CS Fixer",
+          "gofmt": "gofmt", "rustfmt": "rustfmt", "dart": "dart format", "php-cs-fixer": "PHP CS Fixer", "ring": "Ring formatter (built in)",
           "lsp": "Language Server", "builtin": "Monaco built-in", "none": "None"}
 BUILTIN_LANGS = {"javascript", "typescript", "html", "css", "scss", "less", "json"}
 
@@ -115,6 +119,8 @@ def tool_argv(fid: str, path: Path, root) -> list | None:
     """argv reading the source on stdin and writing the result to stdout (None = not available).
     php-cs-fixer works on a file: its argv ends with the placeholder "{file}"."""
     p = str(path)
+    if fid == "ring":                 # in-process (radide/languages/ring_intel.format_code), see run_tool
+        return ["<ring-format>"]
     if fid == "ruff":
         exe = _which("ruff", dirs=_venv_bins(root), path_first=False)   # project .venv, the IDE's, PATH
         return [exe, "format", "--stdin-filename", p, "-"] if exe else None
@@ -158,6 +164,9 @@ def tool_argv(fid: str, path: Path, root) -> list | None:
 
 
 def run_tool(fid: str, text: str, path: Path, root, timeout=30) -> str:
+    if fid == "ring":
+        from ..languages import ring_intel
+        return ring_intel.format_code(text)
     argv = tool_argv(fid, path, root)
     if not argv:
         raise FormatError(f"{TITLES.get(fid, fid)} is not installed")

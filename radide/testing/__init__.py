@@ -755,8 +755,8 @@ class RustAdapter(Adapter):
         for f in _files(self.root, [r".*\.rs"]):
             r = rel(self.root, f)
             parts = Path(r).with_suffix("").parts
-            if parts and parts[0] == "src":
-                mods = [p for p in parts[1:] if p not in ("lib", "main", "mod")]
+            if "src" in parts:          # src/... or <workspace member>/src/...
+                mods = [p for p in parts[parts.index("src") + 1:] if p not in ("lib", "main", "mod")]
             else:                       # tests/foo.rs -> its own crate
                 mods = []
             stack: list[tuple[int, str]] = []

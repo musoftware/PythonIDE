@@ -19,24 +19,24 @@ def default_location() -> Path:
 LANGUAGE_GROUPS = [
     ("Visual Basic", ["vb-basic"]),
     ("Python", ["python-tk", "python-qt"]),
-    ("Ring", ["ring-qt"]),
+    ("Ring", ["ring-qt", "ring-app"]),
     (".NET", ["csharp-bridge", "powershell-bridge"]),
     ("Java", ["java-bridge"]),
     ("Web", ["php-web", "static-web", "node-web",            # web site projects (CONTRACTS 8.1)
              "python-django", "python-flask", "python-fastapi",    # Python web frameworks (web_site/frameworks)
              "aspnet-web", "spring-web", "rails-web", "nestjs-web"]),  # backend frameworks (web_site/frameworks)
     ("Web & Script", ["javascript", "typescript", "php"]),
-    ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "fortran-bridge", "go-bridge"]),
+    ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "rust-cargo", "fortran-bridge", "go-bridge"]),
     ("Scripting", ["lua-bridge", "ruby-bridge", "perl-bridge", "dart-bridge"]),
     ("Mobile", ["flutter", "kivy", "expo"]),                   # mobile apps (CONTRACTS 10.1)
     ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game",   # game projects (CONTRACTS 10.2)
                "python-ursina", "godot3d"]),                                     # 3D games (round 7, games3d/)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
-         "ring-qt": ("Rg", "#2C3E50"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
+         "ring-qt": ("Rg", "#2C3E50"), "ring-app": ("Rg", "#34495E"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
          "java-bridge": ("J", "#B07219"), "javascript": ("JS", "#C9A400"), "typescript": ("TS", "#3178C6"),
          "php": ("PHP", "#4F5D95"), "c-bridge": ("C", "#555555"), "cpp-bridge": ("C++", "#F34B7D"),
-         "rust-bridge": ("Rs", "#B7410E"), "fortran-bridge": ("F", "#4D41B1"), "go-bridge": ("Go", "#00ADD8"),
+         "rust-bridge": ("Rs", "#B7410E"), "rust-cargo": ("Rs", "#DEA584"), "fortran-bridge": ("F", "#4D41B1"), "go-bridge": ("Go", "#00ADD8"),
          "lua-bridge": ("Lua", "#000080"), "ruby-bridge": ("Rb", "#CC342D"), "perl-bridge": ("Pl", "#0298C3"),
          "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
          "node-web": ("N", "#3C873A"), "pygame": ("Pg", "#2E7D32"), "godot": ("Gd", "#478CBF"),
