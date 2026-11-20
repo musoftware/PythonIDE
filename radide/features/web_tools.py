@@ -1002,7 +1002,7 @@ class WebTools(QObject):
         win = self.win
         menu = getattr(win, "site_menu", None)
         if menu is None:
-            menu = QMenu("&Site", win)
+            menu = QMenu("S&ite", win)
             mb = win.menuBar()
             before = next((a for a in mb.actions() if a.text().replace("&", "") in ("Tools", "Help")), None)
             mb.insertMenu(before, menu) if before is not None else mb.addMenu(menu)

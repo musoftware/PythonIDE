@@ -50,7 +50,9 @@ class NodeWebPlugin(WebSitePlugin):
         command = str(cfg.get("command") or "")
         if command:
             return {"argv": ["cmd", "/c", command] if shutil.which("cmd") else ["sh", "-c", command],
-                    "cwd": server.folder, "env": env, "prepare": prepare, "restart_on_change": True, "timeout": 60}
+                    "cwd": server.folder, "env": env, "prepare": prepare,
+                    "restart_on_change": bool(cfg.get("restart_on_change", True)),   # Vite/Angular: own HMR
+                    "timeout": int(cfg.get("timeout", 60))}
         start = str(cfg.get("start") or data.get("main") or "server.js")
         return {"argv": [node, start], "cwd": server.folder, "env": env, "prepare": prepare,
                 "restart_on_change": True, "timeout": 30}

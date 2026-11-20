@@ -20,9 +20,20 @@
 <script>
 // RAD IDE <-> Monaco bridge. Python side: radide/monaco_editor.py (object "rad").
 require.config({ paths: { vs: 'monaco/vs' } });
+// Web workers (perf round 7): with the relative 'monaco/vs' path Monaco's workers tried to load
+// file:///monaco/vs/base/worker/workerMain.js, failed, and ran tokenising/diff/HTML/CSS/JSON services on the UI
+// thread ("Could not create web worker(s)"). Give them the absolute folder.
+window.MonacoEnvironment = window.MonacoEnvironment || {
+  getWorkerUrl: function () {
+    const base = new URL('monaco/', location.href).href;
+    return 'data:text/javascript;charset=utf-8,' + encodeURIComponent(
+      "self.MonacoEnvironment = { baseUrl: '" + base + "' }; importScripts('" + base + "vs/base/worker/workerMain.js');");
+  }
+};
 require(['vs/editor/editor.main'], function () {
   new QWebChannel(qt.webChannelTransport, function (channel) {
     const rad = channel.objects.rad;
+    window.radChannel = channel;          // extra objects (MonacoEditor.channel_objects, radide/editkit.py)
     const editor = monaco.editor.create(document.getElementById('editor'), {
       value: '', language: 'plaintext', automaticLayout: true, fontSize: 14,
       fontFamily: "Consolas, 'Cascadia Mono', 'Courier New', monospace",
@@ -35,6 +46,7 @@ require(['vs/editor/editor.main'], function () {
     });
     window.radEditor = editor;
     let muted = false;
+    window.radMute = on => { muted = !!on; };   // edits whose text Python already knows (radide/editkit.py)
 
     // ---------------- Python -> JS requests resolved by id
     const waiting = new Map(); let nextId = 1;
@@ -235,7 +247,21 @@ require(['vs/editor/editor.main'], function () {
     window.radInlineAccept = () => editor.trigger('rad', 'editor.action.inlineSuggest.commit', {});
 
     // ---------------- events to Python
-    editor.onDidChangeModelContent(() => { if (!muted) rad.jsTextChanged(editor.getValue()); });
+    // Text sync: small models send the whole text; big ones (> 200k chars) send only the single change
+    // (perf round 7: a 2 MB text per keystroke cost ~100 ms). Python checks the length and asks for the
+    // whole text (radSendFullText) when the delta cannot be applied safely.
+    editor.onDidChangeModelContent((ev) => {
+      if (muted) return;
+      const model = editor.getModel();
+      if (model.getValueLength() < 200000 || typeof rad.jsTextDelta !== 'function' || ev.changes.length !== 1) {
+        rad.jsTextChanged(editor.getValue());
+        return;
+      }
+      const c = ev.changes[0];
+      rad.jsTextDelta(JSON.stringify({ len: model.getValueLength(), off: c.rangeOffset, del: c.rangeLength,
+                                       text: c.text }));
+    });
+    window.radSendFullText = () => rad.jsTextChanged(editor.getValue());
     editor.onDidChangeCursorPosition(e => rad.jsCursor(e.position.lineNumber - 1, e.position.column - 1));
     editor.onDidChangeCursorSelection(e => { const s = e.selection;
       rad.jsSelection(s.startLineNumber - 1, s.startColumn - 1, s.endLineNumber - 1, s.endColumn - 1); });

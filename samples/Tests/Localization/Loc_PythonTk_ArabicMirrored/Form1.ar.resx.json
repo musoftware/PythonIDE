@@ -1,0 +1,20 @@
+{
+  "generator": "RAD IDE",
+  "form": "Form1",
+  "language": "ar",
+  "name": "Arabic",
+  "RightToLeft": true,
+  "RightToLeftLayout": true,
+  "strings": {
+    "$this.Text": "العميل",
+    "HomeAddress.Caption": "عنوان المنزل",
+    "WorkAddress.Caption": "عنوان العمل",
+    "btnSave.Text": "حفظ",
+    "btnSwitch.Text": "تغيير اللغة",
+    "chkVip.Text": "عميل مميز",
+    "lblName.Text": "الاسم:",
+    "lblName.ToolTip": "اسم العميل بالكامل",
+    "lblStatus.Text": "جاهز",
+    "lstLanguages.Items": "الإنجليزية;العربية;الفرنسية"
+  }
+}

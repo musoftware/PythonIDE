@@ -1,0 +1,11 @@
+{
+  "name": "PyCalc",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "calc.py",
+    "report.py",
+    "messy_format.py"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Debug_Java_JDWP",
+  "language": "java-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

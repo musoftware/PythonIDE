@@ -27,13 +27,18 @@ def _python_adapter():
     return [sys.executable, "-m", "debugpy.adapter"]
 
 
+def _dlv():
+    from .debug_extras import find_dlv          # PATH or %LOCALAPPDATA%\RADIDE\tools\dlv
+    return find_dlv()
+
+
 ADAPTERS = {
     "debugpy": (_python_adapter, lambda prog, args, cwd, env: {
         "type": "python", "request": "launch", "program": prog, "args": args, "cwd": cwd, "env": env,
         "console": "internalConsole", "justMyCode": True, "redirectOutput": True}),
     "gdb": (lambda: [shutil.which("gdb"), "-i", "dap"] if shutil.which("gdb") else None,
             lambda prog, args, cwd, env: {"program": prog, "args": args, "cwd": cwd, "stopAtBeginningOfMainSubprogram": False}),
-    "dlv": (lambda: [shutil.which("dlv"), "dap"] if shutil.which("dlv") else None,
+    "dlv": (lambda: [_dlv(), "dap"] if _dlv() else None,
             lambda prog, args, cwd, env: {"mode": "debug", "program": prog, "args": args, "cwd": cwd}),
     "dart": (lambda: [shutil.which("dart") or "dart", "debug_adapter"] if shutil.which("dart") else None,
              lambda prog, args, cwd, env: {"program": prog, "args": args, "cwd": cwd}),
@@ -198,6 +203,7 @@ class DapSession(QObject):
             self.frame_id = top["id"]
             info = StopInfo(top.get("source", {}).get("path", ""), top.get("line", 0),
                             {"breakpoint": "breakpoint", "exception": "error"}.get(reason, "step"))
+            info.thread_id = self.thread_id
             info.frames = [(f.get("name", ""), f.get("source", {}).get("path", ""), f.get("line", 0)) for f in frames]
 
             def got_scopes(sb, _m):
@@ -214,6 +220,8 @@ class DapSession(QObject):
                                 continue
                             prefix = "" if s.get("name", "").lower().startswith("local") else s.get("name", "") + "."
                             info.variables.append((prefix + name, v.get("type", ""), v.get("value", "")))
+                            if v.get("variablesReference"):          # expandable (debug_extras / Locals)
+                                info.refs[prefix + name] = v["variablesReference"]
                         remaining[0] -= 1
                         if remaining[0] == 0:
                             self._emit_stop(info)
@@ -263,14 +271,46 @@ class DapSession(QObject):
                                                         else m.get("message", "error")))
 
     def _bp_list(self, path, lines):
-        out = []
-        for n in sorted(lines):
-            bp = {"line": n}
-            cond = self.conditions.get((path, n))
-            if cond:
-                bp["condition"] = cond
-            out.append(bp)
-        return out
+        from .debug_extras import dap_breakpoint        # condition + hitCondition + logMessage
+        return [dap_breakpoint(n, self.conditions.get((path, n), ""), self.adapter) for n in sorted(lines)]
+
+    # ------------------------------------------------------------ expandable values, threads (debug_extras)
+    def children(self, ref, cb):
+        """cb([(name, type, value, child_ref or 0)]) - the DAP 'variables' of *ref*."""
+        if not self.paused or not ref:
+            cb([])
+            return
+
+        def got(b, m):
+            out = []
+            for v in (b.get("variables", []) if m.get("success", True) else []):
+                if v.get("name") in ("special variables", "function variables"):
+                    continue
+                out.append((v.get("name", ""), v.get("type", ""), v.get("value", ""), v.get("variablesReference", 0)))
+            cb(out)
+        self._request("variables", {"variablesReference": int(ref)}, got)
+
+    def watch(self, expr, cb):
+        """cb(value, type, ref) of a Watch expression (DAP evaluate, context 'watch')."""
+        if not self.paused:
+            cb("(the program must be paused at a breakpoint)", "", 0)
+            return
+        self._request("evaluate", {"expression": expr, "frameId": self.frame_id, "context": "watch"},
+                      lambda b, m: cb(b.get("result", "") if m.get("success", True) else m.get("message", "error"),
+                                      b.get("type", ""), b.get("variablesReference", 0) if m.get("success", True) else 0))
+
+    def threads(self, cb):
+        """cb([(id, name)]) of the program's threads."""
+        if not self.running():
+            cb([])
+            return
+        self._request("threads", {}, lambda b, m: cb([(t.get("id"), t.get("name", "")) for t in b.get("threads", [])]))
+
+    def select_thread(self, tid):
+        """Show the stack / locals of thread *tid* (the program stays paused)."""
+        if self.paused and tid:
+            self.thread_id = int(tid)
+            self._on_stopped("pause")
 
     def set_breakpoint(self, filename: str, line: int, on: bool, cond: str = ""):
         path = str((self.cwd / filename).resolve())
@@ -292,3 +332,4 @@ class DapSession(QObject):
             self._request("disconnect", {"terminateDebuggee": True})
             if not self.proc.waitForFinished(1500):
                 self.proc.kill()
+                self.proc.waitForFinished(1000)

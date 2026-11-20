@@ -14,6 +14,8 @@ pygments>=2.17
 
 # Games (pygame projects: run and the scene runtime radgame.py)
 pygame-ce>=2.4
+# Games: optional real physics in radgame scenes (Physics body / joints; radgame_physics.py)
+pymunk>=6.5
 # File > Import > Program (.exe / .dll): identify PE files, read resources, disassemble (radide/importers/exe)
 pefile>=2023.2
 capstone>=5.0
@@ -22,3 +24,30 @@ capstone>=5.0
 
 # Mobile: Python Kivy App projects (run as a phone-sized window; Flutter projects need the Flutter SDK)
 kivy>=2.3
+
+# Icon / Image Editor and project Resources (radide/imaging): .ico/.cur/.png/.bmp decode, resampling
+Pillow>=10.0
+
+# 3D games: Python 3D (Ursina) projects run with the IDE's Python when it has ursina (radide/games3d)
+ursina>=8.0
+
+# Reports (radide/reports, Report Designer + ReportViewer): barcodes, QR codes, Excel export (PDF/print use Qt)
+python-barcode>=0.15
+qrcode>=7.4
+openpyxl>=3.1
+# tests of reports only (PDF text check): pypdf>=4
+
+# Debugger: Python debugging and Debug > Attach to Process for Python (DAP); without it the built-in agent is used
+debugpy>=1.8
+
+# Data Sources window (radide/databinding_sql.py): optional ODBC data sources (SQLite / MySQL / PostgreSQL use the
+# Databases workspace drivers above)
+pyodbc>=5.0
+
+# Jupyter notebooks (radide/notebook): kernels, nbformat checks, markdown cells; pandas/matplotlib for the Data Science starter
+jupyter_client>=8.0
+ipykernel>=6.29
+nbformat>=5.9
+markdown>=3.5
+# Format Document for C / C++ / Java / C# (clang-format binary wheel; also found on PATH / LLVM / MSYS2)
+clang-format>=18

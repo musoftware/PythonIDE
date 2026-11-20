@@ -78,7 +78,9 @@ if ($Worker) {
     exit 0
 }
 
-while ($null -ne ($__radLine = RadReadLine)) {
+# read inline (not through RadReadLine): a debugger that attaches (PSES, radide/debug_more.py) breaks at
+# the next statement, and a break on a function's return loses its value - the event line would be lost
+while ($null -ne ($__radLine = $script:RadIn.ReadLine())) {
     if ($__radLine -eq "QUIT") { break }
     if (-not $__radLine.StartsWith("EVENT ")) { continue }
     $__radParts = @($__radLine.Substring(6) -split ' ', 3)

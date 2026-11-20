@@ -1,0 +1,11 @@
+{
+  "name": "UC_PythonQt_AddressBox",
+  "language": "python-qt",
+  "forms": [
+    "Form1",
+    "AddressBox",
+    "ContactCard"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

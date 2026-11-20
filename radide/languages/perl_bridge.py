@@ -57,6 +57,8 @@ class PerlBridgePlugin(ScriptBridgePlugin):
     tool_names = ["perl"]
     tool_hints = [r"C:\Strawberry\perl\bin\perl.exe", r"C:\Perl64\bin\perl.exe", r"C:\Perl\bin\perl.exe",
                   r"C:\Program Files\Git\usr\bin\perl.exe"]
+    # portable Strawberry Perl in %LOCALAPPDATA%\RADIDE\toolchains\strawberry (Tools > Language Servers)
+    toolchain_bins = ["strawberry/perl/bin"]
     install_hint = "Install Strawberry Perl (winget install StrawberryPerl.StrawberryPerl) or Git for Windows."
     handler_regex = r"^\s*sub\s+(\w+_\w+)\b"
     client_subdir = "perl"

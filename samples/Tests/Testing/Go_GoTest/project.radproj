@@ -1,0 +1,10 @@
+{
+  "name": "GoTests",
+  "language": "go-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "calc.go",
+    "calc_test.go"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "FastAPI_Items",
+  "language": "python-fastapi",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "fastapi",
+    "app": "app.main:app",
+    "template": "fastapi-app"
+  },
+  "databases": [
+    {
+      "name": "items",
+      "kind": "sqlite",
+      "path": "data/items.db"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "NodeTests",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "math.js"
+  ]
+}

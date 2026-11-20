@@ -1,0 +1,271 @@
+{
+  "name": "Scene1",
+  "sky": "#87CEEB",
+  "gravity": 9.8,
+  "entities": [
+    {
+      "name": "Ground",
+      "kind": "plane",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        30.0,
+        1.0,
+        30.0
+      ],
+      "color": "#4C9A2A",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Sun",
+      "kind": "light",
+      "position": [
+        4.0,
+        10.0,
+        4.0
+      ],
+      "rotation": [
+        50.0,
+        30.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color": "#FFFFFF",
+      "behaviours": [],
+      "props": {}
+    },
+    {
+      "name": "MainCamera",
+      "kind": "camera",
+      "position": [
+        0.0,
+        8.0,
+        -14.0
+      ],
+      "rotation": [
+        25.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color": "#C0C0C0",
+      "behaviours": [],
+      "props": {}
+    },
+    {
+      "name": "Player",
+      "kind": "capsule",
+      "position": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color": "#3080FF",
+      "behaviours": [
+        "player"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crate1",
+      "kind": "cube",
+      "position": [
+        4.0,
+        0.75,
+        3.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "color": "#B07030",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crate2",
+      "kind": "cube",
+      "position": [
+        -5.0,
+        0.75,
+        2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "color": "#B07030",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crate3",
+      "kind": "cube",
+      "position": [
+        2.0,
+        0.75,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "color": "#B07030",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Coin1",
+      "kind": "sphere",
+      "position": [
+        -3.0,
+        0.8,
+        -3.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "color": "#FFD700",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Coin2",
+      "kind": "sphere",
+      "position": [
+        6.0,
+        0.8,
+        -2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "color": "#FFD700",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Coin3",
+      "kind": "sphere",
+      "position": [
+        -6.0,
+        0.8,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "color": "#FFD700",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Coin4",
+      "kind": "sphere",
+      "position": [
+        0.0,
+        0.8,
+        7.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "color": "#FFD700",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    }
+  ]
+}

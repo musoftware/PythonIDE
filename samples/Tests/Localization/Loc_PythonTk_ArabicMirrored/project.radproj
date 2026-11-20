@@ -1,0 +1,10 @@
+{
+  "name": "Loc_PythonTk_ArabicMirrored",
+  "language": "python-tk",
+  "forms": [
+    "Form1",
+    "AddressBox"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

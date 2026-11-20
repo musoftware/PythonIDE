@@ -361,11 +361,9 @@ def import_vb6(source: Path, dest: Path, language: str = "vb-basic") -> ImportRe
                 continue
             shutil.copy2(path, orig / path.name)
             text = read_vb_text(path)
-            if kind == "classes":
-                report.warnings.append(f"class module {path.name} imported as a standard module "
-                                       "(Class/New is not supported yet)")
             if is_vb:
-                target = f"{path.stem}.bas"
+                # class modules stay .cls: the interpreter runs them as classes (New, properties, events)
+                target = f"{path.stem}.cls" if kind == "classes" else f"{path.stem}.bas"
                 (dest / target).write_text(text, encoding="utf-8")
             else:
                 target = f"{path.stem}{plugin.code_ext}"

@@ -1,0 +1,96 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Form Icon Demo",
+    "Width": 420,
+    "Height": 260,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "Resources/AppIcon.ico",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblTitle",
+        "Text": "The title bar shows the icon drawn in the RAD IDE Icon Editor",
+        "Left": 16,
+        "Top": 16,
+        "Width": 380,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "PictureBox",
+      "props": {
+        "Name": "picLogo",
+        "Left": 16,
+        "Top": 56,
+        "Width": 72,
+        "Height": 72,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Image": "Resources/logo_src.png",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblGreeting",
+        "Text": "",
+        "Left": 104,
+        "Top": 80,
+        "Width": 290,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

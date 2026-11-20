@@ -1,0 +1,16 @@
+{
+  "name": "Qt_SQLite_Products",
+  "language": "python-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "databases": [
+    {
+      "name": "Shop",
+      "kind": "sqlite",
+      "path": "shop.db"
+    }
+  ]
+}

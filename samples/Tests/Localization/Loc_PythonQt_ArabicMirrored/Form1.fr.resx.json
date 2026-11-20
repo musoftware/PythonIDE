@@ -1,0 +1,20 @@
+{
+  "generator": "RAD IDE",
+  "form": "Form1",
+  "language": "fr",
+  "name": "French",
+  "RightToLeft": false,
+  "RightToLeftLayout": false,
+  "strings": {
+    "$this.Text": "Client",
+    "HomeAddress.Caption": "Adresse du domicile",
+    "WorkAddress.Caption": "Adresse du travail",
+    "btnSave.Text": "Enregistrer",
+    "btnSwitch.Text": "Changer de langue",
+    "chkVip.Text": "Client VIP",
+    "lblName.Text": "Nom :",
+    "lblName.ToolTip": "Le nom complet du client",
+    "lblStatus.Text": "Prêt",
+    "lstLanguages.Items": "Anglais;Arabe;Français"
+  }
+}

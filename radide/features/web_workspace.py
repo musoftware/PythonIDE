@@ -1540,7 +1540,7 @@ def install(win) -> None:
         view.menu().addSeparator()
         view.menu().addAction(win.dock_web_preview.toggleViewAction())
         view.menu().addAction(win.dock_web_requests.toggleViewAction())
-    site = QMenu("&Site", win)
+    site = QMenu("S&ite", win)
     win.site_menu = site
     a = QAction("&Run Site in Preview", win)
     a.triggered.connect(lambda: run_website(win))

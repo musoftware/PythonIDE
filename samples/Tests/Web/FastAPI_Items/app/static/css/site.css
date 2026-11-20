@@ -1,0 +1,7 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: #222; background: #f3f7f7; }
+header { background: #009688; color: #fff; padding: 14px 32px; display: flex; align-items: center; gap: 32px; }
+header h1 { margin: 0; font-size: 22px; } nav a { color: #e0fffb; margin-right: 16px; }
+main { max-width: 900px; margin: 24px auto; background: #fff; padding: 24px 32px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e5e5; }
+form input { padding: 6px; }

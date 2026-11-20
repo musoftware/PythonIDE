@@ -8,7 +8,25 @@ import pkgutil
 import traceback
 
 
+def _extensions(step: str, win) -> None:
+    """Third-party extensions (radide/extensions, docs/PLUGIN_API.md), isolated like the features."""
+    try:
+        from .. import extensions
+        extensions.preload(win) if step == "preload" else extensions.activate_all(win)
+    except Exception:  # noqa: BLE001 - extensions must never stop the IDE
+        try:
+            win.log(f"[extensions] {step} failed:\n{traceback.format_exc()}")
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+
+
 def install_all(win) -> None:
+    _extensions("preload", win)          # themes / languages / AI providers before the features
+    _install_features(win)
+    _extensions("activate", win)         # extension code after every built-in feature
+
+
+def _install_features(win) -> None:
     for mod in sorted(pkgutil.iter_modules(__path__), key=lambda m: m.name):
         if mod.name.startswith("_"):
             continue

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body>
+<header>
+    <h1><a href="{{ url_for('todos.index') }}">{{ site_name }}</a></h1>
+    <nav><a href="{{ url_for('api.list_todos') }}">JSON API</a></nav>
+</header>
+<main>
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+        <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+</main>
+<footer>Flask Todo - a RAD IDE sample</footer>
+</body>
+</html>

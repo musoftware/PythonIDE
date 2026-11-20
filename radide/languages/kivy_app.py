@@ -24,6 +24,7 @@ class KivyPlugin(LanguagePlugin):
     is_mobile = True
     interpreter_names = ["python", "python3", "py"]
     supports_debug = True            # F5/F9: debugpy (DAP) like the Python plugins; pyagent.py fallback
+    debug_bp_extras = True
     uses_debugpy = True
     keywords = ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",
                 "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in",

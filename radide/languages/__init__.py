@@ -53,6 +53,8 @@ def plugin_for_file(filename: str, default_id: str = "") -> LanguagePlugin | Non
     ext = Path(filename).suffix.lower()
     if ext == ".pyw":
         ext = ".py"
+    elif ext == ".cls":            # VB6 class module
+        ext = ".bas"
     cands = plugins_for_ext(ext)
     if not cands:
         return None

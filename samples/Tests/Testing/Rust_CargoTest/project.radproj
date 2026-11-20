@@ -1,0 +1,7 @@
+{
+  "name": "RustTests",
+  "language": "rust-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": []
+}

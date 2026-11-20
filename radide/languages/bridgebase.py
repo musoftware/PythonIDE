@@ -152,7 +152,7 @@ class BridgeLanguagePlugin(LanguagePlugin):
         if build:
             args += ["--build", build]
         args += ["--"] + self.run_command(folder, project)
-        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1",
+        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
                    RAD_HANDLERS=",".join(self.handlers_in_project(folder, project)))
         return RunSpec(sys.executable, args, folder, env)
 

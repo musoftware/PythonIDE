@@ -1,0 +1,15 @@
+{
+  "name": "NestApp1",
+  "language": "nestjs-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "src/main.ts",
+    "port": 0,
+    "live_reload": true,
+    "template": "nestjs-app"
+  }
+}

@@ -14,8 +14,6 @@
 """
 from __future__ import annotations
 
-import csv
-import io
 import json
 import os
 import re
@@ -148,17 +146,7 @@ def list_processes() -> list[dict]:
     """[{'pid', 'name', 'title', 'kind'}] of the running processes (kind: python / dotnet / native)."""
     out: list[dict] = []
     if os.name == "nt":
-        try:
-            r = subprocess.run(["tasklist", "/fo", "csv", "/nh", "/v"], capture_output=True, text=True,
-                               timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                               encoding="mbcs", errors="replace")
-            for row in csv.reader(io.StringIO(r.stdout)):
-                if len(row) < 2 or not row[1].isdigit():
-                    continue
-                title = row[-1] if len(row) >= 9 else ""
-                out.append({"pid": int(row[1]), "name": row[0], "title": "" if title == "N/A" else title})
-        except (OSError, subprocess.SubprocessError):
-            pass
+        out = _win_processes()            # Toolhelp32 + window titles (tasklist /v can hang on a hung window)
     else:
         try:
             r = subprocess.run(["ps", "-eo", "pid=,comm=,args="], capture_output=True, text=True, timeout=20)
@@ -171,6 +159,63 @@ def list_processes() -> list[dict]:
     for p in out:
         p["kind"] = process_kind(p["name"])
     return out
+
+
+def _win_processes() -> list[dict]:
+    import ctypes
+    from ctypes import wintypes
+
+    class PE32(ctypes.Structure):
+        _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_void_p), ("th32ModuleID", wintypes.DWORD),
+                    ("cntThreads", wintypes.DWORD), ("th32ParentProcessID", wintypes.DWORD),
+                    ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
+                    ("szExeFile", ctypes.c_wchar * 260)]
+    out: list[dict] = []
+    try:
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        snap = k32.CreateToolhelp32Snapshot(0x2, 0)
+        if not snap or snap == wintypes.HANDLE(-1).value:
+            return out
+        try:
+            e = PE32()
+            e.dwSize = ctypes.sizeof(PE32)
+            ok = k32.Process32FirstW(snap, ctypes.byref(e))
+            while ok:
+                out.append({"pid": int(e.th32ProcessID), "ppid": int(e.th32ParentProcessID),
+                            "name": e.szExeFile, "title": ""})
+                ok = k32.Process32NextW(snap, ctypes.byref(e))
+        finally:
+            k32.CloseHandle(snap)
+        titles: dict[int, str] = {}
+        u32 = ctypes.WinDLL("user32")
+        proto = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+        def each(hwnd, _l):
+            if u32.IsWindowVisible(hwnd):
+                n = u32.GetWindowTextLengthW(hwnd)
+                if n:
+                    buf = ctypes.create_unicode_buffer(n + 1)
+                    u32.GetWindowTextW(hwnd, buf, n + 1)
+                    pid = wintypes.DWORD()
+                    u32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                    titles.setdefault(pid.value, buf.value)
+            return True
+        u32.EnumWindows(proto(each), 0)
+        for p in out:
+            p["title"] = titles.get(p["pid"], "")
+    except (OSError, AttributeError):
+        pass
+    return out
+
+
+def python_child(pid: int) -> int:
+    """A venv / py.exe launcher runs the real python.exe as its child: that child's PID (else *pid*)."""
+    for p in list_processes():
+        if p.get("ppid") == int(pid) and process_kind(p["name"]) == "python":
+            return p["pid"]
+    return int(pid)
 
 
 def process_kind(name: str) -> str:
@@ -189,6 +234,7 @@ def make_tcp_dap():
     from PyQt6.QtNetwork import QTcpSocket
 
     from .bridgedebug import AttachDap, free_port
+    from .dap import DapSession
 
     class TcpDap(AttachDap):
         """AttachDap for adapters that listen on TCP: ``dlv dap --listen=127.0.0.1:<port>``."""
@@ -201,6 +247,15 @@ def make_tcp_dap():
             self.sock: QTcpSocket | None = None
             self._log = b""
             self._tries = 0
+            self.terminate_on_stop = True       # Attach to Process sets False (detach, the program goes on)
+
+        def _dispatch(self, msg):
+            # attached: the program's own output never comes through dlv, so every output event
+            # (logpoints use category "stdout") is shown - only Delve's banner is dropped
+            if msg.get("type") == "event" and msg.get("event") == "output":
+                if (msg.get("body") or {}).get("output", "").startswith("Type 'dlv help'"):
+                    return
+            DapSession._dispatch(self, msg)
 
         def start(self):
             if not self.argv or not self.argv[0]:
@@ -274,3 +329,116 @@ def make_tcp_dap():
                     self.proc.waitForFinished(1000)
 
     return TcpDap
+
+
+# ====================================================================== Attach to Process
+def process_path(pid: int) -> str:
+    """Full path of the executable of process *pid* ('' when it cannot be read)."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+            k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            k32.OpenProcess.restype = wintypes.HANDLE
+            h = k32.OpenProcess(0x1000, False, int(pid))          # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                return ""
+            try:
+                buf = ctypes.create_unicode_buffer(32768)
+                size = wintypes.DWORD(len(buf))
+                if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+                    return buf.value
+            finally:
+                k32.CloseHandle(h)
+        except (OSError, AttributeError):
+            pass
+        return ""
+    try:
+        return os.readlink(f"/proc/{int(pid)}/exe")
+    except OSError:
+        return ""
+
+
+def is_go_binary(path: str) -> bool:
+    try:
+        with open(path, "rb") as fh:
+            return b"Go build ID:" in fh.read(1 << 20) or b"Go buildinf:" in fh.read(4 << 20)
+    except OSError:
+        return False
+
+
+ATTACH_ENGINES = {"python": "Python (debugpy)", "native": "Native C/C++/Fortran/Rust (gdb)",
+                  "go": "Go (Delve)", "dotnet": ".NET (netcoredbg)"}
+
+
+def attach_engine_for(proc: dict) -> str:
+    """Best engine for a process dict from list_processes() (+ 'path')."""
+    kind = proc.get("kind") or ""
+    if kind not in ("python", "dotnet", "native"):
+        kind = process_kind(Path(proc.get("path") or process_path(proc["pid"]) or "x").name)
+    if kind in ("python", "dotnet"):
+        return kind
+    path = proc.get("path") or process_path(proc["pid"])
+    return "go" if path and is_go_binary(path) else "native"
+
+
+def attach_missing(engine: str) -> str:
+    """Why *engine* cannot attach here ('' = ready)."""
+    import importlib.util
+    if engine == "python":
+        return "" if importlib.util.find_spec("debugpy") else "debugpy is not installed (pip install debugpy)"
+    if engine == "go":
+        return "" if find_dlv() else "Delve (dlv) was not found (Debug > Install Delve)"
+    from .bridgedebug import find_gdb, find_netcoredbg
+    if engine == "dotnet":
+        return "" if find_netcoredbg() else "netcoredbg was not found (%LOCALAPPDATA%\\RADIDE\\tools\\netcoredbg)"
+    return "" if find_gdb() else "gdb was not found (WinLibs in %LOCALAPPDATA%\\RADIDE\\toolchains\\mingw64)"
+
+
+def make_attach_session(engine: str, pid: int, exe: str, cwd, breakpoints, parent=None):
+    """A Session-compatible debugger attached to the running process *pid*.
+    Stop detaches (the program keeps running), like Visual Studio's Detach All."""
+    import sys
+
+    from .bridgedebug import AttachDap, find_gdb, find_netcoredbg, gdb_env
+
+    class ProcessAttach(AttachDap):
+        def stop(self):
+            if self.running():
+                self.user_stopped = True
+                self._request("disconnect", {"terminateDebuggee": False})
+                if not self.proc.waitForFinished(2500):
+                    self.proc.kill()
+                    self.proc.waitForFinished(1000)
+
+        def _dispatch(self, msg):
+            from .dap import DapSession
+            DapSession._dispatch(self, msg)           # attached: show the program's output events too
+
+        def _emit_stop(self, info):
+            skip = ("registers.", "register.", "globals.", "global.")
+            info.variables = [(n, t, v if v or n not in info.refs else "{...}") for n, t, v in info.variables
+                              if not n.lower().startswith(skip)]
+            info.refs = {n: r for n, r in info.refs.items() if not n.lower().startswith(skip)}
+            super()._emit_stop(info)
+
+    if engine == "python":
+        pid = python_child(pid)                    # venv launcher -> the real interpreter
+        s = ProcessAttach([sys.executable, "-m", "debugpy.adapter"], "debugpy",
+                          {"request": "attach", "processId": int(pid), "justMyCode": False}, cwd, None, breakpoints, parent)
+    elif engine == "go":
+        s = make_tcp_dap()([find_dlv(), "dap"], "go", {"request": "attach", "mode": "local", "processId": int(pid)},
+                           cwd, None, breakpoints, parent)
+        s.terminate_on_stop = False
+    elif engine == "dotnet":
+        s = ProcessAttach([find_netcoredbg(), "--interpreter=vscode"], "coreclr",
+                          {"type": "coreclr", "request": "attach", "processId": int(pid), "justMyCode": False},
+                          cwd, None, breakpoints, parent)
+    else:
+        gdb = find_gdb()
+        args = {"pid": int(pid)}
+        if exe:
+            args["program"] = exe
+        s = ProcessAttach([gdb, "-i", "dap"], "gdb", args, cwd, gdb_env(gdb), breakpoints, parent)
+    s.attached_pid = int(pid)
+    return s

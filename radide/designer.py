@@ -367,12 +367,18 @@ class Overlay(QWidget):
 
     # ------------------------------------------------------------ drag & drop
     def dragEnterEvent(self, e):
-        if e.mimeData().hasFormat(MIME):
+        if e.mimeData().hasFormat(MIME) or e.mimeData().hasFormat("application/x-radide-dbsource"):
             e.acceptProposedAction()
 
     dragMoveEvent = dragEnterEvent
 
     def dropEvent(self, e):
+        if e.mimeData().hasFormat("application/x-radide-dbsource"):     # a table from the Data Sources window
+            from .features.data_sources import drop_on_designer
+            drop_on_designer(self.view, bytes(e.mimeData().data("application/x-radide-dbsource")).decode(),
+                             e.position().toPoint())
+            e.acceptProposedAction()
+            return
         name = bytes(e.mimeData().data(MIME)).decode()
         self.view.create_control(name, e.position().toPoint())
         TOOL_STATE.set(None)
@@ -561,6 +567,9 @@ class FormFrame(QWidget):
     def paintEvent(self, _e):
         p = QPainter(self)
         if self.view.phone.paint(p, self):          # phone / tablet frame (radide/mobile/frame.py)
+            return
+        from .usercontrols import paint_frame
+        if paint_frame(self, p):                    # a user control: no window caption
             return
         r = self.rect()
         doc = self.view.doc
@@ -758,6 +767,8 @@ class DesignerView(QScrollArea):
         self.previews: dict[int, QWidget] = {}
         self.phone = PhoneChrome(self)             # mobile forms: phone frame + device bar
         self.setWidget(self.content)
+        self.zoom = 1.0                            # designer zoom (radide/designer_zoom.py)
+        self._zoom_host = None
         doc.structureChanged.connect(self.rebuild)
         doc.controlChanged.connect(self.on_control_changed)
         doc.selectionChanged.connect(self._on_selection)
@@ -769,6 +780,9 @@ class DesignerView(QScrollArea):
     # ------------------------------------------------------------ Blend preview hooks
     def design_props(self, c: Control) -> dict:
         """c's properties as previewed (selected visual state / timeline position), else c.props."""
+        lp = getattr(self, "_loc_preview", None)          # a mirrored (RightToLeftLayout) language
+        if lp is not None and lp.mirrored:
+            return lp.design_props(c)
         bp = getattr(self, "_blend_preview", None)
         if bp is not None:
             try:
@@ -779,6 +793,9 @@ class DesignerView(QScrollArea):
 
     def form_props(self) -> dict:
         """The form's properties as previewed (a custom state's Text / BackColor / size ...)."""
+        lp = getattr(self, "_loc_preview", None)          # the Language being edited (its Text)
+        if lp is not None and lp.code:
+            return lp.form_props()
         bp = getattr(self, "_blend_preview", None)
         if bp is not None:
             try:
@@ -795,6 +812,7 @@ class DesignerView(QScrollArea):
     # ------------------------------------------------------------ layout
     def layout_form(self) -> None:
         if self.phone.layout():
+            self.zoom_fit()
             return
         fp = self.form_props()
         w, h = int(fp["Width"]), int(fp["Height"])
@@ -804,11 +822,26 @@ class DesignerView(QScrollArea):
         self.surface.setGeometry(BORDER, BORDER + CAPTION + mh, w, h)
         self.overlay.setGeometry(0, 0, w, h)
         tray_h = 40 if self.tray.isVisibleTo(self.content) else 0
-        total_w = max(fw + 2 * MARGIN, self.viewport().width())
+        total_w = max(fw + 2 * MARGIN, int(self.viewport().width() / max(0.25, getattr(self, "zoom", 1.0))))
         self.tray.setGeometry(0, fh + 2 * MARGIN, total_w, tray_h)
         self.content.resize(total_w, fh + 2 * MARGIN + tray_h + 4)
         self.frame.update()
         self.surface.update()
+        self.zoom_fit()
+
+    # ------------------------------------------------------------ zoom (Ctrl+wheel, 25% - 400%)
+    def set_zoom(self, factor: float) -> None:
+        from .designer_zoom import set_zoom
+        set_zoom(self, factor)
+
+    def zoom_fit(self) -> None:
+        if getattr(self, "_zoom_host", None) is not None:
+            self._zoom_host.fit()
+
+    def wheelEvent(self, e):
+        from .designer_zoom import wheel
+        if not wheel(self, e):
+            super().wheelEvent(e)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)

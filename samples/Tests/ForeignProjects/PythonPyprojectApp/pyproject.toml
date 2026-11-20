@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wordstat"
+version = "0.1.0"
+description = "Counts words - a small src-layout package"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+wordstat = "wordstat.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

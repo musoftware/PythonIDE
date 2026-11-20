@@ -86,11 +86,18 @@ TEMPLATES: list[WebTemplate] = [
                 "add, delete). npm install runs when the project is created.",
                 "node-web", "Node.js", ".", "server.js", "node-express", ("node", "npm"),
                 default_name="ExpressSite", features=("Express 4", "REST API", "Static files")),
-    WebTemplate("laravel", "Laravel",
-                "The Laravel PHP framework via 'composer create-project laravel/laravel', configured for "
-                "SQLite (database/database.sqlite) and migrated. Needs Composer and an internet connection.",
-                "php-web", "Applications", "public", "index.php", "", ("php", "composer", "internet"),
-                builder="composer-laravel", default_name="LaravelApp", features=("Composer", "SQLite")),
+    WebTemplate("laravel", "Laravel App",
+                "Laravel (latest stable) via 'composer create-project laravel/laravel' with the site's PHP: .env and "
+                "APP_KEY, SQLite database (or the IDE's local MariaDB / PostgreSQL) migrated, laravel-ide-helper "
+                "for IntelliSense. F5 runs it with Xdebug; Laravel panel: Artisan, Routes, Tinker.",
+                "php-web", "Applications", "public", "/", "", ("php", "internet"),
+                builder="composer-laravel", default_name="LaravelApp",
+                features=("Composer", "SQLite", "Artisan", "IntelliSense")),
+    WebTemplate("laravel-api", "Laravel API",
+                "A Laravel JSON API: create-project + 'artisan install:api' (routes/api.php, Sanctum tokens) and an "
+                "/api/status example route. Test it with the REST client.",
+                "php-web", "Applications", "public", "/api/status", "", ("php", "internet"),
+                builder="composer-laravel", default_name="LaravelApi", features=("Composer", "Sanctum", "JSON API")),
     WebTemplate("wordpress", "WordPress",
                 "The latest WordPress from wordpress.org with the official 'SQLite Database Integration' "
                 "plugin, so it runs without MySQL. Open the site and finish the 5-minute install.",
@@ -148,6 +155,8 @@ def find_tool(name: str) -> str:
                   str(Path(os.environ.get("APPDATA", "")) / "Composer" / "vendor" / "bin" / "composer.bat")):
             if Path(h).exists():
                 return h
+        from .php_toolchain import find_composer       # RAD IDE's portable Composer
+        return find_composer()
     return ""
 
 
@@ -243,7 +252,10 @@ def _copy_template(src: Path, dst: Path, name: str) -> list[Path]:
 
 def web_block(t: WebTemplate) -> dict:
     """The "web" block of project.radproj for a template (CONTRACTS 8.1)."""
-    return {"root": t.root, "start": t.start, "port": 0, "live_reload": True, "template": t.id}
+    block = {"root": t.root, "start": t.start, "port": 0, "live_reload": True, "template": t.id}
+    if t.builder == "composer-laravel":
+        block.update(framework="laravel", php="auto")
+    return block
 
 
 def write_project_file(folder: Path, name: str, t: WebTemplate, **extra) -> Path:
@@ -412,39 +424,12 @@ def _version_tuple(v: str) -> tuple[int, ...]:
 
 # ===================================================================== Laravel
 def _create_laravel(t: WebTemplate, folder: Path, name: str, log: Log, timeout: int) -> None:
-    php, composer = find_tool("php"), find_tool("composer")
-    if not php:
-        raise RuntimeError("PHP is not installed (https://windows.php.net/download).")
-    if not composer:
-        raise RuntimeError("Composer is not installed: get it from https://getcomposer.org/download/ and "
-                           "create the Laravel project again.")
-    folder.parent.mkdir(parents=True, exist_ok=True)
-    if folder.exists():
+    """Laravel App / API (radide/web_site/frameworks/laravel.py does the work)."""
+    from .frameworks.laravel import create_laravel
+    if folder.exists() and not any(folder.iterdir()):
         folder.rmdir()                         # empty (checked) - composer wants to create it
-    log("[gallery] composer create-project laravel/laravel (this takes a few minutes) ...")
-    run_tool([composer, "create-project", "laravel/laravel", str(folder), "--prefer-dist", "--no-interaction",
-              "--no-progress", "--no-ansi"], folder.parent, log, timeout)
-    env_file = folder / ".env"
-    if not env_file.exists() and (folder / ".env.example").exists():
-        shutil.copyfile(folder / ".env.example", env_file)
-    db_file = folder / "database" / "database.sqlite"
-    db_file.parent.mkdir(parents=True, exist_ok=True)
-    db_file.touch()
-    if env_file.exists():
-        text = env_file.read_text(encoding="utf-8")
-        text = configure_laravel_env(text, display_name(name))
-        env_file.write_text(text, encoding="utf-8")
-        if not re.search(r"^APP_KEY=base64:", text, re.M):
-            run_tool([php, "artisan", "key:generate", "--force"], folder, log, 300)
-    try:
-        run_tool([php, "artisan", "migrate", "--force"], folder, log, 600)
-    except RuntimeError as e:
-        log(f"[gallery] migrations failed ({e}); run 'php artisan migrate' later.")
-    log("[gallery] Laravel is ready (web root: public/).")
-    (folder / "RADIDE-README.md").write_text(
-        f"# {display_name(name)} (Laravel)\n\nCreated by the RAD IDE App Gallery with `composer create-project "
-        "laravel/laravel`.\nThe web root is `public/`; the database is SQLite (`database/database.sqlite`).\n"
-        "Press F5 to run it with `php -S`, or use `php artisan serve`.\n", encoding="utf-8")
+    create_laravel(folder, display_name(name), log=log, kind="api" if t.id == "laravel-api" else "app",
+                   timeout=timeout)
 
 
 def configure_laravel_env(text: str, app_name: str) -> str:
@@ -552,7 +537,7 @@ def wordpress_config(sample: str, plugin_version: str = "") -> str:
 # radide/features/app_gallery.py points it at the Output window.
 progress_log: Log = print
 ICONS = {"php-empty": "SP_FileIcon", "php-starter": "SP_DirHomeIcon", "php-sqlite-app": "SP_DriveHDIcon",
-         "html-bootstrap": "SP_DesktopIcon", "node-express": "SP_DriveNetIcon", "laravel": "SP_ComputerIcon",
+         "html-bootstrap": "SP_DesktopIcon", "node-express": "SP_DriveNetIcon", "laravel": "SP_ComputerIcon", "laravel-api": "SP_DriveNetIcon",
          "wordpress": "SP_FileDialogDetailedView"}
 
 
@@ -565,7 +550,7 @@ def site_creator(t: WebTemplate) -> Callable[[Path, str], dict]:
     """create(folder, name) -> web overrides, in the shape web_site.project.SiteTemplate wants."""
     def create_site(folder: Path, name: str) -> dict:
         extra = build_files(t.id, Path(folder), name, lambda s: progress_log(s))
-        web = {k: v for k, v in web_block(t).items() if k in ("root", "start")}
+        web = {k: v for k, v in web_block(t).items() if k in ("root", "start", "framework", "php")}
         if extra:
             web["gallery"] = extra
         return web

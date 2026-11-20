@@ -1,0 +1,19 @@
+{
+  "base": "Dark",
+  "monaco": "vs-dark",
+  "colors": {
+    "window": "#073642", "base": "#002B36", "alt_base": "#073642", "text": "#93A1A1", "muted": "#839496",
+    "button": "#0A4352", "button_text": "#EEE8D5", "border": "#2A5A66",
+    "highlight": "#268BD2", "highlight_text": "#FDF6E3", "link": "#2AA198", "accent": "#268BD2",
+    "title1": "#073642", "title2": "#073642", "title_text": "#EEE8D5",
+    "toolbar1": "#073642", "toolbar2": "#073642", "toolbar_border": "#0E4A59", "bar_text": "#EEE8D5",
+    "menu": "#002B36", "menu_text": "#EEE8D5", "menu_sel": "#0E4A59", "menu_sel_text": "#FDF6E3", "menu_border": "#0E4A59",
+    "tab": "#073642", "tab_text": "#93A1A1", "tab_sel": "#002B36", "tab_sel_text": "#FDF6E3", "tab_hover": "#0E4A59",
+    "status": "#268BD2", "status_text": "#FDF6E3", "header": "#073642", "header_text": "#93A1A1",
+    "tooltip": "#073642", "tooltip_text": "#EEE8D5", "heading": "#B58900", "note": "#B58900",
+    "success": "#859900", "error": "#DC322F", "designer_back": "#073642", "category_back": "#0E4A59"
+  },
+  "code": {"keyword": "#859900", "builtin": "#268BD2", "comment": "#586E75", "string": "#2AA198",
+           "number": "#D33682", "decorator": "#B58900", "defname": "#268BD2", "operator": "#93A1A1"},
+  "chrome": {"margin": "#002B36", "margin_bp": "#073642", "line_number": "#586E75", "caret_line": "#073642"}
+}

@@ -206,6 +206,36 @@ only had desktop forms; this round adds real **web site** development plus Blend
   "Open in external browser"); **Requests dock** lists the server requests (WebMatrix "Requests" view);
   Stop stops the server. A web project can be a solution project like any other.
 - New Project dialog: a "Web" group with PHP Web Site / HTML Site / Node.js Site and their templates (see 8.5).
+- **PHP version per site** (round 6, `radide/web_site/php_toolchain.py` + `radide/features/php_tools.py`):
+  `"web": {"php": "auto" | "8.4" | "8.4.28" | "<path to php.exe>"}` - "auto" = newest installed PHP that satisfies
+  composer.json `require.php`; missing = Tools > Options interpreter, else auto. Site Settings has a "PHP version"
+  row. Installs are detected in `%LOCALAPPDATA%\RADIDE\toolchains\php\<series>` (official windows.php.net NTS
+  x64 zips, SHA256 verified, generated php.ini with extension_dir + Laravel/CodeIgniter extensions),
+  `C:\tools\php*`, PATH, XAMPP/Laragon/WAMP/Scoop - the real version is read from each php.exe.
+  `web_workspace.server_interpreter(win, plugin, project)` resolves it for the dev server and the PHP debugger
+  (Xdebug DLL matched to that PHP); intelephense gets `environment.phpVersion`; Composer
+  (`toolchains\composer\composer.phar` + `composer.bat`, `php_toolchain.composer_argv(args, php)`) runs with it:
+  Tools > Composer (install / update / require / remove / dump-autoload / validate / outdated), Tools > PHP
+  Versions... (list + Install PHP 8.x / Composer). Framework code calls `php_toolchain.project_php(project)` and
+  `win.run_composer(args, project)`.
+- **PHP frameworks** (round 6). Shared: `radide/web_site/frameworks/common.py` - registry
+  (`register_framework(PhpFramework(id, title, detect, router, module))`, `framework_of(folder)` = `web.framework`
+  of project.radproj or detected, `framework_module(id)`), `router_for(folder, root)` (php_web.backend appends it
+  to `php -S` when `web.router` is empty; a module may also define `backend_spec(server, spec)`), `run_php`,
+  `StampCache` / `tree_stamp` (indexes rebuilt only when their files change), PHP string / call-context and
+  config-array parsers, completion item shape. A framework module exposes `complete_items(folder, path, text,
+  line, col) -> list | None` and `definition(folder, path, text, line, col) -> (file, line) | None`;
+  `radide/features/php_frameworks.py` merges them into Monaco through `MonacoEditor.completion_providers`
+  (fn(editor, line, col) -> items; LSP items with the same label are dropped; `"exclusive": True` = only ours) and
+  a `radPhpFw` channel object (F12 / Ctrl+click via a definition provider + `registerEditorOpener`).
+  **Laravel** (`frameworks/laravel.py`, owner: laravel): templates "Laravel App" / "Laravel API" (gallery ids
+  `laravel`, `laravel-api`; `create_laravel()` = composer create-project, .env + key:generate, SQLite or the local
+  MariaDB / PostgreSQL server, migrate, `install:api`, barryvdh/laravel-ide-helper); `web = {"root": "public",
+  "start": "/", "framework": "laravel", "php": "auto"}`; Blade language `radide/web/blade.js` (`*.blade.php`);
+  Laravel panel (Artisan form from `artisan list --format=json`, Routes from `route:list --json`, Tinker =
+  `frameworks/laravel_repl.php` persistent REPL); opening a project without vendor/ offers composer install / .env /
+  key / database + migrate --seed / npm install + build (`win.prepare_laravel()`). Sample:
+  `samples/Tests/Web/Laravel_Blog`.
 
 ### 8.2 Design view (owner: web-design) - Expression Web
 `radide/web_site/design.py` + assets in `radide/web/grapes/` (GrapesJS, BSD licence; get it with

@@ -492,7 +492,11 @@ class SceneCanvas(QGraphicsView):
         if ly is None or ly.type != "tiles" or cell is None:
             return []
         tile = -1 if tool == "erase" else self.editor.current_tile
-        if tool in ("paint", "erase"):
+        terrain = getattr(self.editor, "autotile_terrain", "")
+        if terrain:                                   # terrain brush: edges / corners pick themselves
+            from .autotile import apply_tool
+            changed = apply_tool(self.editor.scene, ly, terrain, tool, cell, end_cell)
+        elif tool in ("paint", "erase"):
             changed = [cell] if ly.paint(cell[0], cell[1], tile) else []
         elif tool == "rect":
             end = end_cell or cell

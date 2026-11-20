@@ -56,6 +56,11 @@ gcc/g++/gfortran/gdb (WinLibs) live in `%LOCALAPPDATA%\RADIDE\toolchains\mingw64
 - **Publish**: FTP / FTPS / SFTP / folder, incremental, dry run. **Reports**: SEO crawler (+ Lighthouse when npx is
   available). **SuperPreview**: side-by-side sizes, onion skin, installed browsers.
 - **IntelliSense** for HTML, CSS/SCSS, JSON, PHP (intelephense), JS/TS, plus **Emmet** (`ul>li*3` + Tab).
+- **Laravel** (New Project > PHP Web Site > Laravel App / Laravel API): composer create-project with the right PHP,
+  SQLite or local MariaDB/PostgreSQL, F5 with Xdebug, **Laravel panel** (Artisan commands with argument forms,
+  Routes, Tinker), **Blade** language, and IntelliSense read from the project as it changes: `route('`, `view('`,
+  `config('`, `__('`, `env('`, model columns/relations after `->`, `Model::where('`, Blade `@directives`,
+  `<x-components>` + props, view variables; F12 / Ctrl+click to the target. Sample: `samples/Tests/Web/Laravel_Blog`.
 
 ## Blend features (python-tk, python-qt forms)
 
@@ -155,3 +160,154 @@ in the editor), compare a file with any commit, tags, cherry-pick / revert / res
 .gitignore editor with templates, remotes and git settings, and a **GitHub** tab (pull requests / issues,
 create and checkout a PR) through the GitHub CLI - downloaded on request into
 `%LOCALAPPDATA%\RADIDE\tools\gh` if it is missing. Try it: `samples/Tests/Git/GitClient_Demo`.
+
+## Reports (Crystal Reports style)
+
+**Project > Add Report...** (wizard: data source, fields, group by, totals, chart, Arabic RTL - or blank) makes
+`<Name>.rpt.json` and opens the **Report Designer**: report / page / group header and footer bands and detail;
+items text (`{expressions}`), field, expression (`Sum('Amount')`, `Count()`, `Avg`, `Min`, `Max`,
+`RunningSum`, `PageNumber`, `TotalPages`, `Today()` ...), line, box, image, Code 128 / EAN barcode, QR code and
+bar / line / pie chart; data from an SQL query on a Databases connection (SQLite, MySQL, PostgreSQL), a CSV /
+JSON file or a Data panel dataset, with parameters (`:Name`). The **Preview** tab pages, zooms, prints and exports
+to PDF, HTML, CSV and Excel. Arabic and right-to-left text render correctly (mirrored layout optional).
+The **ReportViewer** control (Toolbox) shows a report on python-tk / python-qt forms:
+`ReportViewer1.Parameters["CustomerId"] = 3`, `Refresh()`, `SetData(rows)`, `Print()`, `ExportPdf(path)`;
+the runtime `radreport.py` is copied into the project. Try it: `samples/Tests/Reports`.
+
+## User controls, designer zoom and form localization
+
+**Project > Add User Control...** creates a user control: a `.form` (`"kind": "usercontrol"`) designed like a form
+(plain surface, no window caption) with its own code file. **Project > User Control Properties and Events...**
+(also right-click on its designer) declares its properties (name, type, default, *maps to* an inner control
+property such as `lblTitle.Text`, description) and its events. The Toolbox lists the project's user controls in a
+**"<Project> Components"** group; they are placed on forms and inside other user controls (nested), their
+properties appear in the Properties window (category Custom) and their events in the Events list. Code (python-tk,
+python-qt): one class per user control in `<Name>_designer.py`, forms create
+`self.Home = AddressBox(master, owner=self, name="Home")`; the user control raises `self.RaiseEvent("Changed")`
+and the form handles `Home_Changed()`. Logic: `radide/usercontrols.py`, `radide/features/user_controls.py`.
+
+**Designer zoom**: Ctrl+mouse wheel, View > Zoom or the zoom box in the status bar (25% - 400%) for forms, user
+controls and phone frames (the game scene editor keeps its own zoom; the status box drives it too) -
+`radide/designer_zoom.py`.
+
+**Localization** (`radide/features/localization.py`): form properties **Localizable**, **Language**,
+**RightToLeft**, **RightToLeftLayout**. Pick a Language to translate the form in the designer (Text / ToolTip /
+Items / TabPages / Columns and user-control string properties go to that language's table; RightToLeftLayout
+mirrors the design surface); **Format > Localization Strings...** edits all languages in one grid. Save writes
+`<Form>.<lang>.resx.json`; the generated program picks the language from `RADIDE_LANG`, a `language.txt` next to
+the program or the Windows UI language, mirrors the layout for Arabic and switches live with
+`self.ApplyLanguage("fr")`. Try it: `samples/Tests/UserControls`, `samples/Tests/Localization`.
+
+### Debugger: expandable Locals/Watch, Threads, hit counts, logpoints, Java/Go, Attach to Process
+
+- **Locals and Watch are trees**: objects, lists, dicts, arrays, structs, VB Types/Collections expand (children
+  are fetched when you open them) - debugpy, gdb, Delve, netcoredbg, js-debug (DAP `variablesReference`), the
+  Python agent, the VB runtime and the Java debugger.
+- **Debug > Breakpoint Settings...**: condition, hit count (= / multiple of / >=) and *log a message instead of
+  stopping* (`total is {total}`) - logpoints and hit counts for every engine (Ring gets plain conditions).
+- **Debug > Windows > Threads** (Ctrl+Alt+H): threads / goroutines; double-click shows that thread's stack and locals.
+- **Java** (java-bridge): a built-in JDWP debugger (`radide/jdwp_engine.py`, only the JDK is needed).
+  **Go** (go-bridge): Delve (`dlv dap`, build with `-N -l`); Debug > Install Delve builds it into
+  `%LOCALAPPDATA%\RADIDE\tools\dlv`.
+- **Debug > Attach to Process...** (Ctrl+Alt+P): Python (debugpy injects itself), native (gdb), Go (Delve),
+  .NET (netcoredbg); Stop detaches and the program keeps running. Break All pauses a DAP session.
+- Code: `radide/debug_extras.py`, `radide/features/debug_views.py`. Try it: `samples/Tests/Debugger/Debug_*_Expand`,
+  `Debug_Java_JDWP`, `Debug_Go_Delve`, `Attach_Python`, `Attach_C_gdb`.
+
+### Games: physics, particles, auto-tiling, Python -> GDScript
+
+- **Physics (pymunk)**: scene inspector > *Physics (pymunk)* switches it on (gravity, collision tile layers
+  become walls, joints: pivot / pin / spring / rope / motor); object inspector > *Physics body*: dynamic /
+  static / kinematic, box / circle / poly (*Outline from picture*), mass, friction, elasticity, fixed
+  rotation, sensor. Code: `ApplyImpulse(obj, ix, iy)`, `ApplyForce`, `SetVelocity`. Runtime:
+  `radgame_physics.py` (copied next to radgame.py; `pip install pymunk`).
+- **Particles**: *Add > Particle Editor...* (rate, lifetime, speed, angle / spread, gravity, colour and size
+  over life, shape / texture, additive blend, burst, duration, live preview with presets fire, smoke,
+  sparkle, explosion, rain, snow, trail, coin); *Add > Particle emitter* or the *Particles* section of any
+  object; code `Emit("smoke", x, y)` / `Emit("trail", Player)` / `Burst("explosion", x, y, 40)` /
+  `obj.emitting = False`. Runtime: `radgame_particles.py`.
+- **Auto-tiling**: Tiles tab > *Terrain* + *Terrains...*: 16-tile (sides) and 47-tile blob terrain sets,
+  a template tileset generator, then Paint / Rect / Fill / Erase choose edges and corners by themselves;
+  `SetTerrain(layer, col, row, "grass")` at run time.
+- **Export to Godot translates the Python handlers to GDScript** (`radide/games/gd_translate.py`, rules for
+  the radgame API; the AI provider - when configured - for what the rules cannot do; the rest stays as
+  `# TODO` comments). Physics bodies / joints, emitters and terrains are exported too (radgame_scene.gd).
+- Code: `radide/games/physics.py`, `particles.py`, `autotile.py`, `gd_translate.py`, `runtime/radgame_physics.py`,
+  `runtime/radgame_particles.py`. Try it: `samples/Tests/Games/Physics_Playground`, `Particles_Showcase`,
+  `AutoTile_Island`, `SkyHopper_GodotExport` (`python tests/run_autopilot.py` plays the Godot export headless).
+
+## IDE display language: English / العربية
+
+- **Tools > Options > Environment > Language** (or **Tools > Language**): English or Arabic. The switch is live:
+  menus, tool bars, docked windows, tabs, dialogs, message boxes and Qt's own buttons are translated, the IDE
+  turns right-to-left, while code editors, the form designer, terminals and web views stay left-to-right.
+  Switching back restores every English text. Help > RAD IDE Help shows `radide/features/help/index_ar.html`.
+- How it works (`radide/i18n/__init__.py`): a catalog `radide/i18n/ar.json` keyed by the English text
+  (`strings`, plus `patterns` such as `"Branch: {}"`), `tr(text)`, a translation pass when a widget is shown /
+  an action is added, and translating setters. **Code keeps seeing English**: `QAction.text()`, `QMenu.title()`,
+  `windowTitle()`, `tabText()` ... return the original English, so lookups like
+  `a.text().replace("&", "") == "Tools"` and tests keep working; `i18n.shown(obj)` returns what is on screen.
+  Property names, control type names and the user's own forms are never translated.
+- New UI strings: `python tools/extract_ui_strings.py` (scans `radide/**/*.py` -> `radide/i18n/strings_en.json`),
+  then `python tools/extract_ui_strings.py --missing ar` lists what `ar.json` still lacks.
+  Test: `samples/Tests/I18n/ArabicUI`.
+
+## Data binding to databases (Data Sources window)
+
+**Data > Show Data Sources** (Shift+Alt+D), VB 2005 style: *Add New Data Source...* picks a connection of the
+Databases workspace (SQLite, MySQL / MariaDB, PostgreSQL, or an ODBC connection string with pyodbc) and the tables /
+views / a query. Drag a table onto a form for a **BindingNavigator** (first / previous / position / next / last /
+add / delete / save) + **DataGridView**, or - right-click *Drop as Details* - a Label + TextBox / CheckBox per column;
+drag a column for one field. The designer shows real rows. Properties (Data category): `DataSource`, `DataMember`
+(column, or `Source.Column`), `DisplayMember` / `ValueMember` (ListBox / ComboBox lookups).
+Generated code (python-tk, python-qt, vb-basic): `self.Customers.Fill()` / `Fill("City = ?", "Cairo")` / `Update()` /
+`AddNew()` / `RemoveCurrent()` / `Position` / `MoveNext()` / `Value(col)` / `SetValue(col, v)` / `Search(text)` /
+`SortBy(col)` / `HasChanges`, form `FillAll()` / `UpdateAll()`, parameterized INSERT / UPDATE / DELETE, two-way
+bindings; VB code: `Customers.MoveNext`, `Customers.Fill "City = ?", "Cairo"`. Passwords are never stored in the
+project (F5 passes the ones the IDE knows as `RADIDE_DB_<CONNECTION>_PASSWORD`). Code: `radide/databinding_sql.py`,
+`radide/features/data_sources.py`. Samples: `samples/Tests/DataBinding`.
+
+## Web: JavaScript debugging, front-end frameworks, REST Client, Database Diagram
+
+- **Debug the page's JavaScript in the Preview**: F5 on a static, PHP, Node.js or Vite/Angular site attaches
+  vscode-js-debug (`pwa-chrome` attach) to the IDE's own browser engine (QtWebEngine DevTools port on 127.0.0.1,
+  limited to the site's URL); F9 in `.js` / `.jsx` / `.vue` / `.svelte` / `<script>` lines stops there (source
+  maps), with Locals, Call Stack, Watch, Immediate, F10/F11. PHP and Node sites debug the server and the page in one
+  session. Off switch: Tools > Options > Web (or `RADIDE_NO_JS_DEBUG=1`). Code: `radide/web_site/browser_debug.py`.
+- **Site > New Front-end App** (also New Project > Web > Node.js): React, React + TypeScript, Vue, Svelte, vanilla
+  (`npm create vite@latest`) and Angular (`ng new`; falls back to `@angular/cli@20` on older Node.js), then
+  `npm install`. F5 runs the framework's dev server in the Preview (its own hot reload), **Site > Build Production**
+  runs `npm run build` / `ng build`. Code: `radide/web_site/vite_templates.py`.
+- **REST Client** (Tools > REST Client, Ctrl+Alt+K): method, URL, params, headers, body (JSON / form / raw / XML),
+  Bearer / Basic auth, environments (`.vscode/settings.json` `rest-client.environmentVariables`, like VS Code),
+  history, pretty JSON, time and size, Copy/Paste cURL; requests are saved in `.http` files (VS Code REST Client
+  syntax: `###`, `@var = value`, `# @name`, `{{name.response.body.$.x}}`, `{{$guid}}` ...). In an `.http` file each
+  request has a **Send Request** lens. Code: `radide/web_site/rest_client.py`.
+- **Database Diagram** (Databases: right-click a connection, or the Diagram button): tables with columns, foreign
+  keys as lines, Auto Layout, drag to create a relationship, New Table / Add Column / Delete - shown as SQL DDL and
+  applied after OK (SQLite: safe table rebuild). Export PNG/SVG. Code: `radide/web_site/db_diagram.py`.
+- Samples: `samples/Tests/Web/JsDebug_StaticSite`, `JsDebug_PhpSite`, `Frontend_React_Vite`, `Frontend_Vue_Vite`,
+  `Frontend_Svelte_Vite`, `Frontend_Angular`, `RestClient_Requests`, `DbDiagram_Shop`.
+
+## Testing, coverage, formatting and refactoring
+
+- **Test Explorer** (Test > Test Explorer, Ctrl+E, T; VS Code layout: the flask "Testing" view): finds the tests of
+  the active project by itself - Python **pytest / unittest** (the project's `.venv`, else the IDE's Python with the
+  project on `PYTHONPATH`), **Jest / Vitest / node --test**, **go test**, **cargo test**, **dotnet test** (xUnit,
+  NUnit, MSTest via TRX), **PHPUnit**, **dart / flutter test**, **JUnit 5** (Maven, or javac + the official console
+  launcher downloaded once to `%LOCALAPPDATA%\RADIDE\tools\junit`), and simple conventions for **Ring**
+  (`test_*.ring`, `func test_*`) and **VB** (`Test*.bas`, `Sub Test*()`, `AssertEqual`). Tree file > class/group >
+  test with state and duration, Run All / Run Selected / Run Failed / Run tests in current file (Ctrl+R, T),
+  search and state filter, failure message + output, double-click = go to the test line, **Debug** a Python test
+  with debugpy (breakpoints in tests and code). Code: `radide/testing/`, `radide/features/test_explorer.py`.
+- **Code coverage**: Run with Coverage (coverage.py for Python, `go test -coverprofile`, Jest/Flutter lcov) colours
+  the editor gutter (green covered, red never run, amber branch not taken) and lists % per file.
+- **Format Document** (Edit, Shift+Alt+F, Ctrl+K Ctrl+D) and **Format on Save**: ruff / black, Prettier (installed
+  in `%LOCALAPPDATA%\RADIDE\lsp`), clang-format (C, C++, Java, C#), gofmt, rustfmt, dart format, PHP CS Fixer, or
+  the language server; one Ctrl+Z undoes the whole format. Tools > Options > Formatting chooses per language.
+  Code: `radide/features/formatting.py`, `radide/editkit.py`.
+- **Refactor** (Edit > Refactor, editor right-click): **Rename (F2)** with a preview of every change in every file,
+  **Quick Actions (Ctrl+.)** - quick fixes, refactorings, organize imports from the language server,
+  **Extract Method / Variable** (pylsp-rope, typescript, rust-analyzer ...), **Find All References (Shift+F12)**
+  dock. Code: `radide/features/refactor.py`.
+- Samples: `samples/Tests/Testing/` (one project per framework, each with a test that fails on purpose).

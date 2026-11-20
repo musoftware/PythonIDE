@@ -1,0 +1,23 @@
+{
+  "name": "CodeIgniter_Shop",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "public",
+    "start": "",
+    "port": 0,
+    "live_reload": true,
+    "framework": "codeigniter",
+    "php": "auto"
+  },
+  "databases": [
+    {
+      "name": "CodeIgniter_Shop (SQLite)",
+      "kind": "sqlite",
+      "path": "writable/database.db"
+    }
+  ]
+}

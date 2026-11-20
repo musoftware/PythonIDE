@@ -70,6 +70,17 @@ __radhub_*
 *.jar
 !radide/**/*.jar
 
+# ---- Visual Studio / MSBuild output
+.vs/
+x64/
+x86/
+*.idb
+*.ipch
+*.tlog
+*.lastbuildstate
+*.user
+*.suo
+
 # ---- Mobile: Flutter / Dart / React Native (Expo) / Kivy
 .flutter-plugins
 .flutter-plugins-dependencies

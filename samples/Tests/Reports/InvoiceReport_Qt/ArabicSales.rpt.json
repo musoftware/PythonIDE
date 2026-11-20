@@ -1,0 +1,310 @@
+{
+ "format": "radreport",
+ "version": 1,
+ "name": "ArabicSales",
+ "title": "تقرير المبيعات حسب العميل",
+ "page": {
+  "size": "A4",
+  "orientation": "Portrait",
+  "margins": [
+   36,
+   36,
+   36,
+   36
+  ]
+ },
+ "rightToLeft": true,
+ "mirrorLayout": true,
+ "font": {
+  "name": "Segoe UI",
+  "size": 10
+ },
+ "dataSource": {
+  "type": "sql",
+  "connection": {
+   "kind": "sqlite",
+   "path": "shop.db"
+  },
+  "query": "SELECT c.NameAr AS Customer, p.NameAr AS Product, p.Category, l.Qty, l.Qty * l.Price AS Amount\nFROM InvoiceLines l JOIN Invoices i ON i.Id = l.InvoiceId JOIN Customers c ON c.Id = i.CustomerId\nJOIN Products p ON p.Id = l.ProductId ORDER BY c.Id, p.Id"
+ },
+ "parameters": [],
+ "sort": [],
+ "filter": "",
+ "sortByGroups": false,
+ "groups": [
+  {
+   "name": "Customer",
+   "field": "Customer",
+   "expression": "",
+   "newPage": false,
+   "repeatHeader": true,
+   "keepTogether": true,
+   "sort": "asc",
+   "header": {
+    "height": 28,
+    "back": "#EAF3EA",
+    "items": [
+     {
+      "type": "text",
+      "name": "gCust",
+      "x": 0,
+      "y": 4,
+      "w": 400,
+      "h": 20,
+      "text": "العميل: {Customer}",
+      "bold": true,
+      "fontSize": 12,
+      "color": "#1B5E20"
+     }
+    ]
+   },
+   "footer": {
+    "height": 26,
+    "items": [
+     {
+      "type": "line",
+      "name": "gLine",
+      "x": 220,
+      "y": 1,
+      "w": 303,
+      "h": 2
+     },
+     {
+      "type": "text",
+      "name": "gLbl",
+      "x": 0,
+      "y": 4,
+      "w": 220,
+      "h": 18,
+      "text": "إجمالي {Customer}",
+      "bold": true
+     },
+     {
+      "type": "expression",
+      "name": "gSum",
+      "x": 290,
+      "y": 4,
+      "w": 100,
+      "h": 18,
+      "expression": "Sum('Amount')",
+      "format": "N2",
+      "bold": true
+     },
+     {
+      "type": "text",
+      "name": "gCnt",
+      "x": 390,
+      "y": 4,
+      "w": 133,
+      "h": 18,
+      "text": "عدد البنود: {Count()}",
+      "color": "#606060"
+     }
+    ]
+   }
+  }
+ ],
+ "bands": {
+  "reportHeader": {
+   "height": 60,
+   "items": [
+    {
+     "type": "text",
+     "name": "title",
+     "x": 0,
+     "y": 0,
+     "w": 523,
+     "h": 32,
+     "text": "تقرير المبيعات حسب العميل",
+     "fontSize": 20,
+     "bold": true,
+     "color": "#1B5E20"
+    },
+    {
+     "type": "text",
+     "name": "sub",
+     "x": 0,
+     "y": 32,
+     "w": 523,
+     "h": 20,
+     "text": "تقرير عربي من اليمين إلى اليسار - Arabic right-to-left report test",
+     "color": "#606060"
+    }
+   ]
+  },
+  "pageHeader": {
+   "height": 22,
+   "items": [
+    {
+     "type": "box",
+     "name": "hbox",
+     "x": 0,
+     "y": 1,
+     "w": 523,
+     "h": 20,
+     "fill": "#1B5E20",
+     "lineWidth": 0
+    },
+    {
+     "type": "text",
+     "name": "h0",
+     "x": 0,
+     "y": 1,
+     "w": 220,
+     "h": 20,
+     "text": "الصنف",
+     "bold": true,
+     "color": "#FFFFFF"
+    },
+    {
+     "type": "text",
+     "name": "h1",
+     "x": 220,
+     "y": 1,
+     "w": 70,
+     "h": 20,
+     "text": "الكمية",
+     "bold": true,
+     "color": "#FFFFFF"
+    },
+    {
+     "type": "text",
+     "name": "h2",
+     "x": 290,
+     "y": 1,
+     "w": 100,
+     "h": 20,
+     "text": "القيمة",
+     "bold": true,
+     "color": "#FFFFFF"
+    },
+    {
+     "type": "text",
+     "name": "h3",
+     "x": 390,
+     "y": 1,
+     "w": 133,
+     "h": 20,
+     "text": "الإجمالي التراكمي",
+     "bold": true,
+     "color": "#FFFFFF"
+    }
+   ]
+  },
+  "detail": {
+   "height": 18,
+   "alternateColor": "#F4F8F4",
+   "items": [
+    {
+     "type": "field",
+     "name": "dProd",
+     "x": 0,
+     "y": 0,
+     "w": 220,
+     "h": 18,
+     "field": "Product"
+    },
+    {
+     "type": "field",
+     "name": "dQty",
+     "x": 220,
+     "y": 0,
+     "w": 70,
+     "h": 18,
+     "field": "Qty"
+    },
+    {
+     "type": "field",
+     "name": "dAmt",
+     "x": 290,
+     "y": 0,
+     "w": 100,
+     "h": 18,
+     "field": "Amount",
+     "format": "N2"
+    },
+    {
+     "type": "expression",
+     "name": "dRun",
+     "x": 390,
+     "y": 0,
+     "w": 133,
+     "h": 18,
+     "expression": "RunningSum('Amount', 'report')",
+     "format": "N2",
+     "color": "#808080"
+    }
+   ]
+  },
+  "reportFooter": {
+   "height": 200,
+   "items": [
+    {
+     "type": "line",
+     "name": "rLine",
+     "x": 0,
+     "y": 2,
+     "w": 523,
+     "h": 2,
+     "lineWidth": 1.5,
+     "lineColor": "#1B5E20"
+    },
+    {
+     "type": "text",
+     "name": "rLbl",
+     "x": 0,
+     "y": 8,
+     "w": 290,
+     "h": 22,
+     "text": "الإجمالي العام",
+     "bold": true,
+     "fontSize": 12
+    },
+    {
+     "type": "expression",
+     "name": "rSum",
+     "x": 290,
+     "y": 8,
+     "w": 100,
+     "h": 22,
+     "expression": "Sum('Amount')",
+     "format": "N2",
+     "bold": true,
+     "fontSize": 12
+    },
+    {
+     "type": "chart",
+     "name": "rChart",
+     "x": 0,
+     "y": 36,
+     "w": 523,
+     "h": 160,
+     "chartType": "bar",
+     "category": "Customer",
+     "valueField": "Amount",
+     "aggregate": "sum",
+     "title": "المبيعات حسب العميل",
+     "fontSize": 8,
+     "color": "#2E7D32"
+    }
+   ]
+  },
+  "pageFooter": {
+   "height": 22,
+   "items": [
+    {
+     "type": "text",
+     "name": "pg",
+     "x": 0,
+     "y": 4,
+     "w": 523,
+     "h": 16,
+     "text": "صفحة {PageNumber} من {TotalPages}",
+     "align": "center",
+     "fontSize": 8,
+     "color": "#606060"
+    }
+   ]
+  }
+ }
+}

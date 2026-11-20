@@ -114,6 +114,7 @@ class VBBasicPlugin(LanguagePlugin):
     display_name = "Visual Basic 6 (BASIC)"
     code_ext = ".bas"
     supports_debug = True
+    debug_bp_extras = True           # agent: hit counts, logpoints, expandable Locals (debug_extras)
     package_manager = None      # no package manager: Manage Packages explains how to add modules
     case_sensitive = False
     line_comments = ["'"]
@@ -153,7 +154,8 @@ class VBBasicPlugin(LanguagePlugin):
         if ctrl is None:
             ev = _vb_event("Form", event)
             return f"Form_{ev}"
-        return f"{ctrl.name}_{_vb_event(ctrl.type, event)}"
+        # control arrays (VB6): one handler for all members - cmdDigit_Click(Index As Integer)
+        return f"{ctrl.props.get('ArrayName') or ctrl.name}_{_vb_event(ctrl.type, event)}"
 
     def events_for(self, ctrl):
         if ctrl is None:
@@ -169,6 +171,9 @@ class VBBasicPlugin(LanguagePlugin):
     def add_handler(self, code: str, name: str, form: Form, args: str | None = None) -> tuple[str, int]:
         event = name.rsplit("_", 1)[-1]
         params = ARGS.get(event, "")
+        owner = name.rsplit("_", 1)[0].lower()
+        if form is not None and any((c.props.get("ArrayName") or "").lower() == owner for c in form.controls):
+            params = "Index As Integer" + (", " + params if params else "")     # control array (VB6)
         lines = code.rstrip("\n").splitlines()
         lines += ["", f"Private Sub {name}({params})", "    ", "End Sub"]
         return "\n".join(lines) + "\n", len(lines) - 2
@@ -427,15 +432,31 @@ class VBBasicPlugin(LanguagePlugin):
 
     # ------------------------------------------------------------ run / debug
     def _env(self, folder, extra=None):
-        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1")
+        # UTF-8: the IDE decodes the program output as UTF-8 (Debug.Print "مرحبا" must not crash on cp1252)
+        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
         env.update(extra or {})
         return env
 
+    @staticmethod
+    def _target(folder: Path) -> tuple[Path, Path]:
+        """(what vbrun runs, working folder): a VB6 project opened in place (radide/foreign/vb6_project.py)
+        runs its own .vbp - the native files, no conversion; other projects run their folder."""
+        try:
+            from ..foreign.vb6_project import native_project_file
+            vbp = native_project_file(folder)
+        except Exception:  # noqa: BLE001
+            vbp = None
+        if vbp is not None and vbp.is_file():
+            return vbp, vbp.parent
+        return Path(folder), Path(folder)
+
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
-        return RunSpec(interpreter, ["-u", "-m", "radide.runtimes.vbrun", str(folder)], folder, self._env(folder))
+        target, cwd = self._target(folder)
+        return RunSpec(interpreter, ["-u", "-m", "radide.runtimes.vbrun", str(target)], cwd, self._env(folder))
 
     def debug_spec(self, folder, startup_form, interpreter, breakpoints) -> RunSpec:
-        return RunSpec(interpreter, ["-u", "-m", "radide.runtimes.vbrun", str(folder), "--debug"], folder,
+        target, cwd = self._target(folder)
+        return RunSpec(interpreter, ["-u", "-m", "radide.runtimes.vbrun", str(target), "--debug"], cwd,
                        self._env(folder, {"RADDBG_BP": self.breakpoints_env(breakpoints)}))
 
     # ------------------------------------------------------------ IntelliSense

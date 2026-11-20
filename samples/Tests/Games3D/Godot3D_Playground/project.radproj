@@ -1,0 +1,13 @@
+{
+  "name": "Godot3D_Playground",
+  "language": "godot3d",
+  "forms": [],
+  "startup": "Scene1",
+  "modules": [
+    "Scene1.scene3d",
+    "Scene1.gd"
+  ],
+  "scenes3d": [
+    "Scene1"
+  ]
+}

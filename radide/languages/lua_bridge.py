@@ -105,7 +105,13 @@ class LuaBridgePlugin(ScriptBridgePlugin):
                 cfg.write_text(text, encoding="utf-8")
         except OSError:
             return None
-        return {"LUAROCKS_CONFIG": str(cfg)}
+        env = {"LUAROCKS_CONFIG": str(cfg)}
+        # C rocks (round 7): gcc from toolchains\mingw64 + the Lua headers in toolchains\lua\include
+        gcc_bin = toolchains_root() / "mingw64" / "bin"
+        if (gcc_bin / "gcc.exe").is_file():
+            import os
+            env["PATH"] = str(gcc_bin) + os.pathsep + os.environ.get("PATH", "")
+        return env
 
     @property
     def package_manager(self) -> PackageManager:

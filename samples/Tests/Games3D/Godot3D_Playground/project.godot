@@ -1,0 +1,17 @@
+; Engine configuration file (RAD IDE 3D project).
+config_version=5
+
+[application]
+
+config/name="Godot3D_Playground"
+run/main_scene="res://Scene1.tscn"
+config/features=PackedStringArray("4.2", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1024
+window/size/viewport_height=640
+
+[physics]
+
+3d/default_gravity=9.8

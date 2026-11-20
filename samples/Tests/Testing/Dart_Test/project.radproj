@@ -1,0 +1,7 @@
+{
+  "name": "DartTests",
+  "language": "dart-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": []
+}

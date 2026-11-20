@@ -542,7 +542,8 @@ def _open_editors(win) -> dict:
     return out
 
 
-def _walk(folder: Path, patterns: list[str], limit: int = 5000):
+def _walk(folder: Path, patterns: list[str], limit: int = 200_000):
+    # (the limit was 5000: in a 5000+ file site the files after the 5000th were silently never searched)
     import os
     n = 0
     for root, dirs, files in os.walk(folder):
@@ -571,9 +572,20 @@ def search_targets(win, scope: str, patterns: list[str], folder: str = "") -> li
     editors = _open_editors(win)
     out: list[tuple[str, Path | None, str]] = []
 
+    from PyQt6.QtCore import QEventLoop
+    from PyQt6.QtWidgets import QApplication
+    count = [0]
+
     def add(path: Path, display: str):
-        key = os.path.normcase(str(path.resolve()))
-        ed = editors.get(key)
+        # resolve() costs two system calls per file: only needed when some editor is open
+        ed = editors.get(os.path.normcase(str(path.resolve()))) if editors else None
+        count[0] += 1
+        if count[0] % 200 == 0:             # keep the window painted while thousands of files are read
+            try:
+                win.statusBar().showMessage(f"Find: reading files... {count[0]}")
+                QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+            except Exception:  # noqa: BLE001
+                pass
         if ed is not None:
             out.append((display, path, ed.text()))
             return
@@ -643,7 +655,13 @@ def find_in_files(win, scope: str | None = None):
     win.find_results.clear()
     hits = files_hit = changed_files = 0
     import os
+    # whole-file pre-check (re.M: a match on any line is also a match in the whole text) skips the per-line
+    # loop for files without a hit; \A / \Z mean something else per line, so those patterns skip the check
+    pre = None if ("\\A" in rx.pattern or "\\Z" in rx.pattern) else re.compile(rx.pattern, rx.flags | re.M)
+    items = []                              # added in one call: one model update instead of one per hit
     for display, path, text in targets:
+        if pre is not None and not pre.search(text):
+            continue
         lines = text.splitlines()
         changed = False
         found = False
@@ -651,7 +669,7 @@ def find_in_files(win, scope: str | None = None):
             if rx.search(ln):
                 hits += 1
                 found = True
-                win.find_results.addTopLevelItem(QTreeWidgetItem([display, str(i), ln.strip()[:200]]))
+                items.append(QTreeWidgetItem([display, str(i), ln.strip()[:200]]))
                 if replace:
                     lines[i - 1] = rx.sub(repl, ln)
                     changed = True
@@ -669,6 +687,7 @@ def find_in_files(win, scope: str | None = None):
                     path.write_text(new, encoding="utf-8")
                 except OSError as e:
                     win.log(f"*** Replace: cannot write {path}: {e}")
+    win.find_results.addTopLevelItems(items)
     what = f"{hits} match{'es' if hits != 1 else ''} in {files_hit} file{'s' if files_hit != 1 else ''}"
     if replace:
         what += f", replaced in {changed_files} file{'s' if changed_files != 1 else ''}"

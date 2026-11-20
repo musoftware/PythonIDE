@@ -1,0 +1,20 @@
+{
+  "name": "Qt_PostgreSQL_People",
+  "language": "python-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "databases": [
+    {
+      "name": "LocalDb",
+      "kind": "postgresql",
+      "host": "127.0.0.1",
+      "port": 5432,
+      "user": "radide",
+      "database": "radide",
+      "remember_password": true
+    }
+  ]
+}

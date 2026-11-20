@@ -159,6 +159,12 @@ module Rad
 
     # ---------------------------------------------------------------- main loop
     def load_file(file)
+      if ENV["RUBY_DEBUG_PORT"]
+        # IDE debugger (radide/debug_more.py): code eval'd from a string has no absolute_path, so the debug
+        # gem could not change or remove its breakpoints while the program runs - load the file instead
+        load(File.expand_path(file))
+        return
+      end
       TOPLEVEL_BINDING.eval(File.read(file, encoding: "UTF-8"), File.expand_path(file), 1)
     rescue ScriptError, StandardError => e
       STDERR.puts "[Ruby] error in #{file}: #{e.class}: #{e.message}"

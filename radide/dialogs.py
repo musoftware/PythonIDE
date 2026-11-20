@@ -22,12 +22,15 @@ LANGUAGE_GROUPS = [
     ("Ring", ["ring-qt"]),
     (".NET", ["csharp-bridge", "powershell-bridge"]),
     ("Java", ["java-bridge"]),
-    ("Web", ["php-web", "static-web", "node-web"]),          # web site projects (CONTRACTS 8.1)
+    ("Web", ["php-web", "static-web", "node-web",            # web site projects (CONTRACTS 8.1)
+             "python-django", "python-flask", "python-fastapi",    # Python web frameworks (web_site/frameworks)
+             "aspnet-web", "spring-web", "rails-web", "nestjs-web"]),  # backend frameworks (web_site/frameworks)
     ("Web & Script", ["javascript", "typescript", "php"]),
     ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "fortran-bridge", "go-bridge"]),
     ("Scripting", ["lua-bridge", "ruby-bridge", "perl-bridge", "dart-bridge"]),
     ("Mobile", ["flutter", "kivy", "expo"]),                   # mobile apps (CONTRACTS 10.1)
-    ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game"]),   # game projects (CONTRACTS 10.2)
+    ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game",   # game projects (CONTRACTS 10.2)
+               "python-ursina", "godot3d"]),                                     # 3D games (round 7, games3d/)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
          "ring-qt": ("Rg", "#2C3E50"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
@@ -38,7 +41,11 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
          "node-web": ("N", "#3C873A"), "pygame": ("Pg", "#2E7D32"), "godot": ("Gd", "#478CBF"),
          "flutter": ("Fl", "#02569B"), "kivy": ("Kv", "#5A7D2E"), "expo": ("RN", "#087EA4"),
-         "html5-game": ("H5", "#F16529"), "python-arcade": ("Ar", "#7B3FA0"), "ring-game": ("RG", "#2C3E50")}
+         "html5-game": ("H5", "#F16529"), "python-arcade": ("Ar", "#7B3FA0"), "ring-game": ("RG", "#2C3E50"),
+         "python-django": ("Dj", "#0C4B33"), "python-flask": ("Fk", "#2B2B2B"), "python-fastapi": ("FA", "#009688"),
+         "python-ursina": ("3D", "#5B3F8C"), "godot3d": ("G3", "#2F6A9F"),
+         "aspnet-web": ("ASP", "#512BD4"), "spring-web": ("Sp", "#6DB33F"), "rails-web": ("RoR", "#CC0000"),
+         "nestjs-web": ("Ns", "#E0234E")}
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
                   "data": "SP_FileDialogDetailedView", "console": "rad:console",
                   "library": "SP_DriveHDIcon"}
@@ -91,7 +98,8 @@ class NewProjectDialog(QDialog):
         from PyQt6.QtWidgets import QSplitter, QTreeWidget, QTreeWidgetItem
         self.setWindowTitle("New Project")
         self.resize(940, 680)
-        plugins = {p.id: p for p in all_plugins()}
+        # plugins of projects opened in place from other IDEs (radide/foreign) are not new-project languages
+        plugins = {p.id: p for p in all_plugins() if not getattr(p, "foreign_only", False)}
         self._plugins = plugins
 
         self.search = QLineEdit()

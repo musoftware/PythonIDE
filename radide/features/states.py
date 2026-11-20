@@ -868,6 +868,11 @@ class BlendPreview(QObject):
         props = dict(ctrl.props)
         if self.samples:
             props.update(databinding.sample_props(self.doc, ctrl))
+            try:                    # real database rows (radide/databinding_sql.py, Data Sources window)
+                from ..databinding_sql import sample_props as db_sample_props
+                props.update(db_sample_props(self.doc, ctrl))
+            except Exception:  # noqa: BLE001 - never break the designer preview
+                pass
         if self.state:
             props.update(overrides(self.doc.form, ctrl, self.state))
         if self.timeline is not None:

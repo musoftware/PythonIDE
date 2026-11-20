@@ -1,0 +1,17 @@
+{
+  "name": "Laravel_Blog",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "public",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "laravel",
+    "php": "auto",
+    "template": "laravel"
+  }
+}

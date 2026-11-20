@@ -9,11 +9,17 @@
 # play_sound("coin"), show_message("text", seconds), add_timer("Timer1", ms), quit_game(),
 # spawn("Pipe", x, y) (copies a spawn template: props template=1), enable_behaviour(node, "scroll", false),
 # save_data("best", n) / load_data("best", 0). Behaviours flap and scroll work like in radgame.py.
+# Code translated from Python (radide/games/gd_translate.py) uses getp(obj, "y") / setp(obj, "y", v) for the
+# radgame object attributes (x, y = top-left, width, bottom, rotation in degrees, text, group ...),
+# show_obj / hide_obj, timer_start / timer_stop, enable_behaviour_all; particles: emit_particles(effect, x, y)
+# / burst_particles(effect, x, y, n) and emitter objects; physics (scene "physics" enabled, object "physics"
+# body / shape / mass / friction / elasticity, scene "joints"): apply_impulse(obj, ix, iy), set_body_velocity.
 extends Node2D
 
 static var score := 0
 static var lives := 3
 static var vars := {}
+static var _all_frames := 0     # frames since the game started (RADGAME_FRAMES / RADGAME_KEYS, like radgame.py)
 
 var settings := {}
 var objects := {}            # name -> node
@@ -35,6 +41,12 @@ var _test_frames := 0
 var _pending_scene := ""
 var _clicked := false
 var _spawn_n := 0
+var _trace := OS.get_environment("RADGAME_TRACE") != ""
+var _physics_on := false
+var _syncing_bodies := false
+var _emitters := []          # CPUParticles2D nodes made by emitter objects / emit_particles()
+var _music: AudioStreamPlayer
+var _dot_texture: Texture2D
 
 const ACTORS := ["platformer", "keyboard_move", "top_down", "follow_mouse"]
 
@@ -75,6 +87,8 @@ func _ready() -> void:
 			var r := kv[1].split("-")
 			_test_keys.append([kv[0], int(r[0]), int(r[1])])
 	_test_frames = int(OS.get_environment("RADGAME_FRAMES")) if OS.get_environment("RADGAME_FRAMES") != "" else 0
+	_setup_physics()
+	_setup_emitters()
 	_update_camera()
 	_fire_scene("Load", [])
 
@@ -104,12 +118,23 @@ func rect_of(n: Node) -> Rect2:
 	return Rect2(n.position, s)
 
 
+func hit_rect(n: Node) -> Rect2:
+	# The collision box: rect_of shrunk by props hitbox pixels on every side (as radgame.py).
+	var r := rect_of(n)
+	var k := float(n.get_meta("props", {}).get("hitbox", 0))
+	if k > 0 and r.size.x > 2 * k and r.size.y > 2 * k:
+		r = r.grow(-k)
+	return r
+
+
 func set_top_left(n: Node, p: Vector2) -> void:
 	var s: Vector2 = n.get_meta("rad_size", Vector2(32, 32))
 	if n.get_meta("rad_centered", false) and not (n is Control):
 		n.position = p + s / 2.0
 	else:
 		n.position = p
+	if n.has_meta("rad_body") and _syncing_bodies == false:
+		_teleport_body(n)
 
 
 func state(n: Node) -> Dictionary:
@@ -160,12 +185,23 @@ func destroy(n: Node) -> void:
 
 func spawn(template_name: String, x: float, y: float) -> Node:
 	# A copy of a scene object (usually a spawn template: props template=1) at (x, y).
-	var t: Node = find(template_name)
-	if t == null:
+	return clone_obj(find(template_name), x, y)
+
+
+func clone_obj(t, x = null, y = null) -> Node:
+	# A copy of a scene object at (x, y) (its own place when x / y are null).
+	if t == null or not (t is Node):
 		return null
+	var at := rect_of(t).position
+	if x != null:
+		at.x = float(x)
+	if y != null:
+		at.y = float(y)
+	x = at.x
+	y = at.y
 	var c: Node = t.duplicate()
 	_spawn_n += 1
-	c.name = "%s_%d" % [template_name, _spawn_n]
+	c.name = "%s_%d" % [String(t.name), _spawn_n]
 	t.get_parent().add_child(c)
 	var bs: Array = []
 	for d in t.get_meta("behaviours", []):
@@ -174,8 +210,15 @@ func spawn(template_name: String, x: float, y: float) -> Node:
 	c.set_meta("rad_state", {"vx": 0.0, "vy": 0.0, "on_ground": false, "alive": true, "spawned": true})
 	c.set_meta("group", group_of(t))
 	c.visible = true
+	for m in ["rad_body", "rad_emitter"]:
+		if c.has_meta(m):
+			c.remove_meta(m)
 	objects[String(c.name)] = c
 	set_top_left(c, Vector2(x, y))
+	if _physics_on and c.has_meta("physics"):
+		_make_body(c)
+	if c.has_meta("particles"):
+		_attach_emitter(c)
 	return c
 
 
@@ -331,6 +374,8 @@ func _call(method: String, args: Array) -> bool:
 	if not has_method(method):
 		return false
 	var n: int = _argc.get(method, args.size())
+	if _trace:
+		print("RADGAME_CALL %d %s" % [frame, method])
 	callv(method, args.slice(0, n))
 	return true
 
@@ -352,9 +397,9 @@ func _fire_object(n: Node, ev: String, args: Array) -> bool:
 # ------------------------------------------------------------------ loop
 func _physics_process(dt: float) -> void:
 	for tk in _test_keys:
-		if frame == tk[1]:
+		if _all_frames == tk[1]:
 			_press(tk[0])
-		elif frame == tk[2]:
+		elif _all_frames == tk[2]:
 			_release(tk[0])
 	for t in timers.values():
 		if t["enabled"] and t["interval"] > 0:
@@ -386,6 +431,8 @@ func _physics_process(dt: float) -> void:
 					restart_scene()
 				else:
 					destroy(n)
+	_sync_bodies()
+	_update_emitters()
 	_collisions()
 	_fire_scene("Update", [dt])
 	_update_camera()
@@ -395,13 +442,14 @@ func _physics_process(dt: float) -> void:
 	pressed.clear()
 	_clicked = false
 	frame += 1
+	_all_frames += 1
 	game_time += dt
 	if _pending_scene != "":
 		var target := _pending_scene
 		_pending_scene = ""
 		get_tree().change_scene_to_file("res://" + target + ".tscn")
 		return
-	if _test_frames > 0 and frame >= _test_frames:
+	if _test_frames > 0 and _all_frames >= _test_frames:
 		var p: Node = find(String(settings.get("report", "")))
 		var where := ""
 		if p != null:
@@ -414,13 +462,16 @@ func _physics_process(dt: float) -> void:
 func _collisions() -> void:
 	var list := []
 	for n in objects.values():
-		if alive(n) and not _in_ui(n) and not (n is Label):
+		if alive(n) and not _in_ui(n) and not (n is Label) and not _is_pure_emitter(n):
 			list.append(n)
 	var now := {}
+	var rects := []
+	for n in list:
+		rects.append(hit_rect(n))
 	for i in range(list.size()):
-		var ra := rect_of(list[i])
+		var ra: Rect2 = rects[i]
 		for j in range(i + 1, list.size()):
-			if ra.intersects(rect_of(list[j])):
+			if ra.intersects(rects[j]):
 				now[[String(list[i].name), String(list[j].name)]] = true
 	for pair in now.keys():
 		if _touching.has(pair):
@@ -739,8 +790,9 @@ func show_message(text: String, seconds: float = 2.0) -> void:
 	_message_until = game_time + seconds
 
 
-func add_timer(timer_name: String, interval: float = 1000, enabled: bool = true) -> void:
+func add_timer(timer_name: String, interval: float = 1000, enabled: bool = true) -> Dictionary:
 	timers[timer_name] = {"name": timer_name, "interval": float(interval), "enabled": enabled, "acc": 0.0}
+	return timers[timer_name]
 
 
 func stop_timer(timer_name: String) -> void:
@@ -755,3 +807,690 @@ func velocity(n: Node) -> Vector2:
 func set_velocity(n: Node, v: Vector2) -> void:
 	state(n)["vx"] = v.x
 	state(n)["vy"] = v.y
+
+
+# ------------------------------------------------------------------ object attributes (code translated from Python)
+func getp(n, attr: String):
+	# A radgame object attribute: x / y (top-left), w / h / width / height, right, bottom, center,
+	# rotation (degrees), visible, group, name, text, vx, vy, alive, on_ground, props, data, z ...
+	if n == null:
+		return null
+	if typeof(n) == TYPE_DICTIONARY:
+		return n.get(attr)
+	if not (n is Node) or not is_instance_valid(n):
+		return null
+	var r := rect_of(n)
+	match attr:
+		"x":
+			return r.position.x
+		"y":
+			return r.position.y
+		"w", "width":
+			return r.size.x
+		"h", "height":
+			return r.size.y
+		"right":
+			return r.end.x
+		"bottom":
+			return r.end.y
+		"center":
+			return [r.get_center().x, r.get_center().y]
+		"rotation":
+			return n.rotation_degrees if n is Node2D else 0.0
+		"visible":
+			return n.visible
+		"group":
+			return group_of(n)
+		"name":
+			return String(n.name)
+		"text":
+			return String(n.get_meta("template", n.text)) if n is Label else ""
+		"vx", "vy", "on_ground":
+			if n.has_meta("rad_body") and attr != "on_ground" and n.get_meta("rad_body") is RigidBody2D:
+				var lv: Vector2 = n.get_meta("rad_body").linear_velocity
+				return lv.x if attr == "vx" else lv.y
+			return state(n).get(attr, 0.0) if n.has_meta("rad_state") else 0.0
+		"alive":
+			return alive(n)
+		"props":
+			return n.get_meta("props", {})
+		"data":
+			if not n.has_meta("rad_data"):
+				n.set_meta("rad_data", {})
+			return n.get_meta("rad_data")
+		"z":
+			return n.z_index if n is CanvasItem else 0
+		"flip_x":
+			return n.flip_h if (n is Sprite2D or n is AnimatedSprite2D) else false
+		"animation":
+			return String(n.animation) if n is AnimatedSprite2D else ""
+		"spawned", "template":
+			return state(n).get(attr, false) if n.has_meta("rad_state") else false
+		"emitting":
+			var e = n.get_meta("rad_emitter", null)
+			return e != null and is_instance_valid(e) and e.emitting
+		"angular_velocity":
+			if n.has_meta("rad_body") and n.get_meta("rad_body") is RigidBody2D:
+				return rad_to_deg(n.get_meta("rad_body").angular_velocity)
+			return 0.0
+	if n.has_meta(attr):
+		return n.get_meta(attr)
+	return n.get(attr)
+
+
+func setp(n, attr: String, v) -> void:
+	if n == null:
+		return
+	if typeof(n) == TYPE_DICTIONARY:
+		n[attr] = v
+		if attr == "interval" and n.has("acc"):
+			n["interval"] = float(v)
+		return
+	if not (n is Node) or not is_instance_valid(n):
+		return
+	var r := rect_of(n)
+	match attr:
+		"x":
+			set_top_left(n, Vector2(float(v), r.position.y))
+		"y":
+			set_top_left(n, Vector2(r.position.x, float(v)))
+		"w", "width", "h", "height":
+			var s := r.size
+			if attr in ["w", "width"]:
+				s.x = max(1.0, float(v))
+			else:
+				s.y = max(1.0, float(v))
+			if (n is Sprite2D or n is AnimatedSprite2D or n is Polygon2D) and r.size.x > 0 and r.size.y > 0:
+				n.scale = Vector2(n.scale.x * s.x / r.size.x, n.scale.y * s.y / r.size.y)
+			if n is Control:
+				n.size = s
+			n.set_meta("rad_size", s)
+			set_top_left(n, r.position)
+		"rotation":
+			if n is Node2D:
+				n.rotation_degrees = float(v)
+				if n.has_meta("rad_body"):
+					n.get_meta("rad_body").rotation = n.rotation
+		"visible":
+			n.visible = bool(v)
+		"text":
+			if n is Label:
+				n.set_meta("template", str(v))
+				n.text = str(v)
+		"vx", "vy":
+			if n.has_meta("rad_body") and n.get_meta("rad_body") is RigidBody2D:
+				var b: RigidBody2D = n.get_meta("rad_body")
+				b.linear_velocity = Vector2(float(v), b.linear_velocity.y) if attr == "vx" else Vector2(b.linear_velocity.x, float(v))
+			elif n.has_meta("rad_state"):
+				state(n)[attr] = float(v)
+		"z":
+			if n is CanvasItem:
+				n.z_index = int(v)
+		"flip_x":
+			if n is Sprite2D or n is AnimatedSprite2D:
+				n.flip_h = bool(v)
+		"animation":
+			play_anim(n, str(v))
+		"emitting":
+			var e = n.get_meta("rad_emitter", null)
+			if e != null and is_instance_valid(e):
+				e.emitting = bool(v)
+		"angular_velocity":
+			if n.has_meta("rad_body") and n.get_meta("rad_body") is RigidBody2D:
+				n.get_meta("rad_body").angular_velocity = deg_to_rad(float(v))
+		_:
+			if n.has_meta(attr) or not (attr in n):
+				n.set_meta(attr, v)
+			else:
+				n.set(attr, v)
+
+
+func dict_pop(d: Dictionary, key, default_value = null):
+	# Python's dict.pop(key, default): the value (or default) and the key is removed.
+	var v = d.get(key, default_value)
+	d.erase(key)
+	return v
+
+
+func show_obj(n) -> void:
+	if n is Node and is_instance_valid(n):
+		n.visible = true
+
+
+func hide_obj(n) -> void:
+	if n is Node and is_instance_valid(n):
+		n.visible = false
+
+
+func timer_start(t) -> void:
+	if typeof(t) == TYPE_DICTIONARY and t.has("acc"):
+		t["enabled"] = true
+		t["acc"] = 0.0
+	elif t is Node and t.has_meta("rad_emitter"):
+		setp(t, "emitting", true)
+
+
+func timer_stop(t) -> void:
+	if typeof(t) == TYPE_DICTIONARY and t.has("acc"):
+		t["enabled"] = false
+	elif t is Node and t.has_meta("rad_emitter"):
+		setp(t, "emitting", false)
+
+
+func enable_behaviour_all(t: String, on: bool = true) -> void:
+	# EnableBehaviour("scroll", False): switch a behaviour on / off for every object that has it.
+	for n in objects.values():
+		if alive(n):
+			enable_behaviour(n, t, on)
+
+
+func behaviour_enabled(n: Node, t: String) -> bool:
+	var b := behaviour(n, t)
+	return not b.is_empty() and b.get("enabled", true) != false
+
+
+func move_to(n: Node, x: float, y: float) -> void:
+	set_top_left(n, Vector2(x, y))
+
+
+func distance_to(n: Node, other: Node) -> float:
+	return rect_of(n).get_center().distance_to(rect_of(other).get_center())
+
+
+func overlaps(n: Node, other: Node) -> bool:
+	return alive(n) and alive(other) and hit_rect(n).intersects(hit_rect(other))
+
+
+func contains(n: Node, x: float, y: float) -> bool:
+	return rect_of(n).has_point(Vector2(x, y))
+
+
+func play_anim(n: Node, anim_name: String, restart: bool = false) -> void:
+	if n is AnimatedSprite2D and n.sprite_frames != null and n.sprite_frames.has_animation(anim_name):
+		if restart or n.animation != anim_name or not n.is_playing():
+			n.play(anim_name)
+
+
+func has_animation(n: Node, anim_name: String) -> bool:
+	return n is AnimatedSprite2D and n.sprite_frames != null and n.sprite_frames.has_animation(anim_name)
+
+
+func play_music(sound_id: String, loop: bool = true) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var path: String = settings.get("sounds", {}).get(sound_id, sound_id)
+	if not ResourceLoader.exists(path):
+		return
+	stop_music()
+	_music = AudioStreamPlayer.new()
+	_music.stream = load(path)
+	_music.add_to_group("radgame_sound")
+	add_child(_music)
+	if loop:
+		_music.finished.connect(_music.play)
+	_music.play()
+
+
+func stop_music() -> void:
+	if _music != null and is_instance_valid(_music):
+		_music.stop()
+		_music.queue_free()
+	_music = null
+
+
+func set_tile(layer_name: String, col: int, row: int, tile: int) -> void:
+	# Change one cell of a tile layer while the game runs (-1 = empty).
+	var tm = find_child(layer_name, true, false)
+	if tm is TileMap:
+		if tile < 0:
+			tm.erase_cell(0, Vector2i(col, row))
+		else:
+			var src = tm.tile_set.get_source(0) if tm.tile_set != null else null
+			var cols := 1
+			if src is TileSetAtlasSource and src.texture != null:
+				cols = max(1, int(src.texture.get_width() / src.texture_region_size.x))
+			tm.set_cell(0, Vector2i(col, row), 0, Vector2i(tile % cols, tile / cols))
+
+
+# ------------------------------------------------------------------ particles
+func _is_pure_emitter(n: Node) -> bool:
+	# An area that only emits particles does not collide (props collide=1 makes it a trigger again).
+	return n.has_meta("particles") and not (n is Sprite2D or n is AnimatedSprite2D) and \
+		str(n.get_meta("props", {}).get("collide", "")) == ""
+
+
+func _effect(effect) -> Dictionary:
+	if typeof(effect) == TYPE_DICTIONARY:
+		return effect
+	return settings.get("particles", {}).get(str(effect), {})
+
+
+func _dot() -> Texture2D:
+	# a soft round 16x16 dot for particles without a texture
+	if _dot_texture == null:
+		var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+		for py in range(16):
+			for px in range(16):
+				var d := Vector2(px + 0.5 - 8, py + 0.5 - 8).length() / 8.0
+				img.set_pixel(px, py, Color(1, 1, 1, clamp(1.4 - d * 1.4, 0.0, 1.0)))
+		_dot_texture = ImageTexture.create_from_image(img)
+	return _dot_texture
+
+
+func make_particles(effect) -> CPUParticles2D:
+	# A CPUParticles2D set up from a particle effect of the scene (assets "particles").
+	var e := _effect(effect)
+	var p := CPUParticles2D.new()
+	var life: float = max(0.05, float(e.get("lifetime", 1.0)))
+	p.lifetime = life
+	p.amount = int(clamp(float(e.get("rate", 30)) * life, 1.0, float(e.get("max", 500))))
+	p.lifetime_randomness = clamp(float(e.get("lifetime_var", 0.0)) / life, 0.0, 1.0)
+	p.direction = Vector2.from_angle(deg_to_rad(float(e.get("angle", -90))))
+	p.spread = float(e.get("spread", 30))
+	p.gravity = Vector2(float(e.get("gravity_x", 0)), float(e.get("gravity_y", 0)))
+	var sp := float(e.get("speed", 100))
+	var sv := float(e.get("speed_var", 0))
+	p.initial_velocity_min = max(0.0, sp - sv)
+	p.initial_velocity_max = sp + sv
+	p.damping_min = float(e.get("damping", 0))
+	p.damping_max = float(e.get("damping", 0))
+	p.angular_velocity_min = float(e.get("spin", 0))
+	p.angular_velocity_max = float(e.get("spin", 0))
+	var tex: Texture2D = null
+	var tid := str(e.get("texture", ""))
+	var path: String = settings.get("images", {}).get(tid, "")
+	if path != "" and ResourceLoader.exists(path):
+		tex = load(path)
+	elif str(e.get("shape", "circle")) == "circle":
+		tex = _dot()
+	p.texture = tex
+	var base := 1.0
+	if tex != null:
+		base = float(max(1, tex.get_width()))
+	var s0 := float(e.get("size_start", 8))
+	var s1 := float(e.get("size_end", s0))
+	p.scale_amount_min = s0 / base
+	p.scale_amount_max = s0 / base
+	if s0 > 0 and abs(s1 - s0) > 0.001:
+		var c := Curve.new()
+		c.max_value = max(1.0, s1 / s0)
+		c.add_point(Vector2(0, 1))
+		c.add_point(Vector2(1, s1 / s0))
+		p.scale_amount_curve = c
+	var g := Gradient.new()
+	g.set_color(0, Color(str(e.get("color_start", "#FFFFFF"))))
+	g.set_color(1, Color(str(e.get("color_end", e.get("color_start", "#FFFFFF")))))
+	p.color_ramp = g
+	var ew := float(e.get("emit_w", 0))
+	var eh := float(e.get("emit_h", 0))
+	if ew > 0 or eh > 0:
+		p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		p.emission_rect_extents = Vector2(ew / 2.0, eh / 2.0)
+	if str(e.get("blend", "normal")) == "add":
+		var m := CanvasItemMaterial.new()
+		m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		p.material = m
+	p.local_coords = false
+	p.z_index = int(e.get("z", 0))
+	return p
+
+
+func _setup_emitters() -> void:
+	for n in objects.values():
+		if n.has_meta("particles") and not state(n).get("template", false):
+			_attach_emitter(n)
+
+
+func _attach_emitter(n: Node) -> void:
+	var cfg = n.get_meta("particles")
+	if typeof(cfg) != TYPE_DICTIONARY:
+		cfg = {"effect": str(cfg)}
+	var p := make_particles(cfg.get("effect", ""))
+	p.emitting = bool(cfg.get("emitting", true)) and n.visible
+	p.position = rect_of(n).get_center()
+	n.get_parent().add_child(p)
+	n.set_meta("rad_emitter", p)
+	p.set_meta("rad_follow", n)
+	_emitters.append(p)
+
+
+func _update_emitters() -> void:
+	var keep := []
+	for p in _emitters:
+		if not is_instance_valid(p):
+			continue
+		var n = p.get_meta("rad_follow", null)
+		if n != null:
+			if not is_instance_valid(n) or not alive(n):
+				p.emitting = false
+				p.remove_meta("rad_follow")
+			else:
+				p.position = rect_of(n).get_center()
+		var until: float = p.get_meta("rad_until", -1.0)
+		if until >= 0 and game_time >= until:
+			p.emitting = false
+			p.remove_meta("rad_until")
+			get_tree().create_timer(p.lifetime + 0.2).timeout.connect(p.queue_free)
+		keep.append(p)
+	_emitters = keep
+
+
+func emit_particles(effect, x = 0.0, y = 0.0, seconds = 0.0) -> CPUParticles2D:
+	# Emit(effect, x, y, seconds): a stream of particles at (x, y) - or following an object
+	# (emit_particles("smoke", Player)) - for seconds (0 = until stopped with stop_emitter).
+	var p := make_particles(effect)
+	var parent: Node = self
+	if x is Node:
+		seconds = y if typeof(y) != TYPE_NIL else 0.0
+		p.position = rect_of(x).get_center()
+		p.set_meta("rad_follow", x)
+		parent = x.get_parent()
+	else:
+		p.position = Vector2(float(x), float(y))
+	if float(seconds) > 0:
+		p.set_meta("rad_until", game_time + float(seconds))
+	parent.add_child(p)
+	p.emitting = true
+	_emitters.append(p)
+	return p
+
+
+func burst_particles(effect, x = 0.0, y = 0.0, count = 0) -> CPUParticles2D:
+	# Burst(effect, x, y, n): n particles at once (an explosion, a coin sparkle).
+	var e := _effect(effect)
+	var p := make_particles(e)
+	var where := Vector2(float(x), float(y)) if not (x is Node) else rect_of(x).get_center()
+	if x is Node:
+		count = y if typeof(y) != TYPE_NIL else 0
+	var n := int(count) if int(count) > 0 else int(e.get("burst", 30))
+	p.amount = max(1, n)
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.position = where
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(p.lifetime + 0.3).timeout.connect(p.queue_free)
+	return p
+
+
+func emit_particles_from(n: Node, effect = "", seconds = 0.0) -> CPUParticles2D:
+	if str(effect) == "" and n.has_meta("rad_emitter"):
+		setp(n, "emitting", true)
+		return n.get_meta("rad_emitter")
+	return emit_particles(effect, n, seconds)
+
+
+func burst_from(n: Node, effect = "", count = 0) -> CPUParticles2D:
+	var eff = effect
+	if str(eff) == "":
+		var cfg = n.get_meta("particles", {})
+		eff = cfg.get("effect", "") if typeof(cfg) == TYPE_DICTIONARY else str(cfg)
+	return burst_particles(eff, n, count)
+
+
+func stop_emitter(p) -> void:
+	if p is Node and p.has_meta("rad_emitter"):
+		p = p.get_meta("rad_emitter")
+	if p is CPUParticles2D and is_instance_valid(p):
+		p.emitting = false
+
+
+# ------------------------------------------------------------------ physics (Godot's own 2D physics)
+func _setup_physics() -> void:
+	var ph: Dictionary = settings.get("physics", {})
+	if not ph.get("enabled", false):
+		return
+	_physics_on = true
+	var space := get_world_2d().space
+	var gv := Vector2(float(ph.get("gravity_x", 0)), float(ph.get("gravity_y", settings.get("gravity", 900))))
+	PhysicsServer2D.area_set_param(space, PhysicsServer2D.AREA_PARAM_GRAVITY, gv.length())
+	PhysicsServer2D.area_set_param(space, PhysicsServer2D.AREA_PARAM_GRAVITY_VECTOR, gv.normalized() if gv.length() > 0 else Vector2.DOWN)
+	for n in objects.values():
+		if n.has_meta("physics") and not state(n).get("template", false):
+			_make_body(n)
+	if ph.get("tiles_static", true):
+		for tm in find_children("*", "TileMap", true, false):
+			if tm.get_meta("collision", false) and tm.tile_set != null:
+				_tile_bodies(tm)
+	for j in settings.get("joints", []):
+		_make_joint(j)
+
+
+func _make_body(n: Node) -> void:
+	var p: Dictionary = n.get_meta("physics")
+	var kind := str(p.get("body", "dynamic"))
+	var body: PhysicsBody2D
+	if kind == "static":
+		body = StaticBody2D.new()
+	elif kind == "kinematic":
+		var ab := AnimatableBody2D.new()
+		ab.sync_to_physics = false
+		body = ab
+	else:
+		var rb := RigidBody2D.new()
+		rb.mass = max(0.001, float(p.get("mass", 1)))
+		rb.lock_rotation = bool(p.get("fixed_rotation", false))
+		rb.gravity_scale = float(p.get("gravity_scale", 1))
+		rb.linear_damp = float(p.get("damping", 0))
+		rb.can_sleep = false
+		rb.contact_monitor = false
+		body = rb
+	var mat := PhysicsMaterial.new()
+	mat.friction = float(p.get("friction", 0.7))
+	mat.bounce = float(p.get("elasticity", 0.2))
+	if body is RigidBody2D or body is StaticBody2D:
+		body.physics_material_override = mat
+	var r := hit_rect(n)
+	var cs := CollisionShape2D.new()
+	var shape := str(p.get("shape", "box"))
+	if shape == "circle":
+		var c := CircleShape2D.new()
+		c.radius = max(1.0, min(r.size.x, r.size.y) / 2.0)
+		cs.shape = c
+	elif shape == "poly" and p.get("points", []).size() >= 3:
+		var full := rect_of(n)
+		var pts := PackedVector2Array()
+		for q in p["points"]:
+			pts.append(Vector2(float(q[0]), float(q[1])) - full.size / 2.0)   # outline in object pixels
+		var cp := ConvexPolygonShape2D.new()
+		cp.set_point_cloud(pts)
+		cs.shape = cp
+	else:
+		var rs := RectangleShape2D.new()
+		rs.size = r.size
+		cs.shape = rs
+	if bool(p.get("sensor", false)):
+		cs.disabled = false
+	body.add_child(cs)
+	body.position = rect_of(n).get_center()
+	body.rotation = n.rotation if n is Node2D else 0.0
+	body.name = "Body_" + String(n.name)
+	add_child(body)
+	n.set_meta("rad_body", body)
+	if body is RigidBody2D:
+		var st := state(n)
+		body.linear_velocity = Vector2(float(p.get("vx", st.get("vx", 0.0))), float(p.get("vy", st.get("vy", 0.0))))
+
+
+func _tile_bodies(tm: TileMap) -> void:
+	var ts := Vector2(tm.tile_set.tile_size)
+	var body := StaticBody2D.new()
+	body.name = "Tiles_" + String(tm.name)
+	var used: Array = tm.get_used_cells(0)
+	var rows := {}
+	for c in used:
+		if not rows.has(c.y):
+			rows[c.y] = []
+		rows[c.y].append(c.x)
+	for row in rows.keys():
+		var xs: Array = rows[row]
+		xs.sort()
+		var start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size() + 1):
+			if i < xs.size() and xs[i] == prev + 1:
+				prev = xs[i]
+				continue
+			var cs := CollisionShape2D.new()
+			var rs := RectangleShape2D.new()
+			rs.size = Vector2((prev - start + 1) * ts.x, ts.y)
+			cs.shape = rs
+			cs.position = Vector2(start * ts.x + rs.size.x / 2.0, row * ts.y + ts.y / 2.0)
+			body.add_child(cs)
+			if i < xs.size():
+				start = xs[i]
+				prev = xs[i]
+	add_child(body)
+
+
+func _make_joint(j: Dictionary) -> void:
+	var a: Node = find(str(j.get("a", "")))
+	if a == null or not a.has_meta("rad_body"):
+		return
+	var ba: PhysicsBody2D = a.get_meta("rad_body")
+	var bb: PhysicsBody2D = null
+	var b: Node = find(str(j.get("b", ""))) if j.get("b", null) != null else null
+	if b != null and b.has_meta("rad_body"):
+		bb = b.get_meta("rad_body")
+	if bb == null:
+		bb = StaticBody2D.new()       # joined to the world
+		bb.position = ba.position
+		add_child(bb)
+	var aa: Array = j.get("anchor_a", [0, 0])
+	var ab: Array = j.get("anchor_b", [0, 0])
+	var pa := ba.position + Vector2(float(aa[0]), float(aa[1]))
+	var pb := bb.position + Vector2(float(ab[0]), float(ab[1]))
+	if j.has("pivot"):
+		pa = Vector2(float(j["pivot"][0]), float(j["pivot"][1]))
+	var t := str(j.get("type", "pivot"))
+	var joint: Joint2D
+	if t == "spring" or t == "pin" or t == "rope":
+		var sj := DampedSpringJoint2D.new()
+		sj.position = pa
+		sj.rotation = (pb - pa).angle() - PI / 2.0
+		sj.length = max(1.0, pa.distance_to(pb))
+		sj.rest_length = float(j.get("rest_length", pa.distance_to(pb)))
+		# pymunk stiffness (force per pixel) -> Godot's 0..128 scale; pin / rope: as stiff as possible
+		sj.stiffness = 128.0 if t != "spring" else clamp(float(j.get("stiffness", 200)) / 10.0, 1.0, 128.0)
+		sj.damping = clamp(float(j.get("damping", 10)) / 10.0, 0.01, 16.0)
+		joint = sj
+	else:
+		var pj := PinJoint2D.new()
+		pj.position = pa
+		pj.softness = float(j.get("softness", 0))
+		joint = pj
+	add_child(joint)
+	joint.node_a = joint.get_path_to(ba)
+	joint.node_b = joint.get_path_to(bb)
+	joint.disable_collision = not bool(j.get("collide", false))
+
+
+func _sync_bodies() -> void:
+	if not _physics_on:
+		return
+	_syncing_bodies = true
+	for n in objects.values():
+		if not n.has_meta("rad_body"):
+			continue
+		var body = n.get_meta("rad_body")
+		if not is_instance_valid(body):
+			continue
+		if not alive(n):
+			body.queue_free()
+			n.remove_meta("rad_body")
+			continue
+		if body is RigidBody2D:
+			var s: Vector2 = n.get_meta("rad_size", Vector2(32, 32))
+			set_top_left(n, body.position - s / 2.0)
+			if n is Node2D:
+				n.rotation = body.rotation
+		else:
+			_teleport_body(n)
+	_syncing_bodies = false
+
+
+func _teleport_body(n: Node) -> void:
+	var body = n.get_meta("rad_body")
+	if body == null or not is_instance_valid(body):
+		return
+	var c := rect_of(n).get_center()
+	if body is RigidBody2D:
+		PhysicsServer2D.body_set_state(body.get_rid(), PhysicsServer2D.BODY_STATE_TRANSFORM, Transform2D(body.rotation, c))
+		body.position = c
+	else:
+		body.position = c
+		if n is Node2D:
+			body.rotation = n.rotation
+
+
+func apply_impulse(n: Node, ix: float, iy: float) -> void:
+	# ApplyImpulse(obj, ix, iy): a kick (mass x change of speed) to a dynamic body.
+	var b = n.get_meta("rad_body", null) if n != null else null
+	if b is RigidBody2D:
+		b.apply_central_impulse(Vector2(ix, iy))
+
+
+func apply_force(n: Node, fx: float, fy: float) -> void:
+	var b = n.get_meta("rad_body", null) if n != null else null
+	if b is RigidBody2D:
+		b.apply_central_force(Vector2(fx, fy))
+
+
+func set_body_velocity(n: Node, vx: float, vy: float) -> void:
+	var b = n.get_meta("rad_body", null) if n != null else null
+	if b is RigidBody2D:
+		b.linear_velocity = Vector2(vx, vy)
+	elif n != null and n.has_meta("rad_state"):
+		set_velocity(n, Vector2(vx, vy))
+
+
+# ------------------------------------------------------------------ auto-tiling at run time
+func _tile_index(tm: TileMap, col: int, row: int) -> int:
+	if tm.get_cell_source_id(0, Vector2i(col, row)) == -1:
+		return -1
+	var src = tm.tile_set.get_source(0)
+	var cols := 1
+	if src is TileSetAtlasSource and src.texture != null:
+		cols = max(1, int(src.texture.get_width() / src.texture_region_size.x))
+	var a := tm.get_cell_atlas_coords(0, Vector2i(col, row))
+	return a.y * cols + a.x
+
+
+func set_terrain(layer_name: String, col: int, row: int, terrain: String, on: bool = true) -> void:
+	# SetTerrain: add / remove one cell of a terrain; it and its neighbours pick their edge tiles.
+	var t: Dictionary = settings.get("terrains", {}).get(terrain, {})
+	var tm = find_child(layer_name, true, false)
+	if t.is_empty() or not (tm is TileMap):
+		return
+	var table: Dictionary = t.get("tiles", {})
+	var tiles := {}
+	for v in table.values():
+		tiles[int(v)] = true
+	var blob := str(t.get("mode", "47")) == "47"
+	var full := int(table.get("255" if blob else "15", table.values()[0] if table.size() > 0 else 0))
+	set_tile(layer_name, col, row, full if on else -1)
+	var dirs := [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]]
+	var used: Rect2i = tm.get_used_rect()
+	var edge := bool(t.get("edge", true))
+	for dr in [-1, 0, 1]:
+		for dc in [-1, 0, 1]:
+			var c: int = col + dc
+			var r: int = row + dr
+			if not tiles.has(_tile_index(tm, c, r)):
+				continue
+			var m := 0
+			for d in dirs:
+				var cc: int = c + d[0]
+				var rr: int = r + d[1]
+				var inside := used.has_point(Vector2i(cc, rr))
+				if (inside and tiles.has(_tile_index(tm, cc, rr))) or (not inside and edge):
+					m |= d[2]
+			var k := 0
+			if blob:
+				k = m & 85
+				for cs in [[2, 1, 4], [8, 16, 4], [32, 16, 64], [128, 1, 64]]:
+					if m & cs[0] and m & cs[1] and m & cs[2]:
+						k |= cs[0]
+			else:
+				k = (1 if m & 1 else 0) | (2 if m & 4 else 0) | (4 if m & 16 else 0) | (8 if m & 64 else 0)
+			set_tile(layer_name, c, r, int(table.get(str(k), full)))

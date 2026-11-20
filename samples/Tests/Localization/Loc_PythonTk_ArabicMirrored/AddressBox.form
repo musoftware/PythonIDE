@@ -1,0 +1,215 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "AddressBox",
+    "Text": "AddressBox",
+    "Width": 264,
+    "Height": 100,
+    "BackColor": "#F3F6FB",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel",
+    "Localizable": true
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblTitle",
+        "Text": "Address",
+        "Left": 8,
+        "Top": 6,
+        "Width": 248,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblStreet",
+        "Text": "Street:",
+        "Left": 8,
+        "Top": 32,
+        "Width": 50,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtStreet",
+        "Text": "",
+        "Left": 64,
+        "Top": 30,
+        "Width": 192,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblCity",
+        "Text": "City:",
+        "Left": 8,
+        "Top": 64,
+        "Width": 50,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ComboBox",
+      "props": {
+        "Name": "cmbCity",
+        "Left": 64,
+        "Top": 62,
+        "Width": 192,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "Cairo;Giza;Alexandria",
+        "DropDownStyle": "DropDown",
+        "DataSource": "",
+        "DisplayMember": "",
+        "ValueMember": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    }
+  ],
+  "kind": "usercontrol",
+  "usercontrol": {
+    "properties": [
+      {
+        "name": "Caption",
+        "type": "str",
+        "default": "Address",
+        "maps": "lblTitle.Text",
+        "description": "The title shown at the top of the box."
+      },
+      {
+        "name": "Street",
+        "type": "str",
+        "default": "",
+        "maps": "txtStreet.Text",
+        "description": "The street."
+      },
+      {
+        "name": "Changes",
+        "type": "int",
+        "default": 0,
+        "maps": "",
+        "description": "How many edits (read only)."
+      }
+    ],
+    "events": [
+      {
+        "name": "Changed",
+        "description": "The street or the city was edited."
+      }
+    ],
+    "default_event": "Changed"
+  },
+  "resources": {
+    "ar": {
+      "name": "Arabic",
+      "RightToLeft": true,
+      "RightToLeftLayout": true,
+      "strings": {
+        "lblStreet.Text": "الشارع:",
+        "lblCity.Text": "المدينة:",
+        "lblTitle.Text": "العنوان",
+        "cmbCity.Items": "القاهرة;الجيزة;الإسكندرية"
+      }
+    },
+    "fr": {
+      "name": "French",
+      "RightToLeft": false,
+      "RightToLeftLayout": false,
+      "strings": {
+        "lblStreet.Text": "Rue :",
+        "lblCity.Text": "Ville :",
+        "lblTitle.Text": "Adresse"
+      }
+    }
+  }
+}

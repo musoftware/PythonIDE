@@ -1,0 +1,10 @@
+{
+  "name": "Loc_PythonQt_ArabicMirrored",
+  "language": "python-qt",
+  "forms": [
+    "Form1",
+    "AddressBox"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

@@ -1,0 +1,14 @@
+{
+  "generator": "RAD IDE",
+  "form": "AddressBox",
+  "language": "ar",
+  "name": "Arabic",
+  "RightToLeft": true,
+  "RightToLeftLayout": true,
+  "strings": {
+    "cmbCity.Items": "القاهرة;الجيزة;الإسكندرية",
+    "lblCity.Text": "المدينة:",
+    "lblStreet.Text": "الشارع:",
+    "lblTitle.Text": "العنوان"
+  }
+}

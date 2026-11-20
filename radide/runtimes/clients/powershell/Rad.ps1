@@ -46,7 +46,12 @@ function RadToBool($Text) { return ("$Text" -eq "True" -or "$Text" -eq "1" -or "
 
 # ---------------------------------------------------------------- GUI
 function RadSet([string]$Object, [string]$Property, $Value) { RadSend "SET $Object $Property $(RadStr $Value)" }
-function RadGet([string]$Object, [string]$Property) { return RadAsk "GET $Object $Property" }
+function RadGet([string]$Object, [string]$Property) {
+    # stopped in a debugger (PSES lists every variable's properties): asking the IDE now would read the next
+    # event line from stdin as the answer - the value is not read while paused
+    if ($null -ne $PSDebugContext) { return "<${Object}.${Property} not read while paused>" }
+    return RadAsk "GET $Object $Property"
+}
 function RadInvoke([string]$Object, [string]$Method) {
     $line = "CALL $Object $Method"
     if ($args.Count -gt 0) { $line += " " + (($args | ForEach-Object { RadStr $_ }) -join "`t") }

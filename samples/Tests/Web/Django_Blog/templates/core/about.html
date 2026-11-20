@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}About - {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>About {{ site_name }}</h2>
+<p>A small blog made with Django {{ django_version }} in RAD IDE: models with a slug, the admin with an inline,
+   class-based views (list with search and pagination, create / update / delete for the author), a function view
+   with a comment form, sign up / log in / log out.</p>
+{% endblock %}

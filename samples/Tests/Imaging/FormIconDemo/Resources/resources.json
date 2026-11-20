@@ -1,0 +1,22 @@
+{
+  "strings": [
+    {
+      "name": "Greeting",
+      "value": "Hello from the resources!",
+      "comment": "shown by Form1_Load"
+    }
+  ],
+  "images": [
+    {
+      "name": "Logo",
+      "file": "logo_src.png"
+    }
+  ],
+  "icons": [
+    {
+      "name": "AppIcon",
+      "file": "AppIcon.ico"
+    }
+  ],
+  "files": []
+}

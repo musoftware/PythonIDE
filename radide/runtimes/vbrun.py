@@ -1232,6 +1232,12 @@ class VBForm:
                 if arr:
                     ca = self.controls.setdefault(arr.lower(), ControlArray(arr))
                     ca.items[int(c.props.get("ArrayIndex", 0))] = vc
+        try:                    # data sources (Data Sources window): Customers.MoveNext, Customers.Update ...
+            from ..databinding_sql import vb_objects
+            for k, v in vb_objects(self.ui).items():
+                self.controls.setdefault(k, v)
+        except ImportError:
+            pass
         menu = self.model.menu()
         if menu is not None and hasattr(self.ui, menu.name):
             self._map_menu(getattr(self.ui, menu.name), menu.props.get("Items", []))
@@ -1396,6 +1402,21 @@ class App:
 
     def vb_get(self, name):
         p = self.runtime.project
+        nat = getattr(self.runtime, "native", None)          # a .vbp run in place: its own values
+        if nat is not None:
+            v = nat.vbp
+
+            def num(k):
+                try:
+                    return int(v.get(k, "0") or 0)
+                except ValueError:
+                    return 0
+            return {"title": nat.title, "path": str(nat.folder),
+                    "exename": Path(v.get("ExeName32", "") or nat.name).stem, "major": num("MajorVer"),
+                    "minor": num("MinorVer"), "revision": num("RevisionVer"), "previnstance": False,
+                    "comments": v.get("VersionComments", ""), "companyname": v.get("VersionCompanyName", ""),
+                    "productname": v.get("VersionProductName", "") or nat.title,
+                    "helpfile": v.get("HelpFile", "")}.get(name, EMPTY)
         return {"title": p.name, "path": str(p.folder), "exename": p.name, "major": 1, "minor": 0,
                 "revision": 0, "previnstance": False, "comments": "", "companyname": "",
                 "productname": p.name, "helpfile": ""}.get(name, EMPTY)
@@ -1484,7 +1505,15 @@ def _wrap(v):
 # ============================================================================ runtime
 class Runtime:
     def __init__(self, folder: Path, debug: bool = False):
-        self.project = Project.load(folder)
+        self.native = None             # a VB6 .vbp run in place (radide/foreign/vb6_project.py)
+        if folder.suffix.lower() == ".vbp" and folder.is_file():
+            from ..foreign.vb6_project import NativeVB6
+            import tempfile
+            self.native = NativeVB6(folder, Path(tempfile.gettempdir()) / "radide-vb6-frx")
+            folder = self.native.folder
+            self.project = self.native.project()
+        else:
+            self.project = Project.load(folder)
         self.folder = folder
         self.interp = Interpreter(host=self)
         self.interp.output = lambda s: (print(s, flush=True))
@@ -1507,7 +1536,7 @@ class Runtime:
         self.project.forms = [n for n in self.project.forms if lang(n) == "vb-basic"]
         self.project.modules = [m for m in self.project.modules if m.lower().endswith((".bas", ".cls"))]
         for name in self.project.forms:
-            form = Form.load(self.project.form_path(name))
+            form = self.native.form(name) if self.native else Form.load(self.project.form_path(name))
             vf = VBForm(self, form)
             self.forms[name.lower()] = vf
             it.objects[name.lower()] = vf
@@ -1519,24 +1548,29 @@ class Runtime:
         for path in proxy_files(self.folder, "*.ref.bas"):
             if path.name.lower() not in listed:
                 self._load_code(path, path.name[:-len(".ref.bas")], False)
-        for mod in self.project.modules:
-            path = self.folder / mod
-            self._load_code(path, Path(mod).stem, False)
+        # class modules first, so module-level "Dim x As New CFoo" / "As CFoo" know the class
+        for mod in sorted(self.project.modules, key=lambda m: not m.lower().endswith(".cls")):
+            path = self.native.module_path(mod) if self.native else self.folder / mod
+            self._load_code(path, Path(mod).stem, False,
+                            src=self.native.module_text(mod) if self.native else None, filename=mod)
         for name in self.project.forms:
-            self._load_code(self.folder / f"{name}.bas", name, True, self.forms[name.lower()])
+            self._load_code(self.folder / f"{name}.bas", name, True, self.forms[name.lower()],
+                            src=self.native.form_code(name) if self.native else None)
         for st in it.modules.values():
             if not st.is_form:
                 it.objects.setdefault(st.name.lower(), ModuleProxy(it, st))
 
-    def _load_code(self, path: Path, name: str, is_form: bool, me=None):
-        src = path.read_text(encoding="utf-8-sig", errors="replace") if path.exists() else ""
+    def _load_code(self, path: Path, name: str, is_form: bool, me=None, src=None, filename=None):
+        if src is None:
+            src = path.read_text(encoding="utf-8-sig", errors="replace") if path.exists() else ""
+        fname = filename or path.name
         try:
-            mod = parse_module(src, name, path.name)
+            mod = parse_module(src, name, fname)
         except VBSyntaxError as e:
-            self.fatal(f"{path.name}({e.line}): Syntax error: {e.msg}", path.name, e.line)
+            self.fatal(f"{fname}({e.line}): Syntax error: {e.msg}", fname, e.line)
             raise SystemExit(1) from None
         st = self.interp.load_module(mod, is_form, me)
-        st.filename = path.name
+        st.filename = fname
 
     # -- UI
     def build_form(self, vf: VBForm):
@@ -1712,6 +1746,12 @@ class Runtime:
                 self.root.destroy()
         except tk.TclError:
             pass
+        try:                                    # End: flush and close files opened with Open ... As #n
+            self.interp.shutting_down = True
+            self.interp.files.close_all()
+            sys.stdout.flush()
+        except Exception:  # noqa: BLE001
+            pass
         os._exit(0)
 
     # -- host services for the interpreter
@@ -1813,6 +1853,15 @@ class Debugger:
             return
         key = (parts[0].lower(), int(parts[1]))
         cond = "|".join(parts[2:]).strip()
+        from ..debug_extras import parse_bp      # "@@bp {json}": hit count / logpoint
+        d = parse_bp(cond)
+        cond = d["cond"]
+        self.hits = getattr(self, "hits", {})
+        self.extra = getattr(self, "extra", {})
+        self.hits.pop(key, None)
+        self.extra.pop(key, None)
+        if on and (d["hit"] or d["log"]):
+            self.extra[key] = (d["hit"], d["log"])
         if on:
             self.bps.add(key)
             if cond:
@@ -1850,8 +1899,45 @@ class Debugger:
             stop = "step"
         if stop is None and (fname, line) in self.bps and self._cond_true((fname, line), frame):
             stop = "breakpoint"
+            key = (fname, line)
+            self.hits = getattr(self, "hits", {})
+            self.hits[key] = self.hits.get(key, 0) + 1
+            hit, log = getattr(self, "extra", {}).get(key, ("", ""))
+            from ..debug_extras import format_log, hit_ok
+            if hit and not hit_ok(hit, self.hits[key]):
+                stop = None
+            elif log:                                # logpoint: print the message, do not stop
+                from .vbinterp import to_str
+                sys.stdout.write(format_log(log, lambda e: to_str(self.rt.interp.evaluate_text(e, frame))) + "\n")
+                sys.stdout.flush()
+                stop = None
         if stop:
             self.pause(frame, stop)
+
+    # ---- expandable Locals / Watch (arrays, collections, Types, objects with variables)
+    @staticmethod
+    def _children(value):
+        from .vbinterp import UDT, Collection, VBArray
+        if isinstance(value, VBArray):
+            if len(value.bounds) == 1:
+                lo = value.bounds[0][0]
+                return [(f"({lo + i})", v) for i, v in enumerate(value.items()[:500])]
+            return [("(" + ", ".join(map(str, k)) + ")", value.data[k]) for k in sorted(value.data)[:500]]
+        if isinstance(value, Collection):
+            return [(f"({i + 1})", v) for i, v in enumerate(value.items[:500])]
+        if isinstance(value, UDT):
+            return list(value._fields.items())
+        cells = getattr(getattr(value, "st", None), "vars", None) or getattr(value, "vars", None)
+        if isinstance(cells, dict):
+            return [(n, c.value if isinstance(c, Cell) else c) for n, c in list(cells.items())[:500]]
+        return []
+
+    def _handle(self, value):
+        if isinstance(value, (str, int, float, bool)) or not self._children(value):
+            return 0
+        h = len(self.handles) + 1
+        self.handles[h] = value
+        return h
 
     def stop_on_error(self, filename, line, ex):
         frame = self.rt.interp.stack[-1] if self.rt.interp.stack else None
@@ -1862,8 +1948,16 @@ class Debugger:
         it = self.rt.interp
         fname = filename or getattr(frame.module, "filename", frame.module.name + ".bas")
         self.send("stop", str(self.rt.folder / fname), line or frame.line, reason)
+        self.send("caps", "children", "bpx")
+        self.handles = {}
+        raw = dict(frame.locals)
+        raw.update({f"{frame.module.name}.{n}": c for n, c in frame.module.vars.items()})
         for name, typ, val in it.frame_variables(frame):
             self.send("var", name, typ, val)
+            cell = raw.get(name)
+            h = self._handle(cell.value) if cell is not None else 0
+            if h:
+                self.send("ref", name, h)          # expandable in Locals (radide/debug_extras.py)
         for f in reversed(it.stack):
             self.send("frame", f.proc.display or f.proc.name if f.proc else "(module)",
                       str(self.rt.folder / getattr(f.module, "filename", f.module.name + ".bas")), f.line)
@@ -1881,6 +1975,21 @@ class Debugger:
                     self.send("eval", f"Error: {ex}")
                 except Exception as ex:  # noqa: BLE001
                     self.send("eval", f"Error: {ex}")
+                continue
+            if cmd.startswith("k "):               # children of an expandable value
+                from .vbinterp import _repr, _typename
+                value = self.handles.get(int(cmd[2:].strip())) if cmd[2:].strip().isdigit() else None
+                for cname, child in self._children(value):
+                    self.send("kid", cname, _typename(child), _repr(child), self._handle(child))
+                self.send("kend")
+                continue
+            if cmd.startswith("w "):               # Watch expression with its handle
+                from .vbinterp import _repr, _typename
+                try:
+                    v = it.evaluate_text(cmd[2:], frame)
+                    self.send("watch", _typename(v), self._handle(v), _repr(v))
+                except Exception as ex:  # noqa: BLE001
+                    self.send("watch", "", 0, f"Error: {ex}")
                 continue
             if cmd.startswith(("b ", "B ")):
                 self._add_bp(cmd[2:], cmd[0] == "b")

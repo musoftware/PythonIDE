@@ -1,0 +1,19 @@
+{
+  // Import with Tools > Code Snippets Manager > Import... (VS Code snippet format)
+  "For range loop": {
+    "scope": "python",
+    "prefix": ["forr", "fori"],
+    "body": ["for ${1:i} in range(${2:10}):", "    ${0:pass}"],
+    "description": "for loop over range()"
+  },
+  "Main guard": {
+    "scope": "python",
+    "prefix": "ifmain",
+    "body": ["if __name__ == \"__main__\":", "    ${1|main(),run(),app.exec()|}"],
+    "description": "if __name__ == '__main__' with a choice"
+  },
+  "Message box (any language)": {
+    "prefix": "msg",
+    "body": "MsgBox \"${1:Hello}\"$0"
+  }
+}

@@ -628,9 +628,11 @@ class DevServer(QObject):
         self._ready.set()                      # requests get a 502 page with the error
 
     def _read_output(self, proc: subprocess.Popen) -> None:
+        # spec "log_filter": regex of the backend's own request-log lines (the Requests dock shows them)
+        quiet = re.compile((self._backend_spec or {}).get("log_filter") or r"(?!)")
         for raw in iter(proc.stdout.readline, b""):
             line = raw.decode("utf-8", errors="replace").rstrip()
-            if not line or PHP_ACCESS.match(line):
+            if not line or PHP_ACCESS.match(line) or quiet.search(line):
                 continue
             if PHP_STARTED.search(line):
                 line = f"PHP development server ready (internal port {self.backend_port})"

@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{ "path": "tools", "name": "Tools" },
+		{ "path": "scripts" },
+		{ "path": "../CMakeHello" }
+	],
+	"settings": {
+		"files.trimTrailingWhitespace": true,
+	}
+}

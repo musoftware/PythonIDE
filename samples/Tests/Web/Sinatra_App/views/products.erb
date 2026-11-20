@@ -1,0 +1,10 @@
+<h2>Products</h2>
+<ul>
+<% @products.each do |p| %>
+  <li><a href="/products/<%= p[:id] %>"><%= p[:name] %></a> - $<%= "%.2f" % p[:price] %></li>
+<% end %>
+</ul>
+<form method="post" action="/products">
+  <input name="name" placeholder="Name" required> <input name="price" type="number" step="0.01" placeholder="Price">
+  <button>Add</button>
+</form>

@@ -46,7 +46,11 @@ TRACE = bool(os.environ.get("RADIDE_DAP_TRACE"))       # print the js-debug DAP 
 ENGINES = {
     "c-bridge": "gdb", "cpp-bridge": "gdb", "fortran-bridge": "gdb", "rust-bridge": "gdb",
     "csharp-bridge": "netcoredbg", "javascript": "jsdebug", "typescript": "jsdebug", "dart-bridge": "dart",
+    "java-bridge": "jdwp", "go-bridge": "dlv",          # radide/jdwp_engine.py, Delve (debug_extras.TcpDap)
+    # radide/debug_more.py: Ruby debug gem (DAP over TCP), Lua / Perl agents, PowerShell Editor Services
+    "ruby-bridge": "rdbg", "lua-bridge": "luaagent", "perl-bridge": "perlagent", "powershell-bridge": "pses",
 }
+MORE_ENGINES = ("rdbg", "luaagent", "perlagent", "pses")
 
 
 # ====================================================================== tools
@@ -150,6 +154,15 @@ def missing(engine: str, plugin=None) -> str:
                                          "github.com/microsoft/vscode-js-debug into %LOCALAPPDATA%\\RADIDE\\tools\\js-debug)")
     if engine == "dart":
         return "" if shutil.which("dart") else "the Dart SDK (dart) was not found"
+    if engine == "jdwp":
+        return "" if plugin is None or plugin.tool() else "the JDK (javac / java) was not found"
+    if engine == "dlv":
+        from .debug_extras import find_dlv
+        return "" if find_dlv() else ("Delve (dlv) was not found: Debug > Install Delve, or "
+                                      "go install github.com/go-delve/delve/cmd/dlv@latest")
+    if engine in MORE_ENGINES:
+        from .debug_more import missing as more_missing
+        return more_missing(engine, plugin) or ""
     return f"no debugger for {engine}"
 
 
@@ -157,6 +170,8 @@ def missing(engine: str, plugin=None) -> str:
 def _debug_build(build: str, plugin) -> str:
     if plugin.id == "rust-bridge":
         return build + f" --target {RUST_GNU}" if os.name == "nt" else build
+    if plugin.id == "go-bridge":                 # Delve: no optimisation, no inlining
+        return build.replace(" build ", ' build -gcflags="all=-N -l" ', 1)
     if ENGINES.get(plugin.id) == "gdb":          # gcc / g++ / gfortran: debug info, no optimisation
         out, n = re.subn(r"(?<=\s)-O[0-3sg]?(?=\s)", "-g -O0", build)
         return out if n else build.replace(" -o ", " -g -O0 -o ", 1)
@@ -172,6 +187,8 @@ def _debug_run(cmd: list[str], plugin, port: int) -> list[str]:
         cmd.insert(1, f"--inspect-brk=127.0.0.1:{port}")      # paused at start: the program blocks in readSync later
     elif plugin.id == "dart-bridge" and cmd:
         cmd[1:1] = [f"--enable-vm-service={port}/127.0.0.1", "--disable-service-auth-codes"]
+    elif plugin.id == "java-bridge" and cmd:     # radide/jdwp_engine.py connects to this port
+        cmd.insert(1, f"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:{port}")
     return cmd
 
 
@@ -184,9 +201,14 @@ def debug_spec(spec, plugin, port: int):
     if "--" in args:
         i = args.index("--") + 1
         args[i:] = _debug_run(args[i:], plugin, port)
-    spec.args = args
     env = dict(spec.env if spec.env is not None else os.environ)
     env["RAD_BRIDGE_DEBUG"] = "1"
+    if ENGINES.get(plugin.id) in MORE_ENGINES and "--" in args:   # Ruby / Lua / Perl: debug_more.py
+        from . import debug_more
+        i = args.index("--") + 1
+        args[i:] = debug_more.adjust_run(args[i:], plugin, port, env)
+        debug_more.set_cwd(port, Path(spec.cwd), env)
+    spec.args = args
     if plugin.id == "rust-bridge" and os.name == "nt":
         # an MSVC-host rustup cross-links the GNU target with x86_64-w64-mingw32-gcc (WinLibs has it)
         gcc = mingw_gcc()
@@ -447,6 +469,29 @@ class BridgeDebugSession(QObject):
         if self.dap:
             self.dap.set_break_on_exception(on)
 
+    # ---- expandable Locals / Watch, Threads (radide/debug_extras.py, features/debug_views.py)
+    def children(self, ref, cb):
+        if self.dap is not None and hasattr(self.dap, "children"):
+            self.dap.children(ref, cb)
+        else:
+            cb([])
+
+    def watch(self, expr: str, cb):
+        if self.dap is not None and hasattr(self.dap, "watch"):
+            self.dap.watch(expr, cb)
+        else:
+            cb("(the debugger is not attached)", "", 0)
+
+    def threads(self, cb):
+        if self.dap is not None and hasattr(self.dap, "threads"):
+            self.dap.threads(cb)
+        else:
+            cb([])
+
+    def select_thread(self, tid):
+        if self.dap is not None and hasattr(self.dap, "select_thread"):
+            self.dap.select_thread(tid)
+
     def simulate(self, obj: str, event: str = "Click"):
         """Fire *event* of control *obj* as if the user did it (the host runs the handler)."""
         if self.running():
@@ -482,7 +527,8 @@ class BridgeDebugSession(QObject):
                     self._attach()
                 continue
             if line.startswith(("Debugger listening on ws://", "Debugger ending on ws://", "For help, see: https://nodejs",
-                                "Waiting for the debugger to disconnect")) \
+                                "Waiting for the debugger to disconnect", "Listening for transport dt_socket",
+                                "ERROR: transport error 202", "DEBUGGER: ")) \
                     or line.strip() == "Debugger attached.":
                 continue                        # node --inspect chatter
             self.output.emit(line)
@@ -530,7 +576,14 @@ class BridgeDebugSession(QObject):
     def _make_dap(self):
         cwd, bps = self.cwd, self.breakpoints
         eng = self.engine
-        if eng == "gdb":
+        if eng == "jdwp":
+            from .jdwp_engine import JdwpSession
+            d = JdwpSession(self.port, cwd, bps, self)
+        elif eng == "dlv":
+            from .debug_extras import find_dlv, make_tcp_dap
+            d = make_tcp_dap()([find_dlv(), "dap"], "go", {"request": "attach", "mode": "local", "processId": self.pid,
+                                                          "cwd": str(cwd)}, cwd, None, bps, self)
+        elif eng == "gdb":
             gdb = find_gdb()
             exe = self._program_path()
             args = {"pid": self.pid}
@@ -541,6 +594,9 @@ class BridgeDebugSession(QObject):
             d = AttachDap([find_netcoredbg(), "--interpreter=vscode"], "coreclr",
                           {"type": "coreclr", "request": "attach", "processId": self.pid, "justMyCode": True},
                           cwd, None, bps, self)
+        elif eng in MORE_ENGINES:               # Ruby debug gem / Lua + Perl agents / PSES (radide/debug_more.py)
+            from .debug_more import make_dap
+            d = make_dap(eng, self)
         elif eng == "jsdebug":
             d = TcpAttachDap([find_node(), find_jsdebug()], "pwa-node",
                              {"type": "pwa-node", "request": "attach", "address": "127.0.0.1", "port": self.port,

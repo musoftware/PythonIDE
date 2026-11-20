@@ -1,0 +1,10 @@
+{
+  "Prefix line with dash": {
+    "steps": [
+      {"t": "cmd", "id": "cursorHome", "args": null},
+      {"t": "type", "text": "- "},
+      {"t": "cmd", "id": "cursorDown", "args": null}
+    ],
+    "saved": "2026-11-20 16:00"
+  }
+}

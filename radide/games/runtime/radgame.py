@@ -169,6 +169,10 @@ class GameObject:
         self.template = str(self.props.get("template", "")).lower() in ("1", "true", "yes", "on")
         self.spawned = False             # made at run time by Spawn / Clone (removed when destroyed)
         self.hitbox = _num(self.props.get("hitbox"), 0)    # props "hitbox=6": collide 6 px inside the edges
+        # "physics" (radgame_physics.py, pymunk) and "particles" (radgame_particles.py) settings of the object
+        self.extra = {k: d[k] for k in ("physics", "particles") if d.get(k)}
+        self.body = None                 # the pymunk Body when the scene has physics
+        self.emitter = None              # the particle Emitter of an emitter object
 
     # ---- geometry
     @property
@@ -233,6 +237,15 @@ class GameObject:
     def enabled(self, behaviour: str) -> bool:
         b = self.behaviour(behaviour)
         return b is not None and b.get("enabled", True) is not False
+
+    @property
+    def emitting(self) -> bool:
+        return self.emitter is not None and self.emitter.emitting
+
+    @emitting.setter
+    def emitting(self, on: bool):
+        if self.emitter is not None:
+            self.emitter.emitting = bool(on)
 
     @property
     def solid(self) -> bool:
@@ -523,6 +536,8 @@ class Layer:
         for o in sorted(self.objects, key=lambda o: o.z):
             if o.visible and o.alive and not o.template:
                 o.draw(surf, ox, oy)
+        if self.scene.particles is not None:
+            self.scene.particles.draw_layer(self, surf, ox, oy)
 
 
 # ====================================================================== camera
@@ -598,6 +613,14 @@ class Scene:
         self.view_size = (self.width, self.height)
         self.world_size = self._world_size()
         self.camera.update()
+        self.particles = self.physics = None       # radgame_particles.System / radgame_physics.World
+        objs = list(self.all_objects())
+        if (data.get("assets") or {}).get("particles") or any(o.extra.get("particles") for o in objs):
+            mod = _optional("radgame_particles")
+            self.particles = mod.System(self) if mod else None
+        if (data.get("physics") or {}).get("enabled"):
+            mod = _optional("radgame_physics")
+            self.physics = mod.World(self) if mod else None
 
     # ---- assets
     def _path(self, rel: str) -> Path:
@@ -652,6 +675,10 @@ class Scene:
             i += 1
         layer.objects.append(obj)
         self.objects[obj.name] = obj
+        if getattr(self, "physics", None) is not None:
+            self.physics.add(obj)
+        if getattr(self, "particles", None) is not None:
+            self.particles.add_object(obj)
         return obj
 
     def all_objects(self):
@@ -665,6 +692,8 @@ class Scene:
     def remove_object(self, obj: GameObject):
         """Take *obj* out of the scene for good (spawned objects are removed like this when destroyed)."""
         obj.alive = obj.visible = False
+        if getattr(self, "physics", None) is not None:
+            self.physics.remove(obj)
         if obj in obj.layer.objects:
             obj.layer.objects.remove(obj)
         if self.objects.get(obj.name) is obj:
@@ -1139,6 +1168,10 @@ class Game:
                         self.restart_scene()
                     else:
                         o.destroy()
+        if scene.physics is not None:
+            scene.physics.step(dt)
+        if scene.particles is not None:
+            scene.particles.update(dt)
         self._collisions()
         self._fire_scene("Update", dt)
         scene.purge()
@@ -1192,7 +1225,8 @@ class Game:
 
     def _collisions(self):
         objs = [o for o in self.scene.live_objects() if not o.layer.screen_space and
-                (o.kind != "text")]
+                (o.kind != "text") and not (o.kind == "area" and o.extra.get("particles") and
+                                            not o.props.get("collide"))]
         now: set[tuple[str, str]] = set()
         rects = [o.hit_rect for o in objs]
         for i, a in enumerate(objs):
@@ -1428,6 +1462,7 @@ def Clone(obj: GameObject, x: float | None = None, y: float | None = None) -> Ga
     d = {"name": obj.name, "kind": obj.kind, "x": obj.x if x is None else x, "y": obj.y if y is None else y,
          "w": obj.w, "h": obj.h, "scale": obj.scale, "rotation": obj.rotation, "z": obj.z,
          "props": props, "behaviours": [dict(b) for b in obj.behaviours]}
+    d.update({k: (dict(v) if isinstance(v, dict) else v) for k, v in obj.extra.items()})
     if isinstance(obj, Sprite):
         d.update(image=obj.image_id, spritesheet=obj.sheet_id, animation=obj.animation)
     if isinstance(obj, TextObject):
@@ -1482,7 +1517,118 @@ def AddTimer(name: str, interval: float = 1000, enabled: bool = True) -> Timer:
 
 
 def Random(a: int, b: int) -> int:
-    return _random.randint(a, b)
+    return _random.randint(int(a), int(b))
+
+
+def _optional(module: str):
+    """radgame_particles / radgame_physics (copied next to radgame.py by RAD IDE), None when missing."""
+    try:
+        return importlib.import_module(module)
+    except ImportError as e:
+        print(f"radgame: {module} is not available ({e})", file=sys.stderr)
+        return None
+
+
+def _particles():
+    scene = game.scene
+    if scene.particles is None:
+        mod = _optional("radgame_particles")
+        if mod is None:
+            raise RuntimeError("particles need radgame_particles.py next to radgame.py")
+        scene.particles = mod.System(scene)
+    return scene.particles
+
+
+def _unref(o):
+    return o._obj() if isinstance(o, ObjRef) else o
+
+
+def Emit(effect, x=0.0, y=0.0, seconds: float = 0.0):
+    """Particles: a stream of *effect* (a Particle Editor effect or a preset: fire, smoke, sparkle, rain,
+    snow, trail) at (x, y) - ``Emit("smoke", Player)`` follows an object - for *seconds* (0 = until
+    ``StopEmitter(e)``). Returns the emitter."""
+    return _particles().emit(effect, _unref(x), y, seconds)
+
+
+def Burst(effect, x=0.0, y=0.0, count: int = 0):
+    """Particles: *count* particles at once (default: the effect's burst) - ``Burst("explosion", x, y)``."""
+    return _particles().burst(effect, _unref(x), y, count)
+
+
+def StopEmitter(emitter):
+    """Stop an emitter (from Emit) or the emitter of an object; its particles fade out."""
+    emitter = _unref(emitter)
+    em = getattr(emitter, "emitter", None) or emitter
+    if hasattr(em, "stop"):
+        em.stop()
+
+
+def ApplyImpulse(obj, ix: float, iy: float):
+    """Physics: kick a dynamic body (impulse = mass x change of speed): ``ApplyImpulse(Ball, 0, -400)``."""
+    if game.scene.physics is not None:
+        game.scene.physics.impulse(_unref(obj), ix, iy)
+
+
+def ApplyForce(obj, fx: float, fy: float):
+    """Physics: push a dynamic body during this frame (call it every frame for a steady force)."""
+    if game.scene.physics is not None:
+        game.scene.physics.force(_unref(obj), fx, fy)
+
+
+def SetVelocity(obj, vx: float, vy: float):
+    """Physics: set the speed of a body (pixels per second); without physics it sets obj.vx / obj.vy."""
+    obj = _unref(obj)
+    if game.scene.physics is not None and obj.body is not None:
+        game.scene.physics.velocity(obj, vx, vy)
+    else:
+        obj.vx, obj.vy = vx, vy
+
+
+_NEIGHBOURS8 = ((0, -1, 1), (1, -1, 2), (1, 0, 4), (1, 1, 8), (0, 1, 16), (-1, 1, 32), (-1, 0, 64), (-1, -1, 128))
+
+
+def SetTerrain(layer: str, col: int, row: int, terrain: str, on: bool = True):
+    """Auto-tiling at run time: add (or remove, on=False) one cell of a terrain made in the Terrains dialog;
+    the cell and its neighbours pick their edge / corner tiles like in the scene designer."""
+    t = ((game.scene.data.get("assets") or {}).get("terrains") or {}).get(terrain)
+    ly = next((x for x in game.scene.layers if x.name == layer), None)
+    if not t or ly is None:
+        return
+    table = {str(k): int(v) for k, v in (t.get("tiles") or {}).items()}
+    tiles = set(table.values())
+    blob = str(t.get("mode", "47")) == "47"
+    full = table.get("255" if blob else "15", next(iter(table.values()), 0))
+    edge = bool(t.get("edge", True))
+
+    def member(c, r):
+        if not (0 <= r < ly.rows and 0 <= c < len(ly.data[r])):
+            return edge
+        return ly.data[r][c] in tiles
+    ly.set_tile(col, row, full if on else -1)
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            c, r = col + dc, row + dr
+            if not (0 <= r < ly.rows and 0 <= c < len(ly.data[r])) or not member(c, r):
+                continue
+            m = 0
+            for dx, dy, bit in _NEIGHBOURS8:
+                if member(c + dx, r + dy):
+                    m |= bit
+            if blob:
+                k = m & 85
+                for corner, s1, s2 in ((2, 1, 4), (8, 16, 4), (32, 16, 64), (128, 1, 64)):
+                    if m & corner and m & s1 and m & s2:
+                        k |= corner
+            else:
+                k = (1 if m & 1 else 0) | (2 if m & 4 else 0) | (4 if m & 16 else 0) | (8 if m & 64 else 0)
+            ly.set_tile(c, r, table.get(str(k), full))
+
+
+def SetTile(layer: str, col: int, row: int, tile: int):
+    """Change one cell of a tile layer while the game runs (-1 = empty)."""
+    for ly in game.scene.layers:
+        if ly.name == layer:
+            ly.set_tile(col, row, tile)
 
 
 class ObjRef:
@@ -1533,4 +1679,5 @@ def run(scene: str, title: str = "", width: int | None = None, height: int | Non
 __all__ = ["game", "Game", "Scene", "Sprite", "TextObject", "Area", "GameObject", "Layer", "Timer", "Input",
            "GoToScene", "RestartScene", "Quit", "AddScore", "PlaySound", "PlayMusic", "StopMusic", "ShowMessage",
            "IsKeyDown", "Find", "FindGroup", "Clone", "Spawn", "Destroy", "EnableBehaviour", "SaveData", "LoadData",
-           "AddTimer", "Random", "objref", "run", "move_and_collide"]
+           "AddTimer", "Random", "objref", "run", "move_and_collide", "Emit", "Burst", "StopEmitter",
+           "ApplyImpulse", "ApplyForce", "SetVelocity", "SetTile", "SetTerrain"]

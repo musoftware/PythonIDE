@@ -1,0 +1,595 @@
+{
+ "format": "radreport",
+ "version": 1,
+ "name": "Invoices",
+ "title": "Sales Invoices",
+ "page": {
+  "size": "A4",
+  "orientation": "Portrait",
+  "margins": [
+   36,
+   36,
+   36,
+   36
+  ]
+ },
+ "rightToLeft": false,
+ "mirrorLayout": false,
+ "currency": "",
+ "font": {
+  "name": "Segoe UI",
+  "size": 9
+ },
+ "dataSource": {
+  "type": "sql",
+  "connection": {
+   "kind": "sqlite",
+   "path": "shop.db"
+  },
+  "query": "SELECT i.Id AS InvoiceNo, i.Date, c.Name AS Customer, c.NameAr AS CustomerAr, c.City,\n       p.Name AS Product, p.Category, l.Qty, l.Price, l.Qty * l.Price AS Amount\nFROM InvoiceLines l\n  JOIN Invoices i ON i.Id = l.InvoiceId\n  JOIN Customers c ON c.Id = i.CustomerId\n  JOIN Products p ON p.Id = l.ProductId\nWHERE (:CustomerId IS NULL OR c.Id = :CustomerId)\nORDER BY c.Name, i.Id, l.Id"
+ },
+ "parameters": [
+  {
+   "name": "CustomerId",
+   "type": "int",
+   "default": null,
+   "prompt": "Customer Id (empty = all)"
+  },
+  {
+   "name": "TaxRate",
+   "type": "float",
+   "default": 0.14,
+   "prompt": "Tax rate"
+  }
+ ],
+ "sort": [],
+ "filter": "",
+ "sortByGroups": false,
+ "groups": [
+  {
+   "name": "Customer",
+   "field": "Customer",
+   "expression": "",
+   "newPage": true,
+   "repeatHeader": true,
+   "keepTogether": false,
+   "sort": "asc",
+   "header": {
+    "height": 34,
+    "back": "#E8EEF7",
+    "items": [
+     {
+      "type": "text",
+      "name": "txtCustomer",
+      "x": 4,
+      "y": 4,
+      "w": 300,
+      "h": 26,
+      "text": "Customer: {Customer}",
+      "fontSize": 13,
+      "bold": true,
+      "color": "#1F3D7A"
+     },
+     {
+      "type": "text",
+      "name": "txtCustomerAr",
+      "x": 310,
+      "y": 4,
+      "w": 209,
+      "h": 26,
+      "text": "{CustomerAr}",
+      "fontSize": 13,
+      "bold": true,
+      "align": "right",
+      "rtl": true,
+      "color": "#1F3D7A"
+     },
+     {
+      "type": "text",
+      "name": "txtContinued",
+      "x": 200,
+      "y": 4,
+      "w": 120,
+      "h": 26,
+      "text": "{IIf(Continued, '(continued)', '')}",
+      "italic": true,
+      "color": "#808080"
+     }
+    ]
+   },
+   "footer": {
+    "height": 30,
+    "items": [
+     {
+      "type": "line",
+      "name": "lnCust",
+      "x": 270,
+      "y": 2,
+      "w": 253,
+      "h": 2
+     },
+     {
+      "type": "text",
+      "name": "lblCustTotal",
+      "x": 200,
+      "y": 6,
+      "w": 190,
+      "h": 20,
+      "text": "Total for {Customer}:",
+      "bold": true,
+      "align": "right"
+     },
+     {
+      "type": "expression",
+      "name": "sumCust",
+      "x": 390,
+      "y": 6,
+      "w": 70,
+      "h": 20,
+      "expression": "Sum('Amount')",
+      "format": "N2",
+      "bold": true,
+      "align": "right"
+     },
+     {
+      "type": "text",
+      "name": "lblCustInv",
+      "x": 0,
+      "y": 6,
+      "w": 190,
+      "h": 20,
+      "text": "{CountDistinct('InvoiceNo')} invoice(s)",
+      "color": "#606060"
+     }
+    ]
+   }
+  },
+  {
+   "name": "Invoice",
+   "field": "InvoiceNo",
+   "expression": "",
+   "newPage": false,
+   "repeatHeader": true,
+   "keepTogether": true,
+   "sort": "asc",
+   "header": {
+    "height": 26,
+    "items": [
+     {
+      "type": "text",
+      "name": "txtInvoice",
+      "x": 0,
+      "y": 4,
+      "w": 330,
+      "h": 18,
+      "text": "Invoice #{InvoiceNo}    Date: {Date:dd/MM/yyyy}    City: {City}",
+      "bold": true
+     },
+     {
+      "type": "barcode",
+      "name": "bcInvoice",
+      "x": 383,
+      "y": 2,
+      "w": 140,
+      "h": 22,
+      "field": "InvoiceNo",
+      "barcodeType": "code128",
+      "showText": false
+     }
+    ]
+   },
+   "footer": {
+    "height": 58,
+    "items": [
+     {
+      "type": "line",
+      "name": "lnInv",
+      "x": 320,
+      "y": 1,
+      "w": 203,
+      "h": 2
+     },
+     {
+      "type": "text",
+      "name": "lblSub",
+      "x": 270,
+      "y": 4,
+      "w": 120,
+      "h": 16,
+      "text": "Subtotal",
+      "align": "right"
+     },
+     {
+      "type": "expression",
+      "name": "sumSub",
+      "x": 390,
+      "y": 4,
+      "w": 70,
+      "h": 16,
+      "expression": "Sum('Amount')",
+      "format": "N2",
+      "align": "right"
+     },
+     {
+      "type": "text",
+      "name": "lblTax",
+      "x": 270,
+      "y": 20,
+      "w": 120,
+      "h": 16,
+      "text": "Tax {Parameters.TaxRate:P0}",
+      "align": "right"
+     },
+     {
+      "type": "expression",
+      "name": "sumTax",
+      "x": 390,
+      "y": 20,
+      "w": 70,
+      "h": 16,
+      "expression": "Sum('Amount') * Parameters.TaxRate",
+      "format": "N2",
+      "align": "right"
+     },
+     {
+      "type": "text",
+      "name": "lblTot",
+      "x": 270,
+      "y": 36,
+      "w": 120,
+      "h": 18,
+      "text": "Invoice total",
+      "align": "right",
+      "bold": true
+     },
+     {
+      "type": "expression",
+      "name": "sumTot",
+      "x": 390,
+      "y": 36,
+      "w": 70,
+      "h": 18,
+      "expression": "Sum('Amount') * (1 + Parameters.TaxRate)",
+      "format": "N2",
+      "align": "right",
+      "bold": true,
+      "border": 0.8,
+      "borderColor": "#1F3D7A"
+     },
+     {
+      "type": "text",
+      "name": "lblLines",
+      "x": 0,
+      "y": 4,
+      "w": 200,
+      "h": 16,
+      "text": "{Count()} line(s), {Sum('Qty')} item(s)",
+      "color": "#606060"
+     }
+    ]
+   }
+  }
+ ],
+ "bands": {
+  "reportHeader": {
+   "height": 78,
+   "items": [
+    {
+     "type": "text",
+     "name": "txtTitle",
+     "x": 0,
+     "y": 0,
+     "w": 380,
+     "h": 30,
+     "text": "Sales Invoices",
+     "fontSize": 20,
+     "bold": true,
+     "color": "#1F3D7A"
+    },
+    {
+     "type": "text",
+     "name": "txtTitleAr",
+     "x": 0,
+     "y": 30,
+     "w": 380,
+     "h": 22,
+     "text": "فواتير المبيعات - تقرير تجريبي",
+     "fontSize": 13,
+     "color": "#1F3D7A",
+     "align": "left"
+    },
+    {
+     "type": "text",
+     "name": "txtPrinted",
+     "x": 0,
+     "y": 54,
+     "w": 380,
+     "h": 16,
+     "text": "RAD Office Supplies - printed {Now():yyyy-MM-dd HH:mm}",
+     "color": "#606060"
+    },
+    {
+     "type": "barcode",
+     "name": "qrReport",
+     "x": 453,
+     "y": 0,
+     "w": 70,
+     "h": 70,
+     "text": "RADIDE report test: {RecordCount} lines",
+     "barcodeType": "qr"
+    }
+   ]
+  },
+  "pageHeader": {
+   "height": 22,
+   "items": [
+    {
+     "type": "box",
+     "name": "boxHead",
+     "x": 0,
+     "y": 1,
+     "w": 523,
+     "h": 20,
+     "fill": "#1F3D7A",
+     "lineWidth": 0
+    },
+    {
+     "type": "text",
+     "name": "hdProduct",
+     "x": 0,
+     "y": 1,
+     "w": 170,
+     "h": 20,
+     "text": "Product",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "left"
+    },
+    {
+     "type": "text",
+     "name": "hdCategory",
+     "x": 170,
+     "y": 1,
+     "w": 100,
+     "h": 20,
+     "text": "Category",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "left"
+    },
+    {
+     "type": "text",
+     "name": "hdQty",
+     "x": 270,
+     "y": 1,
+     "w": 50,
+     "h": 20,
+     "text": "Qty",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "right"
+    },
+    {
+     "type": "text",
+     "name": "hdUnitprice",
+     "x": 320,
+     "y": 1,
+     "w": 70,
+     "h": 20,
+     "text": "Unit price",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "right"
+    },
+    {
+     "type": "text",
+     "name": "hdAmount",
+     "x": 390,
+     "y": 1,
+     "w": 70,
+     "h": 20,
+     "text": "Amount",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "right"
+    },
+    {
+     "type": "text",
+     "name": "hdRunning",
+     "x": 460,
+     "y": 1,
+     "w": 63,
+     "h": 20,
+     "text": "Running",
+     "bold": true,
+     "color": "#FFFFFF",
+     "align": "right"
+    }
+   ]
+  },
+  "detail": {
+   "height": 18,
+   "alternateColor": "#F3F6FA",
+   "items": [
+    {
+     "type": "field",
+     "name": "fProduct",
+     "x": 0,
+     "y": 0,
+     "w": 170,
+     "h": 18,
+     "field": "Product"
+    },
+    {
+     "type": "field",
+     "name": "fCategory",
+     "x": 170,
+     "y": 0,
+     "w": 100,
+     "h": 18,
+     "field": "Category"
+    },
+    {
+     "type": "field",
+     "name": "fQty",
+     "x": 270,
+     "y": 0,
+     "w": 50,
+     "h": 18,
+     "field": "Qty",
+     "align": "right"
+    },
+    {
+     "type": "field",
+     "name": "fPrice",
+     "x": 320,
+     "y": 0,
+     "w": 70,
+     "h": 18,
+     "field": "Price",
+     "format": "N2",
+     "align": "right"
+    },
+    {
+     "type": "expression",
+     "name": "eAmount",
+     "x": 390,
+     "y": 0,
+     "w": 70,
+     "h": 18,
+     "expression": "Qty * Price",
+     "format": "N2",
+     "align": "right"
+    },
+    {
+     "type": "expression",
+     "name": "eRunning",
+     "x": 460,
+     "y": 0,
+     "w": 63,
+     "h": 18,
+     "expression": "RunningSum('Amount')",
+     "format": "N2",
+     "align": "right",
+     "color": "#808080"
+    }
+   ]
+  },
+  "reportFooter": {
+   "height": 250,
+   "items": [
+    {
+     "type": "line",
+     "name": "lnGrand",
+     "x": 0,
+     "y": 4,
+     "w": 523,
+     "h": 2,
+     "lineWidth": 1.5,
+     "lineColor": "#1F3D7A"
+    },
+    {
+     "type": "text",
+     "name": "lblGrand",
+     "x": 200,
+     "y": 10,
+     "w": 190,
+     "h": 22,
+     "text": "Grand total (before tax):",
+     "bold": true,
+     "fontSize": 11,
+     "align": "right"
+    },
+    {
+     "type": "expression",
+     "name": "sumGrand",
+     "x": 390,
+     "y": 10,
+     "w": 70,
+     "h": 22,
+     "expression": "Sum('Amount')",
+     "format": "N2",
+     "bold": true,
+     "fontSize": 11,
+     "align": "right"
+    },
+    {
+     "type": "text",
+     "name": "txtStats",
+     "x": 0,
+     "y": 10,
+     "w": 200,
+     "h": 60,
+     "text": "Invoices: {CountDistinct('InvoiceNo')}\nLines: {Count()}\nAverage line: {Avg('Amount'):N2}\nLargest line: {Max('Amount'):N2}",
+     "wrap": true,
+     "valign": "top",
+     "color": "#404040"
+    },
+    {
+     "type": "chart",
+     "name": "chCategory",
+     "x": 0,
+     "y": 76,
+     "w": 255,
+     "h": 170,
+     "chartType": "bar",
+     "category": "Category",
+     "valueField": "Amount",
+     "aggregate": "sum",
+     "title": "Sales by category",
+     "fontSize": 7
+    },
+    {
+     "type": "chart",
+     "name": "chCustomer",
+     "x": 268,
+     "y": 76,
+     "w": 255,
+     "h": 170,
+     "chartType": "pie",
+     "category": "Customer",
+     "valueField": "Amount",
+     "aggregate": "sum",
+     "title": "Sales by customer",
+     "fontSize": 7
+    }
+   ]
+  },
+  "pageFooter": {
+   "height": 24,
+   "items": [
+    {
+     "type": "line",
+     "name": "lnFoot",
+     "x": 0,
+     "y": 2,
+     "w": 523,
+     "h": 2,
+     "lineColor": "#A0A0A0"
+    },
+    {
+     "type": "text",
+     "name": "txtFootLeft",
+     "x": 0,
+     "y": 6,
+     "w": 300,
+     "h": 16,
+     "text": "{ReportTitle} - RAD IDE report test",
+     "color": "#808080",
+     "fontSize": 8
+    },
+    {
+     "type": "text",
+     "name": "txtPage",
+     "x": 323,
+     "y": 6,
+     "w": 200,
+     "h": 16,
+     "text": "Page {PageNumber} of {TotalPages}",
+     "align": "right",
+     "fontSize": 8
+    }
+   ]
+  }
+ }
+}

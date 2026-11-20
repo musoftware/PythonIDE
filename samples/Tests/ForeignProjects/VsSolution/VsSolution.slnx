@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Libraries/">
+    <Project Path="FsLib/FsLib.fsproj" />
+    <Project Path="MathLib/MathLib.csproj" />
+  </Folder>
+  <Project Path="ConsoleApp/ConsoleApp.csproj" />
+  <Project Path="VbWinApp/VbWinApp.vbproj" />
+  <Project Path="WinApp/WinApp.csproj" />
+</Solution>

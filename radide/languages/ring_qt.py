@@ -26,7 +26,7 @@ QT_CLASS = {"Button": "qPushButton", "Label": "qLabel", "TextBox": "qLineEdit",
             "Panel": "qFrame", "GroupBox": "qGroupBox",
             "TabControl": "qTabWidget", "TreeView": "qTreeWidget", "ListView": "qTableWidget",
             "DataGridView": "qTableWidget", "DateTimePicker": "qDateTimeEdit", "LinkLabel": "qLabel",
-            "StatusBar": "qLabel", "ActiveX": "qAxWidget2"}
+            "StatusBar": "qLabel", "ActiveX": "qAxWidget2", "ReportViewer": "qLabel"}   # reports: Python only
 ITEM_VIEWS = ("TreeView", "ListView", "DataGridView")
 MOUSE_FILTERS = {"setMouseButtonReleaseEvent", "setMouseButtonDblClickEvent", "setMouseButtonPressEvent",
                  "setMouseMoveEvent", "setWheelEvent"}

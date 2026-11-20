@@ -177,8 +177,116 @@ class FileSystemObject:
         raise err(438, f"Object doesn't support this property or method: {name}")
 
 
+class Dictionary:
+    """Scripting.Dictionary: Add, Exists, Item (get/let, default member), Items, Keys, Remove, RemoveAll,
+    Count, Key(old) = new, CompareMode (0 binary / 1 text), For Each over the keys. Keys keep their type
+    (1 and "1" are different keys), as in VBScript."""
+    vb_typename = "Dictionary"
+    vb_default = "item"
+
+    def __init__(self):
+        self._data: dict = {}            # normalized key -> (key, item)
+        self.comparemode = 0
+
+    def _norm(self, k):
+        from .vbinterp import EMPTY as _E
+        if hasattr(k, "vb_get") and not isinstance(k, str):
+            return ("obj", id(k))
+        if k is _E:
+            return ("s", "")
+        if isinstance(k, bool):
+            return ("n", -1 if k else 0)
+        if isinstance(k, (int, float)):
+            return ("n", float(k))
+        s = to_str(k)
+        return ("s", s.lower() if self.comparemode else s)
+
+    def vb_items(self):
+        return [k for k, _ in self._data.values()]
+
+    def _array(self, values):
+        from .vbinterp import VBArray
+        arr = VBArray([(0, len(values) - 1)])
+        for i, v in enumerate(values):
+            arr.data[(i,)] = v
+        return arr
+
+    def vb_get(self, name):
+        if name == "count":
+            return len(self._data)
+        if name == "comparemode":
+            return self.comparemode
+        if name in ("items", "keys", "removeall"):
+            return self.vb_call(name, [])
+        raise err(438, f"Object doesn't support property '{name}'")
+
+    def vb_set(self, name, value):
+        if name == "comparemode":
+            if self._data:
+                raise err(5, "Invalid procedure call or argument (CompareMode can only change while empty)")
+            self.comparemode = int(to_num(value))
+            return
+        raise err(438, f"Object doesn't support property '{name}'")
+
+    def vb_setitem(self, args, value):
+        self.vb_setindexed("item", args, value)
+
+    def vb_setindexed(self, name, args, value):
+        if name == "item":
+            k = self._norm(args[0])
+            key = self._data[k][0] if k in self._data else args[0]
+            self._data[k] = (key, value)
+            return
+        if name == "key":                      # d.Key("old") = "new"
+            k = self._norm(args[0])
+            if k not in self._data:
+                raise err(32811, "Element not found")
+            nk = self._norm(value)
+            if nk in self._data and nk != k:
+                raise err(457, "This key is already associated with an element of this collection")
+            self._data = {(nk if kk == k else kk): ((value, it) if kk == k else (key, it))
+                          for kk, (key, it) in self._data.items()}
+            return
+        raise err(438, f"Object doesn't support property '{name}'")
+
+    def vb_call(self, name, args):
+        a = list(args)
+        if name == "add":
+            k = self._norm(a[0])
+            if k in self._data:
+                raise err(457, "This key is already associated with an element of this collection")
+            self._data[k] = (a[0], a[1] if len(a) > 1 else EMPTY)
+            return EMPTY
+        if name == "exists":
+            return self._norm(a[0]) in self._data
+        if name == "item":
+            k = self._norm(a[0])
+            if k not in self._data:          # reading a missing key adds it (VBScript behaviour)
+                self._data[k] = (a[0], EMPTY)
+            return self._data[k][1]
+        if name == "items":
+            return self._array([v for _, v in self._data.values()])
+        if name == "keys":
+            return self._array([k for k, _ in self._data.values()])
+        if name == "remove":
+            k = self._norm(a[0])
+            if k not in self._data:
+                raise err(32811, "Element not found")
+            del self._data[k]
+            return EMPTY
+        if name == "removeall":
+            self._data.clear()
+            return EMPTY
+        if name == "count":
+            return len(self._data)
+        raise err(438, f"Object doesn't support this property or method: {name}")
+
+
 def create(progid: str, base=None):
     """Return an emulated object for *progid*, or None."""
-    if progid.strip().lower() == "scripting.filesystemobject":
+    p = progid.strip().lower()
+    if p == "scripting.filesystemobject":
         return FileSystemObject(base)
+    if p == "scripting.dictionary":
+        return Dictionary()
     return None

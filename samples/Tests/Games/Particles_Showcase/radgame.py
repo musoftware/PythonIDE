@@ -1584,6 +1584,46 @@ def SetVelocity(obj, vx: float, vy: float):
         obj.vx, obj.vy = vx, vy
 
 
+_NEIGHBOURS8 = ((0, -1, 1), (1, -1, 2), (1, 0, 4), (1, 1, 8), (0, 1, 16), (-1, 1, 32), (-1, 0, 64), (-1, -1, 128))
+
+
+def SetTerrain(layer: str, col: int, row: int, terrain: str, on: bool = True):
+    """Auto-tiling at run time: add (or remove, on=False) one cell of a terrain made in the Terrains dialog;
+    the cell and its neighbours pick their edge / corner tiles like in the scene designer."""
+    t = ((game.scene.data.get("assets") or {}).get("terrains") or {}).get(terrain)
+    ly = next((x for x in game.scene.layers if x.name == layer), None)
+    if not t or ly is None:
+        return
+    table = {str(k): int(v) for k, v in (t.get("tiles") or {}).items()}
+    tiles = set(table.values())
+    blob = str(t.get("mode", "47")) == "47"
+    full = table.get("255" if blob else "15", next(iter(table.values()), 0))
+    edge = bool(t.get("edge", True))
+
+    def member(c, r):
+        if not (0 <= r < ly.rows and 0 <= c < len(ly.data[r])):
+            return edge
+        return ly.data[r][c] in tiles
+    ly.set_tile(col, row, full if on else -1)
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            c, r = col + dc, row + dr
+            if not (0 <= r < ly.rows and 0 <= c < len(ly.data[r])) or not member(c, r):
+                continue
+            m = 0
+            for dx, dy, bit in _NEIGHBOURS8:
+                if member(c + dx, r + dy):
+                    m |= bit
+            if blob:
+                k = m & 85
+                for corner, s1, s2 in ((2, 1, 4), (8, 16, 4), (32, 16, 64), (128, 1, 64)):
+                    if m & corner and m & s1 and m & s2:
+                        k |= corner
+            else:
+                k = (1 if m & 1 else 0) | (2 if m & 4 else 0) | (4 if m & 16 else 0) | (8 if m & 64 else 0)
+            ly.set_tile(c, r, table.get(str(k), full))
+
+
 def SetTile(layer: str, col: int, row: int, tile: int):
     """Change one cell of a tile layer while the game runs (-1 = empty)."""
     for ly in game.scene.layers:
@@ -1640,4 +1680,4 @@ __all__ = ["game", "Game", "Scene", "Sprite", "TextObject", "Area", "GameObject"
            "GoToScene", "RestartScene", "Quit", "AddScore", "PlaySound", "PlayMusic", "StopMusic", "ShowMessage",
            "IsKeyDown", "Find", "FindGroup", "Clone", "Spawn", "Destroy", "EnableBehaviour", "SaveData", "LoadData",
            "AddTimer", "Random", "objref", "run", "move_and_collide", "Emit", "Burst", "StopEmitter",
-           "ApplyImpulse", "ApplyForce", "SetVelocity", "SetTile"]
+           "ApplyImpulse", "ApplyForce", "SetVelocity", "SetTile", "SetTerrain"]

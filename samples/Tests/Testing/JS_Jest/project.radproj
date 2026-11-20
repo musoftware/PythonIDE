@@ -1,0 +1,10 @@
+{
+  "name": "JestTests",
+  "language": "javascript",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "sum.js",
+    "sum.test.js"
+  ]
+}

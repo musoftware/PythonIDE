@@ -1,0 +1,213 @@
+[gd_scene load_steps=31 format=3]
+
+[ext_resource type="Script" path="res://Scene1.gd" id="1_r3d"]
+[ext_resource type="Script" path="res://rad3d/rad3d_player.gd" id="2_r3d"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.5294, 0.8078, 0.9216, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.5, 0.5, 0.55, 1)
+ambient_light_energy = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2"]
+albedo_color = Color(0.298, 0.6039, 0.1647, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_3"]
+material = SubResource("StandardMaterial3D_2")
+size = Vector2(1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4"]
+size = Vector3(30.0, 0.1, 30.0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5"]
+albedo_color = Color(0.1882, 0.502, 1, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_6"]
+material = SubResource("StandardMaterial3D_5")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_7"]
+radius = 0.5
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8"]
+albedo_color = Color(0.6902, 0.4392, 0.1882, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_9"]
+material = SubResource("StandardMaterial3D_8")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_10"]
+size = Vector3(1.5, 1.5, 1.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_11"]
+albedo_color = Color(0.6902, 0.4392, 0.1882, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_12"]
+material = SubResource("StandardMaterial3D_11")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_13"]
+size = Vector3(1.5, 1.5, 1.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_14"]
+albedo_color = Color(0.6902, 0.4392, 0.1882, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_15"]
+material = SubResource("StandardMaterial3D_14")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_16"]
+size = Vector3(1.5, 1.5, 1.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_17"]
+albedo_color = Color(1, 0.8431, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_18"]
+material = SubResource("StandardMaterial3D_17")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_19"]
+radius = 0.25
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_20"]
+albedo_color = Color(1, 0.8431, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_21"]
+material = SubResource("StandardMaterial3D_20")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_22"]
+radius = 0.25
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23"]
+albedo_color = Color(1, 0.8431, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_24"]
+material = SubResource("StandardMaterial3D_23")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_25"]
+radius = 0.25
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_26"]
+albedo_color = Color(1, 0.8431, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_27"]
+material = SubResource("StandardMaterial3D_26")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_28"]
+radius = 0.25
+
+[node name="Scene1" type="Node3D"]
+script = ExtResource("1_r3d")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="Ground" type="StaticBody3D" parent="."]
+position = Vector3(0.0, 0.0, -0.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("PlaneMesh_3")
+scale = Vector3(30.0, 1.0, 30.0)
+
+[node name="Shape" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_4")
+position = Vector3(0, -0.05, 0)
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+position = Vector3(4.0, 10.0, -4.0)
+rotation = Vector3(-0.872665, -0.523599, 0.0)
+light_color = Color(1, 1, 1, 1)
+shadow_enabled = true
+
+[node name="MainCamera" type="Camera3D" parent="."]
+position = Vector3(0.0, 8.0, 14.0)
+rotation = Vector3(-0.436332, -0.0, 0.0)
+fov = 60.0
+current = true
+
+[node name="Player" type="CharacterBody3D" parent="." groups=["player"]]
+position = Vector3(0.0, 1.0, -0.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+script = ExtResource("2_r3d")
+
+[node name="Mesh" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("CapsuleMesh_6")
+scale = Vector3(1.0, 1.0, 1.0)
+
+[node name="Shape" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_7")
+
+[node name="Crate1" type="StaticBody3D" parent="."]
+position = Vector3(4.0, 0.75, -3.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Crate1"]
+mesh = SubResource("BoxMesh_9")
+scale = Vector3(1.5, 1.5, 1.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Crate1"]
+shape = SubResource("BoxShape3D_10")
+
+[node name="Crate2" type="StaticBody3D" parent="."]
+position = Vector3(-5.0, 0.75, -2.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Crate2"]
+mesh = SubResource("BoxMesh_12")
+scale = Vector3(1.5, 1.5, 1.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Crate2"]
+shape = SubResource("BoxShape3D_13")
+
+[node name="Crate3" type="StaticBody3D" parent="."]
+position = Vector3(2.0, 0.75, 6.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Crate3"]
+mesh = SubResource("BoxMesh_15")
+scale = Vector3(1.5, 1.5, 1.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Crate3"]
+shape = SubResource("BoxShape3D_16")
+
+[node name="Coin1" type="Area3D" parent="." groups=["collectible", "spin"]]
+position = Vector3(-3.0, 0.8, 3.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Coin1"]
+mesh = SubResource("SphereMesh_18")
+scale = Vector3(0.5, 0.5, 0.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Coin1"]
+shape = SubResource("SphereShape3D_19")
+
+[node name="Coin2" type="Area3D" parent="." groups=["collectible", "spin"]]
+position = Vector3(6.0, 0.8, 2.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Coin2"]
+mesh = SubResource("SphereMesh_21")
+scale = Vector3(0.5, 0.5, 0.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Coin2"]
+shape = SubResource("SphereShape3D_22")
+
+[node name="Coin3" type="Area3D" parent="." groups=["collectible", "spin"]]
+position = Vector3(-6.0, 0.8, -6.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Coin3"]
+mesh = SubResource("SphereMesh_24")
+scale = Vector3(0.5, 0.5, 0.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Coin3"]
+shape = SubResource("SphereShape3D_25")
+
+[node name="Coin4" type="Area3D" parent="." groups=["collectible", "spin"]]
+position = Vector3(0.0, 0.8, -7.0)
+rotation = Vector3(-0.0, -0.0, 0.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Coin4"]
+mesh = SubResource("SphereMesh_27")
+scale = Vector3(0.5, 0.5, 0.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Coin4"]
+shape = SubResource("SphereShape3D_28")

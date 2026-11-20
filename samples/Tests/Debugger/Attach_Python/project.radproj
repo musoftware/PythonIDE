@@ -1,0 +1,9 @@
+{
+  "name": "Attach_Python",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "worker.py"
+  ]
+}

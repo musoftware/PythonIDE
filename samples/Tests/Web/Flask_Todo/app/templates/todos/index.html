@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form class="add" method="post" action="{{ url_for('todos.add') }}">
+    <input name="title" placeholder="What needs to be done?" autofocus> <button>Add</button>
+</form>
+<p class="filters">
+    {% for name in ["all", "active", "done"] %}
+        <a href="{{ url_for('todos.index', show=name) }}" class="{{ 'current' if name == show }}">{{ name|capitalize }}</a>
+    {% endfor %}
+    <span class="left">{{ left }} item{{ 's' if left != 1 }} left</span>
+</p>
+<ul class="todos">
+{% for todo in todos %}
+    <li class="{{ 'done' if todo.done }}">
+        <form method="post" action="{{ url_for('todos.toggle', todo_id=todo.id) }}">
+            <button class="check" title="Toggle">{{ '&#10004;'|safe if todo.done else '&#9744;'|safe }}</button>
+        </form>
+        <span class="title">{{ todo.title }}</span>
+        <a href="{{ url_for('todos.edit', todo_id=todo.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('todos.delete', todo_id=todo.id) }}">
+            <button class="link danger">Delete</button>
+        </form>
+    </li>
+{% else %}
+    <li class="empty">Nothing here.</li>
+{% endfor %}
+</ul>
+<form method="post" action="{{ url_for('todos.clear_done') }}"><button>Clear completed</button></form>
+{% endblock %}

@@ -1,0 +1,11 @@
+{
+  "name": "UC_PythonTk_AddressBox",
+  "language": "python-tk",
+  "forms": [
+    "Form1",
+    "AddressBox",
+    "ContactCard"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

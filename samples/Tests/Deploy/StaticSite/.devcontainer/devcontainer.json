@@ -1,0 +1,14 @@
+{
+  "name": "StaticSite (Static HTML / CSS / JS (nginx))",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [
+    8080
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ritwickdey.LiveServer"
+      ]
+    }
+  }
+}

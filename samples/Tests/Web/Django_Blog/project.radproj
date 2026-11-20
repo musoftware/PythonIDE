@@ -1,0 +1,24 @@
+{
+  "name": "Django_Blog",
+  "language": "python-django",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "django",
+    "settings": "config.settings",
+    "template": "django-app"
+  },
+  "databases": [
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "path": "db.sqlite3"
+    }
+  ]
+}

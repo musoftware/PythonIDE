@@ -26,6 +26,7 @@ MONACO_LANG = {".py": "python", ".pyw": "python", ".js": "javascript", ".mjs": "
                ".cpp": "cpp", ".hpp": "cpp", ".cc": "cpp", ".rs": "rust", ".go": "go", ".php": "php",
                ".rb": "ruby", ".pl": "perl", ".lua": "lua", ".dart": "dart", ".ps1": "powershell",
                ".bas": "vb", ".frm": "vb", ".pas": "pascal", ".kt": "kotlin", ".swift": "swift",
+               ".dpr": "pascal", ".lpr": "pascal", ".dpk": "pascal", ".pp": "pascal",   # Delphi / Lazarus
                ".r": "r", ".sql": "sql", ".json": "json", ".html": "html", ".css": "css", ".md": "markdown",
                ".sh": "shell", ".bat": "bat", ".xml": "xml", ".yaml": "yaml", ".yml": "yaml",
                # web files (section 8.6): each id maps to a language server in radide/lsp.py
@@ -105,6 +106,11 @@ class _Bridge(QObject):
     def jsTextChanged(self, text):
         self.ed._on_js_text(text)
 
+    @pyqtSlot(str)
+    def jsTextDelta(self, payload):
+        """Big files: one change {"off", "del", "text", "len"} instead of the whole text (perf round 7)."""
+        self.ed._on_js_delta(payload)
+
     @pyqtSlot(int, int)
     def jsCursor(self, line, col):
         self.ed._cursor = (line, col)
@@ -159,6 +165,13 @@ class _Bridge(QObject):
 class MonacoEditor(QWebEngineView):
     # callables(editor) run once each editor's page is ready (radide/features/lsp_support.py attaches servers)
     ready_hooks: list = []
+    # name -> factory(editor) -> QObject published to JavaScript as window.radChannel.objects[name]
+    # (radide/editkit.py: refactoring / format / coverage commands from Monaco)
+    channel_objects: dict = {}
+    # extra completion sources merged with the language server's items (radide/features/php_frameworks.py:
+    # Laravel routes / views / config ...): fn(editor, line, col) -> list[item dict] | None. Server items with
+    # the same label are dropped; an item with "exclusive": True means "only the extra items here".
+    completion_providers: list = []
     # AI inline completions (set by radide/features/ai_editor.py):
     #   inline_provider(editor, req, line, col, explicit) -> later editor.resolve_inline(req, text)
     #   inline_cancel(editor, req)
@@ -194,6 +207,13 @@ class MonacoEditor(QWebEngineView):
         self._bridge = _Bridge(self)
         self._channel = QWebChannel(self)
         self._channel.registerObject("rad", self._bridge)
+        self._extra_objects = {}
+        for _name, _factory in list(MonacoEditor.channel_objects.items()):
+            try:
+                self._extra_objects[_name] = _factory(self)
+                self._channel.registerObject(_name, self._extra_objects[_name])
+            except Exception as e:  # noqa: BLE001 - an extension must never break the editor
+                print(f"[monaco] channel object {_name} failed: {e}")
         self.page().setWebChannel(self._channel)
         self.page().javaScriptConsoleMessage = self._console
         self.load(QUrl.fromLocalFile(str(HTML)))
@@ -271,7 +291,26 @@ class MonacoEditor(QWebEngineView):
         self._js(f"radSetMarkers([]); radSetLanguage({json.dumps(new)});")
         self.languageChanged.emit(new)
 
+    def _on_js_delta(self, payload: str):
+        """Apply one change of a big model to the Python copy. Offsets are UTF-16 code units, so a text with
+        characters outside the BMP (or any mismatch) asks JavaScript for the whole text instead."""
+        try:
+            d = json.loads(payload)
+            if getattr(self, "_resync", False):
+                return                                   # the whole text is on its way
+            old = self._text
+            off, n, ins = int(d["off"]), int(d["del"]), str(d["text"])
+            new = old[:off] + ins + old[off + n:]
+            if len(old.encode("utf-16-le")) != 2 * len(old) or len(new.encode("utf-16-le")) != 2 * int(d["len"]):
+                raise ValueError("delta does not apply")
+        except Exception:  # noqa: BLE001 - fall back to the whole text
+            self._resync = True
+            self.page().runJavaScript("window.radSendFullText && window.radSendFullText();")
+            return
+        self._on_js_text(new)
+
     def _on_js_text(self, text: str):
+        self._resync = False
         if text == self._text:
             return
         self._text = text
@@ -493,16 +532,36 @@ class MonacoEditor(QWebEngineView):
     # ------------------------------------------------------------ IntelliSense
     def _complete(self, req: int, line: int, col: int):
         items = []
+        extra = self._extra_completions(line, col)
         try:
             if self.lsp is not None and self.lsp.running():
                 self.lsp.completion(self.path, self._text, line, col,
-                                    lambda res: self._js(f"radResolve({req}, {json.dumps(res)});"))
+                                    lambda res: self._js(f"radResolve({req}, "
+                                                         f"{json.dumps(self._merge_completions(extra, res))});"))
                 return
             for c in self.plugin.completions(self._text, line, col, self.path, self.names)[:400]:
                 items.append({"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind})
         except Exception:  # noqa: BLE001 - completion must never break typing
             items = []
-        self._js(f"radResolve({req}, {json.dumps(items)});")
+        self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
+
+    def _extra_completions(self, line: int, col: int) -> list[dict]:
+        out: list[dict] = []
+        for fn in list(MonacoEditor.completion_providers):
+            try:
+                out += fn(self, line, col) or []
+            except Exception as e:  # noqa: BLE001 - completion must never break typing
+                print(f"[monaco] completion provider failed: {e}")
+        return out
+
+    @staticmethod
+    def _merge_completions(extra: list[dict], items) -> list[dict]:
+        if not extra:
+            return items or []
+        if any(i.get("exclusive") for i in extra):
+            return extra
+        labels = {i.get("label") for i in extra}
+        return extra + [i for i in (items or []) if i.get("label") not in labels]
 
     def _signature(self, req: int, line: int, col: int):
         tip = ""

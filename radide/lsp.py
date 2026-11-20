@@ -52,20 +52,26 @@ SERVERS: dict[str, tuple[list[list[str]], str]] = {
     "rust": ([["rust-analyzer"]], "rustup component add rust-analyzer"),
     "c": ([["clangd"]], "install clangd (LLVM)"),
     "cpp": ([["clangd"]], "install clangd (LLVM)"),
-    "go": ([["gopls"]], "go install golang.org/x/tools/gopls@latest"),
+    # go / lua / ruby / powershell / perl: radide/lsp_servers.py (IDE tools folder) is asked first
+    "go": ([["gopls"]], "Tools > Language Servers... (go install golang.org/x/tools/gopls@latest)"),
     "php": ([["npm:intelephense/intelephense", "--stdio"], ["intelephense", "--stdio"]], _WEB_HINT),
     "dart": ([["dart", "language-server", "--protocol=lsp"]], "comes with the Dart SDK"),
-    "lua": ([["lua-language-server"]], "install lua-language-server"),
-    "ruby": ([["solargraph", "stdio"]], "gem install solargraph"),
+    "lua": ([["lua-language-server"]], "Tools > Language Servers... (lua-language-server release zip)"),
+    "ruby": ([["ruby-lsp"], ["solargraph", "stdio"]], "Tools > Language Servers... (gem install ruby-lsp)"),
     "rad-fortran-bridge": ([["fortls"]], "pip install fortls"),
-    "powershell": ([], "PowerShell Editor Services is not supported yet"),
+    "powershell": ([], "Tools > Language Servers... (PowerShell Editor Services release zip)"),
+    "perl": ([["pls"]], "Tools > Language Servers... (cpanm PLS with Strawberry Perl)"),
+    # Django / Jinja templates (radide/features/python_web.py): HTML IntelliSense from the HTML server
+    "django-html": (_HTML, _WEB_HINT),
+    "jinja-html": (_HTML, _WEB_HINT),
 }
 
 # languages that share one server process (per project root)
-SERVER_GROUP = {"scss": "css", "less": "css", "typescript": "javascript"}
+SERVER_GROUP = {"scss": "css", "less": "css", "typescript": "javascript", "django-html": "html",
+                "jinja-html": "html"}
 
 # Monaco language id -> LSP languageId sent in didOpen
-LSP_LANGUAGE_ID = {"rad-fortran-bridge": "fortran"}
+LSP_LANGUAGE_ID = {"rad-fortran-bridge": "fortran", "django-html": "html", "jinja-html": "html"}
 
 
 def server_key(language: str) -> str:
@@ -89,6 +95,10 @@ def _npm_bin(spec: str) -> list[str] | None:
 
 
 def server_command(language: str) -> list[str] | None:
+    from . import lsp_servers           # gopls / ruby-lsp / lua-language-server / PSES / PLS in the tools folder
+    argv = lsp_servers.server_command(language)
+    if argv:
+        return argv
     cands, _hint = SERVERS.get(language, ([], ""))
     for argv in cands:
         exe = argv[0]
@@ -167,12 +177,25 @@ def initialization_options(language: str, root: Path) -> dict:
         if tsserver.exists():
             opts["tsserver"] = {"path": str(tsserver)}
         return opts
-    return {}
+    from . import lsp_servers
+    return lsp_servers.initialization_options(key)
 
 
-def workspace_settings(language: str) -> dict:
+def _php_version_for(root) -> str:
+    """intelephense.environment.phpVersion = the version of the project's PHP (web.php, php_toolchain.py)."""
+    try:
+        from .web_site.php_toolchain import intelephense_version, php_for_folder
+        return intelephense_version(php_for_folder(root)) or "8.1.0"
+    except Exception:  # noqa: BLE001 - never break the language server for this
+        return "8.1.0"
+
+
+def workspace_settings(language: str, root=None) -> dict:
     """Answers for workspace/configuration requests (by section)."""
+    php_version = _php_version_for(root) if server_key(language) == "php" else "8.1.0"
+    from . import lsp_servers           # Lua / powershell / gopls sections
     return {
+        **lsp_servers.workspace_settings(),
         "html": {"validate": {"scripts": True, "styles": True}, "suggest": {"html5": True},
                  "format": {"enable": True}, "hover": {"documentation": True, "references": True},
                  "autoClosingTags": True},
@@ -184,7 +207,7 @@ def workspace_settings(language: str) -> dict:
         "intelephense": {"files": {"maxSize": 5000000, "associations": ["*.php", "*.phtml"],
                                    "exclude": ["**/.git/**", "**/node_modules/**", "**/.radide_backup/**"]},
                          "diagnostics": {"enable": True}, "completion": {"insertUseDeclaration": True},
-                         "format": {"enable": True}, "environment": {"phpVersion": "8.1.0"}},
+                         "format": {"enable": True}, "environment": {"phpVersion": php_version}},
     }
 
 
@@ -219,6 +242,9 @@ class LspClient(QObject):
     diagnostics = pyqtSignal(str, list)        # file path, [{line, col, endLine, endCol, message, severity}]
     log = pyqtSignal(str)
     ready = pyqtSignal()                       # initialize answered (capabilities known)
+    # server -> client request method -> handler(client, params) -> result (radide/features/refactor.py)
+    request_handlers: dict = {}
+    last_error = ""                            # message of the last error response
 
     def __init__(self, language: str, root: Path, argv: list[str], parent=None):
         super().__init__(parent)
@@ -242,6 +268,14 @@ class LspClient(QObject):
 
     # ------------------------------------------------------------ process / framing
     def start(self) -> bool:
+        from . import lsp_servers                  # GEM_HOME for ruby-lsp, PERL5LIB for PLS, Go on PATH for gopls
+        extra = lsp_servers.server_env(server_key(self.language))
+        if extra:
+            from PyQt6.QtCore import QProcessEnvironment
+            env = QProcessEnvironment.systemEnvironment()
+            for k, v in extra.items():
+                env.insert(k, v)
+            self.proc.setProcessEnvironment(env)
         self.proc.start(self.argv[0], self.argv[1:])
         if not self.proc.waitForStarted(5000):
             return False
@@ -258,8 +292,18 @@ class LspClient(QObject):
                     "hover": {"contentFormat": ["plaintext", "markdown"]},
                     "signatureHelp": {"signatureInformation": {"documentationFormat": ["plaintext"]}},
                     "publishDiagnostics": {}, "definition": {}, "synchronization": {"didSave": True},
+                    # refactoring UI (radide/features/refactor.py) and Format Document
+                    "rename": {"prepareSupport": True}, "references": {}, "formatting": {},
+                    "rangeFormatting": {},
+                    "codeAction": {"codeActionLiteralSupport": {"codeActionKind": {"valueSet": [
+                        "", "quickfix", "refactor", "refactor.extract", "refactor.inline", "refactor.rewrite",
+                        "source", "source.organizeImports"]}}, "resolveSupport": {"properties": ["edit"]},
+                        "dataSupport": True},
                 },
-                "workspace": {"workspaceFolders": True, "configuration": True},
+                "workspace": {"workspaceFolders": True, "configuration": True, "applyEdit": True,
+                              "workspaceEdit": {"documentChanges": True,
+                                                "resourceOperations": ["create", "rename", "delete"]},
+                              "executeCommand": {}},
             }}, self._on_initialized, force=True)
         return True
 
@@ -325,6 +369,8 @@ class LspClient(QObject):
 
     def _dispatch(self, msg: dict):
         if "id" in msg and ("result" in msg or "error" in msg) and "method" not in msg:
+            if "error" in msg:
+                self.last_error = (msg.get("error") or {}).get("message", "") or str(msg.get("error"))
             cb = self._callbacks.pop(msg["id"], None)
             if cb is not None:
                 cb(msg.get("result"))
@@ -332,6 +378,9 @@ class LspClient(QObject):
         method = msg.get("method")
         if method == "textDocument/publishDiagnostics":
             p = msg["params"]
+            if not hasattr(self, "raw_diagnostics"):
+                self.raw_diagnostics = {}          # uri -> LSP Diagnostic[] (code actions need them as sent)
+            self.raw_diagnostics[p.get("uri", "")] = p.get("diagnostics", [])
             out = []
             for d in p.get("diagnostics", []):
                 if _rad_star_import_noise(d.get("message", "")):
@@ -349,7 +398,7 @@ class LspClient(QObject):
         elif method in ("window/logMessage", "window/showMessage"):
             self.log.emit(str((msg.get("params") or {}).get("message", "")))
         elif "id" in msg and method == "workspace/configuration":
-            conf = workspace_settings(self.language)
+            conf = workspace_settings(self.language, self.root)
             items = (msg.get("params") or {}).get("items", [])
             res = []
             for it in items:
@@ -358,6 +407,12 @@ class LspClient(QObject):
                     if part:
                         val = val.get(part, {}) if isinstance(val, dict) else {}
                 res.append(val if it.get("section") else conf)
+            self._send({"jsonrpc": "2.0", "id": msg["id"], "result": res})
+        elif "id" in msg and method in LspClient.request_handlers:   # e.g. workspace/applyEdit (refactor.py)
+            try:
+                res = LspClient.request_handlers[method](self, msg.get("params"))
+            except Exception as e:  # noqa: BLE001 - never leave the server waiting
+                res = {"applied": False, "failureReason": str(e)}
             self._send({"jsonrpc": "2.0", "id": msg["id"], "result": res})
         elif "id" in msg and method:                 # other server -> client requests: answer with null
             self._send({"jsonrpc": "2.0", "id": msg["id"], "result": None})
@@ -491,6 +546,13 @@ class LspManager(QObject):
             self.clients[key] = None
             return None
         c = LspClient(language, root, argv, self)
+        venv = Path(root) / ".venv"
+        if server_key(language) == "python" and (venv / "pyvenv.cfg").is_file():
+            # projects with their own .venv (Django / Flask / FastAPI ...): jedi completes their packages
+            from PyQt6.QtCore import QProcessEnvironment
+            env = QProcessEnvironment.systemEnvironment()
+            env.insert("VIRTUAL_ENV", str(venv))
+            c.proc.setProcessEnvironment(env)
         self.clients[key] = c if c.start() else None
         return self.clients[key]
 

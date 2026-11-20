@@ -598,15 +598,24 @@ def start(win, project, path=None):
         return None
     plugin = get_plugin(project.language)
     kind = site_kind(plugin)
+    custom = getattr(plugin, "start_debug", None)       # frameworks with their own debugger (Django/Flask/FastAPI)
+    if callable(custom):
+        return custom(win, project, path)
+    if kind == "static":                               # JavaScript in the Preview (browser_debug.py)
+        from .browser_debug import start_static
+        return start_static(win, project, path)
     if kind not in ("php", "node"):
         return None
     if win.session is not None and win.session.running():
         return True                                    # already debugging
-    interp = ww.server_interpreter(win, plugin)
+    interp = ww.server_interpreter(win, plugin, project)
     if not interp:
         return None                                    # run_website reports the missing interpreter
     if kind == "node":
         from .project import web_config
+        if web_config(project).get("framework"):        # Vite / Angular: debug the app in the Preview
+            from .browser_debug import start_static
+            return start_static(win, project, path)
         if str(web_config(project).get("command") or ""):
             win.log("[debug] This site starts with a custom command - the debugger attaches only to sites "
                     "started as 'node <start file>'. Running without the debugger.")
@@ -632,6 +641,10 @@ def start(win, project, path=None):
         hook = node_backend_hook(port, node_supports_inspect_wait(node))
         engine = f"node --inspect + vscode-js-debug {JS_DEBUG_VERSION}"
     s.break_on_exception = win.settings.value("debug/break_on_exception", True) in (True, "true")
+    from .browser_debug import wrap_server_session     # + JavaScript of the pages in the Preview
+    s = wrap_server_session(win, project, s)
+    if s.__class__.__name__ == "CompositeDebugSession":
+        engine += " + Preview JavaScript"
     win.output.clear()
     win.locals.clear()
     win.callstack.clear()

@@ -58,6 +58,7 @@ EVENT_HELP = {
     "FormClosing": "The form is closing; set e.Cancel = True to keep it open.",
     "FormClosed": "The form has been closed.",
     "CellChanged": "The user changed the value of a cell.",
+    "PageChanged": "The report viewer shows another page.",
 }
 
 MOUSE_EVENTS = ["Click", "DoubleClick", "MouseDown", "MouseUp", "MouseMove",
@@ -312,6 +313,16 @@ CONTROL_TYPES: dict[str, ControlType] = {t.name: t for t in [
                 [_p("ProgID", "str", "Shell.Explorer.2", "COM ProgID of the ActiveX control "
                     "(e.g. Shell.Explorer.2, MSCAL.Calendar).", category="Behavior")],
                 has_text=False, description="Hosts a Windows ActiveX (COM) control."),
+    # banded reports (radide/reports): shows a .rpt.json report with paging, zoom, print and export
+    ControlType("ReportViewer", "ReportViewer", (400, 300), ["PageChanged"],
+                [_p("ReportFile", "file", "", "The report to show (a .rpt.json file of the project).",
+                    category="Data"),
+                 _p("Zoom", "int", 100, "Zoom in percent.", category="Appearance"),
+                 _p("ShowToolbar", "bool", True, "Show the page / zoom / print / export bar.", category="Appearance"),
+                 _p("AutoLoad", "bool", True, "Run the report when the form opens (False: call Refresh()).",
+                    category="Behavior")],
+                has_text=False, description="Shows a report (.rpt.json): pages, zoom, print, export to "
+                "PDF / HTML / CSV / Excel. Code: Parameters[\"X\"] = 1, SetData(rows), Refresh(), Print()."),
 ]}
 
 
@@ -369,3 +380,22 @@ def menu_names(items: list) -> list[str]:
 from .mobile.controls import MOBILE_CONTROL_TYPES as _MOBILE_CONTROL_TYPES  # noqa: E402
 
 CONTROL_TYPES.update(_MOBILE_CONTROL_TYPES)
+
+# ---------------------------------------------------------------- data binding (radide/databinding_sql.py)
+# DataSource / DataMember / DisplayMember / ValueMember (kind "dbref": the Properties window offers the
+# form's data sources and their columns).
+_DB_HELP = {
+    "DataSource": "The data source (Data Sources window) the control is bound to.",
+    "DataMember": "The bound column (Column or Source.Column); ListBox / ComboBox: the Source.Column that "
+                  "receives the selected item's ValueMember.",
+    "DisplayMember": "The column whose values the list shows.",
+    "ValueMember": "The column that is the value of an item (usually the key).",
+}
+for _t, _names in (("DataGridView", ("DataSource",)),
+                   ("ListBox", ("DataSource", "DisplayMember", "ValueMember", "DataMember")),
+                   ("ComboBox", ("DataSource", "DisplayMember", "ValueMember", "DataMember")),
+                   ("TextBox", ("DataSource", "DataMember")), ("Label", ("DataSource", "DataMember")),
+                   ("CheckBox", ("DataSource", "DataMember"))):
+    _have = {p.name for p in CONTROL_TYPES[_t].extra}
+    CONTROL_TYPES[_t].extra.extend(_p(_n, "dbref", "", _DB_HELP[_n], category="Data")
+                                   for _n in _names if _n not in _have)

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<article>
+    <h2>{{ post.title }}</h2>
+    <p class="meta">by {{ post.author.username }} on {{ post.created|date:"Y-m-d H:i" }}{% if not post.published %} (draft){% endif %}</p>
+    <div class="body">{{ post.body|linebreaks }}</div>
+    {% if user == post.author %}
+        <p><a href="{% url 'blog:post_update' post.slug %}">Edit</a> |
+           <a href="{% url 'blog:post_delete' post.slug %}">Delete</a></p>
+    {% endif %}
+</article>
+<section class="comments">
+    <h3>Comments ({{ comments|length }})</h3>
+    {% for c in comments %}
+        <p><b>{{ c.author.username }}</b> <span class="meta">{{ c.created|timesince }} ago</span><br>{{ c.body }}</p>
+    {% empty %}
+        <p>No comments yet.</p>
+    {% endfor %}
+    {% if user.is_authenticated %}
+        <form method="post">{% csrf_token %}{{ form.as_p }}<button>Add comment</button></form>
+    {% else %}
+        <p><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to comment.</p>
+    {% endif %}
+</section>
+{% endblock %}

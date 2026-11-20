@@ -203,6 +203,10 @@ class SceneEditor(QWidget):
         m.addAction("Sprite from image...", self.import_image)
         m.addAction("Text", lambda: self.add_object("text"))
         m.addAction("Area (trigger zone)", lambda: self.add_object("area"))
+        m.addAction("Particle emitter", lambda: __import__("radide.games.particles", fromlist=["add_emitter"])
+                    .add_emitter(self))
+        m.addAction("Particle Editor...", lambda: __import__("radide.games.particles", fromlist=["ParticleEditor"])
+                    .ParticleEditor(self).exec())
         m.addSeparator()
         m.addAction("Tile layer", lambda: self.add_layer("tiles"))
         m.addAction("Sprite layer", lambda: self.add_layer("sprites"))
@@ -303,6 +307,11 @@ class SceneEditor(QWidget):
             trow.addWidget(tbtn)
         trow.addStretch(1)
         tl.addLayout(trow)
+        try:                                            # Terrain row: auto-tiling brush (radide/games/autotile.py)
+            from .autotile import install_ui as _install_autotile
+            _install_autotile(self, tl)
+        except Exception:  # noqa: BLE001 - the designer works without it
+            self.autotile_terrain = ""
         self.side_tabs.addTab(tw, "Tiles")
         side.addWidget(self.side_tabs)
         self.inspector = Inspector(self)

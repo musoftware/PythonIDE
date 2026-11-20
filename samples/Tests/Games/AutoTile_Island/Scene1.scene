@@ -79,7 +79,8 @@
      "253": 45,
      "255": 46
     },
-    "name": "Grass"
+    "name": "Grass",
+    "edge": false
    },
    "wall": {
     "tileset": "wall",
@@ -102,7 +103,8 @@
      "14": 14,
      "15": 15
     },
-    "name": "Wall"
+    "name": "Wall",
+    "edge": false
    }
   }
  },
@@ -1209,7 +1211,7 @@
       "FontSize": 22,
       "Align": "left"
      },
-     "text": "Arrows: walk. B: build a wall where you stand (auto-tiled at run time with SetTile)"
+     "text": "Arrows: walk   B: build a wall   N: remove it"
     }
    ],
    "visible": true

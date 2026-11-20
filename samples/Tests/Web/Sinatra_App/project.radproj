@@ -1,0 +1,16 @@
+{
+  "name": "Sinatra1",
+  "language": "rails-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "sinatra",
+    "template": "sinatra-app"
+  }
+}

@@ -148,13 +148,13 @@ class Agent(bdb.Bdb):
             self.hits[key] = self.hits.get(key, 0) + 1
             hit, log = self.extra.get(key, ("", ""))
             if hit and not hit_ok(hit, self.hits[key]):
-                if self.stopframe is _NEVER or self.stopframe is self.botframe:
-                    return                   # running: this hit does not count yet
+                if not self.stop_here(frame):
+                    return                   # running / stepping over: this hit does not count yet
                 reason = "step"
             elif log:
                 _out.write(self.format_log(log, frame) + "\n")
                 _out.flush()
-                if self.stopframe is _NEVER or self.stopframe is self.botframe:
+                if not self.stop_here(frame):
                     return                   # a logpoint prints and goes on
                 reason = "step"
         self.interact(frame, reason)
@@ -180,6 +180,7 @@ class Agent(bdb.Bdb):
 
     def interact(self, frame, reason):
         send("stop", frame.f_code.co_filename, frame.f_lineno, reason)
+        send("caps", "children", "bpx")
         self.handles = {}
         for name, value in frame.f_locals.items():
             if name.startswith("__"):

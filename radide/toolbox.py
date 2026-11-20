@@ -39,6 +39,18 @@ class ToolState(QObject):
         self.mobile, self.supported = mobile, supported
         self.modeChanged.emit(mobile, supported)
 
+    # designer profile of the shown form's language plugin (``plugin.designer_profile``), e.g. a
+    # WinForms form of an opened Visual Studio project: {"labels": {type: shown name},
+    # "allowed": set of control types | None}.  None = the IDE's own control names.
+    profileChanged = pyqtSignal(object)
+    profile = None
+
+    def set_profile(self, profile) -> None:
+        if profile is self.profile:
+            return
+        self.profile = profile
+        self.profileChanged.emit(profile)
+
 
 TOOL_STATE = ToolState()
 
@@ -260,6 +272,7 @@ class Toolbox(QListWidget):
         self.currentItemChanged.connect(self._on_current)
         TOOL_STATE.changed.connect(self._on_tool_reset)
         TOOL_STATE.modeChanged.connect(self._on_mode)
+        TOOL_STATE.profileChanged.connect(lambda _p: self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported))
         self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported)
 
     def _on_mode(self, mobile: bool, supported) -> None:
@@ -286,6 +299,12 @@ class Toolbox(QListWidget):
             it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
                         if ok else Qt.ItemFlag.NoItemFlags)
             it.setToolTip(desc if ok else f"{name}: Windows only - not available in mobile apps.")
+            prof = TOOL_STATE.profile if not mobile else None
+            label = (prof.get("labels") or {}).get(name, name) if prof else name
+            if it.text() != label:
+                it.setText(label)
+            if prof and prof.get("allowed") is not None and name not in prof["allowed"]:
+                it.setHidden(True)                 # e.g. no such control in Windows Forms
         if TOOL_STATE.current is not None and (TOOL_STATE.current not in CONTROL_TYPES or
                                                (mobile and TOOL_STATE.current not in allowed) or
                                                (not mobile and TOOL_STATE.current in MOBILE_CONTROL_TYPES)):

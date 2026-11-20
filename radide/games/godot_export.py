@@ -178,6 +178,15 @@ def export_scene(folder: Path, scene) -> str:
                 "fps": int(d.get("fps") or 60), "follow": follow, "world_w": ww, "world_h": wh,
                 "timers": d.get("timers") or [], "report": follow or "",
                 "sounds": {k: _res(v) for k, v in (assets.get("sounds") or {}).items()}}
+    # particles / physics (radide/games/particles.py, physics.py): the runtime builds them at load time
+    if assets.get("particles"):
+        settings["particles"] = assets["particles"]
+        settings["images"] = {k: _res(v) for k, v in (assets.get("images") or {}).items()}
+    if assets.get("terrains"):
+        settings["terrains"] = assets["terrains"]
+    if (d.get("physics") or {}).get("enabled"):
+        settings["physics"] = d["physics"]
+        settings["joints"] = d.get("joints") or []
     t.nodes += [f'[node name="{_node_name(name)}" type="Node2D"]', f'script = ExtResource("{script}")',
                 f"metadata/rad_scene = {var(settings)}", ""]
 
@@ -283,6 +292,9 @@ def _object_node(o: dict, parent: str, sheets: dict, images: dict, folder: Path,
     if props:
         meta.append(f"metadata/props = {var(props)}")
     group = props.get("group") or re.sub(r"\d+$", "", o.get("name") or "") or name
+    for extra in ("physics", "particles"):          # body / emitter settings (built by radgame_scene.gd)
+        if o.get(extra):
+            meta.append(f"metadata/{extra} = {var(o[extra])}")
     meta += [f"metadata/rad_kind = {var(kind)}", f"metadata/rad_size = Vector2({w * scale:.1f}, {h * scale:.1f})",
              f"metadata/behaviours = {var(o.get('behaviours') or [])}", f"metadata/group = {var(group)}"]
     return lines + meta
@@ -436,7 +448,7 @@ def gd_from_python(scene_name: str, code: str) -> str:
     return "\n".join(out) + "\n"
 
 
-def export_from_pygame(src: Path, dest: Path | None = None, title: str = "") -> tuple[Path, list[str]]:
+def export_from_pygame(src: Path, dest: Path | None = None, title: str = "", ai="auto") -> tuple[Path, list[str]]:
     """Export a pygame game project to a Godot 4 project in *dest* (default: ``<project>_Godot`` next to
     it): the scenes, the assets, project.godot, the .tscn scenes and a ``<Scene>.gd`` per scene made from
     the Python code (see gd_from_python - existing .gd files are kept). Returns (dest, report lines)."""
@@ -474,8 +486,18 @@ def export_from_pygame(src: Path, dest: Path | None = None, title: str = "") -> 
         if gd.exists():
             report.append(f"{gd.name} kept (already exists)")
         elif py.exists():
-            gd.write_text(gd_from_python(s, py.read_text(encoding="utf-8")), encoding="utf-8")
-            report.append(f"{gd.name}: handlers made from {py.name} (the Python code is in comments - translate it)")
+            try:      # the Python handlers translated to GDScript (radide/games/gd_translate.py)
+                from . import gd_translate
+                tr_ai = gd_translate.ai_translator() if ai == "auto" else ai
+                text, rep = gd_translate.translate(s, py.read_text(encoding="utf-8"),
+                                                   codegen.scene_dict(src / f"{s}.scene"), ai=tr_ai)
+                gd.write_text(text, encoding="utf-8")
+                report.append(f"{gd.name}: translated from {py.name} to GDScript")
+                report += ["  " + ln for ln in rep.lines()]
+            except Exception as e:  # noqa: BLE001 - the old comment-only conversion
+                gd.write_text(gd_from_python(s, py.read_text(encoding="utf-8")), encoding="utf-8")
+                report.append(f"{gd.name}: handlers made from {py.name} (translation failed: {e}; "
+                              "the Python code is in comments - translate it)")
     game = dict(pd.get("game") or {})
     game.setdefault("start_scene", scenes[0])
     game.setdefault("title", title or name)

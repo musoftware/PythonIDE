@@ -1,0 +1,13 @@
+Type=Exe
+Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#..\..\..\..\Windows\SysWOW64\stdole2.tlb#OLE Automation
+Form=Forms\frmMain.frm
+Form=Forms\frmEdit.frm
+Module=modStart; Modules\modStart.bas
+Class=CNote; Classes\CNote.cls
+Startup="Sub Main"
+Title="Notes"
+ExeName32="Notes.exe"
+Name="NotesApp"
+MajorVer=2
+MinorVer=0
+RevisionVer=5

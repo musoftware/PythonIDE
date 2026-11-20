@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{% if object %}Edit "{{ object.title }}"{% else %}New post{% endif %}</h2>
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button>Save</button> <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'blog:post_list' %}{% endif %}">Cancel</a>
+</form>
+{% endblock %}

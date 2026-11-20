@@ -22,12 +22,13 @@ TOKEN_RX = re.compile(r"""
   | (?P<nl>\r?\n)
   | (?P<comment>'[^\n]*)
   | (?P<str>"(?:[^"\n]|"")*")
-  | (?P<date>\#[0-9/:\-\s APMapm]+\#)
+  | (?P<date>\#(?=[^#\n]*[/:\-])[0-9/:\- APMapm]+\#)
+  | (?P<bracket>\[[A-Za-z_][^\]\n]*\])
   | (?P<hex>&[Hh][0-9A-Fa-f]+&?)
   | (?P<oct>&[Oo][0-7]+&?)
   | (?P<num>(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?[%&!#@]?)
   | (?P<id>[A-Za-z_][A-Za-z0-9_]*[$%&!#@]?)
-  | (?P<op><>|<=|>=|:=|[-+*/\\^&=<>(),.:;!])
+  | (?P<op><>|<=|>=|:=|[-+*/\\^&=<>(),.:;!#])
 """, re.X)
 
 
@@ -66,6 +67,8 @@ def tokenize(src: str) -> list[Tok]:
             continue
         if kind == "str":
             toks.append(Tok("str", text[1:-1].replace('""', '"'), line))
+        elif kind == "bracket":                 # [_NewEnum], [Some Name]
+            toks.append(Tok("id", text[1:-1].lower(), line, text[1:-1]))
         elif kind == "date":
             toks.append(Tok("date", text[1:-1].strip(), line))
         elif kind == "hex":
@@ -98,6 +101,7 @@ class Param:
     default: object = None
     paramarray: bool = False
     is_array: bool = False
+    typ: str = "variant"
 
 
 @dataclass
@@ -117,8 +121,29 @@ class Module:
     procs: dict[str, Proc] = field(default_factory=dict)
     decls: list = field(default_factory=list)      # module-level Dim/Const statements
     filename: str = ""
+    is_class: bool = False                         # .cls class module
+    vb_name: str = ""                              # Attribute VB_Name = "..."
+    events: dict = field(default_factory=dict)     # Event Name(params) (class modules)
+    implements: list = field(default_factory=list)
+    declares: list = field(default_factory=list)   # Declare Function/Sub (Win32 API)
+    default_member: str = ""                       # Attribute X.VB_UserMemId = 0
+    enum_member: str = ""                          # Attribute X.VB_UserMemId = -4 (For Each)
 
 
+@dataclass
+class Declare:
+    name: str
+    kind: str                     # sub | function
+    lib: str
+    alias: str
+    params: list
+    ret: str
+    line: int
+    public: bool = True
+
+
+DEF_WORDS = {"defint", "deflng", "defstr", "defbool", "defsng", "defdbl", "defvar", "defobj", "defcur",
+             "defdate", "defbyte", "defdec", "deflnglng", "deflngptr"}
 END_WORDS = {"sub", "function", "property", "if", "select", "with", "type", "enum"}
 
 
@@ -171,14 +196,42 @@ class Parser:
     # ------------------------------------------------------------ module
     def parse_module(self, name: str) -> Module:
         mod = Module(name)
+        self.mod = mod
         while True:
             self.skip_nl()
             if self.cur.kind == "eof":
                 break
             line = self.cur.line
             public = True
-            if self.is_id("attribute", "option", "version", "object", "begin"):
+            if self.is_id("version"):                 # VERSION 1.0 CLASS header of a .cls file
+                self.next()
+                while self.cur.kind not in ("nl", "eof"):
+                    if self.is_id("class"):
+                        mod.is_class = True
+                    self.next()
+                continue
+            if self.is_id("begin"):                   # BEGIN ... END block of the header
+                depth = 0
+                while self.cur.kind != "eof":
+                    if self.cur.kind == "id" and self.cur.value in ("begin", "beginproperty"):
+                        depth += 1
+                    elif self.cur.kind == "id" and self.cur.value in ("end", "endproperty") and \
+                            self.peek().kind in ("nl", "eof"):
+                        depth -= 1
+                        if depth == 0:
+                            self.next()
+                            break
+                    self.next()
+                continue
+            if self.is_id("attribute"):
+                self.st_attribute(line)
+                continue
+            if self.is_id("option", "object") or (self.cur.kind == "id" and self.cur.value in DEF_WORDS):
                 self._skip_line()
+                continue
+            if self.is_id("implements"):
+                self.next()
+                mod.implements.append(self.expect_id().value)
                 continue
             mods = []
             while self.is_id("public", "private", "friend", "global", "static", "dim"):
@@ -189,8 +242,13 @@ class Parser:
                 proc = self.parse_proc(public)
                 mod.procs[proc.name] = proc
                 continue
-            if self.is_id("declare"):              # API declarations are not supported
-                self._skip_line()
+            if self.is_id("declare"):              # Win32 API: Declare Function X Lib "user32" ...
+                mod.declares.append(self.parse_declare(public))
+                continue
+            if self.is_id("event"):
+                self.next()
+                ename = self.expect_id()
+                mod.events[ename.value] = (ename.raw, self._parse_params())
                 continue
             if self.is_id("type", "enum"):
                 mod.decls.append(self.parse_type_or_enum())
@@ -226,12 +284,11 @@ class Parser:
                 members.append((mname, value))
                 value = ("binop", line, "+", value, ("num", line, 1))
             else:
+                bounds = None
                 if self.is_op("("):
-                    while not self.is_op(")"):
-                        self.next()
-                    self.next()
+                    bounds = self._parse_bounds()
                 typ = self.parse_as()
-                members.append((mname, typ))
+                members.append((mname, typ) if bounds is None else (mname, typ, bounds))
             self.skip_nl()
         self.next()
         self.next()
@@ -248,9 +305,11 @@ class Parser:
             while self.is_op("."):
                 self.next()
                 typ = self.expect_id().value
-            if self.is_op("*"):          # String * 10
+            if self.is_op("*"):          # String * 10 (fixed-length string)
                 self.next()
-                self.next()
+                size = self.next()
+                if typ == "string":
+                    typ = f"string*{size.value}" if size.kind == "num" else f"string*@{size.value}"
             return ("new:" if new else "") + typ
         return "variant"
 
@@ -270,30 +329,88 @@ class Parser:
 
     def parse_dim_list(self, line, public, kind):
         items = []
+        withevents = set()
         while True:
             if self.is_id("withevents"):
                 self.next()
+                withevents.add(self.cur.value)
             name = self.expect_id().value
             bounds = None
             if self.is_op("("):
-                self.next()
-                bounds = []
-                while not self.is_op(")"):
-                    lo = None
-                    hi = self.parse_expr()
-                    if self.is_id("to"):
-                        self.next()
-                        lo, hi = hi, self.parse_expr()
-                    bounds.append((lo, hi))
-                    if self.is_op(","):
-                        self.next()
-                self.next()
+                bounds = self._parse_bounds()
             typ = self.parse_as()
             items.append((name, bounds, typ))
             if not self.is_op(","):
                 break
             self.next()
-        return (kind, line, items, public)
+        return (kind, line, items, public, withevents)
+
+    def _parse_bounds(self):
+        self.expect_op("(")
+        bounds = []
+        while not self.is_op(")"):
+            lo = None
+            hi = self.parse_expr()
+            if self.is_id("to"):
+                self.next()
+                lo, hi = hi, self.parse_expr()
+            bounds.append((lo, hi))
+            if self.is_op(","):
+                self.next()
+        self.next()
+        return bounds
+
+    def _parse_params(self) -> list:
+        params = []
+        if not self.is_op("("):
+            return params
+        self.next()
+        while not self.is_op(")"):
+            p = Param("")
+            while self.is_id("byval", "byref", "optional", "paramarray"):
+                w = self.next().value
+                if w == "byval":
+                    p.byref = False
+                elif w == "optional":
+                    p.optional = True
+                elif w == "paramarray":
+                    p.paramarray = True
+            p.name = self.expect_id().value
+            if self.is_op("("):
+                self.next()
+                self.expect_op(")")
+                p.is_array = True
+            p.typ = self.parse_as()
+            if self.is_op("="):
+                self.next()
+                p.default = self.parse_expr()
+            params.append(p)
+            if self.is_op(","):
+                self.next()
+        self.next()
+        return params
+
+    def parse_declare(self, public) -> Declare:
+        line = self.cur.line
+        self.expect_id("declare")
+        if self.is_id("ptrsafe"):
+            self.next()
+        kind = self.next().value
+        if kind not in ("sub", "function"):
+            raise VBSyntaxError("expected Sub or Function after Declare", line)
+        name = self.expect_id()
+        self.expect_id("lib")
+        lib = self.next()
+        alias = ""
+        if self.is_id("alias"):
+            self.next()
+            alias = str(self.next().value)
+        params = self._parse_params()
+        ret = self.parse_as() if kind == "function" else "void"
+        if self.is_op("("):              # As Long()  - ignore array returns
+            self.next()
+            self.expect_op(")")
+        return Declare(name.value, kind, str(lib.value), alias or name.raw, params, ret, line, public)
 
     def parse_proc(self, public) -> Proc:
         line = self.cur.line
@@ -302,32 +419,7 @@ class Parser:
         if kw == "property":
             kind = self.expect_id().value          # get / let / set
         name_tok = self.expect_id()
-        params = []
-        if self.is_op("("):
-            self.next()
-            while not self.is_op(")"):
-                p = Param("")
-                while self.is_id("byval", "byref", "optional", "paramarray"):
-                    w = self.next().value
-                    if w == "byval":
-                        p.byref = False
-                    elif w == "optional":
-                        p.optional = True
-                    elif w == "paramarray":
-                        p.paramarray = True
-                p.name = self.expect_id().value
-                if self.is_op("("):
-                    self.next()
-                    self.expect_op(")")
-                    p.is_array = True
-                self.parse_as()
-                if self.is_op("="):
-                    self.next()
-                    p.default = self.parse_expr()
-                params.append(p)
-                if self.is_op(","):
-                    self.next()
-            self.next()
+        params = self._parse_params()
         if kind in ("function", "get"):
             self.parse_as()
         body = self.parse_block(("end",), ("sub", "function", "property"))
@@ -380,7 +472,11 @@ class Parser:
         self.next()
         return self.parse_dim_list(line, False, "dim")
 
-    st_static = st_dim
+    def st_static(self, line):
+        self.next()
+        if self.is_id("sub", "function", "property"):
+            raise VBSyntaxError("Static procedures are not supported inside a procedure", line)
+        return self.parse_dim_list(line, False, "static")
 
     def st_private(self, line):
         self.next()
@@ -452,6 +548,18 @@ class Parser:
 
     def st_on(self, line):
         self.next()
+        if not self.is_id("error", "local"):          # On x GoTo a, b, c / On x GoSub a, b
+            sel = self.parse_expr()
+            how = self.next().value
+            if how not in ("goto", "gosub"):
+                raise VBSyntaxError("expected GoTo or GoSub", line)
+            labels = [str(self.next().value)]
+            while self.is_op(","):
+                self.next()
+                labels.append(str(self.next().value))
+            return ("ongoto", line, sel, how, labels)
+        if self.is_id("local"):
+            self.next()
         self.expect_id("error")
         if self.is_id("resume"):
             self.next()
@@ -625,7 +733,205 @@ class Parser:
             return ("debugprint", line, what, args, seps)
         return self.parse_simple(line)
 
+    def _file_num(self):
+        if self.is_op("#"):
+            self.next()
+        return self.parse_expr()
+
+    def _line_has(self, word) -> bool:
+        j = self.i
+        while self.t[j].kind not in ("nl", "eof"):
+            if self.t[j].kind == "id" and self.t[j].value == word:
+                return True
+            j += 1
+        return False
+
+    def _print_items(self):
+        """Items of Print #/Debug.Print: list of (expr|None, sep) incl. Spc()/Tab()."""
+        items = []
+        while not self.end_of_stmt():
+            if self.is_op(";", ","):
+                items.append((None, self.next().value))
+                continue
+            e = self.parse_expr()
+            sep = ""
+            if self.is_op(";", ","):
+                sep = self.next().value
+            items.append((e, sep))
+        return items
+
+    def st_open(self, line):
+        if not self._line_has("for") and not self._line_has("as"):
+            return self.parse_simple(line)
+        self.next()
+        path = self.parse_expr()
+        mode = "random"
+        if self.is_id("for"):
+            self.next()
+            mode = self.next().value
+        access = ""
+        while self.is_id("access", "shared", "lock", "read", "write"):
+            w = self.next().value
+            if w in ("access", "lock"):
+                continue
+            access += w
+        self.expect_id("as")
+        num = self._file_num()
+        reclen = None
+        if self.is_id("len"):
+            self.next()
+            self.expect_op("=")
+            reclen = self.parse_expr()
+        return ("open", line, path, mode, access, num, reclen)
+
+    def st_close(self, line):
+        self.next()
+        nums = []
+        while not self.end_of_stmt():
+            nums.append(self._file_num())
+            if self.is_op(","):
+                self.next()
+        return ("close", line, nums)
+
+    def st_reset(self, line):
+        if self.peek().kind not in ("nl", "eof") and not (self.peek().kind == "op" and self.peek().value == ":"):
+            return self.parse_simple(line)
+        self.next()
+        return ("close", line, [])
+
+    def st_write(self, line):
+        if not (self.peek().kind == "op" and self.peek().value == "#"):
+            return self.parse_simple(line)
+        self.next()
+        num = self._file_num()
+        if self.is_op(","):
+            self.next()
+        return ("fwrite", line, num, self._print_items())
+
+    def st_input(self, line):
+        if not (self.peek().kind == "op" and self.peek().value == "#"):
+            return self.parse_simple(line)
+        self.next()
+        num = self._file_num()
+        targets = []
+        while self.is_op(","):
+            self.next()
+            targets.append(self.parse_postfix())
+        return ("finput", line, num, targets)
+
+    def st_line(self, line):
+        if not (self.peek().kind == "id" and self.peek().value == "input"):
+            return self.parse_simple(line)
+        self.next()
+        self.next()
+        num = self._file_num()
+        self.expect_op(",")
+        return ("flineinput", line, num, self.parse_postfix())
+
+    def _getput(self, line, kind):
+        if not (self.peek().kind == "op" and self.peek().value == "#"):
+            return self.parse_simple(line)
+        self.next()
+        num = self._file_num()
+        self.expect_op(",")
+        pos = None
+        if not self.is_op(","):
+            pos = self.parse_expr()
+        self.expect_op(",")
+        return (kind, line, num, pos, self.parse_postfix())
+
+    def st_get(self, line):
+        return self._getput(line, "fget")
+
+    def st_put(self, line):
+        return self._getput(line, "fput")
+
+    def st_seek(self, line):
+        if not (self.peek().kind == "op" and self.peek().value == "#"):
+            return self.parse_simple(line)
+        self.next()
+        num = self._file_num()
+        self.expect_op(",")
+        return ("fseek", line, num, self.parse_expr())
+
+    def _skip_file_stmt(self, line):
+        if not (self.peek().kind == "op" and self.peek().value == "#"):
+            return self.parse_simple(line)
+        self._skip_line()
+        return ("nop", line)
+
+    st_lock = st_unlock = st_width = _skip_file_stmt
+
+    def st_name(self, line):
+        if self.peek().kind == "op" or not self._line_has("as"):
+            return self.parse_simple(line)
+        self.next()
+        old = self.parse_expr()
+        self.expect_id("as")
+        return ("rename", line, old, self.parse_expr())
+
+    def st_error(self, line):
+        if self.peek().kind not in ("num", "id"):
+            return self.parse_simple(line)
+        self.next()
+        return ("errorstmt", line, self.parse_expr())
+
+    def st_raiseevent(self, line):
+        self.next()
+        name = self.expect_id()
+        args = []
+        if self.is_op("("):
+            self.next()
+            while not self.is_op(")"):
+                args.append(self.parse_arg())
+                if self.is_op(","):
+                    self.next()
+            self.next()
+        return ("raiseevent", line, name.value, args)
+
+    def st_attribute(self, line):
+        """Attribute Item.VB_UserMemId = 0 (default member) / VB_Name = "X"."""
+        self.next()
+        parts = [self.expect_id()]
+        while self.is_op("."):
+            self.next()
+            parts.append(self.next())
+        value = None
+        if self.is_op("="):
+            self.next()
+            if self.is_op("-"):
+                self.next()
+                value = -self.next().value
+            else:
+                value = self.next().value
+            while self.is_op(","):
+                self.next()
+                self.next()
+        mod = getattr(self, "mod", None)
+        if mod is not None:
+            last = str(parts[-1].value).lower()
+            if last == "vb_name" and isinstance(value, str):
+                mod.vb_name = value
+            elif last == "vb_usermemid" and len(parts) >= 2:
+                member = str(parts[0].value)
+                if value == 0:
+                    mod.default_member = member
+                elif value == -4:
+                    mod.enum_member = member
+        self._skip_line()
+        return ("nop", line)
+
+    def st_implements(self, line):
+        self._skip_line()
+        return ("nop", line)
+
     def st_print(self, line):
+        if self.peek().kind == "op" and self.peek().value == "#":
+            self.next()
+            num = self._file_num()
+            if self.is_op(","):
+                self.next()
+            return ("fprint", line, num, self._print_items())
         self.next()
         args = []
         while not self.end_of_stmt():
@@ -832,6 +1138,9 @@ class Parser:
             e = self.parse_expr()
             self.expect_op(")")
             return ("paren", line, e)
+        if self.is_op("#"):                      # file number:  EOF(#1), Input(5, #1)
+            self.next()
+            return self.parse_primary()
         if self.is_op("."):                      # With-member
             self.next()
             name = self.next()
@@ -841,6 +1150,9 @@ class Parser:
             if w == "new":
                 self.next()
                 cls = self.expect_id().value
+                while self.is_op("."):                 # New Scripting.Dictionary
+                    self.next()
+                    cls = cls + "." + self.expect_id().value
                 return ("new", line, cls)
             if w in ("true", "false"):
                 self.next()
@@ -871,6 +1183,8 @@ class Parser:
 def parse_module(src: str, name: str = "Module1", filename: str = "") -> Module:
     mod = Parser(tokenize(src)).parse_module(name)
     mod.filename = filename
+    if filename.lower().endswith(".cls"):
+        mod.is_class = True
     return mod
 
 

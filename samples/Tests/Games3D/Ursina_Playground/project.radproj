@@ -1,0 +1,13 @@
+{
+  "name": "Ursina_Playground",
+  "language": "python-ursina",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Scene1.scene3d"
+  ],
+  "scenes3d": [
+    "Scene1"
+  ]
+}

@@ -1,0 +1,32 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Django Blog{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+<header>
+    <h1><a href="{% url 'blog:post_list' %}">Django Blog</a></h1>
+    <nav>
+        <a href="{% url 'blog:post_list' %}">Posts</a>
+        <a href="{% url 'core:about' %}">About</a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'blog:post_create' %}">New post</a>
+            {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+            <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}
+                <button class="link">Log out ({{ user.username }})</button></form>
+        {% else %}
+            <a href="{% url 'login' %}">Log in</a>
+            <a href="{% url 'signup' %}">Sign up</a>
+        {% endif %}
+    </nav>
+</header>
+<main>
+    {% for message in messages %}<p class="flash {{ message.tags }}">{{ message }}</p>{% endfor %}
+    {% block content %}{% endblock %}
+</main>
+<footer>Django Blog - a RAD IDE sample</footer>
+</body>
+</html>

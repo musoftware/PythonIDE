@@ -1,0 +1,22 @@
+# REST Client requests (VS Code REST Client syntax).
+# Click "Send Request" above a request (or Ctrl+Alt+K on it) - the answer opens in the REST Client tab.
+# {{host}} comes from the selected environment (.vscode/settings.json).
+@page = 1
+
+### List items
+# @name items
+GET {{host}}/api/items?page={{page}}
+Accept: application/json
+
+### Create an item (uses a value from the previous answer)
+POST {{host}}/api/items
+Content-Type: application/json
+
+{
+  "name": "Item {{$randomInt 1 100}}",
+  "id": "{{$guid}}",
+  "after": "{{items.response.body.$.items[0]}}"
+}
+
+### Health check
+GET {{host}}/health

@@ -184,6 +184,12 @@ def _shortcut_text(a: QAction) -> str:
     return t.split("\t", 1)[1] if "\t" in t else ""
 
 
+def _shown(a: QAction) -> str:
+    """The label on screen (translated when the IDE is not in English - radide/i18n)."""
+    from .. import i18n
+    return i18n.shown(a) if i18n.language() != "en" else a.text()
+
+
 def menu_actions(win) -> list[tuple[str, QAction]]:
     """(label, action) for every runnable action of the menu bar and the tool bars, VS Code style
     labels "Menu: Sub menu: Action"."""
@@ -200,7 +206,7 @@ def menu_actions(win) -> list[tuple[str, QAction]]:
         for a in menu.actions():
             if a.isSeparator() or not a.isVisible():
                 continue
-            t = clean_text(a.text())
+            t = clean_text(_shown(a))
             sub = a.menu()
             if sub is not None:
                 walk(sub, path + [t], depth + 1)
@@ -212,7 +218,7 @@ def menu_actions(win) -> list[tuple[str, QAction]]:
 
     for a in win.menuBar().actions():
         if a.menu() is not None and a.isVisible():
-            walk(a.menu(), [clean_text(a.text())])
+            walk(a.menu(), [clean_text(_shown(a))])
     for tb in win.findChildren(QToolBar):
         for a in tb.actions():
             if a.isSeparator() or a.menu() is not None or id(a) in seen or not clean_text(a.text()):
@@ -220,7 +226,7 @@ def menu_actions(win) -> list[tuple[str, QAction]]:
             if a.property("wbNoPalette"):
                 continue
             seen.add(id(a))
-            out.append((f"{clean_text(tb.windowTitle()) or 'Toolbar'}: {clean_text(a.text())}", a))
+            out.append((f"{clean_text(tb.windowTitle()) or 'Toolbar'}: {clean_text(_shown(a))}", a))
     return out
 
 

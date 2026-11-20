@@ -1,0 +1,21 @@
+{
+  "name": "Frontend_Vue_Vite",
+  "language": "node-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.html",
+    "port": 0,
+    "live_reload": false,
+    "command": "npm run dev -- --port {port} --strictPort --host 127.0.0.1",
+    "restart_on_change": false,
+    "framework": "vite-vue",
+    "build": "npm run build",
+    "dist": "dist",
+    "timeout": 180,
+    "template": "vite-vue"
+  }
+}

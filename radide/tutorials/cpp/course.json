@@ -1,0 +1,10 @@
+{
+  "id": "cpp",
+  "title_ar": "تعلّم C++ الحديثة من الصفر",
+  "title_en": "Learn Modern C++ from Scratch",
+  "language": "cpp-bridge",
+  "level": "beginner",
+  "lessons": [
+    {"id": "01-setup", "file": "01-setup.md", "title_ar": "مرحبًا بك في C++ وتجهيز بيئة العمل", "minutes": 20}
+  ]
+}

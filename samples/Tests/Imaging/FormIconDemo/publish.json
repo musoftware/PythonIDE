@@ -1,0 +1,43 @@
+{
+  "app_name": "FormIconDemo",
+  "version": "1.0.0",
+  "publisher": "",
+  "url": "",
+  "app_id": "{C5F60EF0-0E57-4261-9A4E-21F7048A99DB}",
+  "exe_name": "",
+  "icon": "Resources/AppIcon.ico",
+  "license_file": "",
+  "readme_file": "",
+  "output_dir": "Publish",
+  "build_kind": "auto",
+  "prebuilt_dir": "",
+  "prebuilt_exe": "",
+  "console": false,
+  "extra_files": [],
+  "desktop_icon": true,
+  "start_menu": true,
+  "run_after_install": true,
+  "per_user": true,
+  "languages": [
+    "English"
+  ],
+  "file_ext": "",
+  "file_desc": "",
+  "compression": "lzma2/max",
+  "make_installer": true,
+  "make_zip": false,
+  "sign": {
+    "enabled": false,
+    "signtool": "",
+    "pfx": "",
+    "thumbprint": "",
+    "timestamp_url": "http://timestamp.digicert.com",
+    "description": ""
+  },
+  "update": {
+    "enabled": false,
+    "url": "",
+    "download_url": "",
+    "check_on_start": true
+  }
+}

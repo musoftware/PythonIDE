@@ -1,0 +1,8 @@
+{
+  // Opened by File > Open Remote > Open Folder in Dev Container (needs Docker running)
+  "name": "Node 22 sample",
+  "image": "node:22-bookworm-slim",
+  "containerEnv": { "GREETING": "hello from the container" },
+  "forwardPorts": [3000],
+  "postCreateCommand": "node -v"
+}

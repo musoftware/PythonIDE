@@ -1,0 +1,13 @@
+{
+  "generator": "RAD IDE",
+  "form": "AddressBox",
+  "language": "fr",
+  "name": "French",
+  "RightToLeft": false,
+  "RightToLeftLayout": false,
+  "strings": {
+    "lblCity.Text": "Ville :",
+    "lblStreet.Text": "Rue :",
+    "lblTitle.Text": "Adresse"
+  }
+}

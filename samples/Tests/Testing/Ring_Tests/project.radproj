@@ -1,0 +1,10 @@
+{
+  "name": "RingTests",
+  "language": "ring-qt",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "mathlib.ring",
+    "test_math.ring"
+  ]
+}

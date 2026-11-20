@@ -1,0 +1,24 @@
+{
+  "name": "Flask_Todo",
+  "language": "python-flask",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "flask",
+    "app": "app",
+    "template": "flask-app"
+  },
+  "databases": [
+    {
+      "name": "todo",
+      "kind": "sqlite",
+      "path": "instance/todo.sqlite"
+    }
+  ]
+}

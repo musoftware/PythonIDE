@@ -1,0 +1,16 @@
+{
+  "name": "AspMvc1",
+  "language": "aspnet-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "aspnet",
+    "template": "aspnet-mvc"
+  }
+}

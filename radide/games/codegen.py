@@ -161,6 +161,10 @@ def copy_runtime(folder: Path) -> Path:
     dst = Path(folder) / "radgame.py"
     if not dst.exists() or dst.read_bytes() != RUNTIME.read_bytes():
         shutil.copy2(RUNTIME, dst)
+    for extra in ("radgame_particles.py", "radgame_physics.py"):      # particles / pymunk physics (optional)
+        src, out = RUNTIME.parent / extra, Path(folder) / extra
+        if src.exists() and (not out.exists() or out.read_bytes() != src.read_bytes()):
+            shutil.copy2(src, out)
     return dst
 
 

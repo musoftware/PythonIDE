@@ -45,7 +45,8 @@ METHODS = {
 }
 CLASSES = {"QAction": (0, 1), "QLabel": (0,), "QPushButton": (0, 1), "QCheckBox": (0,), "QRadioButton": (0,),
            "QGroupBox": (0,), "QDockWidget": (0,), "QMenu": (0,), "QToolButton": (), "QCommandLinkButton": (0, 1),
-           "QMessageBox": (1, 2), "QTreeWidgetItem": (0,)}
+           "QMessageBox": (1, 2), "QTreeWidgetItem": (0,), "QLineEdit": (), "QTextEdit": (),
+           "QPlainTextEdit": (), "QTextBrowser": (), "QSpinBox": (), "QComboBox": ()}
 KEYWORDS = {"text", "toolTip", "placeholderText", "windowTitle", "title", "statusTip"}
 
 _WORDY = re.compile(r"[A-Za-z]{2,}")

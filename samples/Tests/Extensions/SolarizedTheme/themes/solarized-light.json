@@ -1,0 +1,17 @@
+{
+  "base": "Light",
+  "monaco": "vs",
+  "colors": {
+    "window": "#EEE8D5", "base": "#FDF6E3", "alt_base": "#EEE8D5", "text": "#586E75", "muted": "#657B83",
+    "button": "#E4DDC8", "button_text": "#073642", "border": "#C9C1A8",
+    "highlight": "#268BD2", "highlight_text": "#FDF6E3", "link": "#2AA198", "accent": "#268BD2",
+    "title1": "#EEE8D5", "title2": "#E4DDC8", "title_text": "#073642",
+    "toolbar1": "#EEE8D5", "toolbar2": "#E4DDC8", "bar_text": "#073642",
+    "menu": "#FDF6E3", "menu_text": "#073642", "menu_sel": "#E4DDC8", "menu_sel_text": "#073642",
+    "tab": "#E4DDC8", "tab_text": "#586E75", "tab_sel": "#FDF6E3", "tab_sel_text": "#073642",
+    "status": "#268BD2", "status_text": "#FDF6E3", "heading": "#B58900",
+    "success": "#859900", "error": "#DC322F"
+  },
+  "code": {"keyword": "#859900", "builtin": "#268BD2", "comment": "#93A1A1", "string": "#2AA198",
+           "number": "#D33682", "decorator": "#B58900", "defname": "#268BD2", "operator": "#586E75"}
+}

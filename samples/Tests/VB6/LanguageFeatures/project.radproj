@@ -1,0 +1,10 @@
+{
+  "name": "LanguageFeatures",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Sub Main",
+  "modules": [
+    "Main.bas",
+    "CTally.cls"
+  ]
+}

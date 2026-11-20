@@ -17,7 +17,7 @@ QT_CLASS = {"Button": "QPushButton", "Label": "QLabel", "TextBox": "QLineEdit",
             "NumericUpDown": "QSpinBox", "TrackBar": "QSlider", "Panel": "QFrame", "GroupBox": "QGroupBox",
             "TabControl": "QTabWidget", "TreeView": "QTreeWidget", "ListView": "QTableWidget",
             "DataGridView": "QTableWidget", "DateTimePicker": "QDateEdit", "LinkLabel": "QLabel",
-            "StatusBar": "QLabel", "ActiveX": "QAxWidget"}
+            "StatusBar": "QLabel", "ActiveX": "QAxWidget", "ReportViewer": "QtReportViewer"}
 SIGNALS = {
     ("Button", "Click"): "clicked", ("TextBox", "TextChanged"): "textChanged",
     ("CheckBox", "CheckedChanged"): "toggled", ("RadioButton", "CheckedChanged"): "toggled",
@@ -34,6 +34,7 @@ SIGNALS = {
     ("DataGridView", "CellChanged"): "cellChanged",
     ("DateTimePicker", "ValueChanged"): "dateChanged",      # timeChanged for Format = Time
     ("LinkLabel", "Click"): "linkActivated",
+    ("ReportViewer", "PageChanged"): "PageChanged",
 }
 QEVENT = {"Click": "MouseButtonRelease", "DoubleClick": "MouseButtonDblClick",
           "MouseDown": "MouseButtonPress", "MouseUp": "MouseButtonRelease", "MouseMove": "MouseMove",
@@ -350,6 +351,10 @@ class PythonQtPlugin(PythonTkPlugin):
         return cands[0] if cands else sys.executable
 
     def generate_designer(self, form: Form, user_code: str) -> str:
+        from ..usercontrols import designer_hook       # user controls + localization (radide/usercontrols.py)
+        hooked = designer_hook(self, form, user_code)
+        if hooked is not None:
+            return hooked
         n, fp = form.name, form.props
         used = lambda c: set(self.used_events(form, c, user_code))
         menu = form.menu()
@@ -368,6 +373,9 @@ class PythonQtPlugin(PythonTkPlugin):
             runtime += DATA_RT.rstrip("\n")
         if types & set(DIALOG_CLASS):
             runtime += DIALOG_RT.rstrip("\n")
+        if "ReportViewer" in types:      # banded reports: radreport.py is copied into the project by the IDE
+            runtime += ("\n\ntry:\n    from radreport import QtReportViewer\nexcept ImportError:      # not copied yet\n"
+                        "    from radide.reports.radreport import QtReportViewer")
         if "ActiveX" in types:
             runtime += AX_RT.rstrip("\n")
         blend = self._blend(form, "qt")      # Expression Blend: states / storyboards / bindings (8.7)
@@ -519,6 +527,9 @@ class PythonQtPlugin(PythonTkPlugin):
 
     def _control(self, c, parent: str, used: set[str]) -> list[str]:
         p, n, t = c.props, c.name, c.type
+        from ..usercontrols import is_user_type, qt_control_lines
+        if is_user_type(t):                     # an instance of a user control
+            return qt_control_lines(self, c, parent, used)
         cls = QT_CLASS[t]
         multiline = t == "TextBox" and p.get("Multiline")
         fmt = p.get("Format", "Short") if t == "DateTimePicker" else ""
@@ -528,6 +539,11 @@ class PythonQtPlugin(PythonTkPlugin):
             cls = "QTimeEdit"
         if t == "ActiveX":
             out = [f"self.{n} = _activex({parent}, {str(p.get('ProgID') or '')!r})"]
+        elif t == "ReportViewer":
+            rf = str(p.get("ReportFile") or "")
+            out = [f"self.{n} = QtReportViewer({parent}, ReportFile={f'self._res({rf!r})' if rf else repr('')}, "
+                   f"Zoom={int(p.get('Zoom') or 100)}, ShowToolbar={bool(p.get('ShowToolbar', True))}, "
+                   f"AutoLoad={bool(p.get('AutoLoad', True))})"]
         else:
             out = [f"self.{n} = {cls}({parent})"]
         if t == "TrackBar":

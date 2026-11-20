@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RAD IDE diff</title>
+<style>
+  html, body, #diff { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="diff"></div>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+  // The diff is computed by Monaco's editor worker. Pages loaded from file:// cannot start a worker from a
+  // relative URL, so give Monaco an absolute base (the worker loads its modules with importScripts).
+  (function () {
+    const base = location.href.replace(/[^\/]*$/, '') + 'monaco/';
+    const boot = "self.MonacoEnvironment={baseUrl:'" + base + "'};importScripts('" + base + "vs/base/worker/workerMain.js');";
+    window.MonacoEnvironment = { baseUrl: base,
+      getWorkerUrl: () => 'data:text/javascript;charset=utf-8,' + encodeURIComponent(boot) };
+  })();
+</script>
+<script src="monaco/vs/loader.js"></script>
+<script>
+// Diff tool page. Python side: radide/features/editor_extras.py (DiffView, channel object "radDiff").
+// left = "original" (Monaco), right = "modified".
+require.config({ paths: { vs: 'monaco/vs' } });
+require(['vs/editor/editor.main'], function () {
+  new QWebChannel(qt.webChannelTransport, function (channel) {
+    const host = channel.objects.radDiff;
+    const de = monaco.editor.createDiffEditor(document.getElementById('diff'), {
+      automaticLayout: true, renderSideBySide: true, useInlineViewWhenSpaceIsLimited: false,
+      originalEditable: false, readOnly: false, enableSplitViewResizing: true, ignoreTrimWhitespace: false,
+      renderOverviewRuler: true, renderIndicators: true, glyphMargin: true, fontSize: 14,
+      fontFamily: "Consolas, 'Cascadia Mono', 'Courier New', monospace", minimap: { enabled: false },
+      unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false }, contextmenu: true,
+      diffAlgorithm: 'advanced', hideUnchangedRegions: { enabled: false },
+    });
+    window.radDiff = de;
+    let muted = false, models = [];
+    const nav = { line: -1, index: -1, count: 0 };     // the change the last Next/Previous jumped to
+    const left = () => de.getOriginalEditor(), right = () => de.getModifiedEditor();
+
+    function changes() { return de.getLineChanges() || []; }
+    // the change under (or after) the caret of the focused side
+    function currentIndex() {
+      const ch = changes();
+      if (!ch.length) return -1;
+      const useLeft = left().hasTextFocus();
+      const ed = useLeft ? left() : right();
+      const line = (ed.getPosition() || { lineNumber: 1 }).lineNumber;
+      if (!useLeft && nav.line === line && nav.count === ch.length && nav.index < ch.length) return nav.index;
+      for (let i = 0; i < ch.length; i++) {
+        const s = useLeft ? ch[i].originalStartLineNumber : ch[i].modifiedStartLineNumber;
+        const e = useLeft ? ch[i].originalEndLineNumber : ch[i].modifiedEndLineNumber;
+        const lo = e === 0 ? s : s, hi = e === 0 ? s + 1 : e;
+        if (line >= lo && line <= hi) return i;
+      }
+      for (let i = 0; i < ch.length; i++) {
+        const s = useLeft ? ch[i].originalStartLineNumber : ch[i].modifiedStartLineNumber;
+        if (s >= line) return i;
+      }
+      return ch.length - 1;
+    }
+    function stats() {
+      const ch = changes();
+      let added = 0, removed = 0;
+      ch.forEach(c => {
+        if (c.modifiedEndLineNumber) added += c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1;
+        if (c.originalEndLineNumber) removed += c.originalEndLineNumber - c.originalStartLineNumber + 1;
+      });
+      return { count: ch.length, current: currentIndex(), added: added, removed: removed };
+    }
+    function report() { host.jsStats(JSON.stringify(stats())); }
+
+    window.rdSet = function (l, r, lang, leftEditable, rightEditable) {
+      muted = true;
+      const old = models;
+      const o = monaco.editor.createModel(l, lang || 'plaintext');
+      const m = monaco.editor.createModel(r, lang || 'plaintext');
+      o.setEOL(monaco.editor.EndOfLineSequence.LF); m.setEOL(monaco.editor.EndOfLineSequence.LF);
+      de.setModel({ original: o, modified: m });
+      models = [o, m];
+      old.forEach(x => x.dispose());
+      de.updateOptions({ originalEditable: !!leftEditable, readOnly: !rightEditable });
+      o.onDidChangeContent(() => { if (!muted) host.jsChanged('left', o.getValue()); });
+      m.onDidChangeContent(() => { if (!muted) host.jsChanged('right', m.getValue()); });
+      muted = false;
+    };
+    window.rdSetSide = function (side, text) {
+      const mdl = side === 'left' ? models[0] : models[1];
+      if (!mdl) return;
+      muted = true; mdl.setValue(text); muted = false;
+    };
+    window.rdNav = function (dir) {
+      const ch = changes();
+      if (!ch.length) return -1;
+      const line = (right().getPosition() || { lineNumber: 1 }).lineNumber;
+      const key = c => c.modifiedEndLineNumber ? c.modifiedStartLineNumber : c.modifiedStartLineNumber + 0.5;
+      let i;
+      if (nav.line === line && nav.index >= 0 && nav.count === ch.length)      // caret not moved since the last jump
+        i = dir === 'next' ? (nav.index + 1) % ch.length : (nav.index - 1 + ch.length) % ch.length;
+      else if (dir === 'next') { i = ch.findIndex(c => key(c) > line); if (i < 0) i = 0; }
+      else { i = -1; ch.forEach((c, n) => { if (key(c) < line) i = n; }); if (i < 0) i = ch.length - 1; }
+      const t = ch[i];
+      const to = Math.max(1, t.modifiedStartLineNumber);
+      right().setPosition({ lineNumber: to, column: 1 });
+      right().revealLineInCenter(to);
+      const ol = Math.max(1, t.originalStartLineNumber);
+      left().setPosition({ lineNumber: ol, column: 1 });
+      left().revealLineInCenter(ol);
+      right().focus();
+      nav.line = to; nav.index = i; nav.count = ch.length;
+      report();
+      return i;
+    };
+    // copy one change from one side to the other: 'toRight' (revert the right side to the left text)
+    // or 'toLeft' (take the right text into the left side)
+    function copyHunk(c, toRight) {
+      const src = toRight ? models[0] : models[1], dst = toRight ? models[1] : models[0];
+      const sS = toRight ? c.originalStartLineNumber : c.modifiedStartLineNumber;
+      const sE = toRight ? c.originalEndLineNumber : c.modifiedEndLineNumber;
+      const dS = toRight ? c.modifiedStartLineNumber : c.originalStartLineNumber;
+      const dE = toRight ? c.modifiedEndLineNumber : c.originalEndLineNumber;
+      const lines = [];
+      if (sE) for (let n = sS; n <= sE; n++) lines.push(src.getLineContent(n));
+      const text = lines.join('\n');
+      let range, newText;
+      if (!dE) {                                    // the destination has no lines here: insert after dS
+        if (dS === 0) { range = new monaco.Range(1, 1, 1, 1); newText = text + '\n'; }
+        else { const col = dst.getLineMaxColumn(dS); range = new monaco.Range(dS, col, dS, col); newText = '\n' + text; }
+      } else if (!sE) {                             // the source has no lines: delete the destination lines
+        if (dE < dst.getLineCount()) range = new monaco.Range(dS, 1, dE + 1, 1);
+        else if (dS > 1) range = new monaco.Range(dS - 1, dst.getLineMaxColumn(dS - 1), dE, dst.getLineMaxColumn(dE));
+        else range = new monaco.Range(1, 1, dE, dst.getLineMaxColumn(dE));
+        newText = '';
+      } else {
+        range = new monaco.Range(dS, 1, dE, dst.getLineMaxColumn(dE));
+        newText = text;
+      }
+      dst.pushEditOperations([], [{ range: range, text: newText }], () => null);
+    }
+    window.rdHunk = function (direction, index) {
+      const ch = changes();
+      const i = (index === undefined || index === null || index < 0) ? currentIndex() : index;
+      if (i < 0 || i >= ch.length) return false;
+      copyHunk(ch[i], direction === 'toRight');
+      return true;
+    };
+    window.rdChanges = () => JSON.stringify(changes());
+    window.rdStats = () => JSON.stringify(stats());
+    window.rdText = side => (side === 'left' ? models[0] : models[1]).getValue();
+    window.rdSideBySide = on => de.updateOptions({ renderSideBySide: !!on });
+    window.rdIgnoreWs = on => de.updateOptions({ ignoreTrimWhitespace: !!on });
+    window.rdTheme = t => { monaco.editor.setTheme(t || 'vs');
+      document.body.style.background = t === 'vs' ? '#ffffff' : t === 'hc-black' ? '#000000' : '#1e1e1e'; };
+    window.rdFont = (family, size) => de.updateOptions({ fontFamily: family, fontSize: size });
+    de.onDidUpdateDiff(report);
+    right().onDidChangeCursorPosition(report);
+    left().onDidChangeCursorPosition(report);
+    host.jsReady();
+  });
+});
+</script>
+</body>
+</html>

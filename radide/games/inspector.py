@@ -48,6 +48,17 @@ def _parse(text: str, like):
             return t
 
 
+def _extensions() -> list:
+    """Optional inspector sections: physics bodies / joints and particle emitters."""
+    out = []
+    for name in ("physics", "particles"):
+        try:
+            out.append(__import__(f"radide.games.{name}", fromlist=["build_scene_section"]))
+        except Exception:  # noqa: BLE001 - the inspector works without them
+            pass
+    return out
+
+
 class Inspector(QScrollArea):
     def __init__(self, editor, parent=None):
         super().__init__(parent)
@@ -163,6 +174,8 @@ class Inspector(QScrollArea):
             coll.setChecked(ly.collision)
             coll.toggled.connect(lambda on, layer=ly: self._change("Collision", lambda: setattr(layer, "collision", on)))
             lf.addRow("", coll)
+        for ext in _extensions():           # physics / particles sections (radide/games/physics.py, particles.py)
+            ext.build_scene_section(self, lay)
         self._build_timers(lay)
         self._build_events(lay, None)
 
@@ -319,6 +332,8 @@ class Inspector(QScrollArea):
             self.behaviour_list.setCurrentRow(0)
         else:
             self._show_params(o, -1)
+        for ext in _extensions():
+            ext.build_object_section(self, lay, objs)
         self._build_events(lay, o if len(objs) == 1 else None, single=len(objs) == 1)
 
     def _show_params(self, o, row) -> None:

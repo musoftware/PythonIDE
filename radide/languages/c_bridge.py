@@ -250,7 +250,26 @@ class CBridgePlugin(BridgeLanguagePlugin):
               "        }", "        rad_done();", "    }", "    return 0;", "}", ""]
         return "\n".join(L)
 
+    _USER_MAIN = re.compile(r"^\s*(?:int|auto|void)\s+main\s*\(", re.M)
+
+    def console_program(self, project: Project) -> bool:
+        """Console application: no form of this language and a module with its own main()
+        (C/C++ lessons, Console template). It is compiled alone - no generated _radmain - and
+        runs without the GUI Bridge protocol (radide/runtimes/bridge.py, console mode)."""
+        if self.form_files(project):
+            return False
+        for m in self.module_files(project):
+            try:
+                text = (Path(project.folder) / m).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if self._USER_MAIN.search(text):
+                return True
+        return False
+
     def main_source(self, project: Project):
+        if self.console_program(project):
+            return None
         return self.main_name, self._main_text(self.handlers_in_project(project.folder, project))
 
     # ------------------------------------------------------------ build
@@ -308,7 +327,7 @@ class CBridgePlugin(BridgeLanguagePlugin):
 
     def build_command(self, folder: Path, project: Project) -> str | None:
         sources = ["radgui.c"] + self.module_files(project) + self.proxy_sources(folder, project) + \
-            self.form_files(project) + [self.main_name]
+            self.form_files(project) + ([] if self.console_program(project) else [self.main_name])
         return self._compile_cmd(sources, "_radapp" + EXE, folder)
 
     def _runtime_path(self, folder: Path, base: str) -> str:

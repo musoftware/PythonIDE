@@ -1,0 +1,382 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RAD IDE notebook</title>
+<style id="radvars">:root { --rad-window:#F0F0EA; --rad-base:#FFFFFF; --rad-alt-base:#F5F5F0; --rad-text:#000; --rad-muted:#5A5A5A;
+  --rad-border:#A0AFC3; --rad-accent:#316AC5; --rad-accent-text:#fff; --rad-link:#0645AD; --rad-highlight:#316AC5;
+  --rad-highlight-text:#fff; --rad-error:#C42B1C; --rad-success:#087F23; --rad-note:#806000; --rad-header:#EBEBE5;
+  --rad-header-text:#000; }</style>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--rad-base); color: var(--rad-text);
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 14px; }
+  #cells { padding: 10px 18px 120px 8px; }
+  .cell { position: relative; display: flex; border-left: 4px solid transparent; margin: 2px 0; padding: 4px 0;
+    border-radius: 2px; }
+  .cell.selected { border-left-color: var(--rad-accent); background: color-mix(in srgb, var(--rad-alt-base) 70%, transparent); }
+  .cell.selected.editing { border-left-color: var(--rad-success); }
+  .gutter { width: 66px; flex: none; text-align: right; padding-right: 6px; font-family: Consolas, monospace;
+    font-size: 12px; color: var(--rad-muted); user-select: none; }
+  .gutter .run { display: inline-block; width: 22px; height: 22px; line-height: 20px; text-align: center; cursor: pointer;
+    border-radius: 11px; border: 1px solid transparent; color: var(--rad-text); background: transparent; font-size: 11px; padding: 0; }
+  .gutter .run:hover, .gutter .run:focus-visible { border-color: var(--rad-border); background: var(--rad-alt-base); outline: none; }
+  .gutter .count { display: block; margin-top: 3px; }
+  .cell.running .count { color: var(--rad-accent); font-weight: bold; }
+  .cell.queued .count { color: var(--rad-note); }
+  .cell.failed .count { color: var(--rad-error); }
+  .main { flex: 1; min-width: 0; }
+  .editor-host { border: 1px solid var(--rad-border); border-radius: 3px; min-height: 22px; overflow: hidden;
+    background: var(--rad-base); }
+  .cell.md .editor-host { display: none; }
+  .cell.md.editing .editor-host { display: block; }
+  .cell.md.editing .md-view { display: none; }
+  .cell:not(.md) .md-view { display: none; }
+  .md-view { padding: 2px 10px; min-height: 22px; line-height: 1.45; overflow-x: auto; }
+  .md-view:empty::before { content: 'Empty markdown cell - double-click to edit'; color: var(--rad-muted); font-style: italic; }
+  .md-view h1, .md-view h2, .md-view h3 { margin: 6px 0; }
+  .md-view code, .rad-md code { background: var(--rad-alt-base); padding: 0 3px; border-radius: 2px; font-family: Consolas, monospace; }
+  .md-view pre code { display: block; padding: 6px; }
+  .md-view img { max-width: 100%; }
+  a { color: var(--rad-link); }
+  .outputs { margin-top: 2px; overflow-x: auto; }
+  .outputs:empty { display: none; }
+  .rad-out pre { margin: 2px 0; padding: 2px 8px; font-family: Consolas, 'Cascadia Mono', monospace; font-size: 13px;
+    white-space: pre-wrap; word-break: break-word; }
+  .rad-stderr { background: color-mix(in srgb, var(--rad-note) 12%, transparent); }
+  .rad-err { background: color-mix(in srgb, var(--rad-error) 10%, transparent); border-left: 3px solid var(--rad-error); }
+  .rad-more { color: var(--rad-muted); font-style: italic; padding: 2px 8px; }
+  .rad-img img { max-width: 100%; background: #fff; }
+  .rad-img svg { max-width: 100%; height: auto; background: #fff; }
+  .rad-html { padding: 2px 8px; }
+  .rad-html table, .md-view table { border-collapse: collapse; font-size: 12.5px; margin: 4px 0; }
+  .rad-html th, .rad-html td, .md-view th, .md-view td { border: 1px solid var(--rad-border); padding: 2px 8px; text-align: right; }
+  .rad-html thead th, .md-view thead th { background: var(--rad-header); color: var(--rad-header-text); }
+  .rad-html tbody tr:nth-child(odd) { background: var(--rad-alt-base); }
+  .tools { position: absolute; right: 4px; top: -4px; display: none; background: var(--rad-window); border: 1px solid var(--rad-border);
+    border-radius: 3px; z-index: 5; }
+  .cell.selected .tools, .cell:hover .tools { display: flex; }
+  .tools button { border: none; background: transparent; color: var(--rad-text); cursor: pointer; padding: 1px 6px; font-size: 12px; }
+  .tools button:hover, .tools button:focus-visible { background: var(--rad-highlight); color: var(--rad-highlight-text); outline: none; }
+  .adder { height: 12px; display: flex; justify-content: center; align-items: center; opacity: 0; margin-left: 70px; }
+  .adder:hover, .adder:focus-within { opacity: 1; }
+  .adder button { font-size: 11px; margin: 0 4px; border: 1px solid var(--rad-border); background: var(--rad-window);
+    color: var(--rad-text); border-radius: 3px; cursor: pointer; padding: 0 8px; line-height: 14px; }
+  #empty { padding: 30px; color: var(--rad-muted); text-align: center; display: none; }
+  @media (prefers-reduced-motion: no-preference) { .cell { transition: background-color 120ms ease-out; } }
+</style>
+</head>
+<body>
+<div id="cells" role="list" aria-label="Notebook cells"></div>
+<div id="empty">The notebook is empty. <button onclick="nbHost && nbHost.jsCommand('add_code', '', '')">+ Code</button></div>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="../web/monaco/vs/loader.js"></script>
+<script>
+// Notebook page.  Python side: radide/notebook/view.py (channel object "nb").
+// Python owns the document; this page shows the cells (one Monaco editor per cell) and reports edits.
+let nbHost = null;
+// an absolute URL: Monaco's web workers resolve relative paths against a blob: URL
+require.config({ paths: { vs: new URL('../web/monaco/vs', document.baseURI).href.replace(/\/$/, '') } });
+require(['vs/editor/editor.main'], function () {
+  new QWebChannel(qt.webChannelTransport, function (channel) {
+    const host = channel.objects.nb;
+    nbHost = host;
+    const cellsEl = document.getElementById('cells');
+    const cells = new Map();            // id -> {el, type, editor, model, mdView, outputs, count}
+    const byModel = new Map();          // model uri -> id
+    let lang = 'python', selected = null, editing = false, lineNumbers = 'off', muted = false;
+    let lastD = 0;
+
+    // ---------------- requests resolved by id (completion / hover)
+    const waiting = new Map(); let nextReq = 1;
+    function ask(fn) { return new Promise(res => { const id = nextReq++; waiting.set(id, res); fn(id);
+      setTimeout(() => { if (waiting.has(id)) { waiting.delete(id); res(null); } }, 4000); }); }
+    window.nbResolve = function (id, value) { const r = waiting.get(id); if (r) { waiting.delete(id); r(value); } };
+
+    const registered = new Set();
+    function registerProviders(l) {
+      if (registered.has(l)) return;
+      registered.add(l);
+      monaco.languages.registerCompletionItemProvider(l, {
+        triggerCharacters: ['.', '[', '"', "'", '/', '%'],
+        provideCompletionItems: async (model, pos) => {
+          const id = byModel.get(model.uri.toString());
+          if (!id) return { suggestions: [] };
+          const items = await ask(r => host.jsComplete(r, id, pos.lineNumber - 1, pos.column - 1)) || [];
+          const w = model.getWordUntilPosition(pos);
+          return { suggestions: items.map(i => {
+            let range = i.range ? new monaco.Range(i.range[0] + 1, i.range[1] + 1, i.range[2] + 1, i.range[3] + 1)
+                                : new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
+            if (!range.containsPosition(pos) && !range.getEndPosition().equals(pos))
+              range = new monaco.Range(pos.lineNumber, w.startColumn, pos.lineNumber, w.endColumn);
+            return { label: i.label, kind: i.kind ?? 18, detail: i.detail || '',
+              documentation: i.documentation ? { value: i.documentation } : '', insertText: i.insertText || i.label,
+              insertTextRules: i.snippet ? 4 : 0, range: range, sortText: i.sortText || undefined,
+              filterText: i.filterText || undefined };
+          }) };
+        } });
+      monaco.languages.registerHoverProvider(l, {
+        provideHover: async (model, pos) => {
+          const id = byModel.get(model.uri.toString());
+          if (!id || !model.getWordAtPosition(pos)) return null;
+          const md = await ask(r => host.jsHover(r, id, pos.lineNumber - 1, pos.column - 1));
+          return md ? { contents: [{ value: md }] } : null;
+        } });
+    }
+
+    // ---------------- cells
+    function makeEditor(c) {
+      if (c.editor) return c.editor;
+      const host_ = c.el.querySelector('.editor-host');
+      const l = c.type === 'code' ? lang : (c.type === 'markdown' ? 'markdown' : 'plaintext');
+      const model = monaco.editor.createModel(c.source, l);
+      byModel.set(model.uri.toString(), c.id);
+      const ed = monaco.editor.create(host_, {
+        model: model, automaticLayout: true, minimap: { enabled: false }, scrollBeyondLastLine: false,
+        lineNumbers: lineNumbers, glyphMargin: false, folding: false, lineDecorationsWidth: 6, lineNumbersMinChars: 3,
+        overviewRulerLanes: 0, hideCursorInOverviewRuler: true, renderLineHighlight: 'none', contextmenu: true,
+        scrollbar: { vertical: 'hidden', alwaysConsumeMouseWheel: false, horizontalScrollbarSize: 8 },
+        fontSize: 14, fontFamily: "Consolas, 'Cascadia Mono', 'Courier New', monospace", tabSize: 4,
+        wordWrap: c.type === 'code' ? 'off' : 'on', fixedOverflowWidgets: true, padding: { top: 4, bottom: 4 },
+        unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
+        quickSuggestions: { other: true, comments: false, strings: false }, wordBasedSuggestions: 'off',
+        suggestOnTriggerCharacters: true, ariaLabel: (c.type === 'code' ? 'Code cell' : 'Markdown cell'),
+      });
+      const fit = () => { const h = Math.max(ed.getContentHeight(), 24); host_.style.height = h + 'px'; ed.layout(); };
+      ed.onDidContentSizeChange(fit); fit();
+      ed.onDidChangeModelContent(() => { if (!muted) { c.source = model.getValue(); host.jsChanged(c.id, c.source); } });
+      ed.onDidFocusEditorText(() => { select(c.id, false); setEditing(true); });
+      // addAction (not addCommand: with several editors addCommand runs the last editor's handler)
+      const act = (id, label, kb, ctx, fn) => ed.addAction({ id: 'rad.nb.' + id, label: label, keybindings: [kb],
+        keybindingContext: ctx, run: fn });
+      const quiet = 'editorTextFocus && !suggestWidgetVisible && !parameterHintsVisible';
+      act('run_advance', 'Notebook: Run Cell and Select Below', monaco.KeyMod.Shift | monaco.KeyCode.Enter, 'editorTextFocus',
+          () => host.jsCommand('run_advance', c.id, ''));
+      act('run', 'Notebook: Run Cell', monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, 'editorTextFocus',
+          () => host.jsCommand('run', c.id, ''));
+      act('run_insert', 'Notebook: Run Cell and Insert Below', monaco.KeyMod.Alt | monaco.KeyCode.Enter, 'editorTextFocus',
+          () => host.jsCommand('run_insert', c.id, ''));
+      act('escape', 'Notebook: Command Mode', monaco.KeyCode.Escape, quiet + ' && !findWidgetVisible',
+          () => { setEditing(false); c.el.focus(); });
+      act('up', 'Notebook: Cursor Up / Previous Cell', monaco.KeyCode.UpArrow, quiet, () => {
+        const p = ed.getPosition(); if (p.lineNumber === 1) moveSelection(-1, true); else ed.trigger('k', 'cursorUp', null); });
+      act('down', 'Notebook: Cursor Down / Next Cell', monaco.KeyCode.DownArrow, quiet, () => {
+        const p = ed.getPosition(); if (p.lineNumber === model.getLineCount()) moveSelection(1, true); else ed.trigger('k', 'cursorDown', null); });
+      c.editor = ed; c.model = model;
+      return ed;
+    }
+
+    function cellHtml(c) {
+      const el = document.createElement('div');
+      el.className = 'cell'; el.dataset.id = c.id; el.tabIndex = 0; el.setAttribute('role', 'listitem');
+      el.innerHTML =
+        '<div class="gutter"><button class="run" title="Run cell (Shift+Enter)" aria-label="Run cell">&#9654;</button>' +
+        '<span class="count"></span></div>' +
+        '<div class="main"><div class="editor-host"></div><div class="md-view"></div><div class="outputs" aria-live="polite"></div></div>' +
+        '<div class="tools" role="toolbar" aria-label="Cell actions">' +
+        '<button data-cmd="move_up" title="Move up" aria-label="Move cell up">&#9650;</button>' +
+        '<button data-cmd="move_down" title="Move down" aria-label="Move cell down">&#9660;</button>' +
+        '<button data-cmd="toggle_type" class="tt" title="Code / Markdown (Y / M)"></button>' +
+        '<button data-cmd="clear_output" title="Clear output" aria-label="Clear output">&#8709;</button>' +
+        '<button data-cmd="delete" title="Delete cell (D, D)" aria-label="Delete cell">&#10005;</button></div>';
+      el.addEventListener('mousedown', ev => { if (!ev.target.closest('.editor-host')) select(c.id, false); });
+      el.querySelector('.run').addEventListener('click', ev => { ev.stopPropagation(); host.jsCommand('run', c.id, ''); });
+      el.querySelectorAll('.tools button').forEach(b => b.addEventListener('click', ev => {
+        ev.stopPropagation(); host.jsCommand(b.dataset.cmd, c.id, ''); }));
+      el.querySelector('.md-view').addEventListener('dblclick', () => { editMarkdown(c.id); });
+      const adder = document.createElement('div');
+      adder.className = 'adder';
+      adder.innerHTML = '<button data-t="code">+ Code</button><button data-t="markdown">+ Markdown</button>';
+      adder.querySelectorAll('button').forEach(b => b.addEventListener('click', () =>
+        host.jsCommand(b.dataset.t === 'code' ? 'add_code_below' : 'add_md_below', c.id, '')));
+      c.el = el; c.adder = adder;
+      applyType(c);
+      setCount(c);
+      el.querySelector('.outputs').innerHTML = c.outputs || '';
+      el.querySelector('.md-view').innerHTML = c.md || '';
+      return el;
+    }
+
+    function applyType(c) {
+      c.el.classList.toggle('md', c.type !== 'code');
+      c.el.querySelector('.run').style.visibility = c.type === 'code' ? 'visible' : 'hidden';
+      const tt = c.el.querySelector('.tt');
+      tt.textContent = c.type === 'code' ? 'M↓' : '{ }';
+      tt.setAttribute('aria-label', c.type === 'code' ? 'Change to markdown' : 'Change to code');
+    }
+    function setCount(c) {
+      const span = c.el.querySelector('.count');
+      if (c.type !== 'code') { span.textContent = ''; return; }
+      span.textContent = c.state === 'running' ? '[*]' : (c.state === 'queued' ? '[-]' :
+        '[' + (c.count === null || c.count === undefined ? ' ' : c.count) + ']');
+    }
+
+    function addCell(index, data) {
+      const c = Object.assign({ outputs: '', md: '', count: null, state: 'idle' }, data);
+      cells.set(c.id, c);
+      const el = cellHtml(c);
+      const list = [...cellsEl.querySelectorAll(':scope > .cell')];
+      const before = list[index];
+      if (before) { cellsEl.insertBefore(el, before); cellsEl.insertBefore(c.adder, before); }
+      else { cellsEl.appendChild(el); cellsEl.appendChild(c.adder); }
+      if (c.type === 'code' || c.editing) makeEditor(c);
+      if (c.type !== 'code' && (c.editing || !c.md && !c.source)) { makeEditor(c); c.el.classList.add('editing'); }
+      document.getElementById('empty').style.display = cells.size ? 'none' : 'block';
+      return c;
+    }
+    function disposeCell(c) {
+      if (c.editor) { byModel.delete(c.model.uri.toString()); c.editor.dispose(); c.model.dispose(); }
+      c.el.remove(); c.adder.remove(); cells.delete(c.id);
+    }
+
+    function order() { return [...cellsEl.querySelectorAll(':scope > .cell')].map(e => e.dataset.id); }
+    function select(id, scroll) {
+      if (!cells.has(id)) return;
+      if (selected !== id) {
+        if (selected && cells.has(selected)) cells.get(selected).el.classList.remove('selected', 'editing');
+        selected = id; cells.get(id).el.classList.add('selected');
+        host.jsSelect(id);
+      }
+      if (scroll) cells.get(id).el.scrollIntoView({ block: 'nearest' });
+    }
+    function setEditing(on) {
+      editing = on;
+      if (selected && cells.has(selected)) cells.get(selected).el.classList.toggle('editing', on);
+    }
+    function moveSelection(delta, edit) {
+      const ids = order(); const i = ids.indexOf(selected);
+      const j = Math.max(0, Math.min(ids.length - 1, i + delta));
+      if (j === i) return;
+      select(ids[j], true);
+      const c = cells.get(ids[j]);
+      if (edit && c.type === 'code') { const ed = makeEditor(c); ed.focus();
+        ed.setPosition(delta < 0 ? { lineNumber: c.model.getLineCount(), column: 1 } : { lineNumber: 1, column: 1 }); }
+      else { setEditing(false); c.el.focus(); }
+    }
+    function editMarkdown(id) {
+      const c = cells.get(id); if (!c) return;
+      select(id, true);
+      c.el.classList.add('editing'); const ed = makeEditor(c); ed.layout(); ed.focus(); setEditing(true);
+    }
+
+    // ---------------- command mode keys (like Jupyter): A, B, D D, M, Y, Enter, arrows, Shift+Enter
+    document.addEventListener('keydown', ev => {
+      if (ev.target.closest && ev.target.closest('.editor-host')) return;
+      if (ev.target.tagName === 'BUTTON' && (ev.key === 'Enter' || ev.key === ' ')) return;
+      if (!selected) return;
+      const k = ev.key;
+      if (k === 'Enter' && ev.shiftKey) { host.jsCommand('run_advance', selected, ''); }
+      else if (k === 'Enter' && ev.ctrlKey) { host.jsCommand('run', selected, ''); }
+      else if (k === 'Enter') { const c = cells.get(selected);
+        if (c.type === 'code') makeEditor(c).focus(); else editMarkdown(selected); }
+      else if (k === 'ArrowUp' || k === 'k') moveSelection(-1, false);
+      else if (k === 'ArrowDown' || k === 'j') moveSelection(1, false);
+      else if (k === 'a') host.jsCommand('add_code_above', selected, '');
+      else if (k === 'b') host.jsCommand('add_code_below', selected, '');
+      else if (k === 'm') host.jsCommand('to_markdown', selected, '');
+      else if (k === 'y') host.jsCommand('to_code', selected, '');
+      else if (k === 'd') { const now = Date.now(); if (now - lastD < 600) { host.jsCommand('delete', selected, ''); lastD = 0; } else lastD = now; }
+      else if (k === 'z') host.jsCommand('undo_delete', selected, '');
+      else return;
+      ev.preventDefault();
+    });
+
+    // ---------------- Python -> page
+    window.nbLoad = function (list, opts) {
+      [...cells.values()].forEach(disposeCell);
+      selected = null;
+      if (opts) { lang = opts.language || lang; lineNumbers = opts.lineNumbers ? 'on' : 'off'; registerProviders(lang); }
+      list.forEach((c, i) => addCell(i, c));
+      document.getElementById('empty').style.display = cells.size ? 'none' : 'block';
+      if (list.length) select(list[0].id, false);
+    };
+    window.nbInsert = function (index, data, edit) {
+      const c = addCell(index, data); select(c.id, true);
+      if (edit) { const ed = makeEditor(c); if (c.type !== 'code') c.el.classList.add('editing'); ed.focus(); }
+      else c.el.focus();
+    };
+    window.nbRemove = function (id) {
+      const c = cells.get(id); if (!c) return;
+      const ids = order(); const i = ids.indexOf(id);
+      disposeCell(c);
+      if (selected === id) { selected = null; const rest = order(); if (rest.length) { select(rest[Math.min(i, rest.length - 1)], true);
+        cells.get(selected).el.focus(); } }
+      document.getElementById('empty').style.display = cells.size ? 'none' : 'block';
+    };
+    window.nbMove = function (id, index) {
+      const c = cells.get(id); if (!c) return;
+      c.el.remove(); c.adder.remove();
+      const list = [...cellsEl.querySelectorAll(':scope > .cell')];
+      const before = list[index];
+      if (before) { cellsEl.insertBefore(c.el, before); cellsEl.insertBefore(c.adder, before); }
+      else { cellsEl.appendChild(c.el); cellsEl.appendChild(c.adder); }
+      if (c.editor) c.editor.layout();
+      select(id, true);
+    };
+    window.nbOutputs = function (id, html) { const c = cells.get(id); if (c) { c.outputs = html; c.el.querySelector('.outputs').innerHTML = html; } };
+    window.nbState = function (id, state, count) {
+      const c = cells.get(id); if (!c) return;
+      c.state = state; if (count !== undefined) c.count = count;
+      c.el.classList.toggle('running', state === 'running'); c.el.classList.toggle('queued', state === 'queued');
+      c.el.classList.toggle('failed', state === 'error');
+      setCount(c);
+    };
+    window.nbMarkdown = function (id, html, edit) {
+      const c = cells.get(id); if (!c) return;
+      c.md = html; c.el.querySelector('.md-view').innerHTML = html;
+      if (edit) editMarkdown(id); else { c.el.classList.remove('editing'); if (selected === id) { setEditing(false); c.el.focus(); } }
+    };
+    window.nbType = function (id, type, html) {
+      const c = cells.get(id); if (!c) return;
+      c.type = type; c.md = html || '';
+      if (c.editor) monaco.editor.setModelLanguage(c.model, type === 'code' ? lang : (type === 'markdown' ? 'markdown' : 'plaintext'));
+      applyType(c); setCount(c);
+      c.el.querySelector('.md-view').innerHTML = c.md;
+      if (type === 'code') { c.el.classList.remove('editing'); makeEditor(c); c.el.querySelector('.outputs').innerHTML = ''; }
+      else { c.el.querySelector('.outputs').innerHTML = ''; if (!c.md) editMarkdown(id); }
+    };
+    window.nbSource = function (id, text) {
+      const c = cells.get(id); if (!c) return;
+      c.source = text;
+      if (c.editor && c.model.getValue() !== text) { muted = true; c.model.setValue(text); muted = false; }
+    };
+    window.nbSelect = function (id, edit) {
+      select(id, true); const c = cells.get(id); if (!c) return;
+      if (edit) { if (c.type === 'code') makeEditor(c).focus(); else editMarkdown(id); } else { setEditing(false); c.el.focus(); }
+    };
+    window.nbLang = function (l) {
+      lang = l || 'python'; registerProviders(lang);
+      cells.forEach(c => { if (c.editor && c.type === 'code') monaco.editor.setModelLanguage(c.model, lang); });
+    };
+    window.nbTheme = function (mtheme, css) {
+      monaco.editor.setTheme(mtheme || 'vs');
+      if (css) document.getElementById('radvars').textContent = css;
+    };
+    window.nbLineNumbers = function (on) {
+      lineNumbers = on ? 'on' : 'off';
+      cells.forEach(c => { if (c.editor) c.editor.updateOptions({ lineNumbers: lineNumbers }); });
+    };
+    window.nbFontSize = function (px) { cells.forEach(c => { if (c.editor) c.editor.updateOptions({ fontSize: px }); }); };
+    window.nbSelected = function () { return selected; };
+    window.nbCount = function () { return cells.size; };
+    window.nbEditorCount = function () { let n = 0; cells.forEach(c => { if (c.editor) n++; }); return n; };
+    window.nbOutputText = function (id) { const c = cells.get(id); return c ? c.el.querySelector('.outputs').innerText : null; };
+    window.nbCellBox = function (id) { const c = cells.get(id); if (!c) return null; const r = c.el.getBoundingClientRect();
+      return [r.left, r.top + window.scrollY, r.width, r.height]; };
+    window.nbTypeText = function (id, text) {             // tests: type into a cell like a user would
+      const c = cells.get(id); if (!c) return false; const ed = makeEditor(c); ed.focus();
+      ed.trigger('keyboard', 'type', { text: text }); return true;
+    };
+
+    document.addEventListener('click', ev => {
+      const a = ev.target.closest && ev.target.closest('a[href]');
+      if (a) { ev.preventDefault(); const h = a.getAttribute('href') || '';
+        if (h.startsWith('#')) { const t = document.getElementById(h.slice(1)); if (t) t.scrollIntoView(); }
+        else host.jsOpenLink(a.href); }
+    });
+    registerProviders(lang);
+    host.jsReady();
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "RailsApp1",
+  "language": "rails-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "rails",
+    "template": "rails-app"
+  },
+  "databases": [
+    {
+      "name": "development",
+      "kind": "sqlite",
+      "path": "storage/development.sqlite3"
+    }
+  ]
+}

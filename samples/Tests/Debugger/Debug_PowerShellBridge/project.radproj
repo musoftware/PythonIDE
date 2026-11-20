@@ -1,0 +1,9 @@
+{
+  "name": "Debug_PowerShellBridge",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

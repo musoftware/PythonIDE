@@ -1,0 +1,4 @@
+body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #222; }
+header { background: #3d7a1f; color: #fff; padding: 14px 28px; } header h1 { margin: 0; font-size: 22px; }
+nav a { color: #dfffd0; margin-right: 14px; }
+main { max-width: 860px; margin: 24px auto; background: #fff; padding: 20px 28px; border-radius: 8px; }

@@ -153,6 +153,11 @@ class PropertiesPanel(QWidget):
                 except TypeError:
                     pass
         self.doc, self.plugin = doc, plugin
+        try:        # the toolbox shows the control names of the form's toolkit (e.g. WinForms)
+            from .toolbox import TOOL_STATE
+            TOOL_STATE.set_profile(getattr(plugin, "designer_profile", None) if doc is not None else None)
+        except Exception:  # noqa: BLE001
+            pass
         if doc is not None:
             for sig, slot in self._connections():
                 sig.connect(slot)
@@ -207,6 +212,9 @@ class PropertiesPanel(QWidget):
     def _defs(self):
         c = self._owner()
         defs = form_prop_defs(self.doc.form, self.plugin) if c is None else CONTROL_TYPES[c.type].prop_defs()
+        if c is None:          # Localizable / Language / RightToLeft / RightToLeftLayout (features/localization.py)
+            from .features.localization import form_defs
+            defs = list(defs) + [d for d in form_defs(self.doc.form) if d.name not in {x.name for x in defs}]
         if self.categorized:
             return sorted(defs, key=lambda d: (CATEGORY_ORDER.index(d.category)
                                                if d.category in CATEGORY_ORDER else 99, d.name != "Name", d.name))
@@ -214,7 +222,9 @@ class PropertiesPanel(QWidget):
 
     def _props_dict(self) -> dict:
         c = self._owner()
-        return c.props if c else self.doc.form.props
+        props = c.props if c else self.doc.form.props
+        shown = getattr(self.doc, "display_props", None)     # a form Language being edited (localization)
+        return shown(c, props) if shown is not None else props
 
     def refresh(self) -> None:
         self._updating = True
@@ -246,7 +256,9 @@ class PropertiesPanel(QWidget):
                 filler.setBackground(QColor(CATEGORY_BACK))
                 self.props.setItem(row, 1, filler)
                 continue
-            name_item = QTableWidgetItem("(Name)" if d.name == "Name" else d.name)
+            label_of = getattr(self.plugin, "property_label", None)   # e.g. .NET names (WinForms)
+            label = label_of(d.name, self._owner()) if callable(label_of) else None
+            name_item = QTableWidgetItem("(Name)" if d.name == "Name" else (label or d.name))
             name_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             name_item.setData(Qt.ItemDataRole.UserRole, d)
             self.props.setItem(row, 0, name_item)
@@ -266,6 +278,9 @@ class PropertiesPanel(QWidget):
                                                           "to see its description; Events lists its handlers."
         else:
             name, kind = c.name, c.type
+            type_of = getattr(self.plugin, "type_label", None)       # e.g. System.Windows.Forms.StatusStrip
+            if callable(type_of):
+                kind = type_of(c) or kind
             desc = CONTROL_TYPES[c.type].description or "Select a property to see its description."
         self.help.setText(f"<b>{name}</b> ({kind})<br>{desc}")
 
@@ -340,6 +355,21 @@ class PropertiesPanel(QWidget):
                     self.props.setCellWidget(row, 1, w)
                 w.setText(value or "(default)")
                 w.setIcon(self._swatch(value))
+            elif d.kind == "dbref":                 # data binding (radide/databinding_sql.py)
+                from .databinding_sql import prop_choices
+                if w is None:
+                    w = QComboBox()
+                    w.setEditable(True)
+                    w.lineEdit().editingFinished.connect(
+                        lambda n=d.name, cb=w: self._set(n, cb.currentText().strip()))
+                    w.activated.connect(lambda _i, n=d.name, cb=w: self._set(n, cb.currentText().strip()))
+                    self.props.setCellWidget(row, 1, w)
+                w.blockSignals(True)
+                w.clear()
+                owner = self._owner()
+                w.addItems(prop_choices(self.doc.form, owner, d.name) if owner is not None else [""])
+                w.setCurrentText(str(value or ""))
+                w.blockSignals(False)
             else:
                 item = self.props.item(row, 1)
                 if item is None:
@@ -445,6 +475,7 @@ class PropertiesPanel(QWidget):
     def _pick_file(self, name: str) -> None:
         root = self.doc.path.parent
         f, _ = QFileDialog.getOpenFileName(self, f"Choose {name}", str(root),
+                                           "Reports (*.rpt.json);;All files (*)" if name == "ReportFile" else
                                            "Images (*.png *.gif *.ico *.jpg *.bmp);;All files (*)")
         if not f:
             return

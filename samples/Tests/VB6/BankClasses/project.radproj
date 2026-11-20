@@ -1,0 +1,12 @@
+{
+  "name": "BankDemo",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Sub Main",
+  "modules": [
+    "modMain.bas",
+    "modApi.bas",
+    "CAccount.cls",
+    "CBank.cls"
+  ]
+}

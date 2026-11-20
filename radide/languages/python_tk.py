@@ -659,6 +659,7 @@ class PythonTkPlugin(LanguagePlugin):
     code_ext = ".py"
     interpreter_names = ["python", "python3", "py"]
     supports_debug = True
+    debug_bp_extras = True           # agent: hit counts, logpoints, expandable Locals (debug_extras)
     keywords = keyword.kwlist
     # pip with the project's interpreter; Manage Packages keeps requirements.txt updated
     package_manager = PackageManager(
@@ -675,6 +676,10 @@ class PythonTkPlugin(LanguagePlugin):
 
     # ------------------------------------------------------------ generation
     def generate_designer(self, form: Form, user_code: str) -> str:
+        from ..usercontrols import designer_hook       # user controls + localization (radide/usercontrols.py)
+        hooked = designer_hook(self, form, user_code)
+        if hooked is not None:
+            return hooked
         fp = form.props
         n = form.name
         used = lambda ctrl: set(self.used_events(form, ctrl, user_code))
@@ -775,8 +780,10 @@ class PythonTkPlugin(LanguagePlugin):
         try:
             from ..features.states import python_blend
         except ImportError:
-            return None
-        return python_blend(form, toolkit)
+            python_blend = None
+        res = python_blend(form, toolkit) if python_blend is not None else None
+        from ..databinding_sql import merge_blend      # Data Sources window: databases (TableAdapter)
+        return merge_blend(res, form, toolkit)
 
     @staticmethod
     def _runtime(form: Form) -> str:
@@ -789,6 +796,10 @@ class PythonTkPlugin(LanguagePlugin):
             out += RUNTIME_DATE
         if types & set(DIALOG_KIND):
             out += RUNTIME_DIALOG
+        if "ReportViewer" in types:       # banded reports: radreport.py is copied into the project by the IDE
+            out += ("\ntry:\n    from radreport import TkReportViewer as _TkReportViewer\n"
+                    "except ImportError:      # VB6 forms run inside the IDE's runtime\n"
+                    "    from radide.reports.radreport import TkReportViewer as _TkReportViewer\n")
         return out
 
     @staticmethod
@@ -884,6 +895,9 @@ class PythonTkPlugin(LanguagePlugin):
         p, n, t = c.props, c.name, c.type
         if master is None:
             master = f"self.{c.parent}" if c.parent else "self.root"
+        from ..usercontrols import is_user_type, tk_control_lines
+        if is_user_type(t):                     # an instance of a user control
+            return tk_control_lines(self, c, used, master, place)
         ev = lambda e: f'self._ev("{n}_{e}")'
         opts = [f"font={_font(p)}"]
         out: list[str] = []
@@ -1031,6 +1045,14 @@ class PythonTkPlugin(LanguagePlugin):
             text = f"ActiveX: {p.get('ProgID', '')}" + "\nActiveX controls need the Python (PySide6) language"
             out.append(f"self.{n} = tk.Label({master}, text={text!r}, relief=\"groove\", bg=\"#ffffff\", "
                        f"fg=\"#606060\", wraplength={max(40, int(p['Width']) - 8)}, font={_font(p)})")
+        elif t == "ReportViewer":
+            rf = str(p.get("ReportFile") or "")
+            out.append(f"self.{n} = _TkReportViewer({master}, ReportFile={f'self._res({rf!r})' if rf else repr('')}, "
+                       f"Zoom={int(p.get('Zoom') or 100)}, ShowToolbar={bool(p.get('ShowToolbar', True))}, "
+                       f"AutoLoad={bool(p.get('AutoLoad', True))})")
+            if "PageChanged" in used:
+                out.append(f"self.{n}.on_page_changed = {ev('PageChanged')}")
+            native.add("PageChanged")
         # generic events (bound only when a handler exists)
         for e in sorted(used - native):
             if e in TK_SEQ:
@@ -1038,7 +1060,7 @@ class PythonTkPlugin(LanguagePlugin):
         if p.get("ToolTip"):
             out.append(f"_ToolTip(self.{n}, {p['ToolTip']!r})")
         if not p["Enabled"] and t in ("TabControl", "TreeView", "ListView", "DataGridView", "DateTimePicker",
-                                      "LinkLabel", "StatusBar"):
+                                      "LinkLabel", "StatusBar", "ReportViewer"):
             out.append(f"_set_enabled(self.{n}, False)")
         elif not p["Enabled"] and t not in ("Panel", "GroupBox", "PictureBox", "ProgressBar", "ActiveX"):
             out.append(f"self.{n}.configure(state=\"disabled\")")

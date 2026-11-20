@@ -1,0 +1,19 @@
+{
+  "name": "Frontend_Angular",
+  "language": "node-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "",
+    "command": "npx ng serve --port {port} --host 127.0.0.1",
+    "live_reload": false,
+    "restart_on_change": false,
+    "framework": "angular",
+    "build": "npx ng build",
+    "dist": "dist/my-angular/browser",
+    "timeout": 180
+  }
+}

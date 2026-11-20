@@ -2944,10 +2944,13 @@ def parse_winforms(cls: WinFormsClass, all_forms: set[str] | None = None) -> tup
             continue
         if e[0] == "assign" and e[1] == "+=":
             tgt, val = e[2], e[3]
-            if tgt[0] != "member":
+            if tgt[0] == "name":            # "Load += Form1_Load;" - a form event (designer of .NET 6+)
+                ev, kind, owner = tgt[1], "form", None
+            elif tgt[0] != "member":
                 continue
-            ev = tgt[2]
-            kind, owner = target_of(tgt[1])
+            else:
+                ev = tgt[2]
+                kind, owner = target_of(tgt[1])
             meth = None
             if val[0] == "new" and val[2]:
                 meth = _strip_this(val[2][0]) if val[2][0][0] in ("name", "member") else None

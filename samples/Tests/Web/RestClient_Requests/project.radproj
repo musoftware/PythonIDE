@@ -1,0 +1,14 @@
+{
+  "name": "RestClient_Requests",
+  "language": "static-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.html",
+    "port": 0,
+    "live_reload": true
+  }
+}

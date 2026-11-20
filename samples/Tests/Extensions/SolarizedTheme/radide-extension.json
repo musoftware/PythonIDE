@@ -1,0 +1,15 @@
+{
+  "id": "radide-samples.solarized-theme",
+  "name": "Solarized Themes",
+  "version": "1.0.0",
+  "description": "Two colour themes based on Ethan Schoonover's Solarized palette: Solarized Dark and Solarized Light.",
+  "author": "RAD IDE samples",
+  "license": "MIT",
+  "engines": {"radide": ">=1.0"},
+  "contributes": {
+    "themes": [
+      {"name": "Solarized Dark", "file": "themes/solarized-dark.json"},
+      {"name": "Solarized Light", "file": "themes/solarized-light.json"}
+    ]
+  }
+}

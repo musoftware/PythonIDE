@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تعليمات RAD IDE</title>
+<style>
+  body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 10.5pt; color: #1b1b1b; background: #ffffff;
+         max-width: 920px; margin: 0 auto; padding: 8px 16px; line-height: 1.6; direction: rtl; text-align: right; }
+  h1 { color: #1F3D7A; font-size: 20pt; margin-bottom: 2px; }
+  h2 { color: #1F3D7A; font-size: 14pt; border-bottom: 1px solid #C8D3E6; padding-bottom: 2px; margin-top: 22px; }
+  h3 { color: #2B4F8F; font-size: 11pt; margin-bottom: 2px; }
+  code, pre, .key { font-family: Consolas, monospace; font-size: 9.5pt; direction: ltr; unicode-bidi: embed; }
+  pre { background: #F4F6FA; border: 1px solid #DDE3EE; padding: 6px 8px; text-align: left; }
+  table { border-collapse: collapse; }
+  th { background: #E4E8EE; text-align: right; }
+  th, td { border: 1px solid #C8D3E6; padding: 3px 8px; vertical-align: top; }
+  .key { background: #EEF1F6; border: 1px solid #C8D3E6; padding: 0 4px; }
+  .note { background: #FFF8DC; border: 1px solid #E8D88A; padding: 6px 8px; }
+  .toc a { margin-left: 10px; }
+</style>
+</head>
+<body>
+<a name="top"></a>
+<h1>تعليمات RAD IDE</h1>
+<p>RAD IDE بيئة تطوير على طريقة Visual Basic: ارسم النافذة بالماوس، وانقر مرتين على أي عنصر تحكم واكتب معالج
+الحدث الخاص به. نفس المصمم يعمل مع لغات برمجة كثيرة، بل يمكن أن يجمع المشروع الواحد أكثر من لغة.</p>
+<p class="note">لتغيير لغة واجهة بيئة التطوير: <b>أدوات &gt; خيارات &gt; البيئة &gt; اللغة</b> (أو <b>أدوات &gt; اللغة</b>)
+واختر <b>English</b> أو <b>العربية</b>. التبديل فوري، وكودك ونماذجك لا تتغير، ومحررات الكود تبقى من اليسار لليمين.</p>
+<p class="toc"><a href="#start">البداية</a> <a href="#designer">المصمم</a> <a href="#editor">محرر الكود</a>
+<a href="#run">التشغيل وتصحيح الأخطاء</a> <a href="#languages">اللغات</a> <a href="#multi">مشروعات متعددة اللغات</a>
+<a href="#solutions">الحلول والمراجع</a> <a href="#packages">الحزم</a> <a href="#terminal">الطرفية</a> <a href="#git">Git</a>
+<a href="#web">مواقع الويب</a> <a href="#ai">الذكاء الاصطناعي</a> <a href="#options">الخيارات والسمات</a>
+<a href="#help">تعليمات F1</a> <a href="#import">الاستيراد والبناء</a> <a href="#keys">اختصارات لوحة المفاتيح</a></p>
+
+<a name="start"></a>
+<h2>البداية</h2>
+<ol>
+  <li><b>ملف &gt; مشروع جديد</b> (<span class="key">Ctrl+Shift+N</span>) أو من صفحة البدء. اختر لغة ثم <b>قالبًا</b>:
+    <ul>
+      <li><b>تطبيق Windows</b> - نموذج فارغ.</li>
+      <li><b>تطبيق حوار</b> - نموذج بحجم ثابت فيه رسالة وزرّا <i>موافق</i> و<i>إلغاء</i>.</li>
+      <li><b>نموذج إدخال بيانات</b> - عناوين ومربعات نص وقائمة وأزرار <i>حفظ</i> / <i>جديد</i> / <i>حذف</i>؛
+          والسجلات تُحفظ في ملف JSON بجوار البرنامج.</li>
+      <li><b>تطبيق سطر أوامر</b> - بدون نموذج: وحدة كود فيها نقطة دخول <code>main</code>، والمخرجات تظهر في نافذة
+          المخرجات.</li>
+      <li><b>مكتبة فئات</b> - دوال عامة تستخدمها مشروعات أخرى في نفس الحل.</li>
+    </ul></li>
+  <li>اسحب عناصر التحكم من <b>صندوق الأدوات</b> إلى النموذج، واضبط خصائصها في نافذة <b>الخصائص</b>.</li>
+  <li>انقر مرتين على عنصر تحكم لإنشاء معالج حدثه الافتراضي وفتحه (مثلًا <code>btnOK_Click</code>).</li>
+  <li>اضغط <span class="key">F5</span> للتشغيل مع المصحح أو <span class="key">Ctrl+F5</span> للتشغيل بدونه.</li>
+</ol>
+<p>ملفات المشروع: <code>project.radproj</code> (المشروع)، و<code>Form1.form</code> (تخطيط النموذج بصيغة JSON)،
+و<code>Form1.&lt;ext&gt;</code> (كودك)، و<code>Form1_designer.&lt;ext&gt;</code> (يتم توليده من النموذج عند كل حفظ -
+لا تعدّله يدويًا).</p>
+
+<a name="designer"></a>
+<h2>المصمم</h2>
+<ul>
+  <li>صندوق الأدوات: اضغط على أداة ثم اضغط/اسحب على النموذج، أو اسحب الأداة إلى النموذج. الحاويات (Panel و GroupBox
+      و TabControl) تحتوي عناصر تحكم أخرى.</li>
+  <li>التحديد: نقرة، أو <span class="key">Ctrl</span>+نقرة، أو اسحب مستطيل تحديد؛ الأسهم تحرّك، و<span class="key">Shift</span>+الأسهم
+      تغيّر الحجم.</li>
+  <li>الشبكة والالتصاق: <b>أدوات &gt; خيارات &gt; مصمم نماذج Windows</b> يضبط حجم الشبكة ويشغّل/يوقف الالتصاق.</li>
+  <li>قائمة <b>تنسيق</b>: محاذاة، توحيد الحجم، توسيط في النموذج، إحضار إلى الأمام / إرسال إلى الخلف.</li>
+  <li>المكونات غير المرئية (Timer والحوارات و MenuStrip و ToolStrip) تظهر في الشريط أسفل النموذج؛ و<b>محرر القوائم</b>
+      يحرّر القوائم.</li>
+  <li>نافذة الخصائص: مصنّفة أو أبجدية؛ وتبويب <b>الأحداث</b> يعرض الأحداث، والتي لها معالج تظهر بخط عريض.
+      Anchor و Dock يجعلان العناصر تتبع النافذة عند تغيير حجمها.</li>
+  <li>أسماء الخصائص وعناصر التحكم تبقى بالإنجليزية (مثل Text و BackColor و Button) لأنها جزء من الكود، كما في Visual Basic.</li>
+  <li>تراجع/إعادة، وقص/نسخ/لصق لعناصر التحكم، وقوائم الزر الأيمن في كل مكان.</li>
+</ul>
+
+<a name="editor"></a>
+<h2>محرر الكود</h2>
+<ul>
+  <li>تلوين الصيغة لكل لغة، ونصوص عربية / من اليمين لليسار داخل النصوص والتعليقات، ومسافة بادئة تلقائية، ومطابقة الأقواس.</li>
+  <li>IntelliSense أثناء الكتابة ومع <span class="key">Ctrl+Space</span>؛ ومعلومات المعاملات مع
+      <span class="key">Ctrl+Shift+Space</span>.</li>
+  <li>بحث / استبدال (<span class="key">Ctrl+F</span> / <span class="key">Ctrl+H</span>)، والبحث في الملفات
+      (<span class="key">Ctrl+Shift+F</span>)، والانتقال إلى سطر (<span class="key">Ctrl+G</span>)، والانتقال إلى التعريف
+      (<span class="key">F12</span>)، وتبديل التعليق (<span class="key">Ctrl+/</span>).</li>
+  <li><b>قائمة الأخطاء</b>: يتم فحص المشروع عند كل حفظ (ومع <span class="key">Ctrl+Shift+B</span>)؛ وتعليقات TODO / FIXME
+      تظهر كمهام.</li>
+  <li>الحفظ التلقائي يكتب التغييرات غير المحفوظة في <code>.radide_backup</code> (الفاصل الزمني في أدوات &gt; خيارات)؛ وبعد
+      أي عطل تعرض بيئة التطوير استعادتها.</li>
+</ul>
+
+<a name="run"></a>
+<h2>التشغيل وتصحيح الأخطاء</h2>
+<ul>
+  <li><span class="key">F5</span> بدء / متابعة، و<span class="key">Shift+F5</span> إيقاف،
+      و<span class="key">F9</span> نقطة توقف (أو اضغط على الهامش)، و<span class="key">F10</span> خطوة فوق،
+      و<span class="key">F11</span> خطوة إلى الداخل، و<span class="key">Shift+F11</span> خطوة إلى الخارج.</li>
+  <li>أثناء الإيقاف المؤقت: <b>المتغيرات المحلية</b> و<b>مكدس الاستدعاءات</b> و<b>المراقبة</b> ونافذة <b>الأوامر الفورية</b>
+      (اكتب تعبيرًا واضغط Enter)، وقيمة المتغير عند وضع الماوس عليه.</li>
+  <li>مخرجات البرنامج (print / Debug.Print / see) تظهر في نافذة <b>المخرجات</b>.</li>
+</ul>
+
+<a name="languages"></a>
+<h2>اللغات</h2>
+<p><b>ملف &gt; مشروع جديد</b> يعرض كل اللغات ويوضح المثبّت منها. أهمها:</p>
+<table>
+  <tr><th>اللغة</th><th>الواجهة</th><th>تحتاج</th><th>الحزم</th></tr>
+  <tr><td>Python (Tkinter)</td><td>Tkinter</td><td>Python (أو مفسّر بيئة التطوير)</td><td>pip و requirements.txt</td></tr>
+  <tr><td>Python (PySide6 / Qt)</td><td>عناصر Qt</td><td>Python مع PySide6</td><td>pip و requirements.txt</td></tr>
+  <tr><td>Ring (RingQt)</td><td>RingQt</td><td><code>C:\ring\ring\bin\ring.exe</code></td><td>RingPM</td></tr>
+  <tr><td>Visual Basic 6 (BASIC)</td><td>Tkinter</td><td>لا شيء - المفسّر مدمج</td><td>لا يوجد (استخدم الوحدات)</td></tr>
+  <tr><td>لغات جسر الواجهة (C# و C و Fortran و Java ...)</td><td>ترسمها بيئة التطوير</td><td>مترجم اللغة</td><td>أداة اللغة نفسها</td></tr>
+</table>
+<p>المفسّر أو المترجم المستخدم لكل لغة يُضبط في <b>أدوات &gt; خيارات &gt; اللغات</b> (فارغ = يُكتشف تلقائيًا).</p>
+<p><b>جسر الواجهة (GUI Bridge)</b>: اللغات التي ليس لها مكتبة واجهات تحصل على نماذج أيضًا. بيئة التطوير ترسم النافذة
+والبرنامج يتحدث معها عبر الإدخال/الإخراج القياسي (<code>EVENT</code> و<code>SET</code> و<code>GET</code> و<code>CALL</code>
+و<code>MSGBOX</code> و<code>DONE</code>).</p>
+
+<a name="multi"></a>
+<h2>مشروعات متعددة اللغات</h2>
+<ul>
+  <li>يمكن كتابة نموذج بلغة غير لغة المشروع؛ والوحدات تأخذ لغتها من امتداد الملف (<code>.py</code> و<code>.ring</code>
+      و<code>.bas</code> ...).</li>
+  <li>استدعِ دالة مكتوبة بلغة أخرى بـ <code>radcall("Module.function", args...)</code>. القيم تنتقل بصيغة JSON.</li>
+</ul>
+<pre># Python form calling a Ring module (Helpers.ring defines func add a, b)
+total = radcall("Helpers.add", 2, 3)      # -&gt; 5</pre>
+
+<a name="solutions"></a>
+<h2>الحلول والمراجع (مثل Visual Studio)</h2>
+<ul>
+  <li><b>الحل</b> (<code>.radsln</code>) يضم عدة <b>مشروعات</b>، لكل مشروع لغة واحدة: <i>تطبيق Windows</i> أو <i>مكتبة فئات</i>.</li>
+  <li><b>إضافة مرجع</b> (انقر بالزر الأيمن على <i>المراجع</i> في مستكشف الحلول): تبويبات المشروعات / الحزم / استعراض.
+      بيئة التطوير تولّد غلافًا بلغة المشروع المستهلك، فتستدعي المكتبة ككود عادي، مثلًا <code>MathLib.Add(2, 3)</code>.</li>
+  <li><b>تعيين كمشروع بدء التشغيل</b> يحدد ما يشغّله F5، و<b>بناء الحل</b> يحدّث الأغلفة.</li>
+</ul>
+
+<a name="packages"></a>
+<h2>الحزم (مشروع &gt; إدارة الحزم...)</h2>
+<ul>
+  <li><b>استعراض</b>: ابحث عن حزمة، واختر إصدارًا (فارغ = الأحدث) واضغط <b>تثبيت</b>.</li>
+  <li><b>المثبّت</b>: الحزم الموجودة؛ <b>إلغاء التثبيت</b> أو <b>تحديث...</b> للحزمة المحددة.</li>
+  <li>لمشروعات Python تُثبَّت الحزم في <code>.venv</code> خاص بالمشروع، وملف <code>requirements.txt</code> يبقى محدثًا.</li>
+  <li>لغة VB6 ليس لها مدير حزم: أضف الكود المشترك بـ <b>مشروع &gt; إضافة عنصر موجود</b>.</li>
+</ul>
+
+<a name="terminal"></a>
+<h2>الطرفية (عرض &gt; الطرفية، <span class="key">Ctrl+`</span>)</h2>
+<ul>
+  <li>موجّه الأوامر أو PowerShell أو Git Bash في مجلد المشروع (اختر من مربع الصدفة).</li>
+  <li>اكتب أمرًا واضغط <span class="key">Enter</span>. أعلى / أسفل لتصفح السجل، و<span class="key">Ctrl+C</span> يوقف الأمر
+      الجاري، و<span class="key">Ctrl+L</span> يمسح الشاشة.</li>
+</ul>
+
+<a name="git"></a>
+<h2>Git (عرض &gt; تغييرات Git، <span class="key">Ctrl+Alt+G</span>)</h2>
+<ul>
+  <li><b>تهيئة مستودع</b> تنشئ مستودعًا في مجلد المشروع مع ملف <code>.gitignore</code> مناسب.</li>
+  <li>القائمة تعرض التغييرات المُجهّزة والتغييرات مع حالتها. حدد ملفات واضغط <b>تجهيز</b> / <b>إلغاء التجهيز</b>.</li>
+  <li>اكتب رسالة واضغط <b>إيداع</b> (<span class="key">Ctrl+Enter</span>). والفروع والسحب والدفع والمزامنة والدمج
+      وحل التعارضات موجودة في نفس النافذة وفي قائمة Git.</li>
+  <li>الفرع الحالي يظهر في شريط الحالة؛ والملفات المتغيرة ملوّنة في مستكشف الحلول.</li>
+</ul>
+
+<a name="web"></a>
+<h2>مواقع الويب</h2>
+<ul>
+  <li><b>مشروع جديد &gt; ويب</b>: موقع PHP، أو موقع HTML/CSS/JS، أو Node.js (Express)، و<b>معرض التطبيقات</b> فيه قوالب جاهزة.</li>
+  <li><b>F5</b> يشغّل خادم التطوير مع إعادة تحميل مباشرة؛ ونافذة <b>المعاينة</b> (أجهزة، تدوير، فتح في المتصفح) ونافذة <b>الطلبات</b>.</li>
+  <li><b>عرض التصميم / المقسوم / الكود</b>، و<b>قواعد البيانات</b> (SQLite و MySQL و PostgreSQL)، و<b>النشر</b> (FTP / SFTP / مجلد)،
+      و<b>التقارير</b> (SEO)، و<b>SuperPreview</b>.</li>
+</ul>
+
+<a name="ai"></a>
+<h2>الذكاء الاصطناعي</h2>
+<ul>
+  <li><b>أدوات &gt; خيارات &gt; الذكاء الاصطناعي</b>: نماذج محلية مجانية (Ollama و LM Studio)، أو وكلاء سطر أوامر بحسابك
+      (Claude Code و Gemini CLI و Codex ...)، أو محادثات الويب؛ ومفاتيح API اختيارية.</li>
+  <li><b>محادثة الذكاء الاصطناعي</b> (<span class="key">Ctrl+Alt+I</span>): اسأل بالعربي أو الإنجليزي، وطبّق الكود كفروق قابلة للمراجعة.</li>
+  <li>الإكمال المضمّن (نص شبحي)، و<span class="key">Ctrl+I</span> للتعديل بالذكاء الاصطناعي، و<b>إنشاء نموذج بالذكاء الاصطناعي</b>،
+      و<b>مدير الوكلاء</b> لمهام كاملة مع الموافقة والتراجع.</li>
+</ul>
+
+<a name="options"></a>
+<h2>الخيارات والسمات (أدوات &gt; خيارات)</h2>
+<ul>
+  <li><b>البيئة</b>: سمة الألوان (نظام / فاتح / أزرق / داكن / تباين عالٍ)، وتخطيط منطقة العمل (Visual Studio أو VS Code أو الوكيل)،
+      وحجم الخط، و<b>اللغة</b> (English / العربية)، والحفظ التلقائي.</li>
+  <li><b>محرر النصوص</b>: الخط والحجم وعرض المسافة البادئة.</li>
+  <li><b>مصمم نماذج Windows</b>: حجم الشبكة والالتصاق بها.</li>
+  <li><b>اللغات</b>: مسار المفسّر / المترجم لكل لغة.</li>
+</ul>
+<p>التغييرات تُطبَّق فورًا على المحررات والمصممات المفتوحة.</p>
+
+<a name="help"></a>
+<h2>تعليمات F1</h2>
+<p>اضغط <span class="key">F1</span> على كلمة في محرر الكود، أو مع عنصر تحكم محدد في المصمم: مرجع VB6 المدمج، أو توثيق Python
+و Tkinter و Qt، أو توثيق Ring. وإذا لم يكن تحت المؤشر موضوع، يفتح F1 هذه الصفحة.</p>
+
+<a name="import"></a>
+<h2>الاستيراد والبناء</h2>
+<ul>
+  <li><b>ملف &gt; استيراد &gt; برنامج واجهة Python</b>: يقرأ نوافذ برنامج Tkinter أو Qt ويحوّلها إلى نماذج مع معالجاتها.</li>
+  <li><b>ملف &gt; استيراد &gt; مشروع Visual Basic 6</b> (<code>.vbp / .frm</code>): النماذج والعناصر والقوائم والكود.</li>
+  <li><b>ملف &gt; استيراد &gt; برنامج (.exe / .dll)</b>: يحوّل برنامجًا مترجَمًا (مسموح لك بتحليله) إلى مشروع.</li>
+  <li><b>مشروع &gt; بناء EXE</b>: PyInstaller لـ Python، و ring2exe لـ Ring.</li>
+</ul>
+
+<a name="keys"></a>
+<h2>اختصارات لوحة المفاتيح</h2>
+<table>
+  <tr><th>المفاتيح</th><th>الأمر</th></tr>
+  <tr><td><span class="key">Ctrl+Shift+N</span> / <span class="key">Ctrl+Shift+O</span></td><td>مشروع جديد / فتح مشروع</td></tr>
+  <tr><td><span class="key">Ctrl+S</span></td><td>حفظ الكل</td></tr>
+  <tr><td><span class="key">F7</span> / <span class="key">Shift+F7</span></td><td>عرض الكود / عرض المصمم</td></tr>
+  <tr><td><span class="key">F5</span> / <span class="key">Ctrl+F5</span> / <span class="key">Shift+F5</span></td><td>تصحيح / تشغيل بدون تصحيح / إيقاف</td></tr>
+  <tr><td><span class="key">F9</span>، <span class="key">F10</span>، <span class="key">F11</span>، <span class="key">Shift+F11</span></td><td>نقطة توقف، خطوة فوق، خطوة إلى الداخل، خطوة إلى الخارج</td></tr>
+  <tr><td><span class="key">Ctrl+F</span>، <span class="key">Ctrl+H</span>، <span class="key">F3</span>، <span class="key">Shift+F3</span></td><td>بحث، استبدال، البحث عن التالي / السابق</td></tr>
+  <tr><td><span class="key">Ctrl+Shift+F</span></td><td>البحث في الملفات</td></tr>
+  <tr><td><span class="key">Ctrl+G</span>، <span class="key">F12</span></td><td>الانتقال إلى سطر، الانتقال إلى التعريف</td></tr>
+  <tr><td><span class="key">Ctrl+Space</span>، <span class="key">Ctrl+Shift+Space</span></td><td>IntelliSense، معلومات المعاملات</td></tr>
+  <tr><td><span class="key">Ctrl+/</span></td><td>تعليق / إلغاء تعليق</td></tr>
+  <tr><td><span class="key">Ctrl+Shift+B</span></td><td>البحث عن الأخطاء</td></tr>
+  <tr><td><span class="key">Ctrl+Shift+P</span> / <span class="key">Ctrl+P</span></td><td>لوحة الأوامر / فتح سريع</td></tr>
+  <tr><td><span class="key">Ctrl+`</span></td><td>الطرفية</td></tr>
+  <tr><td><span class="key">Ctrl+Alt+G</span></td><td>تغييرات Git</td></tr>
+  <tr><td><span class="key">Ctrl+Alt+I</span></td><td>محادثة الذكاء الاصطناعي</td></tr>
+  <tr><td><span class="key">F1</span> / <span class="key">Ctrl+F1</span></td><td>تعليمات حسب السياق / هذه الصفحة</td></tr>
+</table>
+<p><b>تعليمات &gt; اختصارات لوحة المفاتيح</b> تعرض كل اختصارات القوائم كما هي الآن.</p>
+<p><a href="#top">العودة إلى الأعلى</a></p>
+</body>
+</html>

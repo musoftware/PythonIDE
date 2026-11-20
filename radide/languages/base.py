@@ -234,12 +234,18 @@ class LanguagePlugin:
                    breakpoints: list[tuple[str, int]]) -> RunSpec:
         raise NotImplementedError
 
-    @staticmethod
-    def breakpoints_env(breakpoints: list[tuple[str, int]]) -> str:
+    # the agent understands "@@bp {json}" (hit count / logpoint, radide/debug_extras.py); else plain conditions
+    debug_bp_extras: bool = False
+
+    @classmethod
+    def breakpoints_env(cls, breakpoints: list[tuple[str, int]]) -> str:
         out = []
         for bp in breakpoints:
             f, line = bp[0], bp[1]
             cond = bp[2] if len(bp) > 2 and bp[2] else ""
+            if cond.startswith("@@bp ") and not cls.debug_bp_extras:
+                from ..debug_extras import parse_bp
+                cond = parse_bp(cond)["cond"]
             out.append(f"{Path(f).name.lower()}|{line}" + (f"|{cond}" if cond else ""))
         return ";".join(out)
 

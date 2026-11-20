@@ -2678,6 +2678,8 @@ class DatabasesPanel(QWidget):
             cid = d[1]
             m.addAction("New Query", lambda: self.open_query(cid))
             m.addAction("New Table...", lambda: self.create_table_dialog(cid, wait=False))
+            m.addAction("Database Diagram",                 # radide/web_site/db_diagram.py
+                        lambda: __import__("radide.web_site.db_diagram", fromlist=["x"]).open_diagram(self, cid))
             m.addAction("Import CSV into New Table...", lambda: self.import_csv_dialog(cid, wait=False))
             m.addAction("Export Database to SQL...", lambda: self.export_sql(cid, wait=False))
             m.addSeparator()

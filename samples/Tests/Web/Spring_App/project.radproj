@@ -1,0 +1,16 @@
+{
+  "name": "SpringMvc1",
+  "language": "spring-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "spring",
+    "template": "spring-mvc"
+  }
+}

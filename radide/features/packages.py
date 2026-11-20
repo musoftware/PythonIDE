@@ -192,6 +192,12 @@ def resolve_tool(tool: str, interpreter: str) -> str:
             cand = base / f"{tool}{ext}"
             if cand.is_file():
                 return str(cand)
+    if tool.lower() == "composer":           # the portable Composer of RAD IDE (php_toolchain.py)
+        try:
+            from ..web_site.php_toolchain import find_composer
+            return find_composer()
+        except Exception:  # noqa: BLE001
+            return ""
     return ""
 
 

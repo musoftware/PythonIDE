@@ -1,0 +1,4 @@
+﻿monaco-vim 0.4.4 (MIT) - https://registry.npmjs.org/monaco-vim/-/monaco-vim-0.4.4.tgz
+npm sha1 a63e8d8582d8df33a49b8071a8dbf0b80c817518 (verified)
+File: dist/monaco-vim.umd.js, loaded by radide/web/editor_extras.js for the Vim keymap.
+

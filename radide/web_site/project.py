@@ -49,7 +49,8 @@ HIDDEN_DIRS = {".git", ".svn", ".hg", "__pycache__", ".radide", ".radide_backup"
                ".vscode"}
 HIDDEN_FILES = {Project.FILE, "Thumbs.db", ".DS_Store", "desktop.ini"}
 # shown in the explorer but filled only when expanded; not listed by list_files(include_heavy=False)
-HEAVY_DIRS = {"node_modules", "vendor", "bower_components", "dist", "build", ".next", ".cache"}
+HEAVY_DIRS = {"node_modules", "vendor", "bower_components", "dist", "build", ".next", ".cache",
+              ".venv", "venv"}                       # Python web sites keep their virtual environment inside
 INDEX_FILES = ("index.php", "index.html", "index.htm", "default.php", "default.html", "default.htm")
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg"}

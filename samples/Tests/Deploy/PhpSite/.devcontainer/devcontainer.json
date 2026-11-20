@@ -1,0 +1,16 @@
+{
+  "name": "PhpSite (PHP site (Apache))",
+  "image": "mcr.microsoft.com/devcontainers/php:1-8.3-bookworm",
+  "forwardPorts": [
+    8080
+  ],
+  "postAttachCommand": "php -S 0.0.0.0:8080 -t .",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug"
+      ]
+    }
+  }
+}

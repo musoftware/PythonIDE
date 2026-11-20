@@ -1,0 +1,120 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "ContactCard",
+    "Text": "ContactCard",
+    "Width": 290,
+    "Height": 170,
+    "BackColor": "#FFFDF2",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblName",
+        "Text": "Name:",
+        "Left": 8,
+        "Top": 8,
+        "Width": 60,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtName",
+        "Text": "",
+        "Left": 72,
+        "Top": 6,
+        "Width": 200,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "AddressBox",
+      "props": {
+        "Name": "Address",
+        "Left": 8,
+        "Top": 40,
+        "Width": 264,
+        "Height": 100,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Caption": "Postal address",
+        "Street": "",
+        "Changes": 0,
+        "Parent": ""
+      }
+    }
+  ],
+  "kind": "usercontrol",
+  "usercontrol": {
+    "properties": [
+      {
+        "name": "ContactName",
+        "type": "str",
+        "default": "",
+        "maps": "txtName.Text",
+        "description": "The name."
+      }
+    ],
+    "events": [
+      {
+        "name": "Edited",
+        "description": "Something in the card was edited."
+      }
+    ],
+    "default_event": "Edited"
+  }
+}

@@ -231,6 +231,11 @@ def main(argv=None):
         build = argv[argv.index("--build") + 1]
     program = argv[argv.index("--") + 1:] if "--" in argv else []
     handlers = set(filter(None, os.environ.get("RAD_HANDLERS", "").split(",")))
+    try:        # console mode: a project without forms (its own main) runs as a plain console program
+        from ..model import Project
+        console = not Project.load(folder).forms
+    except Exception:  # noqa: BLE001 - no/invalid project file: keep the GUI Bridge behaviour
+        console = False
     if build:
         print(f"------ Build: {build}", flush=True)
         r = subprocess.run(build if os.name == "nt" else shlex.split(build), cwd=str(folder), shell=os.name == "nt",
@@ -240,6 +245,8 @@ def main(argv=None):
             print(out, flush=True)
         if r.returncode != 0:
             print(f"------ Build failed (exit code {r.returncode})", file=sys.stderr, flush=True)
+            if console:                 # the errors are in the Output window; no dialog for console programs
+                sys.exit(r.returncode)
             try:
                 root = tk.Tk()
                 root.withdraw()
@@ -248,6 +255,15 @@ def main(argv=None):
             except tk.TclError:
                 pass
             sys.exit(r.returncode)
+    if console and program:
+        sys.stdout.flush()
+        if not DEBUG:
+            sys.exit(subprocess.run(program, cwd=str(folder)).returncode)     # stdin/stdout/stderr inherited
+        # debugger (radide/bridgedebug.py): same handshake as the GUI Bridge - pid, then wait for "go"
+        proc = subprocess.Popen(program, cwd=str(folder), stdin=subprocess.DEVNULL)
+        print(f"@@RADBRIDGE@@pid|{proc.pid}", flush=True)
+        sys.stdin.readline()
+        sys.exit(proc.wait())
     BridgeRuntime(folder, program, handlers).run()
 
 

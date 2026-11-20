@@ -23,6 +23,13 @@ from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QLineEdit, QPushButton, QText
                              QVBoxLayout)
 
 HELP_DIR = Path(__file__).resolve().parent / "help"
+
+
+def manual_page() -> Path:
+    """index_<lang>.html for the IDE's display language (radide/i18n), else index.html."""
+    from .. import i18n
+    page = HELP_DIR / f"index_{i18n.language()}.html"
+    return page if i18n.language() != "en" and page.exists() else HELP_DIR / "index.html"
 RING_HOME = Path(r"C:\ring\ring")
 
 # ------------------------------------------------------------------ VB6 reference (bundled)
@@ -370,7 +377,7 @@ class HelpViewer(QDialog):
         vb = QPushButton("VB6 Reference")
         vb.clicked.connect(lambda: self.show_vb("index"))
         ext = QPushButton("Open in Browser")
-        ext.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(HELP_DIR / "index.html"))))
+        ext.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(manual_page()))))
         bar = QHBoxLayout()
         for b in (home, keys, vb):
             bar.addWidget(b)
@@ -396,7 +403,7 @@ class HelpViewer(QDialog):
             webbrowser.open(s)
 
     def show_manual(self):
-        page = HELP_DIR / "index.html"
+        page = manual_page()
         if page.exists():
             self.browser.setSearchPaths([str(HELP_DIR)])
             self.browser.setSource(QUrl.fromLocalFile(str(page)))

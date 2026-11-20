@@ -1,0 +1,16 @@
+{
+  "name": "Tk_SQLite_Customers",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "databases": [
+    {
+      "name": "Shop",
+      "kind": "sqlite",
+      "path": "shop.db"
+    }
+  ]
+}

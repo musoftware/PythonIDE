@@ -1,0 +1,10 @@
+{
+  "id": "radide-samples.word-count",
+  "name": "Word Count Tools",
+  "version": "1.2.0",
+  "description": "Tools > Word Count: lines, words and characters of the active code file; a Scratch Notes window (saved between sessions); a live count in the status bar.",
+  "author": "RAD IDE samples",
+  "license": "MIT",
+  "engines": {"radide": ">=1.0"},
+  "main": "extension.py"
+}

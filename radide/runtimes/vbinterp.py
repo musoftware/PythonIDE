@@ -11,6 +11,7 @@ import math
 import random
 import re
 import time
+import weakref
 
 from .vbparse import Module, Proc, parse_expression
 
@@ -39,6 +40,52 @@ class _Resume(Exception):
 
 class EndProgram(Exception):
     pass
+
+
+class _Return(Exception):
+    """Return (end of a GoSub routine)."""
+
+
+ERROR_MESSAGES = {
+    3: "Return without GoSub", 5: "Invalid procedure call or argument", 6: "Overflow", 7: "Out of memory",
+    9: "Subscript out of range", 10: "This array is fixed or temporarily locked", 11: "Division by zero",
+    13: "Type mismatch", 14: "Out of string space", 20: "Resume without error", 28: "Out of stack space",
+    35: "Sub or Function not defined", 48: "Error in loading DLL", 49: "Bad DLL calling convention",
+    51: "Internal error", 52: "Bad file name or number", 53: "File not found", 54: "Bad file mode",
+    55: "File already open", 57: "Device I/O error", 58: "File already exists", 61: "Disk full",
+    62: "Input past end of file", 63: "Bad record number", 67: "Too many files", 68: "Device unavailable",
+    70: "Permission denied", 71: "Disk not ready", 74: "Can't rename with different drive",
+    75: "Path/File access error", 76: "Path not found", 91: "Object variable or With block variable not set",
+    92: "For loop not initialized", 93: "Invalid pattern string", 94: "Invalid use of Null",
+    380: "Invalid property value", 424: "Object required", 429: "ActiveX component can't create object",
+    438: "Object doesn't support this property or method", 440: "Automation error",
+    449: "Argument not optional", 450: "Wrong number of arguments or invalid property assignment",
+    451: "Property let procedure not defined and property get procedure did not return an object",
+    453: "Specified DLL function not found",
+    457: "This key is already associated with an element of this collection",
+    458: "Variable uses an Automation type not supported in Visual Basic",
+}
+
+
+def error_message(number) -> str:
+    try:
+        n = int(number)
+    except (TypeError, ValueError):
+        n = 0
+    return ERROR_MESSAGES.get(n, "Application-defined or object-defined error")
+
+
+class NamedArg:
+    """name:=value in a call."""
+    __slots__ = ("name", "value")
+
+    def __init__(self, name, value):
+        self.name, self.value = name, value
+
+
+def positional(args):
+    """Drop names of named arguments (for objects that only take positional arguments)."""
+    return [a.value if isinstance(a, NamedArg) else a for a in args]
 
 
 def err(number, msg):
@@ -70,32 +117,50 @@ NOTHING = Nothing()
 
 
 class Cell:
-    __slots__ = ("value", "typ")
+    __slots__ = ("value", "typ", "events")
 
     def __init__(self, value=EMPTY, typ="variant"):
         self.value, self.typ = value, typ
+        self.events = None            # (module state, me, variable name) for Dim WithEvents
+
+
+PRIMITIVES = {"integer", "long", "single", "double", "currency", "byte", "decimal", "longlong", "longptr",
+              "string", "boolean", "date", "variant", "any"}
 
 
 def default_for(typ: str):
     typ = (typ or "variant").lower()
     if typ.startswith("new:"):
         return None                     # created by caller
-    if typ in ("integer", "long", "single", "double", "currency", "byte", "decimal", "longlong"):
+    if typ in ("integer", "long", "single", "double", "currency", "byte", "decimal", "longlong", "longptr"):
         return 0
     if typ == "string":
         return ""
+    if typ.startswith("string*"):        # fixed-length string
+        try:
+            return " " * int(typ[7:])
+        except ValueError:
+            return ""
     if typ == "boolean":
         return False
     if typ == "date":
         return _dt.datetime(1899, 12, 30)
-    if typ in ("object", "form", "control", "collection") or typ[0].isupper():
-        return NOTHING
-    return EMPTY
+    if typ in ("variant", "any"):
+        return EMPTY
+    return NOTHING                      # Object, Collection, class names, controls ...
 
 
 def coerce(value, typ: str):
     typ = (typ or "variant").lower()
-    if typ in ("integer", "long", "byte", "longlong"):
+    if typ.startswith("string*"):
+        try:
+            n = int(typ[7:])
+        except ValueError:
+            return to_str(value)
+        return to_str(value)[:n].ljust(n)
+    if typ in ("integer", "long", "byte", "longlong", "longptr"):
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
         return vb_round(to_num(value))
     if typ in ("single", "double", "currency", "decimal"):
         return float(to_num(value))
@@ -107,10 +172,11 @@ def coerce(value, typ: str):
 
 
 class VBArray:
-    def __init__(self, bounds: list[tuple[int, int]], typ="variant"):
+    def __init__(self, bounds: list[tuple[int, int]], typ="variant", factory=None):
         self.bounds = bounds
         self.typ = typ
         self.data = {}
+        self.factory = factory          # creates elements of user-defined Types
 
     def _key(self, idx):
         if len(idx) != len(self.bounds):
@@ -126,17 +192,29 @@ class VBArray:
     def get(self, idx):
         k = self._key(idx)
         if k not in self.data:
+            if self.factory is not None:
+                v = self.data[k] = self.factory()
+                return v
             return default_for(self.typ)
         return self.data[k]
 
     def set(self, idx, value):
+        if isinstance(value, UDT):
+            value = value.copy()
         self.data[self._key(idx)] = coerce(value, self.typ)
 
     def items(self):
         if len(self.bounds) != 1:
             return [self.data.get(k, default_for(self.typ)) for k in sorted(self.data)]
         lo, hi = self.bounds[0]
+        if self.factory is not None:
+            return [self.get([i]) for i in range(lo, hi + 1)]
         return [self.data.get((i,), default_for(self.typ)) for i in range(lo, hi + 1)]
+
+    def copy(self):
+        a = VBArray(list(self.bounds), self.typ, self.factory)
+        a.data = {k: (v.copy() if isinstance(v, UDT) else v) for k, v in self.data.items()}
+        return a
 
     def redim(self, bounds, preserve):
         old = self.data
@@ -151,36 +229,84 @@ class VBArray:
 
 
 class Collection:
+    vb_typename = "Collection"
+
     def __init__(self):
         self.items: list = []
         self.keys: dict = {}
 
+    def vb_items(self):
+        return list(self.items)
+
     def vb_get(self, name):
         if name == "count":
             return len(self.items)
+        if name == "_newenum":
+            return self
         raise err(438, f"Object doesn't support property '{name}'")
 
     def vb_call(self, name, args):
         if name == "add":
-            item = args[0]
-            key = args[1] if len(args) > 1 and args[1] is not EMPTY else None
-            self.items.append(item)
+            names = ["item", "key", "before", "after"]
+            vals = {}
+            pos = 0
+            for a in args:
+                if isinstance(a, NamedArg):
+                    vals[a.name] = a.value
+                else:
+                    if pos < len(names):
+                        vals[names[pos]] = a
+                    pos += 1
+            item = vals.get("item", EMPTY)
+            key = vals.get("key", EMPTY)
+            key = None if key is EMPTY or key is _MISSING else to_str(key).lower()
+            if key is not None and key in self.keys:
+                raise err(457, ERROR_MESSAGES[457])
+            before, after = vals.get("before", EMPTY), vals.get("after", EMPTY)
+            if before not in (EMPTY, _MISSING):
+                at = self._index(before)
+            elif after not in (EMPTY, _MISSING):
+                at = self._index(after) + 1
+            else:
+                at = len(self.items)
+            self.items.insert(at, item)
             if key is not None:
-                self.keys[to_str(key).lower()] = item
+                self.keys[key] = item
             return EMPTY
         if name == "item":
             return self._item(args[0])
         if name == "remove":
             k = args[0]
             if isinstance(k, str):
+                if k.lower() not in self.keys:
+                    raise err(5, "Invalid procedure call or argument")
                 item = self.keys.pop(k.lower())
-                self.items.remove(item)
+                for i, x in enumerate(self.items):
+                    if x is item:
+                        del self.items[i]
+                        break
             else:
-                self.items.pop(int(k) - 1)
+                i = self._index(k)
+                item = self.items.pop(i)
+                for kk, v in list(self.keys.items()):
+                    if v is item:
+                        del self.keys[kk]
+                        break
             return EMPTY
         if name == "count":
             return len(self.items)
+        if name == "_newenum":
+            return self
         raise err(438, f"Object doesn't support method '{name}'")
+
+    def _index(self, k):
+        if isinstance(k, str):
+            item = self._item(k)
+            return next(i for i, x in enumerate(self.items) if x is item)
+        i = int(to_num(k))
+        if not 1 <= i <= len(self.items):
+            raise err(9, "Subscript out of range")
+        return i - 1
 
     def _item(self, k):
         if isinstance(k, str):
@@ -196,11 +322,27 @@ class Collection:
 
 
 class UDT:
-    """Instance of a user-defined Type."""
+    """Instance of a user-defined Type (fields keep their declared types; fixed-length strings,
+    nested Types and fixed arrays are supported)."""
 
-    def __init__(self, name, members):
+    def __init__(self, name, members, make=None):
         self._name = name
-        self._fields = {m.lower(): default_for(t) for m, t in members}
+        self.vb_typename = name
+        self._members = members
+        self._make = make               # make(typ, bounds) -> initial value (from the interpreter)
+        self._order = [m[0].lower() for m in members]
+        self._types = {m[0].lower(): (m[1] or "variant").lower().replace("new:", "") for m in members}
+        self._fields = {}
+        for m in members:
+            bounds = m[2] if len(m) > 2 else None
+            self._fields[m[0].lower()] = make(m[1], bounds) if make else default_for(m[1])
+
+    def copy(self):
+        u = UDT.__new__(UDT)
+        u._name, u.vb_typename, u._members, u._make = self._name, self.vb_typename, self._members, self._make
+        u._order, u._types = self._order, self._types
+        u._fields = {k: (v.copy() if isinstance(v, (UDT, VBArray)) else v) for k, v in self._fields.items()}
+        return u
 
     def vb_get(self, name):
         if name in self._fields:
@@ -208,25 +350,84 @@ class UDT:
         raise err(438, f"'{name}' is not a member of {self._name}")
 
     def vb_set(self, name, value):
-        self._fields[name] = value
+        if name not in self._fields:
+            raise err(438, f"'{name}' is not a member of {self._name}")
+        if isinstance(value, (UDT, VBArray)):
+            value = value.copy()
+        self._fields[name] = coerce(value, self._types.get(name, "variant"))
+
+    def vb_call(self, name, args):
+        v = self.vb_get(name)
+        if isinstance(v, VBArray) and args:
+            return v.get(positional(args))
+        return v
+
+    def vb_setindexed(self, name, args, value):
+        v = self.vb_get(name)
+        if not isinstance(v, VBArray):
+            raise err(13, "Type mismatch")
+        v.set(positional(args), value)
 
 
 class ErrObject:
+    """The Err object: Number, Description, Source, HelpFile, HelpContext, LastDllError, Raise, Clear."""
+    vb_typename = "ErrObject"
+    FIELDS = ("number", "description", "source", "helpfile", "helpcontext", "lastdllerror")
+
     def __init__(self):
         self.number, self.description, self.source = 0, "", ""
+        self.helpfile, self.helpcontext, self.lastdllerror = "", 0, 0
+        self.default_source = "Project1"
 
     def vb_get(self, name):
-        return {"number": self.number, "description": self.description, "source": self.source}.get(name, EMPTY)
+        if name in self.FIELDS:
+            return getattr(self, name)
+        if name in ("clear", "raise"):
+            return self.vb_call(name, [])
+        raise err(438, f"Object doesn't support property '{name}'")
 
     def vb_set(self, name, value):
+        if name not in self.FIELDS or name == "lastdllerror":
+            raise err(438, f"Object doesn't support property '{name}'")
+        if name in ("number", "helpcontext"):
+            value = int(to_num(value))
+            if name == "number" and value and not self.description:
+                self.description = error_message(value)
+        else:
+            value = to_str(value)
         setattr(self, name, value)
+
+    def clear(self):
+        self.number, self.description, self.source = 0, "", ""
+        self.helpfile, self.helpcontext = "", 0
 
     def vb_call(self, name, args):
         if name == "clear":
-            self.number, self.description = 0, ""
+            self.clear()
             return EMPTY
         if name == "raise":
-            raise err(int(to_num(args[0])), to_str(args[2]) if len(args) > 2 else "Application-defined error")
+            names = ["number", "source", "description", "helpfile", "helpcontext"]
+            vals = {}
+            pos = 0
+            for a in args:
+                if isinstance(a, NamedArg):
+                    vals[a.name] = a.value
+                else:
+                    if pos < len(names) and a is not EMPTY and a is not _MISSING:
+                        vals[names[pos]] = a
+                    pos += 1
+            if "number" not in vals:
+                raise err(449, "Argument not optional: Number")
+            number = int(to_num(vals["number"]))
+            desc = to_str(vals["description"]) if "description" in vals else error_message(number)
+            e = VBRuntimeError(number, desc)
+            e.source = to_str(vals["source"]) if "source" in vals else ""
+            e.helpfile = to_str(vals.get("helpfile", ""))
+            e.helpcontext = int(to_num(vals.get("helpcontext", 0)))
+            try:
+                raise e
+            finally:
+                e = None        # no exception <-> frame cycle: objects are released (Class_Terminate) at once
         return self.vb_get(name)
 
     vb_default = "number"
@@ -361,6 +562,11 @@ def vb_like(s, pattern):
 
 
 def vb_format(value, fmt=""):
+    from .vbformat import vb_format as _fmt
+    return _fmt(value, fmt, to_str, to_num, to_date, EMPTY)
+
+
+def _old_vb_format(value, fmt=""):
     fmt = to_str(fmt)
     low = fmt.lower()
     if isinstance(value, _dt.datetime) or low in ("short date", "long date", "short time", "long time",
@@ -440,7 +646,21 @@ CONSTANTS = {
     "vbshiftmask": 1, "vbctrlmask": 2, "vbaltmask": 4, "vbuppercase": 1, "vblowercase": 2,
     "vbpropercase": 3, "vbformcontrolmenu": 0, "vbformcode": 1, "vbappwindows": 2,
     "vbsunday": 1, "vbmonday": 2, "vbusesystemdayofweek": 0, **COLORS,
+    "vbobjecterror": -2147221504, "vbnormal": 0, "vbreadonly": 1, "vbhidden": 2, "vbsystem": 4,
+    "vbvolume": 8, "vbdirectory": 16, "vbarchive": 32, "vbget": 2, "vblet": 4, "vbmethod": 1, "vbset": 8,
+    "vbhide": 0, "vbnormalfocus": 1, "vbminimizedfocus": 2, "vbmaximizedfocus": 3, "vbnormalnofocus": 4,
+    "vbminimizednofocus": 6, "vbtuesday": 3, "vbwednesday": 4, "vbthursday": 5, "vbfriday": 6, "vbsaturday": 7,
+    "vbgeneraldate": 0, "vblongdate": 1, "vbshortdate": 2, "vblongtime": 3, "vbshorttime": 4,
+    "vbempty": 0, "vbnull": 1, "vbinteger": 2, "vblong": 3, "vbsingle": 4, "vbdouble": 5, "vbcurrency": 6,
+    "vbdate": 7, "vbstring": 8, "vbobject": 9, "vberror": 10, "vbboolean": 11, "vbvariant": 12,
+    "vbbyte": 17, "vbarray": 8192, "vbunicode": 64, "vbfromunicode": 128, "vbformfeed": "\f",
+    "vbverticaltab": "\v", "vbobjectpointer": 0,
 }
+try:
+    from .vbapi import NULL_STRING as _NULL_STRING
+    CONSTANTS["vbnullstring"] = _NULL_STRING
+except Exception:  # noqa: BLE001
+    pass
 
 
 def _mid(s, start, length=None):
@@ -632,7 +852,7 @@ def _radcall(name, *args):
 
 
 BUILTINS = {
-    "len": lambda s: len(to_str(s)) if not isinstance(s, VBArray) else len(s.items()),
+    "len": lambda s: _len(s),
     "left": lambda s, n: to_str(s)[:int(to_num(n))],
     "right": lambda s, n: to_str(s)[len(to_str(s)) - int(to_num(n)):] if int(to_num(n)) else "",
     "mid": _mid, "ucase": lambda s: to_str(s).upper(), "lcase": lambda s: to_str(s).lower(),
@@ -688,7 +908,60 @@ BUILTINS = {
     "environ": lambda n: __import__("os").environ.get(to_str(n), ""),
     "nz": lambda v, d="": d if v is None or v is EMPTY else v,
     "radcall": _radcall,
+    "error": lambda n=EMPTY: error_message(to_num(n)) if n is not EMPTY else "",
+    "ismissing": lambda v: v is EMPTY or v is _MISSING,
+    "command": lambda: __import__("os").environ.get("RAD_COMMAND", ""),
+    "beep": lambda *a: _beep(),
+    "shell": lambda path, style=1: _shell(path, style),
+    "strptr": lambda v: 0, "varptr": lambda v: 0, "objptr": lambda v: id(v),
+    "isError": lambda v: False,
+    "switch": lambda *a: next((a[i + 1] for i in range(0, len(a) - 1, 2) if to_bool(a[i])), None),
+    "choose": lambda i, *a: a[int(to_num(i)) - 1] if 1 <= int(to_num(i)) <= len(a) else None,
+    "partition": lambda n, a, b, c: f"{int(to_num(n)) // int(to_num(c)) * int(to_num(c))}:"
+                                    f"{int(to_num(n)) // int(to_num(c)) * int(to_num(c)) + int(to_num(c)) - 1}",
+    "lenb": lambda s: len(to_str(s)) * 2, "chrb": lambda n: chr(int(to_num(n))),
+    "datepart": lambda iv, d, *_: _datepart(iv, d),
+    "sleep": lambda ms: time.sleep(to_num(ms) / 1000),
 }
+BUILTINS["iserror"] = BUILTINS.pop("isError")
+
+
+def _datepart(interval, d):
+    d = to_date(d)
+    iv = to_str(interval).lower()
+    return {"yyyy": d.year, "q": (d.month - 1) // 3 + 1, "m": d.month, "y": d.timetuple().tm_yday,
+            "d": d.day, "w": (d.weekday() + 1) % 7 + 1, "ww": int(d.strftime("%U")) + 1, "h": d.hour,
+            "n": d.minute, "s": d.second}.get(iv, 0)
+
+
+def _beep():
+    try:
+        import winsound
+        winsound.MessageBeep()
+    except Exception:  # noqa: BLE001
+        print("\a", end="", flush=True)
+    return EMPTY
+
+
+def _shell(path, style=1):
+    import shlex
+    import subprocess
+    cmd = to_str(path)
+    try:
+        args = shlex.split(cmd, posix=False)
+        p = subprocess.Popen(args)
+    except OSError:
+        raise err(53, f"File not found: {cmd}") from None
+    return p.pid
+
+
+def _len(v):
+    if isinstance(v, UDT):                # Len(record) = its size in a Random file
+        from .vbfiles import FileManager
+        return len(FileManager(None).pack(v, v._name, True))
+    if isinstance(v, VBArray):
+        return len(v.items())
+    return len(to_str(v))
 
 
 def _is_date(v):
@@ -720,6 +993,10 @@ def _typename(v):
 
 
 def _vartype(v):
+    if isinstance(v, VBArray):
+        return 8192 + _vartype(default_for(v.typ))
+    if v is None:
+        return 1
     return {"Empty": 0, "Integer": 2, "Long": 3, "Double": 5, "Date": 7, "String": 8, "Boolean": 11,
             "Nothing": 9}.get(_typename(v), 9)
 
@@ -749,6 +1026,140 @@ class ModuleState:
         self.consts: dict[str, object] = {}
         self.types: dict[str, list] = {}
         self.public: set[str] = set()
+        self.statics: dict = {}             # Static variables: (proc name, var) -> Cell
+        self.filename = getattr(mod, "filename", "") or ""
+
+
+# ============================================================================ class modules
+class ClassInstance:
+    """An object created from a class module (.cls) with New / CreateObject.
+
+    Public variables, Property Get/Let/Set, Subs and Functions, events (Event / RaiseEvent / WithEvents),
+    Class_Initialize / Class_Terminate (run when the last reference goes away, like VB's reference
+    counting), default member (Attribute X.VB_UserMemId = 0), For Each (VB_UserMemId = -4 / NewEnum) and
+    Implements (calls through an interface name reach the Interface_Member procedures)."""
+
+    def __init__(self, interp, mod, st):
+        self._interp = interp
+        self.mod = mod
+        self.st = st
+        self.vb_typename = mod.vb_name or mod.name
+        self.vb_name = self.vb_typename
+        self._sinks = []                    # [(cell, module state, me, var name)]
+        self._terminated = False
+
+    # -- lookup helpers
+    @property
+    def vb_default(self):
+        return self.mod.default_member.lower() or None
+
+    def _find(self, name, kinds, private_ok=False):
+        procs = self.mod.procs
+        for k in kinds:
+            key = name if k in ("sub", "function") else f"{k}:{name}"
+            p = procs.get(key)
+            if p is not None and p.kind == k and (p.public or private_ok):
+                return p
+        for iface in self.mod.implements:       # Implements IShape -> IShape_Area
+            for k in kinds:
+                base = f"{iface}_{name}"
+                key = base if k in ("sub", "function") else f"{k}:{base}"
+                p = procs.get(key)
+                if p is not None and p.kind == k:
+                    return p
+        return None
+
+    def _call(self, proc, args, cells=None):
+        return self._interp.call_proc(self.st, proc, list(args), cells, me=self)
+
+    # -- object protocol
+    def vb_get(self, name):
+        p = self._find(name, ("get", "function"))
+        if p is not None:
+            return self._call(p, [])
+        if name in self.st.public and name in self.st.vars:
+            return self.st.vars[name].value
+        p = self._find(name, ("sub",))
+        if p is not None:
+            return self._call(p, [])
+        raise err(438, f"Object doesn't support this property or method: {self.vb_typename}.{name}")
+
+    def vb_set(self, name, value):
+        is_obj = hasattr(value, "vb_get") or value is NOTHING
+        p = self._find(name, ("set", "let") if is_obj else ("let", "set"))
+        if p is not None:
+            self._call(p, [value])
+            return
+        if name in self.st.public and name in self.st.vars:
+            self._interp.assign_cell(self.st.vars[name], value, is_set=is_obj)
+            return
+        if self._find(name, ("get",)) is not None:
+            raise err(383, f"Property '{name}' is read-only")
+        raise err(438, f"Object doesn't support this property or method: {self.vb_typename}.{name}")
+
+    def vb_call(self, name, args, cells=None):
+        p = self._find(name, ("function", "sub", "get"))
+        if p is not None:
+            return self._call(p, args, cells)
+        if name in self.st.public and name in self.st.vars:
+            v = self.st.vars[name].value
+            if isinstance(v, VBArray) and args:
+                return v.get(positional(args))
+            if args and hasattr(v, "vb_call") and getattr(v, "vb_default", None):
+                return v.vb_call(v.vb_default, positional(args))
+            return v
+        raise err(438, f"Object doesn't support this property or method: {self.vb_typename}.{name}")
+
+    def vb_setindexed(self, name, args, value):
+        is_obj = hasattr(value, "vb_get")
+        p = self._find(name, ("set", "let") if is_obj else ("let", "set"))
+        if p is not None:
+            self._call(p, [*args, value])
+            return
+        if name in self.st.public and name in self.st.vars and isinstance(self.st.vars[name].value, VBArray):
+            self.st.vars[name].value.set(positional(args), value)
+            return
+        raise err(438, f"Object doesn't support this property or method: {self.vb_typename}.{name}")
+
+    def vb_setitem(self, args, value):
+        if not self.vb_default:
+            raise err(438, f"{self.vb_typename} has no default property")
+        self.vb_setindexed(self.vb_default, args, value)
+
+    def vb_items(self):
+        name = (self.mod.enum_member or "").lower()
+        p = (self.mod.procs.get(name) or self.mod.procs.get(f"get:{name}")) if name else None
+        if p is None:
+            p = self.mod.procs.get("newenum") or self.mod.procs.get("get:newenum")
+        if p is None:
+            raise err(438, f"{self.vb_typename} does not support For Each")
+        coll = self._call(p, [])
+        if isinstance(coll, VBArray):
+            return coll.items()
+        if hasattr(coll, "vb_items"):
+            return coll.vb_items()
+        raise err(438, "NewEnum must return a collection")
+
+    def __repr__(self):
+        return f"<{self.vb_typename} object>"
+
+    def __del__(self):
+        it = getattr(self, "_interp", None)
+        if it is None or self._terminated or getattr(it, "shutting_down", False):
+            return
+        self._terminated = True
+        proc = self.mod.procs.get("class_terminate")
+        if proc is None:
+            return
+        try:
+            it.call_proc(self.st, proc, [], me=self)
+        except EndProgram:
+            pass
+        except Exception as e:  # noqa: BLE001 - errors in Class_Terminate cannot propagate
+            try:
+                it.output(f"Run-time error in {self.vb_typename}.Class_Terminate: {e}")
+            except Exception:  # noqa: BLE001
+                pass
 
 
 # ============================================================================ interpreter
@@ -768,13 +1179,24 @@ class Interpreter:
             "msgbox": self._msgbox, "inputbox": self._inputbox, "doevents": self._doevents,
             "randomize": lambda *a: random.seed(), "createobject": self._createobject,
             "loadpicture": lambda *a: to_str(a[0]) if a else "",
+            "callbyname": self._callbyname, "erl": lambda: self.erl,
         })
+        self.classes: dict = {}             # class name -> parsed class Module
+        self.declares: dict = {}            # Declare name -> vbapi.DeclaredProc
+        self.erl = 0
+        self.shutting_down = False
+        from .vbfiles import FileManager
+        self.files = FileManager(self)
+        self.builtins.update(self.files.builtins())
 
     # ------------------------------------------------------------ loading
     def load_module(self, mod: Module, is_form=False, me=None) -> ModuleState:
+        if getattr(mod, "is_class", False) and not is_form:
+            return self.load_class(mod)
         st = ModuleState(mod, is_form)
         self.modules[mod.name.lower()] = st
         frame = Frame(None, st, me)
+        self._register_declares(mod)
         for decl in mod.decls:
             kind = decl[0]
             if kind == "const":
@@ -784,7 +1206,10 @@ class Interpreter:
                         self.globals.setdefault(name, Cell(st.consts[name]))
             elif kind == "dim":
                 for name, bounds, typ in decl[2]:
+                    typ = self._fix_type(typ, frame)
                     cell = Cell(self._new_value(bounds, typ, frame), self._base_type(typ))
+                    if len(decl) > 4 and name in decl[4]:
+                        cell.events = (st, _me_ref(me), name)
                     st.vars[name] = cell
                     if decl[3] and not is_form:
                         self.globals[name] = cell
@@ -806,31 +1231,119 @@ class Interpreter:
             self._types = {}
         return self._types
 
+    def _register_declares(self, mod):
+        decls = getattr(mod, "declares", None)
+        if not decls:
+            return
+        from .vbapi import DeclaredProc
+        for d in decls:
+            self.declares[d.name] = DeclaredProc(d, self)
+
+    def load_class(self, mod: Module) -> ModuleState:
+        """Register a class module; instances are made by New / CreateObject."""
+        name = (mod.vb_name or mod.name).lower()
+        self.classes[name] = mod
+        if mod.name.lower() != name:
+            self.classes.setdefault(mod.name.lower(), mod)
+        st = ModuleState(mod, False)
+        frame = Frame(None, st, None)
+        self._register_declares(mod)
+        for decl in mod.decls:                      # Types and Enums of a class are visible everywhere
+            if decl[0] == "type":
+                self.types_global()[decl[2].lower()] = decl[3]
+            elif decl[0] == "enum":
+                for ename, expr in decl[3]:
+                    self.globals[ename] = Cell(self.eval(expr, frame) if not isinstance(expr, int) else expr)
+        return st
+
+    def new_instance(self, cls: str):
+        mod = self.classes[cls]
+        st = ModuleState(mod, False)
+        st.is_class = True
+        inst = ClassInstance(self, mod, st)
+        frame = Frame(None, st, inst)
+        for decl in mod.decls:
+            kind = decl[0]
+            if kind == "const":
+                for name, expr in decl[2]:
+                    st.consts[name] = self.eval(expr, frame)
+            elif kind == "dim":
+                for name, bounds, typ in decl[2]:
+                    typ = self._fix_type(typ, frame)
+                    cell = Cell(self._new_value(bounds, typ, frame), self._base_type(typ))
+                    if len(decl) > 4 and name in decl[4]:
+                        cell.events = (st, _me_ref(inst), name)
+                    st.vars[name] = cell
+                    if decl[3]:
+                        st.public.add(name)
+        init = mod.procs.get("class_initialize")
+        if init is not None:
+            self.call_proc(st, init, [], me=inst)
+        return inst
+
     @staticmethod
     def _base_type(typ):
         return (typ or "variant").replace("new:", "").lower()
+
+    def _fix_type(self, typ, frame):
+        """String * CONST -> string*N."""
+        if typ and "string*@" in typ:
+            pre, _, cname = typ.partition("string*@")
+            n = int(to_num(self.eval(("name", 0, cname.lower(), cname), frame)))
+            return f"{pre}string*{n}"
+        return typ
+
+    def _bounds(self, bounds, frame):
+        return [(int(to_num(self.eval(lo, frame))) if lo is not None else 0, int(to_num(self.eval(hi, frame))))
+                for lo, hi in bounds]
+
+    def _factory(self, base):
+        if base in self.types_global():
+            members = self.types_global()[base]
+            return lambda: UDT(base, members, self._member_value)
+        return None
+
+    def _member_value(self, typ, bounds=None):
+        """Initial value of a field of a user-defined Type."""
+        base = self._base_type(typ)
+        if bounds:
+            return VBArray(self._bounds(bounds, self.const_frame()), base, self._factory(base))
+        if base in self.types_global():
+            return UDT(base, self.types_global()[base], self._member_value)
+        return default_for(base)
+
+    def const_frame(self):
+        fr = getattr(self, "_cframe", None)
+        if fr is None:
+            fr = self._cframe = Frame(None, ModuleState(Module("<const>"), False))
+        return fr
 
     def _new_value(self, bounds, typ, frame):
         base = self._base_type(typ)
         if bounds is not None:
             if not bounds:
-                return VBArray([(0, -1)], base)           # dynamic array: Dim a()
-            bl = []
-            for lo, hi in bounds:
-                bl.append((int(to_num(self.eval(lo, frame))) if lo is not None else 0,
-                           int(to_num(self.eval(hi, frame)))))
-            return VBArray(bl, base)
+                return VBArray([(0, -1)], base, self._factory(base))     # dynamic array: Dim a()
+            return VBArray(self._bounds(bounds, frame), base, self._factory(base))
         if (typ or "").startswith("new:"):
             return self._instantiate(base)
         if base in self.types_global():
-            return UDT(base, self.types_global()[base])
+            return UDT(base, self.types_global()[base], self._member_value)
         return default_for(base)
 
     def _instantiate(self, cls):
-        if cls == "collection":
+        cls = cls.lower()
+        if cls in ("collection", "vba.collection"):
             return Collection()
+        if cls in self.classes:
+            return self.new_instance(cls)
         if cls in self.types_global():
-            return UDT(cls, self.types_global()[cls])
+            return UDT(cls, self.types_global()[cls], self._member_value)
+        from .vbfso import create as _builtin_object
+        short = cls.split(".")[-1]
+        obj = _builtin_object({"dictionary": "scripting.dictionary",
+                               "filesystemobject": "scripting.filesystemobject"}.get(short, cls))
+        if obj is not None:
+            return obj
         if self.host is not None:
             obj = self.host.new_object(cls)
             if obj is not None:
@@ -855,7 +1368,31 @@ class Interpreter:
             self.host.doevents()
         return 0
 
+    def _callbyname(self, obj, name, calltype=1, *args):
+        name = to_str(name).lower()
+        ct = int(to_num(calltype))
+        if ct == 2:                      # VbGet
+            if args:
+                return obj.vb_call(name, list(args))
+            return obj.vb_get(name)
+        if ct in (4, 8):                 # VbLet / VbSet
+            if len(args) > 1 and hasattr(obj, "vb_setindexed"):
+                obj.vb_setindexed(name, list(args[:-1]), args[-1])
+            else:
+                obj.vb_set(name, args[-1] if args else EMPTY)
+            return EMPTY
+        return obj.vb_call(name, list(args))
+
     def _createobject(self, progid, *_):
+        p = to_str(progid).strip().lower()
+        if p in self.classes:                                 # CreateObject("CFoo")
+            return self.new_instance(p)
+        if "." in p and p.split(".")[-1] in self.classes:     # CreateObject("Project1.CFoo")
+            return self.new_instance(p.split(".")[-1])
+        from .vbfso import create as _builtin_object
+        obj = _builtin_object(p, getattr(self.host, "folder", None))
+        if obj is not None:
+            return obj
         if self.host is not None:
             obj = self.host.create_object(to_str(progid))
             if obj is not None:
@@ -871,16 +1408,45 @@ class Interpreter:
 
     def call_proc(self, st: ModuleState, proc: Proc, args: list, arg_cells=None, me=None):
         frame = Frame(proc, st, me)
+        if any(isinstance(a, NamedArg) for a in args):          # name:=value -> position
+            pos = [a for a in args if not isinstance(a, NamedArg)]
+            pcells = list(arg_cells[:len(pos)]) if arg_cells else [None] * len(pos)
+            names = [p.name for p in proc.params]
+            for j, a in enumerate(args):
+                if isinstance(a, NamedArg):
+                    if a.name not in names:
+                        raise err(448, f"Named argument not found: {a.name}")
+                    k = names.index(a.name)
+                    while len(pos) <= k:
+                        pos.append(_MISSING)
+                        pcells.append(None)
+                    pos[k] = a.value
+                    pcells[k] = arg_cells[j] if arg_cells and j < len(arg_cells) else None
+            args, arg_cells = pos, pcells
         for i, p in enumerate(proc.params):
             if p.paramarray:
                 rest = args[i:]
                 frame.locals[p.name] = Cell(_array(*rest))
                 break
+            ptyp = (getattr(p, "typ", None) or "variant").lower()
+            typed = (ptyp in PRIMITIVES and ptyp not in ("variant", "any")) or ptyp.startswith("string*")
             if i < len(args) and args[i] is not _MISSING:
-                cell = arg_cells[i] if (arg_cells and p.byref and arg_cells[i] is not None) else Cell(args[i])
+                if arg_cells and p.byref and i < len(arg_cells) and arg_cells[i] is not None:
+                    cell = arg_cells[i]
+                elif typed and not p.is_array:
+                    cell = Cell(coerce(args[i], ptyp), ptyp)
+                else:
+                    v = args[i]
+                    if isinstance(v, UDT) and not p.byref:
+                        v = v.copy()
+                    cell = Cell(v)
                 frame.locals[p.name] = cell
             elif p.optional or p.default is not None:
-                frame.locals[p.name] = Cell(self.eval(p.default, frame) if p.default is not None else EMPTY)
+                if p.default is not None:
+                    v = self.eval(p.default, frame)
+                    frame.locals[p.name] = Cell(coerce(v, ptyp), ptyp) if typed else Cell(v)
+                else:
+                    frame.locals[p.name] = Cell(default_for(ptyp), ptyp) if typed else Cell(EMPTY)
             else:
                 raise err(449, f"Argument not optional: {p.name} (calling {proc.display or proc.name})")
         if proc.kind in ("function", "get"):
@@ -906,8 +1472,8 @@ class Interpreter:
         return True, self.call_proc(st, proc, list(args), arg_cells, me)
 
     # ------------------------------------------------------------ blocks / statements
-    def run_block(self, stmts: list, frame: Frame, top=False):
-        i = 0
+    def run_block(self, stmts: list, frame: Frame, top=False, start=0):
+        i = start
         labels = None
         while i < len(stmts):
             st = stmts[i]
@@ -936,6 +1502,14 @@ class Interpreter:
                     e.line = frame.line
                     e.module = frame.module.name
                 self.err.number, self.err.description = e.number, e.description
+                self.err.source = getattr(e, "source", "") or self.err.default_source
+                self.err.helpfile = getattr(e, "helpfile", "")
+                self.err.helpcontext = getattr(e, "helpcontext", 0)
+                self.erl = 0
+                for s2 in stmts[:i][::-1]:
+                    if s2[0] == "label" and s2[2].isdigit():
+                        self.erl = int(s2[2])
+                        break
                 if frame.on_error == "next":
                     i += 1
                     continue
@@ -958,7 +1532,14 @@ class Interpreter:
         m = getattr(self, "x_" + kind, None)
         if m is None:
             raise err(0, f"statement '{kind}' is not supported")
-        m(st, frame)
+        try:
+            m(st, frame)
+        except OSError as ex:             # file system errors become trappable VB errors
+            raise _os_error(ex) from None
+        except ZeroDivisionError:
+            raise err(11, ERROR_MESSAGES[11]) from None
+        except OverflowError:
+            raise err(6, ERROR_MESSAGES[6]) from None
 
     def x_nop(self, st, frame):
         pass
@@ -968,10 +1549,21 @@ class Interpreter:
 
     def x_dim(self, st, frame):
         for name, bounds, typ in st[2]:
+            typ = self._fix_type(typ, frame)
             if frame.proc is None:
                 frame.module.vars[name] = Cell(self._new_value(bounds, typ, frame), self._base_type(typ))
             else:
                 frame.locals[name] = Cell(self._new_value(bounds, typ, frame), self._base_type(typ))
+
+    def x_static(self, st, frame):
+        key_base = frame.proc.name if frame.proc else ""
+        for name, bounds, typ in st[2]:
+            key = (key_base, name)
+            cell = frame.module.statics.get(key)
+            if cell is None:
+                typ = self._fix_type(typ, frame)
+                cell = frame.module.statics[key] = Cell(self._new_value(bounds, typ, frame), self._base_type(typ))
+            frame.locals[name] = cell
 
     def x_const(self, st, frame):
         for name, expr in st[2]:
@@ -982,12 +1574,15 @@ class Interpreter:
             cell = self.lookup_cell(name, frame)
             bl = [(int(to_num(self.eval(lo, frame))) if lo is not None else 0, int(to_num(self.eval(hi, frame))))
                   for lo, hi in bounds]
+            base = self._base_type(typ)
             if cell is None:
-                frame.locals[name] = Cell(VBArray(bl, self._base_type(typ)))
+                frame.locals[name] = Cell(VBArray(bl, base, self._factory(base)))
             elif isinstance(cell.value, VBArray):
+                if base != "variant" and base != cell.value.typ:
+                    cell.value.typ, cell.value.factory = base, self._factory(base)
                 cell.value.redim(bl, st[3])
             else:
-                cell.value = VBArray(bl, self._base_type(typ))
+                cell.value = VBArray(bl, base, self._factory(base))
 
     def x_erase(self, st, frame):
         for name in st[2]:
@@ -1105,32 +1700,180 @@ class Interpreter:
     def x_goto(self, st, frame):
         raise _Goto(st[2])
 
+    def _gosub(self, label, frame):
+        body = frame.proc.body if frame.proc is not None else None
+        if body is None:
+            raise err(0, "GoSub is only valid inside a procedure")
+        idx = next((n for n, s in enumerate(body) if s[0] == "label" and s[2] == label), None)
+        if idx is None:
+            raise err(0, f"Label not defined: {label}")
+        frame.gosub.append(label)
+        try:
+            self.run_block(body, frame, top=True, start=idx + 1)
+        except _Return:
+            return
+        finally:
+            frame.gosub.pop()
+        raise _Exit(frame.proc.kind if frame.proc.kind in ("sub", "function") else "property")
+
     def x_gosub(self, st, frame):
-        raise err(0, "GoSub is not supported")
+        self._gosub(st[2], frame)
 
     def x_return(self, st, frame):
-        raise err(0, "Return (GoSub) is not supported")
+        if not frame.gosub:
+            raise err(3, ERROR_MESSAGES[3])
+        raise _Return()
+
+    def x_ongoto(self, st, frame):
+        _, line, sel, how, labels = st
+        n = int(to_num(self.eval(sel, frame)))
+        if n < 0 or n > 255:
+            raise err(5, ERROR_MESSAGES[5])
+        if not 1 <= n <= len(labels):
+            return
+        if how == "goto":
+            raise _Goto(labels[n - 1])
+        self._gosub(labels[n - 1], frame)
+
+    def x_errorstmt(self, st, frame):
+        n = int(to_num(self.eval(st[2], frame)))
+        raise err(n, error_message(n))
+
+    # ------------------------------------------------------------ file statements (vbfiles.py)
+    def x_open(self, st, frame):
+        _, line, path, mode, access, num, reclen = st
+        self.files.open(self.eval(path, frame), mode, self.eval(num, frame),
+                        self.eval(reclen, frame) if reclen is not None else None)
+
+    def x_close(self, st, frame):
+        self.files.close([self.eval(n, frame) for n in st[2]])
+
+    def _print_values(self, items, frame):
+        return [(self.eval(e, frame) if e is not None else None, sep) for e, sep in items]
+
+    def x_fprint(self, st, frame):
+        self.files.print_items(self.eval(st[2], frame), self._print_values(st[3], frame), to_str)
+
+    def x_fwrite(self, st, frame):
+        items = st[3]
+        values = [self.eval(e, frame) for e, _ in items if e is not None]
+        trailing = bool(items) and items[-1][1] != ""
+        self.files.write_items(self.eval(st[2], frame), values, trailing)
+
+    def x_finput(self, st, frame):
+        num = self.eval(st[2], frame)
+        for target in st[3]:
+            text, quoted = self.files.input_field(num)
+            typ = self._target_type(target, frame)
+            if typ == "string" or typ.startswith("string*"):
+                value = text if quoted else to_str(self.files.field_value(text, quoted))
+            else:
+                value = self.files.field_value(text, quoted)
+                if value is EMPTY and typ not in ("variant", "any"):
+                    value = 0
+            self.assign(target, value, frame)
+
+    def x_flineinput(self, st, frame):
+        self.assign(st[3], self.files.line_input(self.eval(st[2], frame)), frame)
+
+    def _target_type(self, target, frame):
+        if target[0] == "name":
+            cell = self.lookup_cell(target[2], frame)
+            return cell.typ if cell is not None else "variant"
+        if target[0] == "member":
+            obj = self.eval(target[2], frame, want_object=True)
+            if isinstance(obj, UDT):
+                return obj._types.get(target[3], "variant")
+        if target[0] == "call" and target[2][0] == "name":
+            cell = self.lookup_cell(target[2][2], frame)
+            if cell is not None and isinstance(cell.value, VBArray):
+                return cell.value.typ
+        return "variant"
+
+    def x_fput(self, st, frame):
+        _, line, num, pos, target = st
+        value = self.eval(target, frame, want_object=True)
+        if target[0] in ("name", "member") or (target[0] == "call" and target[2][0] == "name"
+                                                and isinstance(self.lookup_cell(target[2][2], frame) and
+                                                               self.lookup_cell(target[2][2], frame).value, VBArray)):
+            typ = self._target_type(target, frame)
+        else:                                       # an expression: its own type (Put #1, , 258 -> Integer)
+            typ = ("boolean" if isinstance(value, bool) else
+                   ("integer" if -32768 <= value <= 32767 else "long") if isinstance(value, int) else
+                   "double" if isinstance(value, float) else "date" if isinstance(value, _dt.datetime) else
+                   "string" if isinstance(value, str) else "variant")
+        self.files.put(self.eval(num, frame), self.eval(pos, frame) if pos is not None else None, value, typ)
+
+    def x_fget(self, st, frame):
+        _, line, num, pos, target = st
+        current = self.eval(target, frame, want_object=True)
+        typ = self._target_type(target, frame)
+        value = self.files.get_value(self.eval(num, frame), self.eval(pos, frame) if pos is not None else None,
+                                     current, typ)
+        if value is not current:
+            self.assign(target, value, frame)
+
+    def x_fseek(self, st, frame):
+        self.files.seek(self.eval(st[2], frame), self.eval(st[3], frame))
+
+    def x_rename(self, st, frame):
+        self.files.rename(self.eval(st[2], frame), self.eval(st[3], frame))
+
+    # ------------------------------------------------------------ events
+    def x_raiseevent(self, st, frame):
+        _, line, name, arg_nodes = st
+        src = frame.me
+        if not isinstance(src, ClassInstance):
+            raise err(0, "RaiseEvent is only valid inside a class module")
+        if name not in src.mod.events:
+            raise err(0, f"Event not declared: {name}")
+        args, cells = self._args(arg_nodes, frame)
+        for cell, st2, me_ref, var in list(src._sinks):
+            if cell.value is not src:
+                continue
+            me = me_ref()
+            proc = st2.mod.procs.get(f"{var}_{name}")
+            if proc is not None and not (me is None and getattr(st2, "is_class", False)):
+                self.call_proc(st2, proc, list(args), cells, me=me)
 
     def x_onerror(self, st, frame):
         frame.on_error = st[2]
         frame.on_error_label = st[2]
-        if st[2] == "0":
-            self.err.number, self.err.description = 0, ""
+        if st[2] in ("0", "next"):
+            self.err.clear()
 
     def x_resume(self, st, frame):
-        self.err.number, self.err.description = 0, ""
+        self.err.clear()
         frame.on_error = getattr(frame, "on_error_label", "0")
         raise _Resume(st[2])
 
     def x_debugprint(self, st, frame):
         _, line, what, args, seps = st
-        if what not in ("print", "assert"):
-            if what == "assert" and args and not to_bool(self.eval(args[0], frame)):
+        if what == "assert":
+            if args and not to_bool(self.eval(args[0], frame)):
                 self.host and self.host.stop_statement(frame)
             return
-        parts = [to_str(self.eval(a, frame)) for a in args]
-        sep = "\t" if seps and seps[0] == "," else ""
-        self.output(sep.join(parts))
+        if what != "print":
+            return
+        text = ""
+        for i, a in enumerate(args):
+            v = self.eval(a, frame)
+            from .vbfiles import Spc, Tab
+            if isinstance(v, Spc):
+                text += " " * max(0, int(to_num(v.n)))
+            elif isinstance(v, Tab):
+                col = len(text.rsplit("\n", 1)[-1]) + len(getattr(self, "_pending_print", ""))
+                text += " " * (max(1, int(to_num(v.n))) - 1 - col if v.n is not None else 14 - col % 14)
+            else:
+                text += to_str(v)
+            if i < len(seps) and seps[i] == "," and (i < len(args) - 1 or len(seps) == len(args)):
+                text += "\t"
+        pending = getattr(self, "_pending_print", "")
+        if args and len(seps) >= len(args):          # trailing ; or , : no new line yet
+            self._pending_print = pending + text
+            return
+        self._pending_print = ""
+        self.output(pending + text)
 
     def x_unload(self, st, frame):
         obj = self.eval(st[2], frame, want_object=True)
@@ -1174,7 +1917,7 @@ class Interpreter:
                     and getattr(cell.value, "vb_default", None) and not isinstance(cell.value, (Collection, UDT)):
                 cell.value.vb_set(cell.value.vb_default, value)
                 return
-            cell.value = coerce(value, cell.typ) if not is_set else value
+            self.assign_cell(cell, value, is_set)
             return
         if kind == "member":
             obj = self.eval(target[2], frame, want_object=True)
@@ -1202,6 +1945,12 @@ class Interpreter:
                 if obj is not None and hasattr(obj, "vb_setitem"):
                     obj.vb_setitem(args, value)
                     return
+            if base[0] == "member":                     # obj.Item(k) = x, t.Arr(i) = x
+                parent = self.eval(base[2], frame, want_object=True)
+                if isinstance(parent, (UDT, ClassInstance)) or \
+                        (hasattr(parent, "vb_setindexed") and not hasattr(parent, "vb_has")):
+                    parent.vb_setindexed(base[3], args, value)
+                    return
             obj = self.eval(base, frame, want_object=True)
             if isinstance(obj, VBArray):
                 obj.set(args, value)
@@ -1216,6 +1965,24 @@ class Interpreter:
                     return
             raise err(13, "Cannot assign to this expression")
         raise err(0, "invalid assignment target")
+
+    def assign_cell(self, cell, value, is_set=False):
+        """Store a value in a variable (UDTs are copied, WithEvents variables re-bind their handlers)."""
+        if isinstance(value, UDT) and not is_set:
+            value = value.copy()
+        elif isinstance(value, VBArray) and not is_set and isinstance(cell.value, VBArray):
+            value = value.copy()
+        if cell.events is not None:
+            old = cell.value
+            if isinstance(old, ClassInstance):
+                old._sinks = [s for s in old._sinks if s[0] is not cell]
+            if isinstance(value, ClassInstance):
+                value._sinks.append((cell, *cell.events))
+            old = None
+        if is_set or isinstance(value, VBArray) or isinstance(cell.value, VBArray):
+            cell.value = value          # arrays keep their element type (Dim a() As String: a = Split(...))
+        else:
+            cell.value = coerce(value, cell.typ)
 
     def _resolve_object(self, name, frame):
         me = frame.me or (self.stack[-1].me if self.stack else None)
@@ -1303,6 +2070,8 @@ class Interpreter:
         found = self.find_proc(name, frame)
         if found is not None:                          # call without parentheses: x = MyFunc
             return self.call_proc(found[0], found[1], [], me=frame.me)
+        if name in self.declares:
+            return self.declares[name].call([], [])
         if name in self.builtins:
             return self.builtins[name]()
         if self.host is not None:
@@ -1322,8 +2091,10 @@ class Interpreter:
                 vals.append(cell.value if cell is not None else self.eval(a, frame))
                 cells.append(cell)
             elif a[0] == "named":
-                vals.append(self.eval(a[3], frame))
-                cells.append(None)
+                inner = a[3]
+                cell = self.lookup_cell(inner[2], frame) if inner[0] == "name" else None
+                vals.append(NamedArg(a[2], cell.value if cell is not None else self.eval(inner, frame)))
+                cells.append(cell)
             else:
                 vals.append(self.eval(a, frame))
                 cells.append(None)
@@ -1352,6 +2123,9 @@ class Interpreter:
             if found is not None:
                 args, cells = self._args(arg_nodes, frame)
                 return self.call_proc(found[0], found[1], args, cells, me=frame.me)
+            if name in self.declares:
+                args, cells = self._args(arg_nodes, frame)
+                return self.declares[name].call(positional(args), cells)
             obj = self._resolve_object(name, frame)
             if obj is not None:                       # control array:  Text1(0)
                 args, _ = self._args(arg_nodes, frame)
@@ -1361,7 +2135,7 @@ class Interpreter:
                     return obj.vb_call(obj.vb_default, args)
             if name in self.builtins:
                 args, _ = self._args(arg_nodes, frame)
-                args = [EMPTY if a is _MISSING else a for a in args]
+                args = [EMPTY if a is _MISSING else a for a in positional(args)]
                 try:
                     return self.builtins[name](*args)
                 except TypeError as ex:
@@ -1379,12 +2153,16 @@ class Interpreter:
             raise err(35, f"Sub or Function not defined: '{target[3] if len(target) > 3 else name}'")
         if target[0] == "member":
             obj = self.eval(target[2], frame, want_object=True)
-            args, cells = self._args(arg_nodes, frame)
-            args = [EMPTY if a is _MISSING else a for a in args]
+            raw, cells = self._args(arg_nodes, frame)
             if obj is NOTHING or obj is EMPTY:
                 raise err(91, f"Object variable not set (calling .{target[4]})")
             if isinstance(obj, ModuleProxy):
-                return obj.call(target[3], args, cells)
+                return obj.call(target[3], raw, cells)
+            if isinstance(obj, ClassInstance):
+                return obj.vb_call(target[3], raw, cells)
+            if isinstance(obj, (ErrObject, Collection)):
+                return obj.vb_call(target[3], [EMPTY if a is _MISSING else a for a in raw])
+            args = [EMPTY if a is _MISSING else a for a in positional(raw)]
             if hasattr(obj, "vb_call"):
                 return obj.vb_call(target[3], args)
             raise err(424, f"Object required (.{target[4]})")
@@ -1477,6 +2255,28 @@ def _repr(v):
     if hasattr(v, "vb_typename"):
         return getattr(v, "vb_name", v.vb_typename)
     return to_str(v)
+
+
+def _me_ref(me):
+    """Weak reference to an object that listens to events (no reference cycle -> Class_Terminate runs)."""
+    if isinstance(me, ClassInstance):
+        return weakref.ref(me)
+    return lambda: me
+
+
+def _os_error(ex: OSError) -> VBRuntimeError:
+    if isinstance(ex, FileNotFoundError):
+        n = 53
+    elif isinstance(ex, FileExistsError):
+        n = 58
+    elif isinstance(ex, PermissionError):
+        n = 70
+    elif isinstance(ex, (IsADirectoryError, NotADirectoryError)):
+        n = 75
+    else:
+        n = 57
+    name = getattr(ex, "filename", None)
+    return err(n, f"{ERROR_MESSAGES[n]}: {name}" if name else ERROR_MESSAGES[n])
 
 
 class _Missing:

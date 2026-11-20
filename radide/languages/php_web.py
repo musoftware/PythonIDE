@@ -39,13 +39,40 @@ def extension_args(php: str) -> list[str]:
     ext_dir = Path(php).parent / "ext"
     if not have or not ext_dir.is_dir():
         return []
+    names = [n for n in WANTED_EXT if n not in have and (ext_dir / f"php_{n}.dll").exists()]
+    if not names:
+        return []
+    bad = _broken_ext(php, str(ext_dir), tuple(names))
     args = []
-    for name in WANTED_EXT:
-        if name not in have and (ext_dir / f"php_{name}.dll").exists():
+    for name in names:
+        if name not in bad:
             args += ["-d", f"extension={name}"]
     if args:
         args = ["-d", f"extension_dir={ext_dir}"] + args
     return args
+
+
+_BROKEN: dict[tuple, set[str]] = {}
+
+
+def _broken_ext(php: str, ext_dir: str, names: tuple) -> set[str]:
+    """Extensions whose DLL does not load in this PHP (an ext/ folder of another PHP version - "Unable to
+    initialize module"); probed once per PHP, so the warning never reaches the pages or the tools' output."""
+    key = (php, names)
+    if key not in _BROKEN:
+        argv = [php, "-d", f"extension_dir={ext_dir}"]
+        for n in names:
+            argv += ["-d", f"extension={n}"]
+        try:
+            p = subprocess.run(argv + ["-r", "echo 1;"], capture_output=True, text=True, timeout=20,
+                               creationflags=NO_WINDOW)
+            import re
+            _BROKEN[key] = set(re.findall(r"PHP Startup: (?:Unable to load dynamic library '?(?:php_)?)?(\w+?)"
+                                          r"(?:\.dll)?'?:? (?:Unable to initialize module|\()",
+                                          (p.stdout or "") + (p.stderr or "")))
+        except (OSError, subprocess.TimeoutExpired):
+            _BROKEN[key] = set()
+    return _BROKEN[key]
 
 
 class PhpWebPlugin(WebSitePlugin):
@@ -88,7 +115,20 @@ class PhpWebPlugin(WebSitePlugin):
         router = str(cfg.get("router") or "")
         if router:
             argv.append(str((server.root / router).resolve()))
-        return {"argv": argv, "cwd": server.root, "env": {}, "timeout": 20}
+        spec = {"argv": argv, "cwd": server.root, "env": {}, "timeout": 20}
+        try:   # PHP frameworks (web_site/frameworks/common.py): router script + framework env (e.g. base URL)
+            from ..web_site.frameworks import common as fwc
+            fw = fwc.framework_of(server.folder)
+            if fw and not router:
+                r = fwc.router_for(server.folder, server.root)
+                if r:
+                    argv.append(r)
+            hook = getattr(fwc.framework_module(fw), "backend_spec", None) if fw else None
+            if callable(hook):
+                spec = hook(server, spec) or spec
+        except Exception as e:  # noqa: BLE001 - never lose Run because of a framework helper
+            server.log.emit(f"*** PHP framework settings: {e}")
+        return spec
 
 
 PLUGIN = PhpWebPlugin()

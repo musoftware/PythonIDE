@@ -296,6 +296,9 @@ class OptionsDialog(QDialog):
         self.ui_font.setSuffix(" pt")
         self.ui_font.setValue(get(win, "ui_font_size"))
         f.addRow("Menu and window font size:", self.ui_font)
+        from .ui_language import language_combo           # English / Arabic (radide/i18n)
+        self.ui_lang = language_combo(win)
+        f.addRow("Language:", self.ui_lang)
         f.addRow(_section("Start-up and closing"))
         self.show_start = QCheckBox("Show the Start Page on startup")
         self.show_start.setChecked(get(win, "show_start_page"))
@@ -456,6 +459,8 @@ class OptionsDialog(QDialog):
                 self.win.log(f"[options] page apply failed: {ex}")
         apply_all(self.win)
         self._apply_layout()
+        from .ui_language import apply_language
+        apply_language(self.win, self.ui_lang.currentData())
 
     def _apply_layout(self):
         mode = self.layout_mode.currentData()
