@@ -47,7 +47,7 @@ def detect_server(ext) -> list[str] | None:
             continue
         for p in sorted(d.rglob(f"*{exe}" if exe else "*")):
             if p.is_file() and NAME_RX.search(p.stem) and (exe or p.stat().st_mode & 0o111):
-                return [str(p), "--stdio"] if "--stdio" not in p.name else [str(p)]
+                return [str(p)]
     if node:
         hits = []
         for p in root.rglob("*.js"):

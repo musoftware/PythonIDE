@@ -143,6 +143,9 @@ class IconTheme:
             if not p.is_file():
                 continue
             fid = QFontDatabase.addApplicationFont(str(p))
+            if fid < 0:                      # Qt reads TTF / OTF / WOFF but not WOFF2: convert once
+                ttf = _woff2_to_ttf(p)
+                fid = QFontDatabase.addApplicationFont(str(ttf)) if ttf else -1
             fams = QFontDatabase.applicationFontFamilies(fid) if fid >= 0 else []
             if fams:
                 size = 1.0
@@ -169,19 +172,42 @@ class IconTheme:
                 ch = chr(int(ch[1:], 16))
             except ValueError:
                 return None
+        scale = font[1]
+        fs = str(d.get("fontSize") or "")
+        if fs.endswith("%"):
+            try:
+                scale *= float(fs[:-1]) / 100
+            except ValueError:
+                pass
         icon = QIcon()
         for px in (16, 32):
             pm = QPixmap(px, px)
             pm.fill(Qt.GlobalColor.transparent)
             p = QPainter(pm)
             f = QFont(font[0])
-            f.setPixelSize(max(6, int(px * 0.85 * font[1])))
+            f.setPixelSize(max(6, int(px * 0.85 * min(scale, 1.25))))
             p.setFont(f)
             p.setPen(QColor(d.get("fontColor") or "#8A8A8A"))
             p.drawText(QRectF(0, 0, px, px), int(Qt.AlignmentFlag.AlignCenter), ch)
             p.end()
             icon.addPixmap(pm)
         return icon
+
+
+def _woff2_to_ttf(p: Path) -> Path | None:
+    """A WOFF2 icon font as TTF (fontTools + brotli, both optional) in <vsx root>/.cache/fonts; None if impossible."""
+    try:
+        from .package import cache_dir
+        out = cache_dir("fonts") / f"{p.parent.parent.name}-{p.stem}-{p.stat().st_size}.ttf"
+        if out.is_file():
+            return out
+        from fontTools.ttLib import TTFont        # WOFF2 needs the brotli module too
+        f = TTFont(str(p))
+        f.flavor = None
+        f.save(str(out))
+        return out
+    except Exception:  # noqa: BLE001 - no fontTools / brotli: the IDE's own icons are used for these glyphs
+        return None
 
 
 def _file_icon(p: Path):

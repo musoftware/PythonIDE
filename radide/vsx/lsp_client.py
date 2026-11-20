@@ -49,6 +49,30 @@ METHOD_CAP = {
 MERGED = {"textDocument/codeAction", "textDocument/references", "textDocument/inlayHint", "textDocument/codeLens"}
 
 
+# Monaco language id -> VS Code language id (extensions select documents by the VS Code id)
+MONACO_TO_VSCODE_ID = {"shell": "shellscript", "coffee": "coffeescript", "pug": "jade"}
+EXT_TO_VSCODE_ID = {".jsx": "javascriptreact", ".tsx": "typescriptreact", ".jsonc": "jsonc", ".json5": "json5",
+                    ".code-workspace": "jsonc", ".txt": "plaintext", ".text": "plaintext", ".log": "log"}
+
+
+def vscode_lang(monaco_lang: str, path=None) -> str:
+    """The VS Code language id of a document Monaco shows as *monaco_lang*."""
+    suffix = Path(str(path)).suffix.lower() if path else ""
+    if suffix in EXT_TO_VSCODE_ID and monaco_lang in ("javascript", "typescript", "json", "plaintext", "custom") \
+            or (suffix in (".txt", ".text", ".log") and monaco_lang.startswith("rad-")):
+        return EXT_TO_VSCODE_ID[suffix]
+    if monaco_lang.startswith("rad-"):          # the IDE's own language plugins (Ring, Fortran ...)
+        return monaco_lang[4:]
+    return MONACO_TO_VSCODE_ID.get(monaco_lang, monaco_lang)
+
+
+def editor_lang(editor) -> str:
+    try:
+        return vscode_lang(editor.language_id(), editor.path)
+    except Exception:  # noqa: BLE001
+        return "plaintext"
+
+
 def _glob_match(pattern, path: str) -> bool:
     if isinstance(pattern, dict):
         base = str(pattern.get("base") or "")
@@ -188,7 +212,7 @@ class CompositeClient(QObject):
         self.service = service
         self.editor = editor
         self.real = real
-        self.vsx = VsxLanguageClient(service, editor.language_id(), editor.path, service.root_for(editor))
+        self.vsx = VsxLanguageClient(service, editor_lang(editor), editor.path, service.root_for(editor))
         self._initialized = True
         self.last_error = ""
         self.language = getattr(real, "language", None) or editor.language_id()
@@ -203,7 +227,7 @@ class CompositeClient(QObject):
 
     # ------------------------------------------------------------ state
     def _kinds(self) -> set:
-        return self.service.index.kinds(self.editor.language_id(), str(self.editor.path))
+        return self.service.index.kinds(editor_lang(self.editor), str(self.editor.path))
 
     @property
     def capabilities(self) -> dict:
@@ -358,9 +382,9 @@ class CompositeClient(QObject):
         else:
             cb(None)
 
-    def inlay_hints(self, path, l1, l2, cb):
-        kinds = self._kinds()
-        self._both(lambda c: self.real.inlay_hints(path, l1, l2, c), lambda c: self.vsx.inlay_hints(path, l1, l2, c),
+    def inlay_hints(self, path, l1, l2, cb, end_col: int = 0):
+        kinds = self._kinds()                 # (end_col: monaco_editor passes the last line's length)
+        self._both(lambda c: self.real.inlay_hints(path, l1, l2, c, end_col), lambda c: self.vsx.inlay_hints(path, l1, l2, c),
                    lambda a, b: (a or []) + (b or []), cb, use_vsx="inlayHint" in kinds)
 
     def _request(self, method, params, cb=None, force=False):
@@ -397,4 +421,5 @@ class CompositeClient(QObject):
             self.real._notify(method, params)
 
 
-__all__ = ["CompositeClient", "VsxLanguageClient", "ProviderIndex", "selector_matches", "KIND_CAP"]
+__all__ = ["CompositeClient", "VsxLanguageClient", "ProviderIndex", "selector_matches", "KIND_CAP", "vscode_lang",
+           "editor_lang"]

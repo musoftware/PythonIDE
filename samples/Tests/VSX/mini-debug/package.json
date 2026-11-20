@@ -1,0 +1,28 @@
+{
+  "name": "mini-debug",
+  "displayName": "RAD IDE Test: Mini Debug",
+  "description": "Test debugger for the RAD IDE extension host: a declarative adapter (program/runtime), a configuration provider, ${command:...} variables and an inline adapter.",
+  "version": "0.0.1",
+  "publisher": "radide-test",
+  "license": "MIT",
+  "engines": { "vscode": "^1.80.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onDebug"],
+  "contributes": {
+    "languages": [ { "id": "minidbg", "extensions": [".mdbg"], "aliases": ["Mini Debug Script"], "configuration": "./language-configuration.json" } ],
+    "breakpoints": [ { "language": "minidbg" } ],
+    "configuration": { "title": "Mini Debug", "properties": { "miniDebug.inline": { "type": "boolean", "default": false, "description": "Run the adapter inside the extension host." } } },
+    "debuggers": [
+      {
+        "type": "minidbg",
+        "label": "Mini Debug",
+        "languages": ["minidbg"],
+        "program": "./adapter.js",
+        "runtime": "node",
+        "variables": { "PickProgram": "miniDebug.pickProgram" },
+        "configurationAttributes": { "launch": { "required": ["program"], "properties": { "program": { "type": "string" }, "stopOnEntry": { "type": "boolean", "default": true } } } },
+        "initialConfigurations": [ { "type": "minidbg", "request": "launch", "name": "Mini Debug: current file", "program": "${file}", "stopOnEntry": true } ]
+      }
+    ]
+  }
+}

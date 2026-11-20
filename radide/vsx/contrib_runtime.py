@@ -293,6 +293,19 @@ def _register_commands(win) -> None:
             contrib_icons.choose(ids[items.index(text)])
             refresh_icons(win)
     cp.register_command("workbench.action.selectIconTheme", "File Icon Theme...", pick_icons, "Preferences")
+    _register_theme_commands(win)
+
+
+def _register_theme_commands(win) -> None:
+    """"Preferences: Color Theme: Dracula" like the workbench's commands for the built-in themes."""
+    try:
+        from ..features import command_palette as cp
+        from ..features.workbench import set_theme
+    except Exception:  # noqa: BLE001
+        return
+    for name in contrib_themes.registered():
+        cp.register_command(f"workbench.theme.{name}", f"Color Theme: {name}",
+                            lambda n=name: set_theme(win, n), "Preferences")
 
 
 def refresh(win=None) -> None:
@@ -308,6 +321,7 @@ def refresh(win=None) -> None:
             contrib_keybindings.install_shortcuts(w, _shared["keys"])
         except Exception as e:  # noqa: BLE001
             _log(w, f"[vsx] keybindings: {e}")
+        _register_theme_commands(w)
         # the chosen theme came (back): apply it; a removed one falls back to Light inside remove_theme
         try:
             from ..features import settings as S

@@ -1,0 +1,20 @@
+{
+  "name": "mini-lsp",
+  "displayName": "RAD IDE Test: Mini LSP",
+  "description": "Test language-server extension for the RAD IDE extension host: vscode-languageclient/node starting a vscode-languageserver server (completion, hover, diagnostics, formatting).",
+  "version": "0.0.1",
+  "publisher": "radide-test",
+  "license": "MIT",
+  "engines": { "vscode": "^1.82.0" },
+  "main": "./extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "languages": [ { "id": "minilang", "extensions": [".mini"], "aliases": ["Mini Lang"], "configuration": "./language-configuration.json" } ],
+    "configuration": { "title": "Mini Lang", "properties": { "miniLang.maxProblems": { "type": "number", "default": 100 } } }
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1",
+    "vscode-languageserver": "9.0.1",
+    "vscode-languageserver-textdocument": "1.0.12"
+  }
+}
