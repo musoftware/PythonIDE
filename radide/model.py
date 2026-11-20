@@ -52,6 +52,21 @@ class Control:
 
 FORM_VERSION = 2      # 2: Button TextAlign defaults to Center (see Form.from_dict)
 
+# Foreign projects (radide/foreign): forms whose source of truth is a native file of another IDE
+# (Form1.Designer.cs / .vb, Form1.frm, Unit1.dfm ...).  Each store has handles(path) -> bool,
+# load(path) -> Form and save(path, form) -> None; Form.load / Form.save ask them first.
+FORM_STORES: list = []
+
+
+def _form_store(path):
+    for st in FORM_STORES:
+        try:
+            if st.handles(Path(path)):
+                return st
+        except Exception:  # noqa: BLE001 - a broken store must not break normal .form files
+            continue
+    return None
+
 
 @dataclass
 class Form:
@@ -194,11 +209,21 @@ class Form:
         return json.dumps(self.to_dict(), ensure_ascii=False)
 
     def save(self, path: Path) -> None:
+        st = _form_store(path) if FORM_STORES else None
+        if st is not None:                       # a native form file of a foreign project
+            st.save(Path(path), self)
+            return
         path.write_text(json.dumps(self.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
 
     @staticmethod
     def load(path: Path) -> "Form":
-        return Form.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        st = _form_store(path) if FORM_STORES else None
+        if st is not None:
+            return st.load(Path(path))
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+        from .usercontrols import ensure_types      # user controls of the folder (radide/usercontrols.py)
+        ensure_types(d, Path(path).parent)
+        return Form.from_dict(d)
 
 
 @dataclass
@@ -261,9 +286,18 @@ class Project:
         langs = d.get("form_languages") or {}
         refs = d.get("references") or []
         rfiles = d.get("reference_files") or {}
+        if not isinstance(d, dict):
+            raise ValueError(f"{folder / Project.FILE} is not a valid project file")
         kind = str(d.get("kind") or "app").lower()
-        return Project(folder, d["name"], d["language"], d.get("forms", []), d.get("startup", ""),
-                       d.get("modules", []),
+        # tolerant: a missing/empty "name" falls back to the folder name; "language" is required
+        name = str(d.get("name") or "").strip() or folder.resolve().name
+        language = str(d.get("language") or "").strip()
+        if not language:
+            raise ValueError(f"{folder / Project.FILE} has no \"language\" entry")
+        forms = [str(f) for f in d.get("forms") or [] if f]
+        modules = [str(m) for m in d.get("modules") or [] if m]
+        return Project(folder, name, language, forms, str(d.get("startup") or ""),
+                       modules,
                        {str(k): str(v) for k, v in langs.items()} if isinstance(langs, dict) else {},
                        kind if kind in Project.KINDS else "app",
                        [str(r) for r in refs] if isinstance(refs, list) else [],
@@ -291,3 +325,7 @@ class Project:
 
     def form_path(self, form_name: str) -> Path:
         return self.folder / f"{form_name}.form"
+
+    def missing_forms(self) -> list[str]:
+        """Forms listed in project.radproj whose .form file does not exist."""
+        return [f for f in self.forms if not self.form_path(f).is_file()]

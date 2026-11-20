@@ -51,6 +51,8 @@ class FileStatus:
 
     @property
     def staged(self) -> bool:
+        if "U" in (self.index, self.work) or (self.index == self.work and self.index in "AD"):
+            return False                  # a conflict is listed once, under Changes
         return self.index not in (" ", "?", "!")
 
     @property
@@ -115,8 +117,10 @@ class Git:
     def upstream(self) -> str:
         return self.out("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
 
-    def status(self) -> list[FileStatus]:
-        code, text = self.run("status", "--porcelain=v1", "-z", "--untracked-files=all")
+    def status(self, untracked: str = "normal") -> list[FileStatus]:
+        """git status. *untracked* = "normal" (default: an untracked folder is one entry, fast with
+        thousands of new files), "all" (every file) or "no"."""
+        code, text = self.run("status", "--porcelain=v1", "-z", f"--untracked-files={untracked}", timeout=60)
         if code != 0:
             return []
         parts = text.split("\0")
@@ -146,6 +150,15 @@ class Git:
         if untracked:
             top = self.toplevel() or self.folder
             p = top / path
+            if p.is_dir():                          # --untracked-files=normal: a whole new folder
+                files = []
+                for f in p.rglob("*"):
+                    if f.is_file():
+                        files.append(f.relative_to(top).as_posix())
+                        if len(files) > 500:
+                            break
+                more = "\n..." if len(files) > 500 else ""
+                return f"new folder: {path}\n@@ untracked @@\n" + "".join(f"+{f}\n" for f in files[:500]) + more
             try:
                 body = p.read_text(encoding="utf-8", errors="replace")
             except OSError as e:
@@ -208,6 +221,7 @@ class DiffHighlighter(QSyntaxHighlighter):
 # ===================================================================== panel
 class GitPanel(QWidget):
     refreshed = pyqtSignal()
+    MAX_TREE_ITEMS = 1000            # per group (Staged / Changes); the rest is summarised
 
     def __init__(self, win):
         super().__init__()
@@ -285,12 +299,79 @@ class GitPanel(QWidget):
         self._update_buttons(False)
 
     # ------------------------------------------------------------ state
-    def set_project(self):
+    def set_project(self, background: bool = False):
         p = self.win.project
         self.git = Git(p.folder) if p is not None else None
+        self._prefix_cache = None
         self.diff.clear()
         self.history.clear()
-        self.refresh()
+        if background:
+            self.refresh_async()
+        else:
+            self.refresh()
+
+    # ---- background refresh: git runs in a worker thread, the UI is filled when it answers.
+    # Opening a project, the 5 s timer, Save and showing the dock use it (never block the IDE).
+    def untracked_mode(self) -> str:
+        """--untracked-files value: "normal" (new folders collapsed, the default) or "all"
+        (Tools > Options key git/untracked_all)."""
+        try:
+            v = self.win.settings.value("git/untracked_all", False)
+        except Exception:  # noqa: BLE001
+            v = False
+        return "all" if v in (True, "true", "1", 1) else "normal"
+
+    def _query(self, g: "Git", untracked: str) -> dict:
+        """Everything _apply needs, computed without touching widgets (thread safe)."""
+        top = g.toplevel()
+        if top is None:
+            return {"top": None}
+        return {"top": top, "branch": g.branch(), "statuses": g.status(untracked), "remotes": g.remotes()}
+
+    def refresh_async(self):
+        g = self.git
+        if g is None or not g.exe:
+            self.refresh()
+            return
+        if getattr(self, "_bg_busy", False):
+            self._bg_again = True                 # one more pass when the running one ends
+            return
+        self._bg_busy, self._bg_again = True, False
+        self._bg_gen = getattr(self, "_bg_gen", 0) + 1
+        gen, mode = self._bg_gen, self.untracked_mode()
+        if not hasattr(self, "_bg_sig"):
+            from PyQt6.QtCore import QObject
+
+            class _Sig(QObject):
+                done = pyqtSignal(object, object, int)
+            self._bg_sig = _Sig(self)
+            self._bg_sig.done.connect(self._bg_done)
+
+        def work():
+            try:
+                res = self._query(g, mode)
+            except Exception as e:  # noqa: BLE001
+                res = {"error": str(e)}
+            try:
+                self._bg_sig.done.emit(g, res, gen)
+            except RuntimeError:                  # the panel was deleted
+                pass
+        import threading
+        threading.Thread(target=work, daemon=True, name="radide-git-status").start()
+
+    def _bg_done(self, g, res: dict, gen: int):
+        self._bg_busy = False
+        if g is self.git and gen == getattr(self, "_bg_gen", 0) and "error" not in res:
+            try:
+                self._apply(g, res)
+            finally:
+                self.refreshed.emit()
+        if getattr(self, "_bg_again", False):
+            self._bg_again = False
+            self.refresh_async()
+
+    def is_refreshing(self) -> bool:
+        return bool(getattr(self, "_bg_busy", False))
 
     def _update_buttons(self, repo: bool, remote: bool = False):
         has_git = self.git is not None and bool(self.git.exe)
@@ -318,7 +399,11 @@ class GitPanel(QWidget):
             self._update_buttons(False)
             self.colour_solution({})
             return
-        top = g.toplevel()
+        self._bg_gen = getattr(self, "_bg_gen", 0) + 1      # a running background pass is now stale
+        self._apply(g, self._query(g, self.untracked_mode()))
+
+    def _apply(self, g: "Git", res: dict):
+        top = res.get("top")
         if top is None:
             self.branch.setText("Not a git repository")
             self.status_label.setText("")
@@ -327,10 +412,12 @@ class GitPanel(QWidget):
             self._update_buttons(False)
             self.colour_solution({})
             return
+        if top != getattr(self, "top", None):
+            self._prefix_cache = None
         self.top = top
-        br = g.branch()
-        self.statuses = g.status()
-        remotes = g.remotes()
+        br = res["branch"]
+        self.statuses = res["statuses"]
+        remotes = res["remotes"]
         self._update_buttons(True, bool(remotes))
         dirty = bool(self.statuses)
         self.branch.setText(f"Branch: {br}")
@@ -341,11 +428,28 @@ class GitPanel(QWidget):
         self.colour_solution(self._project_states())
 
     def _rel(self, repo_path: str) -> str:
-        """Repo-relative path -> path relative to the project folder (if inside)."""
-        try:
-            return (self.top / repo_path).resolve().relative_to(self.win.project.folder.resolve()).as_posix()
-        except ValueError:
+        """Repo-relative path -> path relative to the project folder (if inside). The project's
+        prefix inside the repository is resolved once (no file system call per path: thousands of
+        untracked files made this take a minute)."""
+        cache = getattr(self, "_prefix_cache", None)
+        proj = self.win.project
+        if proj is None:
             return repo_path
+        if cache is None or cache[0] != (str(self.top), str(proj.folder)):
+            try:
+                pre = Path(proj.folder).resolve().relative_to(Path(self.top).resolve()).as_posix()
+                pre = "" if pre == "." else pre + "/"
+            except (ValueError, OSError):
+                pre = None                        # the project is not inside this repository
+            cache = self._prefix_cache = ((str(self.top), str(proj.folder)), pre)
+        pre = cache[1]
+        if pre is None:
+            return repo_path
+        if not pre:
+            return repo_path
+        if repo_path.lower().startswith(pre.lower()):
+            return repo_path[len(pre):]
+        return repo_path
 
     def _fill_tree(self):
         cur = self.tree.currentItem()
@@ -359,9 +463,15 @@ class GitPanel(QWidget):
             top.setFont(0, bold)
             top.setFlags(top.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         restore = None
+        shown = {id(staged): 0, id(changes): 0}
+        hidden = {id(staged): 0, id(changes): 0}
         for st in self.statuses:
             for is_staged, parent in ((True, staged), (False, changes)):
                 if (st.staged if is_staged else st.unstaged):
+                    if shown[id(parent)] >= self.MAX_TREE_ITEMS:   # thousands of files: list the first ones
+                        hidden[id(parent)] += 1
+                        continue
+                    shown[id(parent)] += 1
                     state = st.state(is_staged)
                     label = self._rel(st.path) + (f"  (from {st.orig})" if st.orig else "")
                     it = QTreeWidgetItem(parent, [label, state])
@@ -369,8 +479,14 @@ class GitPanel(QWidget):
                     it.setForeground(1, QBrush(QColor(STATE_COLORS.get(state, "#000000"))))
                     if keep == (st.path, is_staged, st.index == "?"):
                         restore = it
-        staged.setText(0, f"Staged Changes ({staged.childCount()})")
-        changes.setText(0, f"Changes ({changes.childCount()})")
+        for parent in (staged, changes):
+            if hidden[id(parent)]:
+                more = QTreeWidgetItem(parent, [f"... {hidden[id(parent)]} more file(s) not listed "
+                                                "(Stage All / the command line handle them)", ""])
+                more.setFlags(more.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                more.setForeground(0, QBrush(QColor("#808080")))
+        staged.setText(0, f"Staged Changes ({shown[id(staged)] + hidden[id(staged)]})")
+        changes.setText(0, f"Changes ({shown[id(changes)] + hidden[id(changes)]})")
         self.tree.expandAll()
         if restore is not None:
             self.tree.setCurrentItem(restore)
@@ -556,7 +672,7 @@ class GitPanel(QWidget):
 def show_git(win):
     win.dock_git.show()
     win.dock_git.raise_()
-    win.git_panel.refresh()
+    win.git_panel.refresh_async()
 
 
 def install(win) -> None:
@@ -600,7 +716,7 @@ def install(win) -> None:
 
     def open_project(*args, **kw):
         r = orig_open(*args, **kw)
-        safe(panel.set_project)()
+        safe(panel.set_project)(background=True)      # git status in a worker thread: never blocks the open
         return r
     win.open_project = open_project
 
@@ -611,11 +727,12 @@ def install(win) -> None:
         safe(lambda: panel.colour_solution(panel._project_states() if panel.git and panel.statuses else {}))()
         return r
     win._fill_solution = fill_solution
-    win.a_save.triggered.connect(lambda: QTimer.singleShot(300, safe(panel.refresh)))
-    d.visibilityChanged.connect(lambda vis: vis and safe(panel.refresh)())
-    # keep the branch / colours current while the IDE is in use (cheap: one git status)
+    win.a_save.triggered.connect(lambda: QTimer.singleShot(300, safe(panel.refresh_async)))
+    d.visibilityChanged.connect(lambda vis: vis and safe(panel.refresh_async)())
+    # keep the branch / colours current while the IDE is in use (one git status, in the background)
     timer = QTimer(win, interval=5000)
-    timer.timeout.connect(lambda: win.isActiveWindow() and panel.git is not None and safe(panel.refresh)())
+    timer.timeout.connect(lambda: win.isActiveWindow() and panel.git is not None and not panel.is_refreshing()
+                          and safe(panel.refresh_async)())
     timer.start()
     win._git_timer = timer
 

@@ -1352,10 +1352,83 @@ class PostgresDatabase(_ServerDatabase):
             defs.append(ColumnDef(c.name, ctype, c.pk > 0, c.notnull, c.autoinc and not default and
                                   ctype not in ("serial", "bigserial", "smallserial"), False, default))
         sql = self.ddl_create_table(table, defs, raw_defaults=True)
+        omit = (getattr(self, "_dump_omit_fks", None) or {}).get(table, [])   # added after the data (dump)
         for fk in self.foreign_keys(table):
+            if any(fk.columns == o.columns and fk.ref_table == o.ref_table for o in omit):
+                continue
             sql = sql[:-2] + (",\n  FOREIGN KEY (" + ", ".join(self.q(c) for c in fk.columns) + f") REFERENCES "
                               f"{self.q(fk.ref_table)} (" + ", ".join(self.q(c) for c in fk.ref_columns) + ")\n)")
         return sql
+
+    # --------------------------------------------------------------- whole-database SQL dump
+    def fk_dump_plan(self, tables: list[str]) -> tuple[list[str], dict[str, list[ForeignKey]]]:
+        """Tables in foreign-key dependency order (referenced tables first, else by name) and the
+        foreign keys that must be added after the data: self references and keys inside cycles."""
+        tset = set(tables)
+        fks = {t: self.foreign_keys(t) for t in tables}
+        deps = {t: {fk.ref_table for fk in fks[t] if fk.ref_table in tset and fk.ref_table != t} for t in tables}
+        order: list[str] = []
+        left = list(tables)                       # tables() is name ordered: keeps the order stable
+        while left:
+            ready = [t for t in left if deps[t] <= set(order)]
+            if not ready:                         # a cycle: take the first one, its keys come later
+                ready = [left[0]]
+            for t in ready:
+                order.append(t)
+                left.remove(t)
+        placed: set[str] = set()
+        later: dict[str, list[ForeignKey]] = {}
+        for t in order:
+            for fk in fks[t]:
+                if fk.ref_table == t or (fk.ref_table in tset and fk.ref_table not in placed):
+                    later.setdefault(t, []).append(fk)
+            placed.add(t)
+        return order, later
+
+    def export_sql(self, table: str | None, path: Path, schema: bool = True, data: bool = True) -> int:
+        """Whole database: tables in foreign-key order, DROP ... CASCADE, and the keys of cycles /
+        self references as ALTER TABLE after the data, so the dump imports back."""
+        if table:
+            return super().export_sql(table, path, schema, data)
+        order, later = self.fk_dump_plan(self.tables())
+        views = self.views()
+        self._dump_omit_fks = later if schema else {}
+        try:
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(f"-- Exported by RAD IDE from {self.info.describe()} on "
+                        f"{_dt.datetime.now().isoformat(sep=' ', timespec='seconds')}\n\n")
+                f.write(self.dump_prologue)
+                if schema:                        # drop in reverse dependency order (views first)
+                    for v in reversed(views):
+                        f.write(f"DROP VIEW IF EXISTS {self.q(v)} CASCADE;\n")
+                    for t in reversed(order):
+                        f.write(f"DROP TABLE IF EXISTS {self.q(t)} CASCADE;\n")
+                    f.write("\n")
+                for t in order + views:
+                    self.check_cancel()
+                    for chunk in self.dump_table_sql(t, schema, data):
+                        if schema and chunk.startswith("DROP ") and chunk.rstrip().endswith(";"):
+                            chunk = chunk.rstrip().rstrip(";") + " CASCADE;\n"
+                        f.write(chunk)
+                if schema:
+                    for t in order:
+                        for fk in later.get(t, []):
+                            f.write(f"ALTER TABLE {self.q(t)} ADD FOREIGN KEY ("
+                                    + ", ".join(self.q(c) for c in fk.columns) + f") REFERENCES {self.q(fk.ref_table)} ("
+                                    + ", ".join(self.q(c) for c in fk.ref_columns) + ");\n")
+                for t in order if data else []:   # serial / identity columns continue after the rows
+                    for c in self.columns(t):
+                        if c.autoinc:
+                            qt, qc = self.q(t).replace("'", "''"), c.name.replace("'", "''")
+                            f.write(f"SELECT setval(pg_get_serial_sequence('{qt}', '{qc}'), "
+                                    f"COALESCE((SELECT MAX({self.q(c.name)}) FROM {self.q(t)}), 0) + 1, false);\n")
+                f.write(self.dump_epilogue)
+        except DatabaseError:
+            _remove_partial(path)
+            raise
+        finally:
+            self._dump_omit_fks = {}
+        return len(order) + len(views)
 
     def hidden_key_select(self) -> str:
         return "ctid::text"

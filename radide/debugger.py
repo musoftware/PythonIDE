@@ -56,6 +56,7 @@ class Session(QObject):
         self._kid_cbs: list = []          # children() callbacks waiting for "kend"
         self._kids: list = []
         self._watch_cbs: list = []        # watch() callbacks waiting for "watch"
+        self.caps: set[str] = set()       # agent capabilities ("caps|children|bpx" at each stop)
 
     # ------------------------------------------------------------ expandable values (debug_extras)
     def children(self, ref, cb) -> None:
@@ -70,6 +71,9 @@ class Session(QObject):
         """cb(value, type, ref) for a Watch expression (agent command 'w <expr>')."""
         if not self.paused or not self.running():
             cb("(the program must be paused at a breakpoint)", "", 0)
+            return
+        if "children" not in self.caps:          # older agents: plain evaluate (radide/tools.py routes it)
+            cb(None, "", 0)
             return
         self._watch_cbs.append(cb)
         self.send("w " + expr)
@@ -117,6 +121,9 @@ class Session(QObject):
 
     def set_breakpoint(self, filename: str, line: int, on: bool, cond: str = "") -> None:
         if self.debug:
+            if cond.startswith("@@bp ") and "bpx" not in self.caps:
+                from .debug_extras import parse_bp
+                cond = parse_bp(cond)["cond"]
             self.send(f"{'b' if on else 'B'} {filename.lower()}|{line}" + (f"|{cond}" if on and cond else ""))
 
     def set_break_on_exception(self, on: bool) -> None:
@@ -135,6 +142,8 @@ class Session(QObject):
             if self.debug:
                 self.send("q")
             self.proc.kill()
+            # finish now (emits finished): F5 right after Stop must not race with this session's end
+            self.proc.waitForFinished(3000)
 
     # ------------------------------------------------------------ parsing
     def _read(self) -> None:
@@ -169,6 +178,8 @@ class Session(QObject):
             self._pending.variables.append((parts[0], parts[1], "|".join(parts[2:])))
         elif kind == "frame" and self._pending and len(parts) >= 3:
             self._pending.frames.append((parts[0], parts[1], int(parts[2])))
+        elif kind == "caps":
+            self.caps.update(parts)
         elif kind == "ref" and self._pending and len(parts) >= 2:
             self._pending.refs[parts[0]] = parts[1]
         elif kind == "kid" and len(parts) >= 4:

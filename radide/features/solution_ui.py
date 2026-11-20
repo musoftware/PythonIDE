@@ -115,6 +115,12 @@ def fill_tree(win) -> None:
             continue
         _fill_project(win, sln, root, entry.name, project, st["plugin"], project is startup, bold)
     tree.addTopLevelItem(root)
+    post = getattr(sln, "after_fill_tree", None)        # foreign solutions: solution folders, items
+    if callable(post):
+        try:
+            post(win, root)
+        except Exception as e:  # noqa: BLE001
+            _log(win, f"[solution] {e}")
     tree.expandAll()
     try:                                  # website folder trees: collapse folders (CONTRACTS 8.1)
         from .web_workspace import after_fill
@@ -137,6 +143,10 @@ def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> No
     if getattr(project, "kind", "") == "website":      # web site: its folder tree (CONTRACTS 8.1)
         from .web_workspace import fill_site
         fill_site(win, pi, project)
+        return
+    own_tree = getattr(project, "fill_solution_tree", None)   # foreign projects (radide/foreign/*): own tree
+    if callable(own_tree):
+        own_tree(win, pi, name)
         return
     # References
     refs = QTreeWidgetItem(pi, ["References"])
@@ -162,9 +172,19 @@ def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> No
     langs = {plugin_for_form(project, f).id for f in project.forms} | \
             {plugin_for_module(project, m).id for m in project.modules}
     multi = len(langs) > 1
+    missing_forms = set(project.missing_forms()) if hasattr(project, "missing_forms") else set()
     for form in project.forms:
         fp = plugin_for_form(project, form)
         tag = f"  [{language_label(fp)}]" if multi else ""
+        if form in missing_forms:                  # listed in project.radproj, no .form file
+            fi = QTreeWidgetItem(pi, [f"{form}.form{tag}  (missing)"])
+            fi.setData(0, ROLE, ("missing_form", form))
+            fi.setData(0, PROJECT_ROLE, key)
+            fi.setForeground(0, Qt.GlobalColor.gray)
+            fi.setIcon(0, _icon(win, "SP_MessageBoxWarning"))
+            fi.setToolTip(0, f"The form file was not found: {project.form_path(form)}\n"
+                             "Right-click > Remove from Project")
+            continue
         fi = QTreeWidgetItem(pi, [f"{form}.form{tag}" + ("   (startup)" if form == project.startup else "")])
         fi.setData(0, ROLE, ("design", form))
         fi.setData(0, PROJECT_ROLE, key)
@@ -235,6 +255,12 @@ def build_menu(win, item) -> QMenu | None:
                                                              getattr(project, "kind", "") == "website"):
         from .web_workspace import build_site_menu       # CONTRACTS 8.1
         return build_site_menu(win, item, kind, name, project)
+    own_menu = getattr(sln, "build_solution_menu", None) if kind == "solution" else \
+        getattr(project, "build_solution_menu", None)    # foreign projects/solutions (radide/foreign/*)
+    if callable(own_menu):
+        m = own_menu(win, item, kind, name)
+        if m is not None:
+            return m
     m = QMenu(win)
     if kind == "solution":
         add = m.addMenu("Add")
@@ -285,6 +311,8 @@ def build_menu(win, item) -> QMenu | None:
         m.addAction("View (generated)", lambda: open_proxy(win, name))
     elif kind == "missing":
         m.addAction("Remove from Solution", lambda: remove_project(win, name))
+    elif kind == "missing_form":
+        m.addAction("Remove from Project", lambda: remove_missing_form(win, project, name))
     else:
         m.deleteLater()
         return None
@@ -306,6 +334,21 @@ def _open_folder(folder) -> None:
 
 
 # ============================================================================ actions
+def remove_missing_form(win, project, form: str) -> bool:
+    """Remove a form whose .form file is missing from project.radproj (Solution Explorer)."""
+    project = project or win.project
+    if project is None or form not in project.forms:
+        return False
+    project.forms.remove(form)
+    project.form_languages.pop(form, None)
+    if project.startup == form:
+        project.startup = project.forms[0] if project.forms else ""
+    project.save()
+    fill_tree(win)
+    _log(win, f"Removed the missing form '{form}' from project '{project.name}'")
+    return True
+
+
 def set_startup_project(win, name: str) -> None:
     sln = _ensure_solution(win)
     sln.set_startup(name)
@@ -736,6 +779,9 @@ def build_solution(win, only=None, wait: bool = False):
     every library whose plugin compiles (C#, Java, C, Rust, ...). *wait* = run in this thread and
     return {project name: exit code} (None for projects that need no build)."""
     sln = _ensure_solution(win)
+    own_build = getattr(sln, "build_solution", None)      # foreign solutions (.sln: dotnet / MSBuild)
+    if callable(own_build):
+        return own_build(win, only=only, wait=wait)
     win.save_all()
     try:
         from ..references import refresh_all

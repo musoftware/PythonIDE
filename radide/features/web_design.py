@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QFileDialog, QToolBar
 
@@ -75,6 +76,20 @@ def install(win) -> None:
         a2.setEnabled(on)
     win.tabs.currentChanged.connect(update)
     update()
+
+    def design_room(_i=None):
+        """A website's Design View became the current tab: give it room (web_workspace.make_design_room)."""
+        try:
+            if not isinstance(win.tabs.currentWidget(), design.DesignView):
+                return
+            proj = getattr(win, "project", None)
+            if proj is None or getattr(proj, "kind", "") != "website":
+                return
+            from .web_workspace import make_design_room
+            make_design_room(win)
+        except Exception as e:  # noqa: BLE001 - layout help must never break the tabs
+            win.log(f"[design] {e}")
+    win.tabs.currentChanged.connect(lambda i: QTimer.singleShot(0, design_room))
 
     for title in ("&View", "&File"):
         menu = next((m.menu() for m in win.menuBar().actions() if m.text() == title and m.menu()), None)

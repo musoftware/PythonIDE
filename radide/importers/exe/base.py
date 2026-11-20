@@ -561,6 +561,10 @@ def _ctrl_types(form_dict: dict | None) -> dict:
     return {c["props"].get("Name"): c["type"] for c in (form_dict or {}).get("controls", [])}
 
 
+# the python-qt plugin generates PySide6 code (radide/languages/python_qt.py): handlers use the same binding
+QT_BINDING = "PySide6"
+
+
 def render_actions(actions: list, language: str, form_dict: dict | None = None,
                    comment: str = "#") -> list[str]:
     """Body lines (without indentation) for one handler in *language* (a plugin id)."""
@@ -579,7 +583,7 @@ def render_actions(actions: list, language: str, form_dict: dict | None = None,
                 text, title, kind = _py_expr(a[1]), _py_expr(a[2]), a[3] if len(a) > 3 else "info"
                 if qt:
                     fn = {"warning": "warning", "error": "critical", "question": "question"}.get(kind, "information")
-                    out += ["from PyQt6.QtWidgets import QMessageBox", f"QMessageBox.{fn}(self, {title}, {text})"]
+                    out += [f"from {QT_BINDING}.QtWidgets import QMessageBox", f"QMessageBox.{fn}(self, {title}, {text})"]
                 else:
                     fn = {"warning": "showwarning", "error": "showerror", "question": "askyesno"}.get(kind, "showinfo")
                     out += ["from tkinter import messagebox", f"messagebox.{fn}({title}, {text})"]
@@ -639,7 +643,7 @@ def render_actions(actions: list, language: str, form_dict: dict | None = None,
             elif k == "beep":
                 out.append("QApplication.beep()" if qt else "self.root.bell()")
                 if qt:
-                    out.insert(len(out) - 1, "from PyQt6.QtWidgets import QApplication")
+                    out.insert(len(out) - 1, f"from {QT_BINDING}.QtWidgets import QApplication")
             elif k == "open":
                 out += ["import os", f"os.startfile({_py_expr(a[1])})"]
         return _dedupe_imports(out)

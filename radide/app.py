@@ -4,6 +4,7 @@ run and debug."""
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -669,9 +670,14 @@ class MainWindow(QMainWindow):
         return create_project_from_dialog(self, dlg)
 
     def open_project_dialog(self):
-        f, _ = QFileDialog.getOpenFileName(
-            self, "Open Project/Solution", "",
-            f"RAD IDE solution or project (*{SOLUTION_EXT} {Project.FILE});;All files (*)")
+        filters = f"RAD IDE solution or project (*{SOLUTION_EXT} {Project.FILE})"
+        try:                     # projects of other IDEs, opened in place (radide/features/foreign_projects.py)
+            from .features.foreign_projects import file_filter
+            filters = (f"All supported projects (*{SOLUTION_EXT} {Project.FILE} "
+                       f"{file_filter(patterns_only=True)});;{filters};;{file_filter()}")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"[foreign projects] {e}")
+        f, _ = QFileDialog.getOpenFileName(self, "Open Project/Solution", "", filters)
         if f:
             self.open_project(Path(f))
 
@@ -727,7 +733,11 @@ class MainWindow(QMainWindow):
             name = self.plugin_for_form(form).code_file(form)
         elif mod is not None and self.project is not None:
             if w.editor.isModified():
-                (self.project.folder / mod).write_text(w.editor.text(), encoding="utf-8")
+                writer = getattr(self.project, "write_code", None)     # foreign projects: same encoding
+                if callable(writer):
+                    writer(self.project.folder / mod, w.editor.text())
+                else:
+                    (self.project.folder / mod).write_text(w.editor.text(), encoding="utf-8")
                 w.editor.setModified(False)
                 self._update_module_title(mod)
             name = mod
@@ -771,6 +781,13 @@ class MainWindow(QMainWindow):
         A bare project opens as a one-project solution. *activate* = folder or name of the
         project to make active (default: the startup project)."""
         path = Path(folder).resolve()
+        try:                     # .sln / .csproj / .vbp / .dpr / pom.xml ... opened in place (foreign_projects.py)
+            from .features.foreign_projects import is_foreign, open_foreign
+            if is_foreign(path):
+                if open_foreign(self, path, ask=ask):
+                    return
+        except Exception as e:  # noqa: BLE001 - fall back to the RAD IDE formats
+            self.log(f"*** cannot open {path.name} as a foreign project: {e}")
         if ask and not self._confirm_close_project():
             return
         try:
@@ -798,8 +815,9 @@ class MainWindow(QMainWindow):
         self._remember(sln.file if sln.file is not None else Path(target.folder).resolve())
         self._fill_solution()
         project = self.project
-        if project.forms:
-            self.open_designer(project.startup if project.startup in project.forms else project.forms[0])
+        present = [f for f in project.forms if f not in project.missing_forms()]
+        if present:
+            self.open_designer(project.startup if project.startup in present else present[0])
         elif project.modules:
             self.open_module(project.modules[0])
         self._update_title()
@@ -811,6 +829,10 @@ class MainWindow(QMainWindow):
         missing = [e.name for e in sln.projects if sln.project(e.name) is None]
         if missing:
             self.log(f"*** Projects that could not be loaded: {', '.join(missing)}")
+        for p in projects:                         # forms listed in project.radproj but not on disk
+            for f in p.missing_forms():
+                self.log(f"*** Warning: {p.name}: the form file '{f}.form' was not found "
+                         f"(right-click it in Solution Explorer > Remove from Project)")
         from .tools import offer_restore
         offer_restore(self)
 
@@ -985,6 +1007,10 @@ class MainWindow(QMainWindow):
         if key and key in self._pstates:
             self.activate_project(self._pstates[key]["project"])
         kind, name = data[0], data[1]
+        if str(kind).startswith("foreign"):           # foreign project trees (radide/features/foreign_projects.py)
+            from .features.foreign_projects import on_tree_activate
+            on_tree_activate(self, item, kind, name)
+            return
         if kind == "reference":
             from .features.solution_ui import open_reference
             open_reference(self, name)
@@ -1009,7 +1035,9 @@ class MainWindow(QMainWindow):
     # ================================================================ documents
     def _doc(self, name: str) -> FormDocument:
         if name not in self.docs:
-            doc = FormDocument(Form.load(self.project.form_path(name)), self.project.form_path(name))
+            loader = getattr(self.project, "load_form", None)    # foreign projects: native form file
+            doc = FormDocument(loader(name) if callable(loader) else Form.load(self.project.form_path(name)),
+                               self.project.form_path(name))
             doc.eventRequested.connect(lambda owner, ev, n=name: self.goto_event(n, owner, ev))
             doc.modifiedChanged.connect(lambda _m, n=name: self._update_tab_titles(n))
             doc.renamed.connect(lambda old, new, n=name: self._on_control_renamed(n, old, new))
@@ -1032,6 +1060,10 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(idx)
 
     def open_designer(self, name: str):
+        if name not in self.docs and self.project is not None and not self.project.form_path(name).is_file():
+            self.log(f"*** The form file was not found: {self.project.form_path(name)}")
+            self.statusBar().showMessage(f"{name}.form is missing", 5000)
+            return
         doc = self._doc(name)
         if name not in self.designers:
             self.designers[name] = DesignerView(doc)
@@ -1045,7 +1077,9 @@ class MainWindow(QMainWindow):
             fp = self.plugin_for_form(name)
             path = self.project.folder / fp.code_file(name)
             cv = CodeView(self._doc(name), fp, path)
-            cv.editor.setText(path.read_text(encoding="utf-8") if path.exists() else "")
+            reader = getattr(self.project, "read_code", None)    # foreign projects: keep the file's encoding
+            cv.editor.setText(reader(path) if callable(reader) else
+                              (path.read_text(encoding="utf-8") if path.exists() else ""))
             cv.editor.setModified(False)
             fname = fp.code_file(name)
             cv.editor.set_breakpoints(sorted(self.breakpoints.get(fname, set())))
@@ -1057,6 +1091,9 @@ class MainWindow(QMainWindow):
         return self.codeviews[name]
 
     def open_code(self, name: str):
+        if name not in self.docs and self.project is not None and not self.project.form_path(name).is_file():
+            self.log(f"*** The form file was not found: {self.project.form_path(name)}")
+            return
         cv = self._codeview(name)
         self._show_tab(cv, self.plugin_for_form(name).code_file(name))
         self._update_tab_titles(name)
@@ -1102,6 +1139,11 @@ class MainWindow(QMainWindow):
             self.log(f"Renamed '{old}' to '{new}' in {fp.code_file(form_name)}")
 
     def _on_form_rename(self, old: str, new: str):
+        if callable(getattr(self.project, "load_form", None)):     # foreign project: native names stay
+            QMessageBox.information(self, APP_NAME, "Renaming the form of a project opened in place is not "
+                                    "supported here - rename it in its own IDE (the files keep their names).")
+            self.properties.refresh()
+            return
         if not valid_identifier(new) or new.lower() in (f.lower() for f in self.project.forms if f != old):
             QMessageBox.warning(self, APP_NAME, f"'{new}' is not a valid form name.")
             self.properties.refresh()
@@ -1301,6 +1343,11 @@ class MainWindow(QMainWindow):
         of the solution - that project becomes active)."""
         if self.project is None:
             return None
+        hook = getattr(self.sln, "editor_for_file", None)     # foreign solutions: nested paths, many projects
+        if callable(hook):
+            ed = hook(self, file)
+            if ed is not None:
+                return ed
         if len(self._pstates) > 1:
             p = Path(file)
             owner = None
@@ -1338,7 +1385,9 @@ class MainWindow(QMainWindow):
         if filename not in self.modviews:
             path = self.project.folder / filename
             mv = ModuleView(self.plugin_for_file(filename), path)
-            mv.editor.setText(path.read_text(encoding="utf-8") if path.exists() else "")
+            reader = getattr(self.project, "read_code", None)    # foreign projects: keep the file's encoding
+            mv.editor.setText(reader(path) if callable(reader) else
+                              (path.read_text(encoding="utf-8") if path.exists() else ""))
             mv.editor.setModified(False)
             mv.editor.set_breakpoints(sorted(self.breakpoints.get(filename, set())))
             mv.editor.modificationChanged.connect(lambda _m, f=filename: self._update_module_title(f))
@@ -1725,6 +1774,19 @@ class MainWindow(QMainWindow):
         doc = self._doc(name)
         fp = self.plugin_for_form(name)
         code_path = self.project.folder / fp.code_file(name)
+        saver = getattr(self.project, "save_form", None)      # foreign projects write their native files
+        if callable(saver):
+            cv = self.codeviews.get(name)
+            code = cv.editor.text() if cv is not None else None
+            changed = bool(cv is not None and cv.editor.isModified())
+            new_code = saver(name, doc.form, code, changed, doc.modified)
+            if cv is not None:
+                if isinstance(new_code, str) and new_code != code:
+                    self._replace_code(cv, new_code)
+                cv.editor.setModified(False)
+            doc.set_modified(False)
+            self._update_tab_titles(name)
+            return changed or isinstance(new_code, str)
         if name in self.codeviews:
             cv = self.codeviews[name]
             code = cv.editor.text()
@@ -1748,7 +1810,11 @@ class MainWindow(QMainWindow):
             wrote = self._save_form(name) or wrote
         for mod, mv in self.modviews.items():
             if mv.editor.isModified():
-                (self.project.folder / mod).write_text(mv.editor.text(), encoding="utf-8")
+                writer = getattr(self.project, "write_code", None)     # foreign projects: same encoding
+                if callable(writer):
+                    writer(self.project.folder / mod, mv.editor.text())
+                else:
+                    (self.project.folder / mod).write_text(mv.editor.text(), encoding="utf-8")
                 mv.editor.setModified(False)
                 self._update_module_title(mod)
                 wrote = True
@@ -1835,6 +1901,41 @@ class MainWindow(QMainWindow):
             self.settings.setValue(f"interpreter/{rp.id}", f)
         return f
 
+    _MAIN_RX = re.compile(r"__name__\s*==\s*['\"]__main__['\"]|\bsub\s+main\b|\bfunc(?:tion)?\s+main\b|"
+                          r"\b(?:def|fn|void|int|static\s+void)\s+main\s*\(|^\s*main\s*\(\s*\)", re.I | re.M)
+
+    def _effective_startup(self, rp) -> str | None:
+        """The startup the run plugin gets. A console project with no forms and an empty
+        "startup" runs the module with a main (if __name__ == "__main__", def main, Sub Main...)
+        or else the first module of the plugin's language. None = nothing can run (logged)."""
+        p = self.project
+        startup = (p.startup or "").strip()
+        if startup:
+            return startup
+        if p.forms:
+            first = p.forms[0]
+            return first if (Path(p.folder) / rp.code_file(first)).exists() else startup
+        ext = (getattr(rp, "code_ext", "") or "").lower()
+        mods = [m for m in p.modules if not ext or m.lower().endswith(ext)]
+        if not mods:
+            if not p.modules:
+                self.log("*** Nothing to run: the project has no forms and no modules")
+                return None
+            return startup              # other languages decide themselves (plugins with no code_ext)
+        chosen = None
+        for m in mods:
+            try:
+                text = (Path(p.folder) / m).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if self._MAIN_RX.search(text):
+                chosen = m
+                break
+        chosen = chosen or next((m for m in mods if Path(m).stem.lower() in ("main", "program", "app")), mods[0])
+        stem = chosen[:-len(ext)] if ext and chosen.lower().endswith(ext) else chosen
+        self.log(f"No startup object is set: running {chosen} (Project > Properties > Startup to change)")
+        return stem
+
     def start_or_continue(self):
         if self.session is not None and self.session.paused:
             self.session.cont()
@@ -1861,44 +1962,57 @@ class MainWindow(QMainWindow):
         if rp.id.startswith("python") or getattr(rp, "uses_debugpy", False):
             interp = real_python(interp)        # not the Windows Store alias
         debug = debug and rp.supports_debug
+        startup = self._effective_startup(rp)
+        if startup is None:
+            return
         try:
             if debug:
-                spec = rp.debug_spec(self.project.folder, self.project.startup, interp,
+                spec = rp.debug_spec(self.project.folder, startup, interp,
                                      self._all_breakpoints())
             else:
-                spec = rp.run_spec(self.project.folder, self.project.startup, interp)
+                spec = rp.run_spec(self.project.folder, startup, interp)
         except Exception as e:  # noqa: BLE001 - show plugin errors instead of crashing
             self.log(f"*** Cannot start the program: {e}")
             return
         spec = self._start_hub(spec)
+        try:        # data sources: database passwords the IDE knows reach the program (environment only)
+            from .features.data_sources import run_env
+            spec.env = run_env(self, spec.env)
+        except Exception as e:  # noqa: BLE001 - never stop F5
+            self.log(f"[data sources] {e}")
         self.output.clear()
         self.locals.clear()
         self.callstack.clear()
         self.dock_output.show()
         self.dock_output.raise_()
         self.log(f"------ {'Debug' if debug else 'Run'}: {spec.program} {' '.join(spec.args)} ------")
-        s = self._make_session(spec, debug, rp, interp)
+        s = self._make_session(spec, debug, rp, interp, startup)
         s.output.connect(self._append_output)
         s.stopped.connect(self._on_stopped)
         s.resumed.connect(self._on_resumed)
         from .tools import on_eval_result
         s.evalResult.connect(lambda txt: on_eval_result(self, txt) or self.immediate.show_result(txt))
-        s.finished.connect(self._on_finished)
+        s.finished.connect(lambda code, s=s: self._on_finished(code, s))
         s.failed.connect(lambda err: self.log(f"*** Error: {err}"))
         self.session = s
         s.start()
-        self.statusBar().showMessage("Running...")
+        self._set_run_state("Running...")
         self._update_actions()
 
-    def _make_session(self, spec, debug, plugin, interp):
+    def _make_session(self, spec, debug, plugin, interp, startup=None):
         """Python debugging uses debugpy (DAP) when installed: conditional breakpoints and
         break on exception come ready-made. Everything else uses the plugin's own agent."""
         import importlib.util
+        factory = getattr(plugin, "make_session", None)      # foreign projects (radide/foreign/*): own toolchain
+        if callable(factory):
+            s = factory(self, spec, debug)
+            if s is not None:
+                return s
         if debug and (plugin.id.startswith("python") or getattr(plugin, "uses_debugpy", False)) \
                 and importlib.util.find_spec("debugpy") is not None \
                 and self.settings.value("debug/python_engine", "debugpy") == "debugpy":
             from .dap import DapSession
-            program = str(self.project.folder / plugin.code_file(self.project.startup))
+            program = str(self.project.folder / plugin.code_file(self.project.startup if startup is None else startup))
             s = DapSession("debugpy", program, [], self.project.folder.resolve(), spec.env,
                            self._all_breakpoints(), self)
             s.launch_args["python"] = [real_python(interp)]
@@ -1987,7 +2101,7 @@ class MainWindow(QMainWindow):
             ed.set_current_line(info.line - 1)
             self.stopped_at = (ed, info.line - 1)
         where = f"{Path(info.file).name} line {info.line}"
-        self.statusBar().showMessage(f"Paused ({info.reason}) at {where}")
+        self._set_run_state(f"Paused ({info.reason}) at {where}")
         if info.reason == "error":
             self.log(f"\n*** Error at {where}")
         self.locals.clear()
@@ -2017,9 +2131,18 @@ class MainWindow(QMainWindow):
                 pass
         self.stopped_at = None
 
+    def _set_run_state(self, text: str) -> None:
+        """Run / debug state in the status bar. Also kept in the permanent left label: on a real
+        display any status tip (the mouse over a toolbar, the Preview page...) clears the temporary
+        message, which then showed "Ready" while the program was still paused."""
+        self.statusBar().showMessage(text)
+        lbl = getattr(self, "status_ready", None)
+        if lbl is not None:
+            lbl.setText(text)
+
     def _on_resumed(self):
         self._clear_current_line()
-        self.statusBar().showMessage("Running...")
+        self._set_run_state("Running...")
         self._update_actions()
 
     def stop_project(self):
@@ -2029,7 +2152,12 @@ class MainWindow(QMainWindow):
             from .features.web_workspace import stop_website
             stop_website(self)
 
-    def _on_finished(self, code):
+    def _on_finished(self, code, session=None):
+        if session is None:
+            snd = self.sender()
+            session = snd if snd is not None and hasattr(snd, "user_stopped") else None
+        if session is not None and self.session is not None and session is not self.session:
+            return      # an earlier (stopped) session ended after F5 started a new one: keep the new one
         self._clear_current_line()
         if self.session is not None and self.session.user_stopped:
             self.log("\n------ Debugging stopped ------")
@@ -2037,7 +2165,7 @@ class MainWindow(QMainWindow):
             self.log(f"\n------ Program exited with code {code} ------")
         self.session = None
         self._stop_hub()
-        self.statusBar().showMessage("Ready")
+        self._set_run_state("Ready")
         self._update_actions()
 
     def closeEvent(self, e):
@@ -2061,6 +2189,11 @@ def main(argv=None):
     except ImportError:
         pass
     argv = sys.argv if argv is None else argv
+    try:                               # DevTools port for debugging JavaScript in the Preview (before QApplication)
+        from .web_site.browser_debug import enable_remote_debugging
+        enable_remote_debugging(ide_settings())
+    except Exception:  # noqa: BLE001 - optional
+        pass
     app = QApplication(argv)
     app.setApplicationName(APP_NAME)
     app.setStyle("Fusion")

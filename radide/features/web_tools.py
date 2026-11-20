@@ -38,6 +38,19 @@ def _settings(win):
     return ide_settings()
 
 
+def lighthouse_source_text() -> str:
+    """Where Lighthouse comes from, for the button tooltip: the private install runs offline;
+    only the npx fallback downloads it (on its first use)."""
+    try:
+        if rep.private_lighthouse() is not None:
+            return "uses the local Lighthouse install - no download"
+        if rep.npx_path():
+            return "needs Node.js; runs through npx, which downloads Lighthouse on its first use"
+    except Exception:  # noqa: BLE001
+        pass
+    return "needs Node.js - install it from nodejs.org"
+
+
 def _site_project(win):
     """The website project to work on: the active one if it is a website, else the first website of
     the solution, else the active project."""
@@ -227,6 +240,15 @@ class PublishDialog(QDialog):
         self._cur = -1
         self._fill_list()
         self.list.setCurrentRow(0)
+        # extensions, e.g. the "Cloud / Git / SSH" tab of radide/features/docker_cloud.py
+        for hook in list(getattr(win, "publish_dialog_hooks", None) or []):
+            try:
+                hook(self)
+            except Exception as e:  # noqa: BLE001 - an extension must not break Publish
+                try:
+                    win.log(f"[publish] extension failed: {e}")
+                except Exception:  # noqa: BLE001
+                    pass
 
     # ---------------------------------------------------------------- profiles
     def _new_profile(self, name: str) -> pub.PublishProfile:
@@ -604,7 +626,7 @@ class ReportsPanel(QWidget):
         self.b_export.setEnabled(False)
         self.b_lh = QPushButton("Lighthouse")
         self.b_lh.setToolTip("Performance / accessibility / best practices / SEO audit with Google Lighthouse "
-                             "(needs Node.js; downloaded by npx on first use)")
+                             f"({lighthouse_source_text()})")
         self.ext = QCheckBox("Check external links")
         self.filter = QComboBox()
         self.filter.addItems(["All", "Errors", "Warnings", "Info"])
@@ -781,8 +803,13 @@ class ReportsPanel(QWidget):
             folder.mkdir(parents=True, exist_ok=True)
             out = folder / f"lighthouse-{time.strftime('%Y%m%d-%H%M%S')}.html"
         self.b_lh.setEnabled(False)
-        self.summary.setText(f"Lighthouse is auditing {url} (the first run downloads it, this can take a "
-                             "minute) ...")
+        self.b_lh.setToolTip("Performance / accessibility / best practices / SEO audit with Google Lighthouse "
+                             f"({lighthouse_source_text()})")
+        if rep.private_lighthouse() is not None:
+            self.summary.setText(f"Lighthouse is auditing {url} (local install, this can take a minute) ...")
+        else:
+            self.summary.setText(f"Lighthouse is auditing {url} via npx (the first npx run downloads Lighthouse, "
+                                 "this can take a few minutes) ...")
         log = self.tools.log_threadsafe
 
         def work():

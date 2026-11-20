@@ -50,7 +50,27 @@ def _offscreen() -> bool:
 
 
 def _icon(win, name: str):
-    return win.style().standardIcon(getattr(QStyle.StandardPixmap, name))
+    # cached: standardIcon() per Solution Explorer item cost ~0.2 ms x 5000 files (perf round 7)
+    cache = win.__dict__.setdefault("_web_icon_cache", {})
+    if name not in cache:
+        cache[name] = win.style().standardIcon(getattr(QStyle.StandardPixmap, name))
+    return cache[name]
+
+
+def _entries(folder: Path) -> list[tuple[Path, bool]]:
+    """children(folder) as (path, is_dir) from one os.scandir (no stat per entry; same filter and order)."""
+    from ..web_site.project import HIDDEN_DIRS, HIDDEN_FILES
+    try:
+        with os.scandir(folder) as it:
+            out = []
+            for e in it:
+                d = e.is_dir()
+                if (e.name not in HIDDEN_DIRS) if d else \
+                        (e.name not in HIDDEN_FILES and not e.name.endswith((".pyc", "~"))):
+                    out.append((Path(e.path), d))
+    except OSError:
+        return [(p, p.is_dir()) for p in children(folder)]
+    return sorted(out, key=lambda pd: (not pd[1], pd[0].name.lower()))
 
 
 class WebSignals(QObject):
@@ -173,10 +193,29 @@ class PreviewPane(QWidget):
         if self._view is not None:
             self._view.reload()
 
+    def reset(self) -> None:
+        """Stop the page (scripts, game loops, sound) and show an empty Preview - another
+        project was opened, the last site's page must not keep running."""
+        if self._view is not None:
+            try:
+                self._view.stop()
+                self._view.setUrl(QUrl("about:blank"))
+            except RuntimeError:
+                pass
+        self.address.clear()
+        self.status.setText("")
+        self._title("")
+
     def show_dock(self) -> None:
         dock = getattr(self.win, "dock_web_preview", None)
         if dock is not None:
             first = not dock.isVisible() and not getattr(self, "_sized", False)
+            sol = getattr(self.win, "dock_solution", None)
+            if getattr(self.win, "_design_room_for", None) == id(getattr(self.win, "sln", None)) and \
+                    sol is not None and sol.isVisible() and not sol.isFloating() and not dock.isVisible() \
+                    and dock not in self.win.tabifiedDockWidgets(sol):
+                self.win.tabifyDockWidget(sol, dock)     # Design View room (make_design_room)
+                first = False
             dock.show()
             dock.raise_()
             if first:
@@ -551,11 +590,11 @@ def _fill_dir(win, parent_item, folder: Path, key, project_role, start, lazy: bo
     every sub-folder get a placeholder child and are filled when expanded."""
     bold = QFont()
     bold.setBold(True)
-    for p in children(folder):
+    for p, is_dir in _entries(folder):
         it = QTreeWidgetItem(parent_item, [p.name])
         it.setData(0, project_role, key)
         it.setData(0, PATH_ROLE, str(p))
-        if p.is_dir():
+        if is_dir:
             it.setData(0, ROLE, ("webfolder", str(p)))
             it.setIcon(0, _icon(win, "SP_DirIcon"))
             if lazy or p.name in HEAVY_DIRS:
@@ -568,7 +607,7 @@ def _fill_dir(win, parent_item, folder: Path, key, project_role, start, lazy: bo
         else:
             it.setData(0, ROLE, ("webfile", str(p)))
             it.setIcon(0, _icon(win, "SP_FileIcon"))
-            if start is not None and p.resolve() == start:
+            if start is not None and p.name.lower() == start.name.lower() and p.resolve() == start:
                 it.setFont(0, bold)
                 it.setToolTip(0, "Start page (F5 opens it)")
 
@@ -764,13 +803,21 @@ def _site_project(win, project=None):
     return sp if sp is not None and is_website(sp) else win.project
 
 
-def server_interpreter(win, plugin) -> str:
+def server_interpreter(win, plugin, project=None) -> str:
     if not getattr(plugin, "needs_interpreter", False):
         return ""
     s = win.settings
     configured = s.value(f"interpreter/{plugin.id}", "") or ""
     if not configured and plugin.id == "php-web":
         configured = s.value("interpreter/php", "") or ""
+    if getattr(plugin, "web_kind", "") == "php" and project is not None:
+        try:   # the site's PHP version (Site Settings / project.radproj "web.php" - php_toolchain.py)
+            from ..web_site.php_toolchain import project_php
+            php = project_php(project, configured if configured and Path(configured).exists() else "")
+            if php:
+                return php
+        except Exception as e:  # noqa: BLE001 - fall back to the plugin's own lookup
+            win.log(f"[php] cannot resolve the site's PHP version: {e}")
     return plugin.find_interpreter(configured)
 
 
@@ -798,7 +845,7 @@ def run_website(win, project=None, debug: bool = False, open_preview: bool = Tru
     if srv is not None:
         stop_website(win)
     plugin = get_plugin(project.language)
-    interp = server_interpreter(win, plugin)
+    interp = server_interpreter(win, plugin, project)
     if getattr(plugin, "needs_interpreter", False) and not interp:
         msg = (f"{plugin.display_name}: {', '.join(getattr(plugin, 'tool_names', []) or ['the interpreter'])} "
                f"was not found. {getattr(plugin, 'install_hint', '')}")
@@ -846,6 +893,48 @@ def _reload_preview(win, srv, _version):
     cur = win.web_preview.current_url()
     if cur.startswith(srv.url) and win.web_preview.live.isChecked():
         win.web_preview.reload()
+
+
+def make_design_room(win) -> bool:
+    """A website's Design View is active in the VS layout: Solution Explorer and the Preview share one
+    right-hand column as tabs (instead of two columns side by side - 260 px + a third of the window)
+    and that column gets a compact width, so the design surface has room. Done once per opened
+    solution; the user's later rearrangement is left alone. True when the layout was changed."""
+    wb = getattr(win, "workbench", None)
+    if wb is not None and getattr(wb, "mode", "vs") != "vs":
+        return False
+    sln = getattr(win, "sln", None)
+    key = id(sln)
+    if sln is None or getattr(win, "_design_room_for", None) == key:
+        return False
+    sol, pv = getattr(win, "dock_solution", None), getattr(win, "dock_web_preview", None)
+    if sol is None or pv is None or sol.isFloating() or pv.isFloating():
+        return False
+    win._design_room_for = key
+    changed = False
+    if sol.isVisible() and pv.isVisible() and pv not in win.tabifiedDockWidgets(sol):
+        win.tabifyDockWidget(sol, pv)
+        pv.raise_()
+        changed = True
+    col = [d for d in (sol, pv) if d.isVisible()]
+    if col:
+        width = max(300, min(420, win.width() // 4))
+        win.resizeDocks(col[:1], [width], Qt.Orientation.Horizontal)
+        changed = True
+    return changed
+
+
+def reset_preview(win) -> None:
+    """Empty the Preview (the page stops running) and hide it when the open solution has no
+    web site - called when another solution / project is opened or the solution is closed."""
+    pv = getattr(win, "web_preview", None)
+    if pv is not None:
+        pv.reset()
+    dock = getattr(win, "dock_web_preview", None)
+    sln = getattr(win, "sln", None)
+    has_site = sln is not None and any(is_website(p) for p in sln.all_projects())
+    if dock is not None and not has_site and dock.isVisible():
+        dock.hide()
 
 
 def stop_website(win) -> None:
@@ -1295,11 +1384,17 @@ def site_settings(win, project=None, exec_: bool = True):
     live = QCheckBox("Reload the browser when a file is saved (live reload)")
     live.setChecked(bool(cfg.get("live_reload", True)))
     lay.addRow("", live)
-    extra = None
+    extra = php_box = None
     if getattr(plugin, "web_kind", "") == "php":
         extra = QLineEdit(str(cfg.get("router") or ""))
         extra.setPlaceholderText("optional router script, e.g. server.php")
         lay.addRow("Router script:", extra)
+        try:   # PHP version of this site (radide/features/php_tools.py, php_toolchain.py)
+            from .php_tools import PhpVersionCombo
+            php_box = PhpVersionCombo(win, project, str(cfg.get("php") or ""))
+            lay.addRow("PHP version:", php_box)
+        except Exception as e:  # noqa: BLE001
+            win.log(f"[php] PHP version list unavailable: {e}")
     elif getattr(plugin, "web_kind", "") == "node":
         extra = QLineEdit(str(cfg.get("command") or ""))
         extra.setPlaceholderText("optional command instead of node <start file>, e.g. npm run dev")
@@ -1308,14 +1403,18 @@ def site_settings(win, project=None, exec_: bool = True):
     box.accepted.connect(dlg.accept)
     box.rejected.connect(dlg.reject)
     lay.addRow(box)
-    dlg.fields = {"root": root, "start": start, "port": port, "live": live, "extra": extra}
+    dlg.fields = {"root": root, "start": start, "port": port, "live": live, "extra": extra, "php": php_box}
 
     def apply():
         changes = {"root": root.text().strip() or ".", "start": start.currentText().strip(),
                    "port": port.value(), "live_reload": live.isChecked()}
         if extra is not None:
             changes["router" if getattr(plugin, "web_kind", "") == "php" else "command"] = extra.text().strip()
+        if php_box is not None:
+            changes["php"] = php_box.value()
         set_web_config(project, **changes)
+        if php_box is not None:
+            php_box.applied()
         _refresh(win)
         srv = getattr(win, "web_server", None)
         if srv is not None and Path(srv.folder) == Path(project.folder).resolve():
@@ -1420,6 +1519,15 @@ def install(win) -> None:
         try:
             update_designer_docks(win)
         except Exception as e:  # noqa: BLE001 - never break Solution Explorer
+            win.log(f"[web] {e}")
+        try:        # another solution opened / the solution closed: the Preview stops the last page
+            sln = getattr(win, "sln", None)
+            key = None if sln is None else os.path.normcase(str(getattr(sln, "file", None) or
+                                                                getattr(sln, "folder", "") or id(sln)))
+            if getattr(win, "_web_preview_sln", None) != key:
+                win._web_preview_sln = key
+                reset_preview(win)
+        except Exception as e:  # noqa: BLE001
             win.log(f"[web] {e}")
         return r
     win._fill_solution = fill_solution
