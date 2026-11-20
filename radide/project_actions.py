@@ -885,10 +885,37 @@ class ActionContext:
 
     def refresh_tree(self) -> None:
         try:
+            _rescan_foreign(self.project)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"*** refresh: {e}")
+        try:
             if getattr(self.win, "project", None) is not None:
                 self.win._fill_solution()
         except Exception as e:  # noqa: BLE001
             self.log(f"*** refresh: {e}")
+
+
+def _rescan_foreign(project) -> None:
+    """Foreign projects (opened .csproj / .iml / ...) list their files from a scan made when they opened: scan again
+    so files a command created show up in Solution Explorer (forms / bindings are kept as they are)."""
+    if project is None or not (getattr(project, "extra", None) or {}).get("foreign"):
+        return
+    if hasattr(project, "ms") and callable(getattr(project, "reload", None)):      # Visual Studio project
+        project.reload()
+        return
+    ad = getattr(project, "adapter", None)
+    if ad is None or not callable(getattr(ad, "scan", None)):
+        return
+    keep = (ad.bindings, list(ad.info), list(ad.modules))
+    ad.bindings, ad.modules = {}, []
+    try:
+        ad.scan()
+    except Exception:
+        ad.modules = keep[2]
+        raise
+    finally:
+        ad.bindings, ad.info = keep[0], keep[1]
+    project.modules = list(ad.modules)
 
 
 def _default(f: Field):

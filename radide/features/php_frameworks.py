@@ -1128,13 +1128,18 @@ def install(win) -> None:
             panel.tabs.setCurrentIndex(tab)
             if cmd:
                 panel.choose(cmd)
-        cp.register_command("laravel.artisan", "Laravel: Run Artisan Command...", lambda: show(0), category="Laravel")
-        cp.register_command("laravel.routes", "Laravel: Show Routes", lambda: show(1), category="Laravel")
-        cp.register_command("laravel.tinker", "Laravel: Open Tinker", lambda: show(2, "tinker"), category="Laravel")
-        cp.register_command("laravel.make-model", "Laravel: make:model -mcr", lambda: show(0, "make:model"),
-                            category="Laravel")
-        cp.register_command("laravel.ide-helper", "Laravel: Generate IDE Helper Files", panel.ide_helper,
-                            category="Laravel")
+
+        def active() -> bool:            # only while a Laravel project is open (project_actions detection)
+            try:
+                return any(p.id == "laravel" for p in win.project_menus.providers())
+            except Exception:  # noqa: BLE001
+                return True
+        for cid, title, fn in (("laravel.artisan", "Laravel: Run Artisan Command...", lambda: show(0)),
+                               ("laravel.routes", "Laravel: Show Routes", lambda: show(1)),
+                               ("laravel.tinker", "Laravel: Open Tinker", lambda: show(2, "tinker")),
+                               ("laravel.make-model", "Laravel: make:model -mcr", lambda: show(0, "make:model")),
+                               ("laravel.ide-helper", "Laravel: Generate IDE Helper Files", panel.ide_helper)):
+            cp.register_command(cid, title, fn, category="Laravel", enabled=active)
     except Exception:  # noqa: BLE001
         pass
 

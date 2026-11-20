@@ -135,7 +135,9 @@ class Command:
 
     @property
     def label(self) -> str:
-        return f"{self.category}: {self.title}" if self.category else self.title
+        if not self.category or self.title.startswith(self.category + ":"):     # no "Laravel: Laravel: ..."
+            return self.title
+        return f"{self.category}: {self.title}"
 
 
 _COMMANDS: dict[str, Command] = {}

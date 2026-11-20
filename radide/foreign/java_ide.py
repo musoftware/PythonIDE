@@ -171,8 +171,10 @@ class JavaAdapter(ForeignAdapter):
             self._eclipse()
         if not self.src_dirs:
             self.src_dirs = [d for d in (r / "src" / "main" / "java", r / "src") if d.is_dir()][:1]
-        files = source_files(r, (".java", ".form", ".xml", ".gradle", ".kts", ".properties", ".iml", ".md"),
-                             extra_names=("pom.xml", ".project", ".classpath", "gradlew", "mvnw"))
+        exts = (".java", ".form", ".xml", ".gradle", ".kts", ".properties", ".iml", ".md")
+        if (r / "pubspec.yaml").exists():          # a Flutter project (flutter create writes .idea + .iml)
+            exts += (".dart", ".yaml", ".json", ".arb")
+        files = source_files(r, exts, extra_names=("pom.xml", ".project", ".classpath", "gradlew", "mvnw"))
         self.modules = [f for f in files if not f.lower().endswith(".form")]
         # NetBeans GUI forms (any Java project can have them)
         for f in files:

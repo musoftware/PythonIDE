@@ -163,6 +163,12 @@ class ProjectMenus(QObject):
         self._rebuild_project_section(provs)
         self._rebuild_toolbar(provs)
         self._rebuild_palette_and_shortcuts(provs)
+        if getattr(self.win, "_others_native_menu", None) is not None:   # foreign "Native" menu: hide it when
+            try:                                                          # no foreign project is open any more
+                from ..foreign._others_base import install_native_menu
+                install_native_menu(self.win)
+            except Exception:  # noqa: BLE001
+                pass
         for err in pa.LOAD_ERRORS:
             self.win.log(err)
         pa.LOAD_ERRORS.clear()

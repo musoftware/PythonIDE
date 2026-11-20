@@ -778,12 +778,19 @@ def install(win) -> None:
             panel.tabs.setCurrentIndex(tab)
             if cmd:
                 panel.open_form(cmd)
+
+        def active() -> bool:            # only while a CodeIgniter project is open (project_actions detection)
+            try:
+                return any(p.id == "codeigniter" for p in win.project_menus.providers())
+            except Exception:  # noqa: BLE001
+                return True
         cp.register_command("codeigniter.spark", "CodeIgniter: Spark Commands", lambda: show(0),
-                            category="CodeIgniter")
-        cp.register_command("codeigniter.routes", "CodeIgniter: Show Routes", lambda: show(1), category="CodeIgniter")
+                            category="CodeIgniter", enabled=active)
+        cp.register_command("codeigniter.routes", "CodeIgniter: Show Routes", lambda: show(1), category="CodeIgniter",
+                            enabled=active)
         for cmd in ("make:controller", "make:model", "make:migration", "migrate", "db:seed"):
             cp.register_command(f"codeigniter.{cmd}", f"CodeIgniter: spark {cmd}...",
-                                lambda c=cmd: show(0, c), category="CodeIgniter")
+                                lambda c=cmd: show(0, c), category="CodeIgniter", enabled=active)
     except Exception:  # noqa: BLE001 - the palette is optional
         pass
 
