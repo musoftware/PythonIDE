@@ -276,8 +276,22 @@ class Rust(Provider):
                        ask=[Field("crate", "Crate", placeholder="serde  rand@0.8"),
                             Field("features", "Features (comma separated)", required=False, placeholder="derive"),
                             Field("dev", "Development dependency (--dev)", "bool")]),
+                Action("remove", "Remove Crate (cargo remove)...", lambda c: self.c(c, "remove", *c.values["crate"].split()),
+                       opens="none", ask=[Field("crate", "Crate", placeholder="serde")]),
                 Action("update", "cargo update", lambda c: self.c(c, "update"), opens="none"),
+                Action("outdated", "Outdated Dependencies", self._outdated, opens="none"),
+                Action("run-release", "Run Release (cargo run --release)", lambda c: self.c(c, "run", "--release"),
+                       opens="none"),
                 Action("clean", "cargo clean", lambda c: self.c(c, "clean"), opens="none")]
+
+    def _outdated(self, ctx):
+        """cargo outdated when installed (cargo install cargo-outdated), else cargo update --dry-run."""
+        try:
+            from ..rust_tools import cargo_home, EXE
+            has = (cargo_home() / "bin" / ("cargo-outdated" + EXE)).exists()
+        except Exception:  # noqa: BLE001
+            has = False
+        self.c(ctx, *(["outdated", "-R"] if has else ["update", "--dry-run", "--verbose"]))
 
     def _add(self, ctx):
         argv = ["add", *ctx.values["crate"].split()]

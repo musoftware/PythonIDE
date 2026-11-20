@@ -138,7 +138,7 @@ class Form1Designer:
         self.txtName.place(**self._places['txtName'])
 
         self.btnGreet = tk.Button(self.root, font=('Segoe UI', 9), text='Greet (C#)', command=self._ev("btnGreet_Click"), anchor='w')
-        self._places['btnGreet'] = {'x': 174, 'y': 162, 'width': 120, 'height': 26, 'bordermode': 'outside'}
+        self._places['btnGreet'] = {'x': 296, 'y': 160, 'width': 120, 'height': 26, 'bordermode': 'outside'}
         self.btnGreet.place(**self._places['btnGreet'])
 
         self.lblGreet = tk.Label(self.root, font=('Segoe UI', 9), text='', anchor='w', justify='left')

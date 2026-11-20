@@ -30,7 +30,7 @@ from .package import Extension, VsixError, get_installed, installed, vsx_root
 
 __all__ = ["API_LEVEL", "Event", "Extension", "VsixError", "on_installed", "on_removed", "on_enabled",
            "on_changed", "on_reload_requested", "root", "list_installed", "list_enabled", "get",
-           "mark_restart", "restart_required", "request_reload"]
+           "mark_restart", "restart_required", "request_reload", "init_gui"]
 
 API_LEVEL = "1.90.0"          # the VS Code API level RAD IDE emulates (engines.vscode is checked against it)
 
@@ -43,6 +43,7 @@ class Event:
         self._subs: list = []
 
     def connect(self, fn) -> None:
+        init_gui()
         if fn not in self._subs:
             self._subs.append(fn)
 
@@ -65,33 +66,54 @@ class Event:
 
 
 _hub = None
+_hub_lock = threading.Lock()
+
+
+def _make_hub():
+    """A QObject living in the GUI thread whose slot runs posted calls (queued from worker threads)."""
+    global _hub
+    from PyQt6.QtCore import QCoreApplication, QObject, pyqtSignal, pyqtSlot
+
+    class _Hub(QObject):
+        call = pyqtSignal(object, object)
+
+        @pyqtSlot(object, object)
+        def run(self, f, a):
+            f(a)
+
+    with _hub_lock:
+        if _hub is None:
+            h = _Hub()
+            app = QCoreApplication.instance()
+            if app is not None and h.thread() is not app.thread():
+                h.moveToThread(app.thread())
+            h.call.connect(h.run)          # receiver = the hub: delivered in the hub's (GUI) thread
+            _hub = h
+    return _hub
 
 
 def _post(fn, args) -> bool:
     """Run fn(args) on the GUI thread when called from another thread; False = call directly."""
-    global _hub
     try:
-        from PyQt6.QtCore import QCoreApplication, QObject, QThread, pyqtSignal
+        from PyQt6.QtCore import QCoreApplication, QThread
     except Exception:  # noqa: BLE001
         return False
     app = QCoreApplication.instance()
     if app is None or QThread.currentThread() is app.thread():
         return False
-    if _hub is None:
-        class _Hub(QObject):
-            call = pyqtSignal(object, object)
-
-        with _hub_lock:
-            if _hub is None:
-                h = _Hub()
-                h.moveToThread(app.thread())
-                h.call.connect(lambda f, a: f(a))
-                _hub = h
-    _hub.call.emit(fn, args)
+    (_hub or _make_hub()).call.emit(fn, args)
     return True
 
 
-_hub_lock = threading.Lock()
+def init_gui() -> None:
+    """Create the GUI-thread hub now (call from the GUI thread, e.g. when the IDE starts)."""
+    try:
+        from PyQt6.QtCore import QCoreApplication, QThread
+        app = QCoreApplication.instance()
+        if app is not None and QThread.currentThread() is app.thread() and _hub is None:
+            _make_hub()
+    except Exception:  # noqa: BLE001
+        pass
 
 on_installed = Event("installed")
 on_removed = Event("removed")

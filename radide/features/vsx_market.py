@@ -1035,6 +1035,7 @@ def _menu(win, title: str):
 def install(win) -> None:
     if os.environ.get("RADIDE_NO_VSX"):
         return
+    vsx.init_gui()
     act = QAction("E&xtensions (VS Code)", win)
     act.setShortcut(QKeySequence("Ctrl+Shift+X"))
     act.setShortcutContext(Qt.ShortcutContext.WindowShortcut)

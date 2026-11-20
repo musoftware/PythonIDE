@@ -49,6 +49,25 @@ def _icon(win, name: str):
     return win.style().standardIcon(getattr(QStyle.StandardPixmap, name))
 
 
+# VS Code file icon themes (radide/vsx/contrib_icons.py): fn(name, is_dir, expanded, root, strict) -> QIcon | None
+FILE_ICON_PROVIDER = None
+
+
+def file_icon(win, name: str, is_dir: bool = False, fallback: str = "SP_FileIcon", expanded: bool = False,
+              strict: bool = False):
+    """The icon of a file / folder item: the active file icon theme's, else the IDE's own (*fallback*).
+    strict = only an explicit match of the icon theme (no generic "file" icon)."""
+    fn = FILE_ICON_PROVIDER
+    if fn is not None:
+        try:
+            ic = fn(name, is_dir, expanded, False, strict)
+            if ic is not None:
+                return ic
+        except Exception:  # noqa: BLE001 - an icon theme must never break Solution Explorer
+            pass
+    return _icon(win, fallback)
+
+
 def _plugin(project):
     try:
         return get_plugin(project.language)
@@ -127,6 +146,15 @@ def fill_tree(win) -> None:
         after_fill(win)
     except Exception as e:  # noqa: BLE001
         _log(win, f"[web] {e}")
+    for hook in list(TREE_HOOKS):         # e.g. VS Code file icon themes for foreign project trees
+        try:
+            hook(win, root)
+        except Exception as e:  # noqa: BLE001
+            _log(win, f"[solution] tree hook: {e}")
+
+
+# callables(win, root_item) run after Solution Explorer was filled (radide/vsx/contrib_runtime.py)
+TREE_HOOKS: list = []
 
 
 def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> None:
@@ -192,7 +220,7 @@ def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> No
         ci = QTreeWidgetItem(fi, [fp.code_file(form) + tag])
         ci.setData(0, ROLE, ("code", form))
         ci.setData(0, PROJECT_ROLE, key)
-        ci.setIcon(0, _icon(win, "SP_FileIcon"))
+        ci.setIcon(0, file_icon(win, fp.code_file(form)))
         di = QTreeWidgetItem(fi, [fp.designer_file(form) + "  (generated)"])
         di.setForeground(0, Qt.GlobalColor.gray)
         di.setData(0, ROLE, ("generated", form))
@@ -202,7 +230,7 @@ def _fill_project(win, sln, root, name, project, plugin, is_startup, bold) -> No
         mi = QTreeWidgetItem(pi, [mod + tag])
         mi.setData(0, ROLE, ("module", mod))
         mi.setData(0, PROJECT_ROLE, key)
-        mi.setIcon(0, _icon(win, "SP_FileIcon"))
+        mi.setIcon(0, file_icon(win, mod))
 
 
 def tree_items(win) -> list[tuple[int, str, tuple]]:

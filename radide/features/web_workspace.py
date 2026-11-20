@@ -585,6 +585,12 @@ def fill_site(win, pi, project) -> None:
         QTimer.singleShot(0, lambda p=project: _site_opened(win, p))
 
 
+def _tree_icon(win, name: str, is_dir: bool):
+    """The active VS Code file icon theme's icon (solution_ui.file_icon), else the IDE's own."""
+    from .solution_ui import file_icon
+    return file_icon(win, name, is_dir, "SP_DirIcon" if is_dir else "SP_FileIcon")
+
+
 def _fill_dir(win, parent_item, folder: Path, key, project_role, start, lazy: bool = False) -> None:
     """Items for the entries of *folder*. Heavy folders (node_modules, vendor...) and - with *lazy* -
     every sub-folder get a placeholder child and are filled when expanded."""
@@ -596,7 +602,7 @@ def _fill_dir(win, parent_item, folder: Path, key, project_role, start, lazy: bo
         it.setData(0, PATH_ROLE, str(p))
         if is_dir:
             it.setData(0, ROLE, ("webfolder", str(p)))
-            it.setIcon(0, _icon(win, "SP_DirIcon"))
+            it.setIcon(0, _tree_icon(win, p.name, True))
             if lazy or p.name in HEAVY_DIRS:
                 ph = QTreeWidgetItem(it, ["(expand to load)"])
                 ph.setData(0, ROLE, ("webplaceholder", str(p)))
@@ -606,7 +612,7 @@ def _fill_dir(win, parent_item, folder: Path, key, project_role, start, lazy: bo
                 _fill_dir(win, it, p, key, project_role, start)
         else:
             it.setData(0, ROLE, ("webfile", str(p)))
-            it.setIcon(0, _icon(win, "SP_FileIcon"))
+            it.setIcon(0, _tree_icon(win, p.name, False))
             if start is not None and p.name.lower() == start.name.lower() and p.resolve() == start:
                 it.setFont(0, bold)
                 it.setToolTip(0, "Start page (F5 opens it)")

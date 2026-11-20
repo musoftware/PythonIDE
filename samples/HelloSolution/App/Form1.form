@@ -228,8 +228,8 @@
       "props": {
         "Name": "btnGreet",
         "Text": "Greet (C#)",
-        "Left": 174,
-        "Top": 162,
+        "Left": 296,
+        "Top": 160,
         "Width": 120,
         "Height": 26,
         "BackColor": "",
