@@ -30,6 +30,7 @@ from .solution import EXT as SOLUTION_EXT
 from .solution import Solution
 from .toolbox import TOOL_STATE, Toolbox
 from .workspace import add_module, create_form, delete_form, delete_module, rename_form
+from . import __version__
 
 APP_NAME = "RAD IDE"
 
@@ -40,7 +41,8 @@ def ide_settings() -> QSettings:
     org = QCoreApplication.organizationName()
     if org.upper().startswith("RADIDE-TEST"):
         return QSettings(org, QCoreApplication.applicationName() or org)
-    return QSettings("RADIDE", "RADIDE")
+    from .paths import qsettings      # an INI file in <install>\settings for a portable build
+    return qsettings()
 
 STYLE = """
 QMainWindow, QDockWidget { background: #F0F0EA; }
@@ -73,6 +75,15 @@ def real_python(exe: str) -> str:
             pass
     _REAL_PY[exe] = real
     return real
+
+
+def _has_debugpy() -> bool:
+    """debugpy for the DAP engine: the IDE's own Python, or (release build) the real Python of radide/paths.py."""
+    if getattr(sys, "frozen", False):
+        from .paths import python_has_module
+        return python_has_module(sys.executable, "debugpy")
+    import importlib.util
+    return importlib.util.find_spec("debugpy") is not None
 
 
 def project_venv_python(folder: Path) -> str:
@@ -591,12 +602,13 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Help")
         m.addAction(self._act("&About", lambda: QMessageBox.about(
             self, APP_NAME,
-            f"<h3>{APP_NAME}</h3>"
+            f"<h3>{APP_NAME} {__version__}</h3>"
             "<p>A Visual Basic 2005 style IDE for scripting languages.</p>"
             "<p>© 2026 Musoftware - <a href='https://musoftwares.com'>musoftwares.com</a></p>"
             "<p>Free and open source under the MIT License: anyone may use, copy and modify it, "
             "as long as the credit to Musoftware (musoftwares.com) is kept. "
             "See LICENSE and THIRD_PARTY_NOTICES.md.</p>")))
+        m.addAction(self._act("Check for &Updates...", self.check_ide_updates))
 
         tb = self.addToolBar("Standard")
         tb.setObjectName("Standard")
@@ -1902,6 +1914,11 @@ class MainWindow(QMainWindow):
             found = self.choose_interpreter()
         return found
 
+    def check_ide_updates(self) -> None:
+        """Help > Check for Updates: the latest GitHub release of RAD IDE (radide/features/ide_update.py)."""
+        from .features.ide_update import check_for_updates
+        check_for_updates(self)
+
     def choose_interpreter(self) -> str:
         rp = self.run_plugin()
         if not rp:
@@ -2013,14 +2030,13 @@ class MainWindow(QMainWindow):
     def _make_session(self, spec, debug, plugin, interp, startup=None):
         """Python debugging uses debugpy (DAP) when installed: conditional breakpoints and
         break on exception come ready-made. Everything else uses the plugin's own agent."""
-        import importlib.util
         factory = getattr(plugin, "make_session", None)      # foreign projects (radide/foreign/*): own toolchain
         if callable(factory):
             s = factory(self, spec, debug)
             if s is not None:
                 return s
         if debug and (plugin.id.startswith("python") or getattr(plugin, "uses_debugpy", False)) \
-                and importlib.util.find_spec("debugpy") is not None \
+                and _has_debugpy() \
                 and self.settings.value("debug/python_engine", "debugpy") == "debugpy":
             from .dap import DapSession
             program = str(self.project.folder / plugin.code_file(self.project.startup if startup is None else startup))
@@ -2194,18 +2210,48 @@ class MainWindow(QMainWindow):
         e.accept()
 
 
+def parse_command_line(args: list[str]):
+    """python -m radide [path ...] [--line N] [--new-window] [--register | --unregister | --shell-status]
+    [--quiet] [--desktop | --no-desktop] [--no-uninstall-entry]. Unknown options (Qt's) are ignored."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="radide", add_help=False)
+    ap.add_argument("paths", nargs="*")
+    ap.add_argument("--line", "-l", type=int, default=None)
+    ap.add_argument("--new-window", "-n", action="store_true")
+    ap.add_argument("--register", action="store_true")
+    ap.add_argument("--unregister", action="store_true")
+    ap.add_argument("--shell-status", action="store_true")
+    ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--desktop", dest="desktop", action="store_true", default=None)
+    ap.add_argument("--no-desktop", dest="desktop", action="store_false")
+    ap.add_argument("--no-uninstall-entry", action="store_true")
+    ap.add_argument("--shell-options", default=None)     # e.g. file_assoc,open_with,context_menu (installer tasks)
+    ap.add_argument("--if-owner", action="store_true")   # --unregister only a registration of this exe (uninstaller)
+    ns, _unknown = ap.parse_known_args(args)
+    ns.paths = [p for p in ns.paths if p and Path(p).exists()]
+    return ns
+
+
 def main(argv=None):
+    argv = sys.argv if argv is None else argv
+    opts = parse_command_line(list(argv[1:]))
+    if opts.register or opts.unregister or opts.shell_status:     # Windows integration, no window
+        from .shell_integration import cli
+        return cli(opts.register, opts.unregister, opts.shell_status, opts.quiet, opts.desktop,
+                   not opts.no_uninstall_entry, opts.shell_options, opts.if_owner)
     try:                               # QtWebEngine must be imported before QApplication
         __import__("PyQt6.QtWebEngineWidgets")
     except ImportError:
         pass
-    argv = sys.argv if argv is None else argv
-    try:                               # DevTools port for debugging JavaScript in the Preview (before QApplication)
+    try:                              # DevTools port for debugging JavaScript in the Preview (before QApplication)
         from .web_site.browser_debug import enable_remote_debugging
         enable_remote_debugging(ide_settings())
     except Exception:  # noqa: BLE001 - optional
         pass
     app = QApplication(argv)
+    if getattr(sys, "frozen", False):  # release build: children must not inherit the bundled Qt's paths
+        from .paths import clean_child_environment
+        clean_child_environment()
     app.setApplicationName(APP_NAME)
     app.setStyle("Fusion")
     try:      # one consistent theme: Light unless Tools > Options says Dark (not Windows' dark mode)
@@ -2227,10 +2273,37 @@ def main(argv=None):
         except Exception:  # noqa: BLE001
             pass
     sys.excepthook = excepthook
+    lock = None
+    single = not opts.new_window and str(ide_settings().value("options/single_instance", True)).lower() \
+        not in ("false", "0", "no")
+    if single:                         # one window: a later launch hands its paths over (single_instance.py)
+        try:
+            from .single_instance import acquire_primary, send
+            lock = acquire_primary()
+            if lock is None and opts.paths and send(opts.paths, opts.line):
+                return 0
+        except Exception as e:  # noqa: BLE001 - never stop the IDE from starting
+            sys.__stderr__ and sys.__stderr__.write(f"[single instance] {e}\n")
+            lock = None
     win = MainWindow()
-    if len(argv) > 1 and Path(argv[1]).exists():
-        win.open_project(Path(argv[1]))
+    if lock is not None:
+        try:
+            from .single_instance import start_server
+            start_server(win, lock)
+        except Exception as e:  # noqa: BLE001
+            win.log(f"[single instance] {e}")
+    if opts.paths:
+        from .single_instance import open_target
+        for p in opts.paths:
+            try:
+                open_target(win, Path(p), opts.line)
+            except Exception as e:  # noqa: BLE001
+                win.log(f"*** cannot open {p}: {e}")
     elif win.option("reopen_last", False) and win.recent_projects():
         win.open_project(Path(win.recent_projects()[0]), ask=False)
     win.show()
+    hook = os.environ.get("RADIDE_STARTUP_SCRIPT")   # smoke tests of release builds: run a script with win/app
+    if hook and Path(hook).is_file():
+        QTimer.singleShot(0, lambda: exec(compile(Path(hook).read_text(encoding="utf-8"), hook, "exec"),  # noqa: S102
+                                          {"win": win, "app": app, "__file__": hook}))
     return app.exec()

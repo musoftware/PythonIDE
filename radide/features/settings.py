@@ -321,6 +321,15 @@ class OptionsDialog(QDialog):
         note.setWordWrap(True)
         T.role(note, "muted")
         f.addRow(note)
+        self._env_applies = []
+        try:                       # Windows integration (radide/features/shell_integration_ui.py)
+            from .shell_integration_ui import windows_group
+            grp = windows_group(self)
+            if grp is not None:
+                f.addRow(grp[0])
+                self._env_applies.append(grp[1])
+        except Exception as ex:  # noqa: BLE001 - never break Options
+            win.log(f"[options] Windows integration: {ex}")
         tabs.addTab(env, "Environment")
 
         # Editor
@@ -387,7 +396,7 @@ class OptionsDialog(QDialog):
         sa.setWidget(lw)
         tabs.addTab(sa, "Languages")
 
-        self._page_applies = []
+        self._page_applies = list(getattr(self, "_env_applies", []))
         for hook in PAGE_HOOKS:
             try:
                 page = hook(self)
