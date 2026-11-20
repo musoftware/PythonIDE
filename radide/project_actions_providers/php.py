@@ -685,6 +685,11 @@ CI_FOLDERS = [
 
 def spark(ctx, *args, title: str | None = None, opens: str | None = None, on_done=None):
     """``php spark <args>`` -> Output window (stdin closed: prompts take their defaults)."""
+    try:
+        if _ci().ensure_env(ctx.folder):          # a sample / cloned site without .env: SQLite development env
+            ctx.log("[CodeIgniter] .env created from the template")
+    except Exception:  # noqa: BLE001
+        pass
     return ctx.run_cli(["php", "spark", *[str(a) for a in args]], title=title or "spark " + " ".join(map(str, args[:3])),
                        opens=opens, on_done=on_done, stdin="")
 

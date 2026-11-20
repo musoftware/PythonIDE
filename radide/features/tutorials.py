@@ -682,7 +682,8 @@ def _start_page_links(win) -> None:
         page = win.tabs.widget(i)
         if isinstance(page, StartPage) and not getattr(page, "_rad_tutorials", False) and hasattr(page, "add_section"):
             sec = page.add_section("Learn Programming")
-            page.add_link(sec, "Arabic lessons: BASIC and C++ (الدروس)...", lambda: show_tutorials(win),
+            # English source text only: i18n.tr() leaves any text that already contains Arabic untranslated
+            page.add_link(sec, "Arabic lessons: BASIC and C++...", lambda: show_tutorials(win),
                           f"Help > Tutorials ({SHORTCUT})")
             for c in T.courses():
                 page.add_link(sec, c.title_en, lambda _=False, cid=c.id: show_tutorials(win, cid), c.title_ar)
@@ -698,7 +699,7 @@ def install(win) -> None:
     act = QAction("&Tutorials (Arabic lessons)...", win)
     act.setShortcut(QKeySequence(SHORTCUT))
     act.setIcon(book_icon())
-    act.setToolTip("Arabic programming courses: BASIC and C++ (الدروس)")
+    act.setToolTip("Arabic programming courses: BASIC and C++")
     act.triggered.connect(lambda: show_tutorials(win))
     from PyQt6.QtWidgets import QMenu
     sub_acts = []

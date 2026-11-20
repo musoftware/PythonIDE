@@ -156,6 +156,18 @@ diffed after `run` returns and the new files open.
 | just | `justfile` | every recipe (asks for arguments when it has parameters) |
 | Task | `Taskfile.yml` | every task |
 
+## Framework / language providers
+
+| Module | Providers (menu title) | Detected by |
+|---|---|---|
+| `node_web.py` | npm Scripts (+ Packages: update / outdated / audit / npm-check-updates, replaces the generic one), NestJS, Angular, React / Vue / Svelte (Vite), Express, Expo, React Native | `package.json` dependencies, `angular.json` |
+| `dotnet.py` | ASP.NET Core (dotnet new apicontroller / mvccontroller / page / razorcomponent / view, dotnet watch, EF Core migrations, user-secrets), Visual Studio (Build / Rebuild / Clean / Publish, NuGet) | Web SDK `.csproj`; `.sln` / `.slnx` or an opened VS project |
+| `java_ruby.py` | Spring Boot (Maven / Gradle tasks, New Controller / Entity / Repository / Service in package folders), Rails (rails g, db:*), Sinatra | `pom.xml` / `build.gradle` with Spring Boot; `config/application.rb`; Gemfile with sinatra |
+| `native.py` | Flutter (pub, build apk / appbundle / windows / web, New Screen - a new form in RAD IDE Flutter projects), Go, Rust (cargo), CMake (configure, target list, clean - built in the IDE state folder) | `pubspec.yaml` with the Flutter SDK, `go.mod`, `Cargo.toml`, `CMakeLists.txt` |
+| `rad_tools.py` | Godot (open the editor, run, export presets), Ring (run, ring2exe, ringpm), VB6 (properties, Make EXE), BASIC | `project.godot`, project language, `.ring` files, VB6 mirror folders |
+
+Shared helpers for these modules are in `_common.py` (`write_new`, `target_folder`, `run_script_or`, `log_routes` ...).
+
 ## Tips
 
 * Keep `detect()` cheap: stat a few files, read one small JSON at most. List the files in `markers` so the

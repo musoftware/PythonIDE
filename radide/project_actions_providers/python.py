@@ -698,7 +698,7 @@ class Django(Provider):
 
     def view_action(self, ctx, app: str) -> Action:
         models = self.models(ctx.folder, app)
-        return Action("new-view", "New View...", lambda c: self._new_view(c, app), opens="none", refresh=True,
+        return Action("new-view", "New View (views.py)...", lambda c: self._new_view(c, app), opens="none", refresh=True,
                       ask=[Field("name", "View name", default="about", help="a Python name, e.g. about or product_list"),
                            Field("kind", "Kind", "choice", default="Function",
                                  choices=["Function", "TemplateView", "ListView", "DetailView", "CreateView"]),
