@@ -1,6 +1,6 @@
 {
 "ring_root": "C:\\ring\\ring",
-"generated": "2026-11-21 01:26",
+"generated": "2026-11-21 01:27",
 "ring_version": "Ring version 1.28.0",
 "tested": "2026-11-21 01:26",
 "test_settings": {
@@ -46,31 +46,31 @@
 }
 },
 "fail_reasons": {
-"runtime error (R24)": 83,
+"runtime error (R24)": 76,
 "calls an undefined function (R3)": 73,
 "runtime error (R35)": 34,
+"the program raised an error": 33,
 "compile error (C27)": 33,
 "missing library: Loading Library": 18,
 "missing file/library: mylib.ring": 13,
 "runtime error (R11)": 8,
 "missing file/library: datalib.ring": 7,
 "runtime error (R1)": 6,
-"\tTCP/IP connections on port 5432?": 6,
-"runtime error (R41)": 6,
+"could not connect to server": 6,
 "missing file/library: mylanguage.ring": 6,
-"the program raised an error": 4,
+"runtime error (R41)": 5,
 "runtime error (R5)": 4,
-"In fclose() in file example.ring": 3,
-"Called from line 11 in file example.ring": 3,
+"Command (Cont)        ": 4,
 "exit code -1073741819": 3,
 "runtime error (R48)": 2,
 "runtime error (R27)": 2,
+"=========================================================": 2,
 "compile error (C8)": 2,
 "missing library: Dynamic DLL": 2,
 "missing file/library: closure.ring": 2,
 "compile error (C5)": 2,
 "missing file/library: dbflib.ring": 2,
-"In dir() in file example.ring": 2
+"missing file/library: Question.ring": 2
 },
 "docs_output_checked": 273,
 "docs_output_matches": 186
@@ -7470,7 +7470,7 @@
 "seconds": 1.0,
 "output": "Send email...\r\n\r\nLine 11 Login denied \r\nIn sendemail() in file sendemail.ring",
 "status": "fail",
-"reason": "In sendemail() in file sendemail.ring"
+"reason": "the program raised an error: Login denied"
 }
 },
 {
@@ -12840,7 +12840,7 @@
 "seconds": 0.06,
 "output": "3.14\r\n3.14\r\n\r\nLine 15 Can't change a constant \r\nIn raise() In method setpi() in file constants.ring\r\n\r\nCalled from line 7 in file constants.ring",
 "status": "fail",
-"reason": "Called from line 7 in file constants.ring"
+"reason": "the program raised an error: Can't change a constant"
 }
 },
 {
@@ -12866,7 +12866,7 @@
 "seconds": 0.06,
 "output": "3.14\r\n10\r\n3.14\r\n10\r\n\r\nLine 11 Can't change a constant \r\nIn raise() In method setcount() in file constants2.ring\r\n\r\nCalled from line 11 in file constants2.ring",
 "status": "fail",
-"reason": "Called from line 11 in file constants2.ring"
+"reason": "the program raised an error: Can't change a constant"
 }
 },
 {
@@ -12893,7 +12893,7 @@
 "seconds": 0.06,
 "output": "3.14\r\n10\r\n3.14\r\n10\r\n\r\nLine 13 Can't change a constant \r\nIn raise() In method setcount() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirror\\samples\\L",
 "status": "fail",
-"reason": "Called from line 13 in file constants3.ring"
+"reason": "the program raised an error: Can't change a constant"
 }
 },
 {
@@ -12921,7 +12921,7 @@
 "seconds": 0.09,
 "output": "Hello from main!\r\nHello from test1!\r\nHello from test2!\r\nHello from test3!\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n=========================================================",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "========================================================="
 }
 },
 {
@@ -24098,7 +24098,7 @@
 "seconds": 0.08,
 "output": "Command: I want window\r\nCommand: I want button\r\n\r\nLine 113 Error (NaturalLib-10) : Incomplete command... \r\nIn raise() In method braceend() in file C:\\ring\\ring\\libraries\\naturallib\\common/naturalbase.ring\r\n\r\nCalled from line 43 in file lang",
 "status": "fail",
-"reason": "Called from line 43 in file lang20.ring"
+"reason": "the program raised an error: Incomplete command..."
 }
 },
 {
@@ -25673,7 +25673,7 @@
 "seconds": 4.21,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {
@@ -25700,7 +25700,7 @@
 "seconds": 4.17,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {
@@ -25727,7 +25727,7 @@
 "seconds": 4.22,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {
@@ -31557,7 +31557,7 @@
 "seconds": 0.12,
 "output": "Line 5 Recvfrom Failed \r\nIn recvfrom() in file udpclient.ring",
 "status": "fail",
-"reason": "In recvfrom() in file udpclient.ring"
+"reason": "the program raised an error: Recvfrom Failed"
 }
 },
 {
@@ -32960,7 +32960,7 @@
 "seconds": 0.1,
 "output": "Before Line : 10\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n============================================================\r\nCommand (Exit)        : End Program\r\nCommand (Cont) ",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "Command (Cont)"
 }
 },
 {
@@ -32987,7 +32987,7 @@
 "seconds": 0.07,
 "output": "test1\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n============================================================\r\nCommand (Exit)        : End Program\r\nCommand (Cont)        : Co",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "Command (Cont)        : Co"
 }
 },
 {
@@ -33040,7 +33040,7 @@
 "seconds": 0.08,
 "output": "============================================================\r\n                    Interactive Debugger\r\n============================================================\r\nCommand (Exit)        : End Program\r\nCommand (Cont)        : Continue Exec",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "Command (Cont)        : Continue Exec"
 }
 },
 {
@@ -33439,7 +33439,7 @@
 "seconds": 0.19,
 "output": "Line 19 Error, Couldn't open the directory \r\nIn dir() in file ex17.ring",
 "status": "fail",
-"reason": "In dir() in file ex17.ring"
+"reason": "the program raised an error: Error, Couldn't open the directory"
 }
 },
 {
@@ -33658,7 +33658,7 @@
 "seconds": 4.49,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 206 in file ex24.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -33689,7 +33689,7 @@
 "seconds": 4.48,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 206 in file ex25.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -33750,7 +33750,7 @@
 "seconds": 4.34,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 11 in file ex27.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -33811,7 +33811,7 @@
 "seconds": 4.26,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 11 in file ex29.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -33869,7 +33869,7 @@
 "seconds": 4.27,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 10 in file ex30.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -34187,7 +34187,7 @@
 "seconds": 4.25,
 "output": "Line 16 Error (DataLib-1) : Can't connect to the database server! \r\nIn raise() In method connect() in file C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\e4285af5-0b45-4335-a89a-d0dc219b139e\\scratchpad\\agents14\\ring-samples\\mirro",
 "status": "fail",
-"reason": "Called from line 206 in file mysalarytable.ring"
+"reason": "the program raised an error: Can't connect to the database server!"
 }
 },
 {
@@ -42596,7 +42596,7 @@
 "seconds": 0.15,
 "output": "test1\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n============================================================\r\nCommand (Exit)        : End Program\r\nCommand (Cont)        : Co",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "Command (Cont)        : Co"
 }
 },
 {
@@ -44593,7 +44593,7 @@
 "seconds": 0.21,
 "output": "Line 6 Bad parameter type! \r\nIn getfilesize() in file example.ring",
 "status": "fail",
-"reason": "In getfilesize() in file example.ring"
+"reason": "the program raised an error: Bad parameter type!"
 }
 },
 {
@@ -45946,7 +45946,7 @@
 "seconds": 0.79,
 "output": "Testing DIR() \r\n\r\nLine 5 Error, Couldn't open the directory \r\nIn dir() in file example.ring",
 "status": "fail",
-"reason": "In dir() in file example.ring"
+"reason": "the program raised an error: Error, Couldn't open the directory"
 }
 },
 {
@@ -46189,7 +46189,7 @@
 "seconds": 0.29,
 "output": "testing file functions\r\nopen file\r\nreopen\r\n\r\nLine 10 Error in parameter, NULL pointer! \r\nIn freopen() in file example.ring",
 "status": "fail",
-"reason": "In freopen() in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -54226,7 +54226,7 @@
 "seconds": 0.07,
 "output": "1\r\n1\r\n\r\nLine 11 Error in parameter, NULL pointer! \r\nIn fclose() in file example.ring",
 "status": "fail",
-"reason": "In fclose() in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -57165,7 +57165,7 @@
 "seconds": 0.25,
 "output": "Line 265 Error (NaturalLib) : Can't open the command file : ../command/hello.ring \r\nIn raise() In method usecommand() in file C:\\ring\\ring\\libraries\\naturallib\\common/naturallanguage.ring\r\n\r\nCalled from line 11 in file example.ring",
 "status": "fail",
-"reason": "Called from line 11 in file example.ring"
+"reason": "the program raised an error: Can't open the command file : ../command/hello.ring"
 }
 },
 {
@@ -57261,7 +57261,7 @@
 "seconds": 0.25,
 "output": "Line 265 Error (NaturalLib) : Can't open the command file : ../command/hello.ring \r\nIn raise() In method usecommand() in file C:\\ring\\ring\\libraries\\naturallib\\common/naturallanguage.ring\r\n\r\nCalled from line 11 in file example.ring",
 "status": "fail",
-"reason": "Called from line 11 in file example.ring"
+"reason": "the program raised an error: Can't open the command file : ../command/hello.ring"
 }
 },
 {
@@ -57941,7 +57941,7 @@
 "seconds": 0.17,
 "output": "Command: I want window\r\nCommand: I want button\r\n\r\nLine 113 Error (NaturalLib-10) : Incomplete command... \r\nIn raise() In method braceend() in file C:\\ring\\ring\\libraries\\naturallib\\common/naturalbase.ring\r\n\r\nCalled from line 47 in file exam",
 "status": "fail",
-"reason": "Called from line 47 in file example.ring"
+"reason": "the program raised an error: Incomplete command..."
 }
 },
 {
@@ -60006,7 +60006,7 @@
 "seconds": 4.16,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {
@@ -60039,7 +60039,7 @@
 "seconds": 4.16,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {
@@ -68566,7 +68566,7 @@
 "seconds": 0.07,
 "output": "Test Linecount()\r\n\r\nLine 317 Error in parameter, NULL pointer! \r\nIn fgetc() In function linecount() in file C:\\ring\\ring\\libraries\\stdlib\\stdlibcore.ring\r\n\r\nCalled from line 7 in file example.ring",
 "status": "fail",
-"reason": "Called from line 7 in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -69273,7 +69273,7 @@
 "seconds": 0.08,
 "output": "Test Readline()\r\n\r\nLine 9 Error in parameter, NULL pointer! \r\nIn feof() in file example.ring",
 "status": "fail",
-"reason": "In feof() in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -70396,7 +70396,7 @@
 "seconds": 0.2,
 "output": "Test the Debug Class Methods\r\nHello\r\nassert\r\n\r\nLine 13 Error! \r\nIn raise() in file example.ring",
 "status": "fail",
-"reason": "In raise() in file example.ring"
+"reason": "the program raised an error: Error!"
 }
 },
 {
@@ -75772,7 +75772,7 @@
 "seconds": 0.18,
 "output": "Line 18 Error, Couldn't open the directory \r\nIn dir() in file example.ring",
 "status": "fail",
-"reason": "In dir() in file example.ring"
+"reason": "the program raised an error: Error, Couldn't open the directory"
 }
 },
 {
@@ -78994,7 +78994,7 @@
 "seconds": 0.13,
 "output": "1\r\n1\r\n\r\nLine 11 Error in parameter, NULL pointer! \r\nIn fclose() in file example.ring",
 "status": "fail",
-"reason": "In fclose() in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -79025,7 +79025,7 @@
 "seconds": 0.11,
 "output": "1\r\n1\r\nLine 10 Error in parameter, NULL pointer! \r\nIn fclose() in file example.ring",
 "status": "fail",
-"reason": "In fclose() in file example.ring"
+"reason": "the program raised an error: Error in parameter, NULL pointer!"
 }
 },
 {
@@ -81732,7 +81732,7 @@
 "seconds": 0.29,
 "output": "Line 265 Error (NaturalLib) : Can't open the command file : ../command/hello.ring \r\nIn raise() In method usecommand() in file C:\\ring\\ring\\libraries\\naturallib\\common/naturallanguage.ring\r\n\r\nCalled from line 11 in file example.ring",
 "status": "fail",
-"reason": "Called from line 11 in file example.ring"
+"reason": "the program raised an error: Can't open the command file : ../command/hello.ring"
 }
 },
 {
@@ -81984,7 +81984,7 @@
 "seconds": 0.25,
 "output": "Line 889 Error, Couldn't open the directory \r\nIn dir() In function listallfiles() in file C:\\ring\\ring\\libraries\\stdlib\\stdlibcore.ring\r\n\r\nCalled from line 5 in file example.ring",
 "status": "fail",
-"reason": "Called from line 5 in file example.ring"
+"reason": "the program raised an error: Error, Couldn't open the directory"
 }
 },
 {
@@ -82017,7 +82017,7 @@
 "seconds": 0.33,
 "output": "Line 889 Error, Couldn't open the directory \r\nIn dir() In function listallfiles() in file C:\\ring\\ring\\libraries\\stdlib\\stdlibcore.ring\r\n\r\nCalled from line 5 in file example.ring",
 "status": "fail",
-"reason": "Called from line 5 in file example.ring"
+"reason": "the program raised an error: Error, Couldn't open the directory"
 }
 },
 {
@@ -82149,7 +82149,7 @@
 "seconds": 1.94,
 "output": "URL Request: https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/3GYFK62847G247323?format=xml\r\n\r\nResponse Raw: <Response xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><Count>1</Count>",
 "status": "fail",
-"reason": "runtime error (R41): Invalid numeric string"
+"reason": "Response Raw: <Response xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><Count>1</Count>"
 }
 },
 {
@@ -82374,7 +82374,7 @@
 "seconds": 0.11,
 "output": "test1\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n============================================================\r\nCommand (Exit)        : End Program\r\nCommand (Cont)        : Co",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "Command (Cont)        : Co"
 }
 },
 {
@@ -83128,7 +83128,7 @@
 "seconds": 0.09,
 "output": "Hello from main!\r\nHello from test1!\r\nHello from test2!\r\nHello from test3!\r\n\r\n\r\n============================================================\r\n                    Interactive Debugger\r\n=========================================================",
 "status": "fail",
-"reason": "runtime error (R24): Using uninitialized variable: ring"
+"reason": "========================================================="
 }
 },
 {
@@ -83637,7 +83637,7 @@
 "seconds": 4.29,
 "output": "Connection to database failed: could not connect to server: Connection refused (0x0000274D/10061)\r\n\tIs the server running on host \"localhost\" (::1) and accepting\r\n\tTCP/IP connections on port 5432?\r\ncould not connect to server: Connection re",
 "status": "fail",
-"reason": "\tTCP/IP connections on port 5432?"
+"reason": "could not connect to server: Connection re"
 }
 },
 {

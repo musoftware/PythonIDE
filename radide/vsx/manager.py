@@ -277,6 +277,8 @@ def support_summary(ext: P.Extension | None = None, contributes: dict | None = N
     rows = []
 
     def n(v):
+        if isinstance(v, dict) and isinstance(v.get("properties"), dict):
+            return len(v["properties"])
         return len(v) if isinstance(v, (list, dict)) else (1 if v else 0)
     table = [
         ("themes", "Color themes", True, ""),

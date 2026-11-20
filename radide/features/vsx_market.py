@@ -503,6 +503,11 @@ class ExtensionsView(QWidget):
             self._update_banner()
         except RuntimeError:
             pass
+        for page in list(_details.values()):
+            try:
+                page._changed()
+            except RuntimeError:
+                pass
 
     def _refresh_market_buttons(self) -> None:
         for i in range(self.market.count()):
@@ -967,6 +972,8 @@ class DetailsPage(QWidget):
         ok_c = theme.current().get("success", "#087F23")
         bad_c = theme.current().get("error", "#C42B1C")
         for _key, label, ok, note in M.support_summary(contributes=contributes, has_code=has_code):
+            m = re.match(r"^(.*) \((\d+)\)$", label)
+            label = f"{_tr(m.group(1))} ({m.group(2)})" if m else _tr(label)
             it = QTreeWidgetItem([label, "✔ " + _tr("Supported") if ok else "✖ " + _tr("Not supported"),
                                   _tr(note) if note else ""])
             it.setForeground(1, QColor(ok_c if ok else bad_c))

@@ -209,7 +209,12 @@ class CargoAdapter(ForeignAdapter):
             return None
         env = rt.gnu_env()
         args = [] if target.kind in ("bin", "example") else ["--test-threads=1"]
-        return ChainSession(pre, lambda: gdb_session(win, self.debug_exe(target), args, self.root, env), win)
+        def make():
+            s = gdb_session(win, self.debug_exe(target), args, self.root, env)
+            if s is not None:
+                s.argv = [*s.argv, *rt.gdb_rust_args()]      # Rust pretty printers (Vec, String, HashMap ...)
+            return s
+        return ChainSession(pre, make, win)
 
     def commands(self):
         multi = self.workspace_only or (self.all_members and len(getattr(self, "packages", [])) > 1)

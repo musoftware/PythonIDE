@@ -1,0 +1,24 @@
+{
+  "name": "RAD Contrib Test Base",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FDF6E3",
+    "editor.foreground": "#333333",
+    "sideBar.background": "#EEE8D5",
+    "activityBar.background": "#DDD6C1",
+    "statusBar.background": "#B58900",
+    "statusBar.foreground": "#FFFFFF",
+    "tab.activeBackground": "#FDF6E3",
+    "tab.inactiveBackground": "#E4DDC8",
+    "list.activeSelectionBackground": "#268BD2",
+    "list.activeSelectionForeground": "#FFFFFF",
+    "editor.lineHighlightBackground": "#00000010"
+  },
+  "tokenColors": [
+    { "scope": "comment", "settings": { "foreground": "#93A1A1", "fontStyle": "italic" } },
+    { "scope": ["string", "string.quoted"], "settings": { "foreground": "#2AA198" } },
+    { "scope": "keyword", "settings": { "foreground": "#859900" } },
+    { "scope": "constant.numeric", "settings": { "foreground": "#D33682" } },
+    { "scope": "keyword.todo", "settings": { "foreground": "#DC322F", "fontStyle": "bold" } }
+  ]
+}

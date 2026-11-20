@@ -133,6 +133,9 @@ def main() -> int:
         for e in entries:
             if e["id"] in old:
                 e["test"] = old[e["id"]]
+                t = e["test"]
+                if t.get("status") == "fail" and t.get("output"):   # newer reason wording, same run
+                    t["reason"] = rs.error_reason(t["output"]) or t.get("reason", "")
     meta = {"ring_root": str(ring_root), "generated": time.strftime("%Y-%m-%d %H:%M"),
             "ring_version": ring_version(ring_root)}
     if a.keep_tests and old:

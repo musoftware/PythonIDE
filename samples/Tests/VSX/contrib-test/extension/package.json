@@ -1,0 +1,51 @@
+{
+  "name": "contrib-test",
+  "displayName": "RAD Contrib Test",
+  "description": "Declarative contributions only: a language with a TextMate grammar + injection, a theme with include, snippets, keybindings and settings (radide/vsx/contrib_*.py tests).",
+  "publisher": "radide",
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": { "vscode": "^1.60.0" },
+  "categories": ["Programming Languages", "Themes", "Snippets"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "radtest",
+        "aliases": ["RAD Test", "radtest"],
+        "extensions": [".radt"],
+        "filenames": ["Radtestfile"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      { "language": "radtest", "scopeName": "source.radtest", "path": "./syntaxes/radtest.tmLanguage.json" },
+      { "scopeName": "radtest.todo.injection", "path": "./syntaxes/todo.injection.json", "injectTo": ["source.radtest"] }
+    ],
+    "themes": [
+      { "label": "RAD Contrib Test Light", "uiTheme": "vs", "path": "./themes/test-light.json" }
+    ],
+    "snippets": [
+      { "language": "radtest", "path": "./snippets/radtest.json" }
+    ],
+    "commands": [
+      { "command": "contribtest.hello", "title": "Say Hello", "category": "Contrib Test" }
+    ],
+    "keybindings": [
+      { "key": "ctrl+alt+k", "command": "editor.action.commentLine", "when": "editorTextFocus && resourceExtname == .radt" },
+      { "key": "ctrl+alt+j", "command": "contribtest.hello", "when": "editorTextFocus", "args": { "who": "world" } },
+      { "key": "ctrl+k ctrl+alt+u", "mac": "cmd+k cmd+u", "command": "editor.action.transformToUppercase" }
+    ],
+    "configuration": {
+      "title": "RAD Contrib Test",
+      "properties": {
+        "contribTest.enabled": { "type": "boolean", "default": true, "description": "Enable the test feature." },
+        "contribTest.mode": { "type": "string", "enum": ["fast", "safe", "off"], "default": "safe",
+                              "enumDescriptions": ["Fast", "Safe", "Off"], "description": "Mode." },
+        "contribTest.name": { "type": "string", "default": "RAD", "markdownDescription": "A `name`." },
+        "contribTest.count": { "type": "integer", "default": 3, "minimum": 0, "maximum": 10, "description": "Count." },
+        "contribTest.ratio": { "type": "number", "default": 0.5, "description": "Ratio." },
+        "contribTest.list": { "type": "array", "default": ["a"], "description": "A list." }
+      }
+    }
+  }
+}

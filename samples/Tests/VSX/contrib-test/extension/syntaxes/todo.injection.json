@@ -1,0 +1,5 @@
+{
+  "scopeName": "radtest.todo.injection",
+  "injectionSelector": "L:comment.line.double-dash.radtest",
+  "patterns": [{ "name": "keyword.todo.radtest", "match": "\\bTODO\\b" }]
+}

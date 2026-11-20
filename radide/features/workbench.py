@@ -1084,8 +1084,8 @@ QTabBar::tab:hover:!selected {{ background: {t['tab_hover']}; }}
 
     def status_colors(self) -> tuple[str, str, str]:
         t = _t()
-        if _theme_name() == "High Contrast":
-            return t["status"], t["status_text"], t["border"]
+        if _theme_name() == "High Contrast" or (t.get("_vsx") and getattr(self.win, "session", None) is None):
+            return t["status"], t["status_text"], t["border"]      # (a VS Code colour theme: its status bar)
         if getattr(self.win, "session", None) is not None:
             return "#CC6633", "#FFFFFF", "#CC6633"           # debugging (VS Code orange)
         if getattr(self.win, "project", None) is None:

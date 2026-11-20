@@ -389,8 +389,8 @@ class RustCargoPlugin(LanguagePlugin):
             s = a.debug_session(win, t, pre)
             if s is not None:
                 return s
-        run = a.run_step(t, False)
-        return ChainSession(([] if not debug else []) + ([run] if run else []), None, win)
+        run = a.run_step(t, False)                     # Ctrl+F5 (or F5 when gdb is unavailable): cargo run/test
+        return ChainSession([run] if run else [], None, win)
 
 
 PLUGIN = RustCargoPlugin()

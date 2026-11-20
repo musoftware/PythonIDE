@@ -222,7 +222,8 @@ class DapSession(QObject):
                             if name.startswith("__") or name in ("special variables", "function variables"):
                                 continue
                             prefix = "" if s.get("name", "").lower().startswith("local") else s.get("name", "") + "."
-                            info.variables.append((prefix + name, v.get("type", ""), v.get("value", "")))
+                            info.variables.append((prefix + name, v.get("type", ""),
+                                                   v.get("value", "") or ("{...}" if v.get("variablesReference") else "")))
                             if v.get("variablesReference"):          # expandable (debug_extras / Locals)
                                 info.refs[prefix + name] = v["variablesReference"]
                         remaining[0] -= 1
@@ -289,7 +290,9 @@ class DapSession(QObject):
             for v in (b.get("variables", []) if m.get("success", True) else []):
                 if v.get("name") in ("special variables", "function variables"):
                     continue
-                out.append((v.get("name", ""), v.get("type", ""), v.get("value", ""), v.get("variablesReference", 0)))
+                out.append((v.get("name", ""), v.get("type", ""),
+                            v.get("value", "") or ("{...}" if v.get("variablesReference") else ""),
+                            v.get("variablesReference", 0)))
             cb(out)
         self._request("variables", {"variablesReference": int(ref)}, got)
 

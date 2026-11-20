@@ -1,0 +1,13 @@
+{
+  // JSON with comments, like VS Code's own language configurations
+  "comments": { "lineComment": "--", "blockComment": ["--[[", "]]"] },
+  "brackets": [["(", ")"], ["[", "]"]],
+  "autoClosingPairs": [["(", ")"], ["[", "]"], { "open": "\"", "close": "\"", "notIn": ["string"] }],
+  "surroundingPairs": [["(", ")"], ["\"", "\""]],
+  "folding": { "markers": { "start": "^\\s*func\\b", "end": "^\\s*end\\b" } },
+  "indentationRules": { "increaseIndentPattern": "^\\s*(func|if)\\b.*$", "decreaseIndentPattern": "^\\s*end\\b" },
+  "wordPattern": "[A-Za-z_][A-Za-z0-9_]*",
+  "onEnterRules": [
+    { "beforeText": "^\\s*--.*$", "action": { "indent": "none", "appendText": "-- " } }
+  ],
+}

@@ -397,8 +397,9 @@ def chrome_tokens(spec: ThemeSpec) -> dict:
     act_fg = g("activityBar.foreground", default=readable_on(act))
     title = g("titleBar.activeBackground", default=act)
     title_fg = g("titleBar.activeForeground", default=readable_on(title))
-    border = g("panel.border", "sideBar.border", "editorGroup.border", "contrastBorder", "widget.border",
-               default=mix(side, fg, 0.18))
+    # VS Code draws only a few accent borders (Dracula: purple panel border); the IDE has a border around every
+    # dock / tab, so a neutral one is derived unless the theme is high contrast
+    border = g("contrastBorder", default=mix(side, fg, 0.16)) if spec.base.startswith("hc") else mix(side, fg, 0.16)
     sel = g("list.activeSelectionBackground", "editor.selectionBackground", "selection.background",
             default="#094771" if dark else "#0060C0", on=side)
     sel_fg = g("list.activeSelectionForeground", default=readable_on(sel), on=side)

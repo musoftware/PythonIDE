@@ -75,6 +75,7 @@ _GUI_RX = re.compile(r"\bnew\s+q(app|widget|mainwindow|dialog)\b|\bmsgbox\s*\(",
 _WEB_RX = re.compile(r"\bimport\s+system\.web\b|content-type:|\bnew\s+server\b|\.listen\s*\(", re.I)
 _ERR_RX = re.compile(r"Error \(([A-Z])(\d+)\)\s*:\s*([^\r\n]*)")
 _RAISE_RX = re.compile(r"Line \d+ Error : ([^\r\n]*)")          # raise("...") in the program
+_LINE_ERR_RX = re.compile(r"(?m)^Line \d+ (?:Error \([^)]*\) : )?([^\r\n]+)")
 
 
 # ======================================================================== Ring location
@@ -605,6 +606,9 @@ def error_reason(output: str) -> str:
         if m.group(1) == "C":
             return f"compile error ({code}): {msg[:140]}"
         return f"runtime error ({code}): {msg[:140]}"
+    g = _LINE_ERR_RX.search(output)                 # "Line 15 Can't change a constant" (raise in a library)
+    if g:
+        return f"the program raised an error: {g.group(1).strip()[:140]}"
     tail = [ln for ln in output.strip().splitlines() if ln.strip()]
     return tail[-1][:160] if tail else ""
 

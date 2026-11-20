@@ -315,6 +315,24 @@ def gnu_env() -> dict:
     return env
 
 
+def gdb_rust_args() -> list[str]:
+    """gdb arguments that load Rust's pretty printers (Vec, String, HashMap, Option ... show their contents
+    instead of raw internals): lib/rustlib/etc/gdb_load_rust_pretty_printers.py of the active toolchain."""
+    cands = []
+    rustup = find_rustup()
+    if rustup:
+        code, out, _err = _run([rustup, "run", "stable", "rustc", "--print", "sysroot"], timeout=20)
+        if code == 0 and out.strip():
+            cands.append(Path(out.strip().splitlines()[-1]))
+    cands += sorted(rustup_home().glob("toolchains/stable-*"), reverse=True)
+    cands += sorted(rustup_home().glob("toolchains/*"), reverse=True)
+    for root in cands:
+        f = root / "lib" / "rustlib" / "etc" / "gdb_load_rust_pretty_printers.py"
+        if f.is_file():
+            return ["-iex", "source " + f.as_posix()]
+    return []
+
+
 def debug_missing() -> str:
     """Why F5 cannot debug a Rust program here ('' = ready)."""
     try:

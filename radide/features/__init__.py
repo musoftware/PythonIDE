@@ -20,8 +20,22 @@ def _extensions(step: str, win) -> None:
             traceback.print_exc()
 
 
+def _vsx_contributions(win) -> None:
+    """VS Code extensions' themes / languages / grammars / icons (radide/vsx/contrib_runtime.py): before the
+    features, so Options applies a VS Code colour theme at start-up and files open with the right language."""
+    try:
+        from ..vsx import contrib_runtime
+        contrib_runtime.install(win)
+    except Exception:  # noqa: BLE001 - VS Code extensions must never stop the IDE
+        try:
+            win.log(f"[vsx] contributions failed:\n{traceback.format_exc()}")
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+
+
 def install_all(win) -> None:
     _extensions("preload", win)          # themes / languages / AI providers before the features
+    _vsx_contributions(win)
     _install_features(win)
     _extensions("activate", win)         # extension code after every built-in feature
 

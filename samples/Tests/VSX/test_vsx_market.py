@@ -253,6 +253,8 @@ import urllib.request  # noqa: E402
 _orig = urllib.request.urlopen
 urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(OSError("network down"))
 try:
+    for f in P.cache_dir("json").iterdir():          # make every cached answer stale
+        os.utime(f, (time.time() - 86400, time.time() - 86400))
     dd = R.get_json(url_d, ttl=0)
     check("offline details from cache", dd.get("name") == "theme-dracula")
     pg = R.search("dracula", size=10)

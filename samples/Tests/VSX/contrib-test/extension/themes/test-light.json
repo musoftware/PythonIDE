@@ -1,0 +1,11 @@
+{
+  // includes base.json; the keyword colour is overridden here
+  "name": "RAD Contrib Test Light",
+  "include": "./base.json",
+  "colors": { "statusBar.background": "#6C71C4" },
+  "tokenColors": [
+    { "scope": "keyword.control", "settings": { "foreground": "#CB4B16" } },
+    { "scope": "entity.name.function", "settings": { "foreground": "#268BD2" } },
+  ],
+  "semanticTokenColors": { "function": "#268BD2", "variable.readonly": { "foreground": "#B58900", "italic": true } }
+}
