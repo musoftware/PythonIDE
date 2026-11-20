@@ -1,0 +1,33 @@
+{
+  "id": "vb-basic",
+  "title_ar": "تعلّم البرمجة بلغة BASIC (فيجوال بيسك 6) من الصفر",
+  "title_en": "Learn Programming with BASIC (Visual Basic 6) from Scratch",
+  "language": "vb-basic",
+  "level": "beginner",
+  "lessons": [
+    {"id": "01-what-is-programming", "file": "01-what-is-programming.md", "title_ar": "ما هي البرمجة؟", "minutes": 15},
+    {"id": "02-the-ide", "file": "02-the-ide.md", "title_ar": "تعرّف على بيئة التطوير", "minutes": 20},
+    {"id": "03-first-program", "file": "03-first-program.md", "title_ar": "برنامجك الأول: MsgBox و Debug.Print", "minutes": 20},
+    {"id": "04-variables-types", "file": "04-variables-types.md", "title_ar": "المتغيرات وأنواع البيانات", "minutes": 30},
+    {"id": "05-input", "file": "05-input.md", "title_ar": "الإدخال: InputBox و TextBox", "minutes": 25},
+    {"id": "06-operators", "file": "06-operators.md", "title_ar": "العمليات والتعبيرات", "minutes": 25},
+    {"id": "07-conditions", "file": "07-conditions.md", "title_ar": "الشروط: If و Select Case", "minutes": 30},
+    {"id": "08-loops", "file": "08-loops.md", "title_ar": "حلقات التكرار", "minutes": 35},
+    {"id": "09-arrays", "file": "09-arrays.md", "title_ar": "المصفوفات", "minutes": 35},
+    {"id": "10-strings", "file": "10-strings.md", "title_ar": "التعامل مع النصوص", "minutes": 30},
+    {"id": "11-subs-functions", "file": "11-subs-functions.md", "title_ar": "الإجراءات والدوال: Sub و Function", "minutes": 35},
+    {"id": "12-scope-modules", "file": "12-scope-modules.md", "title_ar": "نطاق المتغيرات والوحدات", "minutes": 25},
+    {"id": "13-forms-controls", "file": "13-forms-controls.md", "title_ar": "النماذج والأدوات الأساسية", "minutes": 35},
+    {"id": "14-lists-choices", "file": "14-lists-choices.md", "title_ar": "القوائم والاختيارات", "minutes": 35},
+    {"id": "15-timer-events", "file": "15-timer-events.md", "title_ar": "المؤقت والأحداث", "minutes": 30},
+    {"id": "16-control-arrays", "file": "16-control-arrays.md", "title_ar": "مصفوفات الأدوات", "minutes": 25},
+    {"id": "17-menus", "file": "17-menus.md", "title_ar": "القوائم (Menus)", "minutes": 25},
+    {"id": "18-error-handling", "file": "18-error-handling.md", "title_ar": "معالجة الأخطاء: On Error", "minutes": 30},
+    {"id": "19-files", "file": "19-files.md", "title_ar": "الملفات", "minutes": 35},
+    {"id": "20-types", "file": "20-types.md", "title_ar": "الأنواع المعرّفة: Type ... End Type", "minutes": 25},
+    {"id": "21-collections", "file": "21-collections.md", "title_ar": "المجموعات: Collection", "minutes": 30},
+    {"id": "22-classes", "file": "22-classes.md", "title_ar": "الفئات: Class Modules", "minutes": 40},
+    {"id": "23-final-project", "file": "23-final-project.md", "title_ar": "المشروع النهائي: دفتر العناوين", "minutes": 60},
+    {"id": "24-glossary", "file": "24-glossary.md", "title_ar": "قاموس المصطلحات", "minutes": 15}
+  ]
+}

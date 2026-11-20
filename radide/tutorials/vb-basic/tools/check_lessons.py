@@ -9,16 +9,18 @@ Blocks that are tested (fenced code blocks in the lessons):
     ```vb exercise       starter code: only checked for syntax errors
 A block may hold several files separated by lines of the form  '#file: Name.ext  (e.g. a class module).
 
-A following ```output block is the expected Debug.Print output (compared line by line, trailing spaces
+A following ```text output block (or ```output) is the expected Debug.Print output (compared line by line, trailing spaces
 ignored).  An HTML comment just before a block gives the scripted test:
     <!-- test: {"inputs": ["5", "7"],                      InputBox answers (in order)
                 "steps": [["set", "txtA", "Text", "3"],     set a property
                           ["click", "cmdAdd"],               run cmdAdd_Click
                           ["click", "cmdNum", 2],            control array element 2
                           ["event", "Timer1", "Timer"],      run Timer1_Timer
-                          ["menu", "mnuFileExit"]],          run a menu item's _Click
+                          ["menu", "mnuFileExit"],           run a menu item's _Click
+                          ["key", "txtAge", "a"]],           run txtAge_KeyPress with KeyAscii = Asc("a")
                 "expect": {"lblResult.Caption": "7"},       control properties after the steps
                 "msgbox": ["Hello"],                        MsgBox prompts (in order)
+                "keys": [null, "break"],                    KeyPress results ("break" = KeyAscii set to 0)
                 "error": 11} -->                            the program must stop with this run-time error
 
 Each block runs in its own process (a child of this script), headless: MsgBox/InputBox are scripted and the
@@ -60,7 +62,7 @@ def blocks(md: str):
         if i + 1 < len(found):
             nxt = found[i + 1]
             between = md[m.end():nxt.start()]
-            if nxt.group(1).strip() == "output" and len(between.strip().splitlines()) <= 3:
+            if nxt.group(1).strip() in ("output", "text output") and len(between.strip().splitlines()) <= 3:
                 expected = nxt.group(2)
         yield kind, m.group(2), spec, expected, md.count("\n", 0, m.start()) + 1
 
@@ -178,6 +180,9 @@ def child(folder: str, spec_path: str, result_path: str) -> None:
                 ev = "Click" if op != "event" else step[2]
                 idx = step[2] if op == "click" and len(step) > 2 else (step[3] if len(step) > 3 else None)
                 rt.run_handler(vf, f"{step[1]}_{ev}", "Click" if ev == "Click" else ev, index=idx)
+            elif op == "key":                        # ["key", "txtAge", "a"]: KeyPress with KeyAscii
+                e = type("E", (), {"KeyChar": step[2], "raw": None})()
+                result.setdefault("keys", []).append(rt.run_handler(vf, f"{step[1]}_KeyPress", "KeyPress", e))
             elif op == "form":                       # switch to another loaded form: ["form", "Form2"]
                 rt.startup_form = rt.forms[step[1].lower()]
             if rt.root is not None:
@@ -185,8 +190,13 @@ def child(folder: str, spec_path: str, result_path: str) -> None:
         for key in spec.get("expect", {}):
             ctl, _, prop = key.partition(".")
             vf = rt.startup_form or next(f for f in rt.forms.values() if f.loaded)
-            obj = vf.vb_get(ctl.lower())
-            result["values"][key] = str(obj.vb_get(prop.lower()))
+            obj = vf if ctl.lower() in (vf.name.lower(), "me") else vf.vb_get(ctl.lower())
+            mm = re.match(r"(\w+)\((.*)\)$", prop)
+            if mm:                                   # lstNames.List(0)
+                value = obj.vb_call(mm.group(1).lower(), [json.loads(a) for a in mm.group(2).split(",")])
+            else:
+                value = obj.vb_get(prop.lower())
+            result["values"][key] = str(value)
     except EndProgram:
         finish()
     except VBRuntimeError as ex:
@@ -252,10 +262,15 @@ def run_block(kind, code, spec, expected, work: Path) -> list[str]:
     if expected is not None and norm(r.get("output", "")) != norm(expected):
         problems.append("output differs:\n--- expected\n" + "\n".join(norm(expected)) +
                         "\n--- got\n" + "\n".join(norm(r.get("output", ""))))
+    if "keys" in spec and r.get("keys") != spec["keys"]:
+        problems.append(f"KeyPress: expected {spec['keys']!r}, got {r.get('keys')!r}")
     if "msgbox" in spec and r["msgbox"] != spec["msgbox"]:
         problems.append(f"MsgBox: expected {spec['msgbox']!r}, got {r['msgbox']!r}")
     for k, v in spec.get("expect", {}).items():
-        if r["values"].get(k) != str(v):
+        got = r["values"].get(k)
+        if str(v).startswith("re:") and got is not None and re.fullmatch(str(v)[3:], got):
+            continue                                   # "re:\d\d:\d\d" - a pattern (clock, random ...)
+        if got != str(v):
             problems.append(f"{k}: expected {v!r}, got {r['values'].get(k)!r}")
     if ("run" in kind or "solution" in kind) and expected is None and not tested:
         problems.append("untested block: add an ```output block or a <!-- test: --> comment")
@@ -266,6 +281,7 @@ def main(argv: list[str]) -> int:
     if argv[:1] == ["--child"]:
         child(*argv[1:4])
         return 0
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     verbose = "-v" in argv
     filters = [a for a in argv if not a.startswith("-")]
     files = sorted(COURSE.glob("[0-9][0-9]-*.md"))

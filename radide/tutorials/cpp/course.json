@@ -4,7 +4,181 @@
   "title_en": "Learn Modern C++ from Scratch",
   "language": "cpp-bridge",
   "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في C++ الحديثة (C++17/20): الأساسيات، والدوال، والذاكرة، والبرمجة كائنية التوجه، والقوالب، والمكتبة القياسية، والملفات، والاستثناءات، ثم الواجهات الرسومية بمصمم النماذج عبر GUI Bridge، ومشروع نهائي.",
   "lessons": [
-    {"id": "01-setup", "file": "01-setup.md", "title_ar": "مرحبًا بك في C++ وتجهيز بيئة العمل", "minutes": 20}
+    {
+      "id": "01-setup",
+      "file": "01-setup.md",
+      "title_ar": "مرحبًا بك في C++ وتجهيز بيئة العمل",
+      "minutes": 20
+    },
+    {
+      "id": "02-first-program",
+      "file": "02-first-program.md",
+      "title_ar": "برنامجك الأول سطرًا سطرًا",
+      "minutes": 25
+    },
+    {
+      "id": "03-variables",
+      "file": "03-variables.md",
+      "title_ar": "المتغيرات وأنواع البيانات",
+      "minutes": 30
+    },
+    {
+      "id": "04-input-output",
+      "file": "04-input-output.md",
+      "title_ar": "الإدخال والإخراج",
+      "minutes": 30
+    },
+    {
+      "id": "05-operators",
+      "file": "05-operators.md",
+      "title_ar": "العمليات الحسابية والمنطقية (العوامل)",
+      "minutes": 30
+    },
+    {
+      "id": "06-conditions",
+      "file": "06-conditions.md",
+      "title_ar": "الشروط واتخاذ القرار",
+      "minutes": 35
+    },
+    {
+      "id": "07-loops",
+      "file": "07-loops.md",
+      "title_ar": "حلقات التكرار",
+      "minutes": 40
+    },
+    {
+      "id": "08-functions",
+      "file": "08-functions.md",
+      "title_ar": "الدوال (Functions)",
+      "minutes": 35
+    },
+    {
+      "id": "09-functions-advanced",
+      "file": "09-functions-advanced.md",
+      "title_ar": "الدوال المتقدمة: المراجع، والتحميل الزائد، والقيم الافتراضية",
+      "minutes": 45
+    },
+    {
+      "id": "10-arrays-vector",
+      "file": "10-arrays-vector.md",
+      "title_ar": "المصفوفات و`std::vector`",
+      "minutes": 45
+    },
+    {
+      "id": "11-strings",
+      "file": "11-strings.md",
+      "title_ar": "النصوص `std::string`",
+      "minutes": 40
+    },
+    {
+      "id": "12-pointers",
+      "file": "12-pointers.md",
+      "title_ar": "المؤشرات والذاكرة (بهدوء وخطوة بخطوة)",
+      "minutes": 50
+    },
+    {
+      "id": "13-smart-pointers",
+      "file": "13-smart-pointers.md",
+      "title_ar": "المؤشرات الذكية (Smart Pointers)",
+      "minutes": 40
+    },
+    {
+      "id": "14-structs",
+      "file": "14-structs.md",
+      "title_ar": "التراكيب `struct`: تجميع البيانات المترابطة",
+      "minutes": 35
+    },
+    {
+      "id": "15-classes",
+      "file": "15-classes.md",
+      "title_ar": "الأصناف والكائنات (Classes and Objects)",
+      "minutes": 45
+    },
+    {
+      "id": "16-constructors",
+      "file": "16-constructors.md",
+      "title_ar": "المُنشئ والمُهدِّم (Constructors and Destructors)",
+      "minutes": 45
+    },
+    {
+      "id": "17-inheritance",
+      "file": "17-inheritance.md",
+      "title_ar": "الوراثة (Inheritance)",
+      "minutes": 40
+    },
+    {
+      "id": "18-polymorphism",
+      "file": "18-polymorphism.md",
+      "title_ar": "تعدد الأشكال والدوال الافتراضية (Polymorphism and virtual)",
+      "minutes": 50
+    },
+    {
+      "id": "19-operator-overloading",
+      "file": "19-operator-overloading.md",
+      "title_ar": "التحميل الزائد للعوامل (Operator Overloading)",
+      "minutes": 40
+    },
+    {
+      "id": "20-templates",
+      "file": "20-templates.md",
+      "title_ar": "القوالب (Templates)",
+      "minutes": 40
+    },
+    {
+      "id": "21-stl-containers",
+      "file": "21-stl-containers.md",
+      "title_ar": "حاويات المكتبة القياسية (STL Containers)",
+      "minutes": 45
+    },
+    {
+      "id": "22-algorithms-lambdas",
+      "file": "22-algorithms-lambdas.md",
+      "title_ar": "الخوارزميات ودوال لامدا (Algorithms and Lambdas)",
+      "minutes": 45
+    },
+    {
+      "id": "23-files",
+      "file": "23-files.md",
+      "title_ar": "التعامل مع الملفات (fstream)",
+      "minutes": 40
+    },
+    {
+      "id": "24-exceptions",
+      "file": "24-exceptions.md",
+      "title_ar": "الاستثناءات ومعالجة الأخطاء (Exceptions)",
+      "minutes": 40
+    },
+    {
+      "id": "25-namespaces-files",
+      "file": "25-namespaces-files.md",
+      "title_ar": "فضاءات الأسماء وتقسيم البرنامج إلى ملفات",
+      "minutes": 40
+    },
+    {
+      "id": "26-gui-first-form",
+      "file": "26-gui-first-form.md",
+      "title_ar": "أول نافذة رسومية بـ C++ في مصمم النماذج",
+      "minutes": 45
+    },
+    {
+      "id": "27-gui-controls-events",
+      "file": "27-gui-controls-events.md",
+      "title_ar": "الأدوات والأحداث: القوائم، والاختيارات، والمؤقت",
+      "minutes": 50
+    },
+    {
+      "id": "28-final-project",
+      "file": "28-final-project.md",
+      "title_ar": "المشروع النهائي: مدير درجات الطلاب",
+      "minutes": 90
+    },
+    {
+      "id": "29-glossary",
+      "file": "29-glossary.md",
+      "title_ar": "قاموس المصطلحات (إنجليزي - عربي)",
+      "minutes": 15
+    }
   ]
 }
