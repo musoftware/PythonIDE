@@ -590,7 +590,13 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_interp)
         m = mb.addMenu("&Help")
         m.addAction(self._act("&About", lambda: QMessageBox.about(
-            self, APP_NAME, f"{APP_NAME}\nA Visual Basic 2005 style IDE for scripting languages.")))
+            self, APP_NAME,
+            f"<h3>{APP_NAME}</h3>"
+            "<p>A Visual Basic 2005 style IDE for scripting languages.</p>"
+            "<p>© 2026 Musoftware - <a href='https://musoftwares.com'>musoftwares.com</a></p>"
+            "<p>Free and open source under the MIT License: anyone may use, copy and modify it, "
+            "as long as the credit to Musoftware (musoftwares.com) is kept. "
+            "See LICENSE and THIRD_PARTY_NOTICES.md.</p>")))
 
         tb = self.addToolBar("Standard")
         tb.setObjectName("Standard")

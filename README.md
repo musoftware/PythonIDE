@@ -326,3 +326,9 @@ project (F5 passes the ones the IDE knows as `RADIDE_DB_<CONNECTION>_PASSWORD`).
   `unins000.exe /VERYSILENT`.
 - Code: `radide/deploy/build.py` (build), `radide/deploy/inno.py` (setup script + publish chain),
   `radide/features/installer.py` (menu + dialog).
+
+## License
+
+RAD IDE is free and open source under the **MIT License** - © 2026 Musoftware ([musoftwares.com](https://musoftwares.com)).
+Anyone may use, copy, modify and redistribute it, provided the copyright notice crediting Musoftware (musoftwares.com) is kept in all copies. See `LICENSE`; bundled components keep their own licenses (`THIRD_PARTY_NOTICES.md`).
+
