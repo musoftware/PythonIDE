@@ -642,13 +642,15 @@ def migration_tables(folder) -> dict[str, dict[str, str]]:
         dm = re.search(r"function\s+down\s*\(", text)
         if dm:
             up = text[:dm.start()]
-        for sm in re.finditer(r"Schema::(create|table)\s*\(\s*['\"](\w+)['\"]\s*,\s*function\s*\([^)]*\)\s*(?::\s*\w+\s*)?\{",
-                              up):
+        for sm in re.finditer(r"Schema::(create|table)\s*\(\s*['\"](\w+)['\"]\s*,\s*(?:static\s+)?function\s*\(([^)]*)\)"
+                              r"\s*(?::\s*\w+\s*)?\{", up):
             body = _balanced(up[sm.end():], "{", "}")
             cols = tables.setdefault(sm.group(2), {}) if sm.group(1) == "table" else tables.setdefault(sm.group(2), {})
             if sm.group(1) == "create":
                 cols.clear()
-            for cm in re.finditer(r"\$table\s*->\s*(\w+)\s*\(([^;]*?)\)", body):
+            vm = re.search(r"\$(\w+)", sm.group(3))           # the Blueprint parameter: $table, $t, $blueprint ...
+            var = vm.group(1) if vm else "table"
+            for cm in re.finditer(r"\$" + var + r"\s*->\s*(\w+)\s*\(([^;]*?)\)", body):
                 meth, args = cm.group(1), cm.group(2)
                 names = re.findall(r"['\"](\w+)['\"]", args)
                 first = names[0] if names else ""
