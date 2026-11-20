@@ -204,7 +204,7 @@ def menu_actions(win) -> list[tuple[str, QAction]]:
         except Exception:  # noqa: BLE001
             pass
         for a in menu.actions():
-            if a.isSeparator() or not a.isVisible():
+            if a.isSeparator() or not a.isVisible() or a.property("wbNoPalette"):
                 continue
             t = clean_text(_shown(a))
             sub = a.menu()
@@ -217,7 +217,7 @@ def menu_actions(win) -> list[tuple[str, QAction]]:
             out.append((": ".join(path + [t]), a))
 
     for a in win.menuBar().actions():
-        if a.menu() is not None and a.isVisible():
+        if a.menu() is not None and a.isVisible() and not a.property("wbNoPalette"):
             walk(a.menu(), [clean_text(_shown(a))])
     for tb in win.findChildren(QToolBar):
         for a in tb.actions():

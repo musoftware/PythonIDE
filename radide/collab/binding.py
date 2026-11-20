@@ -107,7 +107,9 @@ JS = r"""
     el.textContent = '.rc-s-' + id + '{background:' + color + '40;}' +
       '.rc-c-' + id + '{border-left:2px solid ' + color + ';margin-left:-1px;position:relative;}' +
       '.rc-c-' + id + '::after{content:"' + label + '";position:absolute;left:-2px;top:-1.15em;font:10px/1.2 Segoe UI,sans-serif;' +
-      'background:' + color + ';color:#fff;padding:0 3px;border-radius:2px 2px 2px 0;white-space:nowrap;pointer-events:none;z-index:5;}';
+      'background:' + color + ';color:#fff;padding:0 3px;border-radius:2px 2px 2px 0;white-space:nowrap;pointer-events:none;z-index:5;' +
+      'animation:rc-fade 4s forwards;}' +
+      '@keyframes rc-fade{0%,75%{opacity:1}100%{opacity:0}}';
   }
   window.radCollab = {
     start(text, epoch) {

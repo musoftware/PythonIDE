@@ -353,7 +353,10 @@ def _make_cpp_gui(files: dict[str, str], dest: Path, name: str):
     form = Form.load(project.form_path("Form1"))
     y = 12
     for typ, cname in gui_controls(code):
-        c = form.add(typ, 12, y)
+        try:
+            c = form.add(typ, 12, y)
+        except KeyError:                       # a control type this IDE build does not have
+            continue
         c.props["Name"] = cname
         if typ == "Label":
             c.props["Width"] = 360

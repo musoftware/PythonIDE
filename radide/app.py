@@ -1617,6 +1617,11 @@ class MainWindow(QMainWindow):
             m.addAction("Open", lambda: self.open_module(name))
             m.addSeparator()
             m.addAction("Delete", lambda: self.delete_module_dialog(name))
+        try:                                    # project actions of the clicked file (features/project_menus.py)
+            from .features.solution_ui import apply_menu_hooks
+            apply_menu_hooks(self, item, m)
+        except ImportError:
+            pass
         m.exec(self.solution.viewport().mapToGlobal(pos))
 
     def _tab_menu(self, pos):

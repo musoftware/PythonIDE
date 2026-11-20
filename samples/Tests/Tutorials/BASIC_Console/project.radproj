@@ -1,0 +1,9 @@
+{
+  "name": "Lesson",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "Sub Main",
+  "modules": [
+    "Module1.bas"
+  ]
+}

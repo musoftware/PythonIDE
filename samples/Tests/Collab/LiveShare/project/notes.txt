@@ -1,0 +1,2 @@
+Team notes (plain text, opened by the follow-mode test).
+ملاحظات الفريق

@@ -345,8 +345,11 @@ class CollabHost(SessionBase):
         if p is None:
             return
         if p.joined:
-            self.message.emit(f"{p.name} left the session")
-            self._broadcast_participants()
+            try:
+                self.message.emit(f"{p.name} left the session")
+                self._broadcast_participants()
+            except RuntimeError:      # the host object is already gone (sockets closing at shutdown)
+                return
         try:
             p.socket.deleteLater()
         except (RuntimeError, AttributeError):
@@ -534,9 +537,7 @@ class CollabGuest(SessionBase):
                                    "auth": P.auth(self.password, str(msg.get("nonce", "")))})
         elif t == "reject":
             self._closing = True
-            reason = str(msg.get("reason", "rejected"))
-            self.message.emit(f"Join refused: {reason}")
-            self.rejected.emit(reason)
+            self.rejected.emit(str(msg.get("reason", "rejected")))
         elif t == "welcome":
             self.me = int(msg["id"])
             self.session_name = str(msg.get("session", ""))

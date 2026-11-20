@@ -14,6 +14,7 @@ class ProductModel extends Model
 
     // validation (used by insert() / update() / save(); {id} = the row being updated)
     protected $validationRules = [
+        'id'    => 'permit_empty|is_natural_no_zero',    // CI 4.7: a {placeholder} field needs a rule
         'name'  => 'required|min_length[3]|max_length[120]',
         'sku'   => 'required|alpha_dash|max_length[40]|is_unique[products.sku,id,{id}]',
         'price' => 'required|decimal|greater_than_equal_to[0]',

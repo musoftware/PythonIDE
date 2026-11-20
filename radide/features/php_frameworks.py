@@ -201,7 +201,8 @@ def laravel_project(win):
             pass
     cands += list(getattr(getattr(win, "sln", None), "projects", []) or [])
     for p in cands:
-        if p is not None and common.framework_of(p.folder) == "laravel":
+        folder = getattr(p, "folder", None)            # unloaded solution entries have no folder
+        if folder and common.framework_of(folder) == "laravel":
             return p
     return None
 
@@ -1113,7 +1114,7 @@ def install(win) -> None:
     win.prepare_laravel = lambda project=None, ask=True: prepare_project(win, project or laravel_project(win), ask)
     try:
         from .workbench import register_view
-        register_view("laravel", "Laravel", factory=lambda w: w.laravel_panel, area="panel", order=82,
+        register_view("laravel", "Laravel", factory=lambda w: w.dock_laravel, area="panel", order=82,
                       tooltip="Laravel: Artisan commands, routes, Tinker")
     except Exception:  # noqa: BLE001
         pass

@@ -56,7 +56,9 @@ class Products extends BaseController
     {
         $this->find($id);
         $data = $this->request->getPost(['name', 'sku', 'price', 'stock', 'description']);
-        if (! $this->products->update($id, $data)) {
+        // 'id' fills the {id} placeholder of the is_unique rule (the row's own SKU is allowed); it is not an
+        // allowed field, so it is not written
+        if (! $this->products->update($id, ['id' => $id] + $data)) {
             return redirect()->back()->withInput()->with('errors', $this->products->errors());
         }
 

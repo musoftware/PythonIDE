@@ -316,7 +316,7 @@ class TutorialsPanel(QWidget):
         self.split.addWidget(self.view)
         self.split.setStretchFactor(0, 0)
         self.split.setStretchFactor(1, 1)
-        self.split.setSizes([230, 700])
+        self.split.setSizes([210, 760])
         lay.addWidget(self.split, 1)
         PROGRESS.changed.connect(self.fill_tree)
         try:
@@ -326,6 +326,11 @@ class TutorialsPanel(QWidget):
             pass
         self.fill_tree()
 
+    def showEvent(self, e):  # noqa: N802 - Qt override: the UI language may have changed meanwhile
+        super().showEvent(e)
+        if getattr(self, "_tree_lang", None) != _lang():
+            self.fill_tree()
+
     # ------------------------------------------------------------ list
     def _toggle_list(self):
         self.split.widget(0).setVisible(self.b_list.isChecked())
@@ -334,7 +339,8 @@ class TutorialsPanel(QWidget):
         if self.search.text().strip():
             return self._do_search()
         self.tree.clear()
-        en = _lang() == "en"
+        self._tree_lang = _lang()
+        en = self._tree_lang == "en"
         for c in self.courses:
             done = PROGRESS.count(c)
             top = QTreeWidgetItem([f"{c.title_en if en else c.title_ar}   ({done}/{len(c.lessons)})"])
@@ -618,6 +624,8 @@ def show_tutorials(win, course_id: str | None = None, lesson_id: str | None = No
     dock = ensure_dock(win)
     dock.show()
     dock.raise_()
+    fit_dock(win, dock)
+    QTimer.singleShot(0, lambda: fit_dock(win, dock))
     panel = win.tutorials
     if course_id:
         c = panel._course(course_id)
@@ -628,6 +636,28 @@ def show_tutorials(win, course_id: str | None = None, lesson_id: str | None = No
     return panel
 
 
+def fit_dock(win, dock) -> None:
+    """Keep the lesson readable: when the dock was squeezed into a stack of other docks (e.g. by a layout
+    switch) it gets its own full-height column again; the first time it is shown it gets half the window."""
+    if dock.isFloating() or not dock.isVisible():
+        return
+    try:
+        area = win.dockWidgetArea(dock)
+        stacked = any(d is not dock and d.isVisible() and not d.isFloating() and win.dockWidgetArea(d) == area
+                      and abs(d.x() - dock.x()) < 30 and not win.tabifiedDockWidgets(dock).count(d)
+                      for d in win.findChildren(QDockWidget))
+        if stacked and area in (Qt.DockWidgetArea.RightDockWidgetArea, Qt.DockWidgetArea.LeftDockWidgetArea):
+            win.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock, Qt.Orientation.Horizontal)
+            dock._rad_sized = False
+        if not getattr(dock, "_rad_sized", False):
+            dock._rad_sized = True
+            want = max(700, int(win.width() * 0.5))
+            if dock.width() < want - 40:
+                win.resizeDocks([dock], [want], Qt.Orientation.Horizontal)
+    except Exception:  # noqa: BLE001 - layout cosmetics only
+        pass
+
+
 def ensure_dock(win) -> QDockWidget:
     dock = getattr(win, "dock_tutorials", None)
     if dock is not None:
@@ -636,11 +666,8 @@ def ensure_dock(win) -> QDockWidget:
     dock = QDockWidget("Tutorials", win)
     dock.setObjectName("dock_tutorials")
     dock.setWidget(panel)
-    win.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
-    try:      # wide enough to read next to the editor
-        win.resizeDocks([dock], [max(560, int(win.width() * 0.45))], Qt.Orientation.Horizontal)
-    except Exception:  # noqa: BLE001
-        pass
+    # its own full-height column of the right dock area, wide enough to read next to the editor
+    win.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock, Qt.Orientation.Horizontal)
     win.tutorials = panel
     win.dock_tutorials = dock
     return dock
@@ -658,7 +685,7 @@ def _start_page_links(win) -> None:
             page.add_link(sec, "Arabic lessons: BASIC and C++ (الدروس)...", lambda: show_tutorials(win),
                           f"Help > Tutorials ({SHORTCUT})")
             for c in T.courses():
-                page.add_link(sec, f"    {c.title_en}", lambda _=False, cid=c.id: show_tutorials(win, cid), c.title_ar)
+                page.add_link(sec, c.title_en, lambda _=False, cid=c.id: show_tutorials(win, cid), c.title_ar)
             page._rad_tutorials = True
 
 

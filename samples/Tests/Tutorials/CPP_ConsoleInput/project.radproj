@@ -1,0 +1,9 @@
+{
+  "name": "Lesson",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "main.cpp"
+  ]
+}

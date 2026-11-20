@@ -44,6 +44,15 @@ def _settings(win):
     return getattr(win, "settings", None)
 
 
+def _tr(text: str) -> str:
+    """Participant rows are user content (not auto-translated); only their fixed words are."""
+    try:
+        from .. import i18n
+        return i18n.tr(text)
+    except Exception:  # noqa: BLE001
+        return text
+
+
 def _swatch(color: str) -> QIcon:
     pm = QPixmap(12, 12)
     pm.fill(QColor(color))
@@ -208,11 +217,12 @@ class LiveSharePanel(QWidget):
         if not active:
             self.status.setText("Not in a collaboration session")
         elif s.is_host:
-            self.status.setText(f"Sharing '{s.session_name}' - {len(s.participants)} participant(s)"
-                                + ("  (password protected)" if s.password else ""))
+            n = len(s.participants)
+            self.status.setText(f"Sharing '{s.session_name}' - {n} participant(s), password protected" if s.password
+                                else f"Sharing '{s.session_name}' - {n} participant(s)")
         else:
-            ro = "  (read-only)" if s.readonly else ""
-            self.status.setText(f"Joined '{s.session_name}' as {s.name}{ro}")
+            self.status.setText(f"Joined '{s.session_name}' as {s.name} (read-only)" if s.readonly
+                                else f"Joined '{s.session_name}' as {s.name}")
         self.fill_people()
 
     def fill_people(self) -> None:
@@ -221,9 +231,9 @@ class LiveSharePanel(QWidget):
         self.people.clear()
         if s is not None and s.active:
             for p in sorted(s.participants.values(), key=lambda p: p.id):
-                me = " (you)" if p.id == s.me else ""
-                follow = "  [following]" if self.ctl.following == p.id else ""
-                it = QTreeWidgetItem([p.name + me + follow, "Host" if p.host else "Guest", p.path or "", ""])
+                me = _tr(" (you)") if p.id == s.me else ""
+                follow = _tr("  [following]") if self.ctl.following == p.id else ""
+                it = QTreeWidgetItem([p.name + me + follow, _tr("Host" if p.host else "Guest"), p.path or "", ""])
                 it.setIcon(0, _swatch(p.color))
                 it.setData(0, Qt.ItemDataRole.UserRole, p.id)
                 if not p.host:
@@ -543,11 +553,14 @@ class LiveShare(QObject):
         self.panel.refresh()
 
     def _on_cursor(self, pid: int, path: str, a: int, h: int) -> None:
-        for rel, b in self.bindings.items():
-            if rel == path:
-                b.set_cursor(pid, a, h)
-            else:
-                b.drop_cursor(pid)
+        for rel, b in list(self.bindings.items()):
+            try:
+                if rel == path:
+                    b.set_cursor(pid, a, h)
+                else:
+                    b.drop_cursor(pid)
+            except RuntimeError:                      # the editor was deleted
+                self.bindings.pop(rel, None)
         if self.following == pid and path:
             self._go_to(path, h)
         self.panel.fill_people()
@@ -555,7 +568,10 @@ class LiveShare(QObject):
     def _on_remote(self, path: str, ops: list) -> None:
         b = self.bindings.get(path)
         if b is not None:
-            b.remote(ops)
+            try:
+                b.remote(ops)
+            except RuntimeError:                      # the editor was deleted (tab / project closed)
+                self.bindings.pop(path, None)
 
     def _on_reset(self, path: str) -> None:
         b = self.bindings.get(path)

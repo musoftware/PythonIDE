@@ -84,9 +84,10 @@ class SharedText:
                     p =max(0, min(op[1], len(self._shadow)))
                     bpos = len(self._shadow[:p].encode("utf-8"))
                     if op[0] == "i":
-                        if op[2]:
-                            self.text.insert(bpos, op[2])
-                            self._shadow = self._shadow[:p] + op[2] + self._shadow[p:]
+                        s = op[2].encode("utf-8", errors="replace").decode("utf-8")   # lone surrogates -> "?"
+                        if s:
+                            self.text.insert(bpos, s)
+                            self._shadow = self._shadow[:p] + s + self._shadow[p:]
                     else:
                         n = max(0, min(op[2], len(self._shadow) - p))
                         if n:

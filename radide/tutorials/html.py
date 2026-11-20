@@ -116,6 +116,7 @@ pre.out { background: var(--out); unicode-bidi: plaintext; white-space: pre-wrap
 .sol.open .solbody { display: block; }
 .quiz { padding: 10px 14px; }
 .quiz .q { font-weight: bold; margin-bottom: 6px; }
+.quiz .choice[dir=ltr] { text-align: left; }
 .quiz .choice { display: block; width: 100%%; text-align: right; margin: 5px 0; padding: 5px 12px; cursor: pointer;
   border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
 .quiz .choice:hover { border-color: var(--accent); }
@@ -130,8 +131,8 @@ mark.find { background: #ffe066; color: #000; }
 
 JS = r"""
 function radAct(verb, b, extra) {
-  var url = '%(act)s' + verb + '?b=' + b + (extra || '');
-  if (window.location.protocol !== 'mk:' && window.location.protocol !== 'its:') { window.location.href = url; }
+  if (window.RAD_CHM) return;
+  window.location.href = '%(act)s' + verb + '?b=' + b + (extra || '');
 }
 function radToggle(id) {
   var e = document.getElementById(id);
@@ -165,6 +166,21 @@ function radScrollTo(id) { var e = document.getElementById(id); if (e) e.scrollI
 
 
 # ===================================================================== blocks
+_ARABIC = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
+
+
+def _inline(text: str) -> str:
+    """Quiz text: escaped, `code` spans as <code> (left-to-right inside Arabic sentences)."""
+    parts = re.split(r"(`[^`]+`)", text)
+    return "".join(f"<code>{html.escape(p[1:-1])}</code>" if p.startswith("`") and p.endswith("`") and len(p) > 1
+                   else html.escape(p) for p in parts)
+
+
+def _dir(text: str) -> str:
+    """A choice that is code (no Arabic letter) reads left-to-right; Arabic choices right-to-left."""
+    return "rtl" if _ARABIC.search(text) else "ltr"
+
+
 def _bar(tag: str, buttons: list[tuple[str, str, str]], chm: bool) -> str:
     parts = [f'<span class="tag">{html.escape(tag)}</span>']
     if not chm:
@@ -188,12 +204,12 @@ def block_html(b: Block, chm: bool = False, saved_code: str | None = None, quiz_
         q = b.quiz
         if not q:
             return f'<pre class="out">{html.escape(b.code)}</pre>'
-        btns = "".join(f'<button class="choice" onclick="radQuiz({n},{i})">{html.escape(str(c))}</button>'
-                       for i, c in enumerate(q.get("choices", [])))
-        why = html.escape(str(q.get("explanation", "")), quote=True)
+        btns = "".join(f'<button class="choice" dir="{_dir(str(c))}" onclick="radQuiz({n},{i})">{_inline(str(c))}'
+                       f'</button>' for i, c in enumerate(q.get("choices", [])))
+        why = html.escape(_inline(str(q.get("explanation", ""))), quote=True)
         return (f'<div class="blk"><div class="bar"><span class="tag">سؤال سريع</span></div>'
                 f'<div class="quiz" id="q{n}" data-answer="{int(q.get("answer", 0))}">'
-                f'<div class="q">{html.escape(str(q["question"]))}</div>{btns}'
+                f'<div class="q">{_inline(str(q["question"]))}</div>{btns}'
                 f'<div class="why" id="qr{n}" data-why="{why}"></div></div></div>')
     if b.lang == "text":
         tag = {"output": "الناتج", "input": "المدخلات (ما يكتبه المستخدم)"}.get(b.role, "")
@@ -238,11 +254,25 @@ def page(body: str, title: str, dark: bool = False, font_url: str = "fonts/" + F
          chm: bool = False, charset: str = "utf-8", extra_head: str = "") -> str:
     css = CSS % {"family": FONT_FAMILY, "font": font_url, "size": size} + pygments_css()
     js = JS % {"act": ACT, "right": "إجابة صحيحة!", "wrong": "ليست هذه."}
-    compat = '<meta http-equiv="X-UA-Compatible" content="IE=edge">' if chm else ""
+    compat = ""
+    if chm:      # hh.exe uses the Internet Explorer engine: no CSS variables, no dark mode
+        compat = '<meta http-equiv="X-UA-Compatible" content="IE=edge">'
+        css = static_css(css)
+        js = "var RAD_CHM = true;\n" + js
     return (f'<!DOCTYPE html>\n<html lang="ar" dir="rtl"><head><meta charset="{charset}">'
             f'<meta http-equiv="Content-Type" content="text/html; charset={charset}">{compat}'
             f"<title>{html.escape(title)}</title><style>{css}</style><script>{js}</script>{extra_head}</head>"
             f'<body class="{"dark" if dark else "light"}"><div class="page">{body}</div></body></html>')
+
+
+def static_css(css: str) -> str:
+    """The light palette with the CSS variables replaced by their values (Internet Explorer / CHM)."""
+    m = re.search(r"body\.light\s*\{([^}]*)\}", css)
+    values = dict(re.findall(r"--([\w-]+)\s*:\s*([^;]+);", m.group(1))) if m else {}
+    css = re.sub(r"body\.dark\s*\{[^}]*\}", "", css)
+    css = "\n".join(ln for ln in css.splitlines() if not ln.lstrip().startswith("body.dark"))
+    css = re.sub(r"var\(--([\w-]+)\)", lambda mm: values.get(mm.group(1), "inherit").strip(), css)
+    return css.replace("body.light pre.hl", "pre.hl")
 
 
 def lesson_page(lesson: Lesson, dark: bool = False, chm: bool = False, saved: dict | None = None,

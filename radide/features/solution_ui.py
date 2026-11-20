@@ -319,12 +319,24 @@ def build_menu(win, item) -> QMenu | None:
     return m
 
 
+MENU_HOOKS: list = []      # hook(win, item, menu) - runs before every Solution Explorer menu opens (project_menus)
+
+
+def apply_menu_hooks(win, item, m) -> None:
+    for hook in list(MENU_HOOKS):
+        try:
+            hook(win, item, m)
+        except Exception as e:  # noqa: BLE001 - a hook must not break the menu
+            _log(win, f"[solution] menu hook: {e}")
+
+
 def solution_menu(win, pos) -> None:
     item = win.solution.itemAt(pos)
     m = build_menu(win, item)
     if m is None:
         win._basic_solution_menu(pos)
         return
+    apply_menu_hooks(win, item, m)
     m.exec(win.solution.viewport().mapToGlobal(pos))
 
 

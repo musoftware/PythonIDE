@@ -98,23 +98,28 @@ def parse_invite(text: str) -> tuple[str, int, str] | None:
 
 def lan_addresses() -> list[str]:
     """IPv4 addresses other IDEs on the network can reach (first = best guess)."""
-    out: list[str] = []
+    found: list[tuple[int, str]] = []
+    virtual = re.compile(r"vEthernet|Hyper-V|VirtualBox|VMware|WSL|Docker|Loopback|TAP|Bluetooth", re.I)
     try:
         from PyQt6.QtNetwork import QAbstractSocket, QNetworkInterface
         for iface in QNetworkInterface.allInterfaces():
             flags = iface.flags()
             if not (flags & QNetworkInterface.InterfaceFlag.IsUp) or flags & QNetworkInterface.InterfaceFlag.IsLoopBack:
                 continue
+            is_virtual = bool(virtual.search(iface.humanReadableName() + " " + iface.name()))
             for e in iface.addressEntries():
                 ip = e.ip()
                 if ip.protocol() == QAbstractSocket.NetworkLayerProtocol.IPv4Protocol:
                     a = ip.toString()
-                    if not a.startswith("169.254."):
-                        out.append(a)
+                    if a.startswith("169.254."):
+                        continue
+                    rank = (0 if a.startswith("192.168.") else 1 if a.startswith("10.") else
+                            2 if re.match(r"172\.(1[6-9]|2\d|3[01])\.", a) else 3)
+                    found.append((rank + (10 if is_virtual else 0), a))
     except Exception:  # noqa: BLE001
         pass
-    out.sort(key=lambda a: (not a.startswith(("192.168.", "10.", "172.")), a))
-    return out or ["127.0.0.1"]
+    found.sort()
+    return [a for _r, a in found] or ["127.0.0.1"]
 
 
 def file_tree(root: Path) -> list[str]:
