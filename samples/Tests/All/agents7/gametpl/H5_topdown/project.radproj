@@ -1,0 +1,21 @@
+{
+  "name": "H5topdown",
+  "language": "html5-game",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.html",
+    "port": 0,
+    "live_reload": true
+  },
+  "scenes": [
+    "Room1"
+  ],
+  "game": {
+    "title": "H5topdown",
+    "start_scene": "Room1"
+  }
+}

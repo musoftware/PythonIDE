@@ -1,0 +1,407 @@
+{
+ "name": "Scene1",
+ "width": 800,
+ "height": 600,
+ "background": "#141428",
+ "fps": 60,
+ "gravity": 0,
+ "camera": {
+  "follow": null
+ },
+ "assets": {
+  "images": {
+   "torch": "assets/torch.png",
+   "orb": "assets/orb.png",
+   "coin": "assets/coin.png",
+   "star": "assets/star.png"
+  },
+  "sounds": {},
+  "spritesheets": {},
+  "tilesets": {},
+  "particles": {
+   "fire": {
+    "rate": 70,
+    "lifetime": 0.8,
+    "lifetime_var": 0.3,
+    "speed": 90,
+    "speed_var": 30,
+    "angle": -90,
+    "spread": 18,
+    "gravity_y": -60,
+    "color_start": "#FFE07A",
+    "color_end": "#FF3A1A00",
+    "size_start": 14,
+    "size_end": 3,
+    "blend": "add",
+    "emit_w": 16
+   },
+   "smoke": {
+    "rate": 18,
+    "lifetime": 2.2,
+    "lifetime_var": 0.5,
+    "speed": 40,
+    "speed_var": 12,
+    "angle": -90,
+    "spread": 20,
+    "gravity_y": -15,
+    "color_start": "#9A9AA8C0",
+    "color_end": "#50505800",
+    "size_start": 10,
+    "size_end": 34
+   },
+   "snow": {
+    "rate": 40,
+    "lifetime": 6,
+    "lifetime_var": 1.5,
+    "speed": 45,
+    "speed_var": 15,
+    "angle": 90,
+    "spread": 25,
+    "color_start": "#FFFFFF",
+    "color_end": "#FFFFFF80",
+    "size_start": 5,
+    "size_end": 4,
+    "emit_w": 800
+   },
+   "trail": {
+    "rate": 60,
+    "lifetime": 0.5,
+    "speed": 10,
+    "speed_var": 10,
+    "angle": 180,
+    "spread": 40,
+    "color_start": "#7AF0FF",
+    "color_end": "#3A60FF00",
+    "size_start": 8,
+    "size_end": 1,
+    "blend": "add"
+   },
+   "explosion": {
+    "rate": 0,
+    "burst": 60,
+    "lifetime": 0.9,
+    "lifetime_var": 0.3,
+    "speed": 220,
+    "speed_var": 120,
+    "angle": 0,
+    "spread": 180,
+    "gravity_y": 240,
+    "damping": 1.5,
+    "color_start": "#FFF3B0",
+    "color_end": "#FF450000",
+    "size_start": 9,
+    "size_end": 2,
+    "blend": "add"
+   },
+   "coin": {
+    "rate": 0,
+    "burst": 24,
+    "lifetime": 0.5,
+    "lifetime_var": 0.15,
+    "speed": 150,
+    "speed_var": 50,
+    "angle": -90,
+    "spread": 180,
+    "gravity_y": 300,
+    "color_start": "#FFF07A",
+    "color_end": "#FFB00000",
+    "size_start": 6,
+    "size_end": 2,
+    "blend": "add"
+   },
+   "stars": {
+    "rate": 30,
+    "lifetime": 0.6,
+    "lifetime_var": 0.2,
+    "speed": 70,
+    "speed_var": 40,
+    "angle": 0,
+    "spread": 180,
+    "color_start": "#FFFFFF",
+    "color_end": "#FFD86B00",
+    "size_start": 14,
+    "size_end": 4,
+    "blend": "add",
+    "texture": "star",
+    "spin": 180
+   }
+  }
+ },
+ "layers": [
+  {
+   "name": "World",
+   "type": "sprites",
+   "tileset": "",
+   "data": [],
+   "collision": false,
+   "objects": [
+    {
+     "name": "Torch1",
+     "kind": "sprite",
+     "x": 120,
+     "y": 430,
+     "w": 24,
+     "h": 48,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "torch"
+    },
+    {
+     "name": "Torch2",
+     "kind": "sprite",
+     "x": 656,
+     "y": 430,
+     "w": 24,
+     "h": 48,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "torch"
+    },
+    {
+     "name": "Flame1",
+     "kind": "area",
+     "x": 120,
+     "y": 412,
+     "w": 24,
+     "h": 16,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "particles": {
+      "effect": "fire",
+      "emitting": true
+     }
+    },
+    {
+     "name": "Flame2",
+     "kind": "area",
+     "x": 656,
+     "y": 412,
+     "w": 24,
+     "h": 16,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "particles": {
+      "effect": "fire",
+      "emitting": true
+     }
+    },
+    {
+     "name": "Smoke1",
+     "kind": "area",
+     "x": 120,
+     "y": 380,
+     "w": 24,
+     "h": 16,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "particles": {
+      "effect": "smoke",
+      "emitting": true
+     }
+    },
+    {
+     "name": "Snow",
+     "kind": "area",
+     "x": 0,
+     "y": -20,
+     "w": 800,
+     "h": 10,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "particles": {
+      "effect": "snow",
+      "emitting": true
+     }
+    },
+    {
+     "name": "Fountain",
+     "kind": "area",
+     "x": 388,
+     "y": 470,
+     "w": 24,
+     "h": 16,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "particles": {
+      "effect": "stars",
+      "emitting": false
+     }
+    },
+    {
+     "name": "Player",
+     "kind": "sprite",
+     "x": 380,
+     "y": 300,
+     "w": 36,
+     "h": 36,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [
+      {
+       "type": "keyboard_move",
+       "speed": 240,
+       "keys": "both",
+       "axis": "both"
+      }
+     ],
+     "props": {},
+     "image": "orb"
+    },
+    {
+     "name": "Coin1",
+     "kind": "sprite",
+     "x": 160,
+     "y": 200,
+     "w": 20,
+     "h": 20,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "coin"
+    },
+    {
+     "name": "Coin2",
+     "kind": "sprite",
+     "x": 280,
+     "y": 260,
+     "w": 20,
+     "h": 20,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "coin"
+    },
+    {
+     "name": "Coin3",
+     "kind": "sprite",
+     "x": 400,
+     "y": 200,
+     "w": 20,
+     "h": 20,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "coin"
+    },
+    {
+     "name": "Coin4",
+     "kind": "sprite",
+     "x": 520,
+     "y": 260,
+     "w": 20,
+     "h": 20,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "coin"
+    },
+    {
+     "name": "Coin5",
+     "kind": "sprite",
+     "x": 640,
+     "y": 200,
+     "w": 20,
+     "h": 20,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {},
+     "image": "coin"
+    }
+   ],
+   "visible": true
+  },
+  {
+   "name": "UI",
+   "type": "ui",
+   "tileset": "",
+   "data": [],
+   "collision": false,
+   "objects": [
+    {
+     "name": "Info",
+     "kind": "text",
+     "x": 12,
+     "y": 10,
+     "w": 780,
+     "h": 26,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {
+      "ForeColor": "#FFFFFF",
+      "FontSize": 22,
+      "Align": "left"
+     },
+     "text": "Arrows: move (trail)  Click: explosion  F: fountain  T: torches on/off"
+    },
+    {
+     "name": "ScoreText",
+     "kind": "text",
+     "x": 12,
+     "y": 40,
+     "w": 300,
+     "h": 26,
+     "scale": 1,
+     "rotation": 0,
+     "z": 0,
+     "visible": true,
+     "behaviours": [],
+     "props": {
+      "ForeColor": "#FFD86B",
+      "FontSize": 22,
+      "Align": "left"
+     },
+     "text": "Coins: {score}"
+    }
+   ],
+   "visible": true
+  }
+ ]
+}

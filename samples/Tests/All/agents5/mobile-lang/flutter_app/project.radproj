@@ -1,0 +1,12 @@
+{
+  "name": "Proj_flutter_app",
+  "language": "flutter",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "mobile": {
+    "device": "windows"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Greeter_stripped",
+  "language": "python-tk",
+  "forms": [
+    "frmGreeter",
+    "frmAboutGreeter"
+  ],
+  "startup": "frmGreeter",
+  "modules": [
+    "GreeterStripped_native.py",
+    "strings.py"
+  ]
+}

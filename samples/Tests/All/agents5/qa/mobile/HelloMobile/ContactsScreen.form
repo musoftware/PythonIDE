@@ -1,0 +1,123 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "ContactsScreen",
+    "Text": "Contacts",
+    "Width": 412,
+    "Height": 867,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel",
+    "Device": "pixel",
+    "Orientation": "Portrait",
+    "Route": ""
+  },
+  "controls": [
+    {
+      "type": "AppBar",
+      "props": {
+        "Name": "AppBar1",
+        "Left": 0,
+        "Top": 0,
+        "Width": 412,
+        "Height": 56,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 15,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left, Right",
+        "Dock": "Top",
+        "Title": "Hello Mobile",
+        "Actions": "info",
+        "Parent": "",
+        "Text": "Hello Mobile"
+      }
+    },
+    {
+      "type": "MTextField",
+      "props": {
+        "Name": "txtFilter",
+        "Text": "",
+        "Left": 16,
+        "Top": 68,
+        "Width": 380,
+        "Height": 56,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left, Right",
+        "Dock": "None",
+        "Hint": "Filter contacts",
+        "Password": false,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "MListView",
+      "props": {
+        "Name": "lstContacts",
+        "Left": 0,
+        "Top": 132,
+        "Width": 412,
+        "Height": 735,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Items": "Ada Lovelace|ada@example.com|person;Alan Turing|alan@example.com|person;Grace Hopper|grace@example.com|person",
+        "ItemTemplate": "title|subtitle|icon",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Fab",
+      "props": {
+        "Name": "fabAdd",
+        "Left": 340,
+        "Top": 795,
+        "Width": 56,
+        "Height": 56,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Bottom, Right",
+        "Dock": "None",
+        "Icon": "add",
+        "Parent": "",
+        "Text": ""
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 ## Result
 
 - Target language: **python-tk**
-- Project folder: `C:\Users\Mahmo\AppData\Local\Temp\claude\a04f521f5a700edd\e4285af5-0b45-4335-a89a-d0dc219b139e\scratchpad\agents5\exe-managed\proj_java`
+- Project folder: `<test folder>\proj_java`
 - Startup form: MainFrame
 - Form **MainFrame**: 4 control(s), 1 event handler(s) with recovered code
 

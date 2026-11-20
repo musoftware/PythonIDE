@@ -1,0 +1,533 @@
+{
+  "name": "Scene1",
+  "width": 400,
+  "height": 600,
+  "background": "#1A1440",
+  "fps": 60,
+  "gravity": 900,
+  "camera": {
+    "follow": null
+  },
+  "assets": {
+    "images": {
+      "sky": "assets/sky.png",
+      "hills": "assets/hills.png",
+      "spires": "assets/spires.png",
+      "cloud": "assets/cloud.png",
+      "crystal_top": "assets/crystal_top.png",
+      "crystal_bottom": "assets/crystal_bottom.png",
+      "ground": "assets/ground.png"
+    },
+    "sounds": {
+      "flap": "assets/flap.wav",
+      "point": "assets/point.wav",
+      "hit": "assets/hit.wav",
+      "fall": "assets/fall.wav"
+    },
+    "spritesheets": {
+      "glim": {
+        "image": "assets/glim.png",
+        "frame_w": 48,
+        "frame_h": 40,
+        "animations": {
+          "fly": {
+            "frames": [
+              0,
+              1,
+              2,
+              1
+            ],
+            "fps": 14,
+            "loop": true
+          }
+        }
+      }
+    },
+    "tilesets": {}
+  },
+  "layers": [
+    {
+      "name": "Back",
+      "type": "sprites",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "SkyBack",
+          "kind": "sprite",
+          "x": 0,
+          "y": 0,
+          "w": 400,
+          "h": 600,
+          "image": "sky",
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {}
+        },
+        {
+          "name": "Hills1",
+          "kind": "sprite",
+          "x": 0,
+          "y": 350,
+          "w": 400,
+          "h": 170,
+          "image": "hills",
+          "scale": 1,
+          "rotation": 0,
+          "z": 1,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 18,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Hills2",
+          "kind": "sprite",
+          "x": 400,
+          "y": 350,
+          "w": 400,
+          "h": 170,
+          "image": "hills",
+          "scale": 1,
+          "rotation": 0,
+          "z": 1,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 18,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Spires1",
+          "kind": "sprite",
+          "x": 0,
+          "y": 400,
+          "w": 400,
+          "h": 120,
+          "image": "spires",
+          "scale": 1,
+          "rotation": 0,
+          "z": 2,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 45,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Spires2",
+          "kind": "sprite",
+          "x": 400,
+          "y": 400,
+          "w": 400,
+          "h": 120,
+          "image": "spires",
+          "scale": 1,
+          "rotation": 0,
+          "z": 2,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 45,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Cloud1",
+          "kind": "sprite",
+          "x": 40,
+          "y": 70,
+          "w": 120,
+          "h": 50,
+          "image": "cloud",
+          "scale": 1,
+          "rotation": 0,
+          "z": 3,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 25,
+              "direction": "left",
+              "wrap": 570
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Cloud2",
+          "kind": "sprite",
+          "x": 230,
+          "y": 150,
+          "w": 120,
+          "h": 50,
+          "image": "cloud",
+          "scale": 1,
+          "rotation": 0,
+          "z": 3,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 25,
+              "direction": "left",
+              "wrap": 570
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Cloud3",
+          "kind": "sprite",
+          "x": 420,
+          "y": 40,
+          "w": 120,
+          "h": 50,
+          "image": "cloud",
+          "scale": 1,
+          "rotation": 0,
+          "z": 3,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 25,
+              "direction": "left",
+              "wrap": 570
+            }
+          ],
+          "props": {}
+        }
+      ],
+      "visible": true
+    },
+    {
+      "name": "Gates",
+      "type": "sprites",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "PillarTop",
+          "kind": "sprite",
+          "x": 480,
+          "y": -150,
+          "w": 70,
+          "h": 400,
+          "image": "crystal_top",
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 150,
+              "direction": "left",
+              "wrap": false
+            }
+          ],
+          "props": {
+            "template": 1,
+            "hitbox": 4
+          }
+        },
+        {
+          "name": "PillarBottom",
+          "kind": "sprite",
+          "x": 480,
+          "y": 380,
+          "w": 70,
+          "h": 400,
+          "image": "crystal_bottom",
+          "scale": 1,
+          "rotation": 0,
+          "z": 1,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 150,
+              "direction": "left",
+              "wrap": false
+            }
+          ],
+          "props": {
+            "template": 1,
+            "hitbox": 4
+          }
+        },
+        {
+          "name": "Gap",
+          "kind": "area",
+          "x": 540,
+          "y": 230,
+          "w": 24,
+          "h": 150,
+          "scale": 1,
+          "rotation": 0,
+          "z": 2,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 150,
+              "direction": "left",
+              "wrap": false
+            }
+          ],
+          "props": {
+            "template": 1
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "name": "Front",
+      "type": "sprites",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "Ground1",
+          "kind": "sprite",
+          "x": 0,
+          "y": 520,
+          "w": 400,
+          "h": 80,
+          "image": "ground",
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 150,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Ground2",
+          "kind": "sprite",
+          "x": 400,
+          "y": 520,
+          "w": 400,
+          "h": 80,
+          "image": "ground",
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "scroll",
+              "speed": 150,
+              "direction": "left",
+              "wrap": true
+            }
+          ],
+          "props": {}
+        },
+        {
+          "name": "Player",
+          "kind": "sprite",
+          "x": 90,
+          "y": 250,
+          "w": 48,
+          "h": 40,
+          "spritesheet": "glim",
+          "animation": "fly",
+          "scale": 1,
+          "rotation": 0,
+          "z": 1,
+          "visible": true,
+          "behaviours": [
+            {
+              "type": "flap",
+              "gravity": 1100,
+              "flap": 340,
+              "max_fall": 600,
+              "keys": "space,up,w",
+              "mouse": true,
+              "tilt": true,
+              "ceiling": true
+            }
+          ],
+          "props": {
+            "hitbox": 7
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "name": "UI",
+      "type": "ui",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "ScoreText",
+          "kind": "text",
+          "x": 0,
+          "y": 40,
+          "w": 400,
+          "h": 68,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "text": "{score}",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#FFFFFF",
+            "FontSize": 56,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        },
+        {
+          "name": "TitleText",
+          "kind": "text",
+          "x": 0,
+          "y": 120,
+          "w": 400,
+          "h": 64,
+          "scale": 1,
+          "rotation": 0,
+          "z": 1,
+          "visible": true,
+          "text": "SKY HOPPER",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#FFD86B",
+            "FontSize": 52,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        },
+        {
+          "name": "HintText",
+          "kind": "text",
+          "x": 0,
+          "y": 330,
+          "w": 400,
+          "h": 34,
+          "scale": 1,
+          "rotation": 0,
+          "z": 2,
+          "visible": true,
+          "text": "Space, Up or click to hop",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#E8F4FF",
+            "FontSize": 22,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        },
+        {
+          "name": "GameOverText",
+          "kind": "text",
+          "x": 0,
+          "y": 140,
+          "w": 400,
+          "h": 62,
+          "scale": 1,
+          "rotation": 0,
+          "z": 3,
+          "visible": false,
+          "text": "GAME OVER",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#FF6B8B",
+            "FontSize": 50,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        },
+        {
+          "name": "ResultText",
+          "kind": "text",
+          "x": 0,
+          "y": 210,
+          "w": 400,
+          "h": 40,
+          "scale": 1,
+          "rotation": 0,
+          "z": 4,
+          "visible": false,
+          "text": "Score {score}    Best {best}",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#FFFFFF",
+            "FontSize": 28,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        },
+        {
+          "name": "AgainText",
+          "kind": "text",
+          "x": 0,
+          "y": 260,
+          "w": 400,
+          "h": 34,
+          "scale": 1,
+          "rotation": 0,
+          "z": 5,
+          "visible": false,
+          "text": "Space to fly again",
+          "behaviours": [],
+          "props": {
+            "ForeColor": "#E8F4FF",
+            "FontSize": 22,
+            "Align": "center",
+            "Shadow": "#000000"
+          }
+        }
+      ],
+      "visible": true,
+      "locked": true
+    }
+  ],
+  "timers": [
+    {
+      "name": "GateTimer",
+      "interval": 1400,
+      "enabled": false
+    }
+  ]
+}

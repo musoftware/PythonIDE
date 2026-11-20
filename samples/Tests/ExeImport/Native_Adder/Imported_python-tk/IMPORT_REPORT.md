@@ -16,7 +16,7 @@
 ## Result
 
 - Target language: **python-tk**
-- Project folder: `C:\Users\Mahmo\AppData\Local\Temp\claude\a04f521f5a700edd\e4285af5-0b45-4335-a89a-d0dc219b139e\scratchpad\agents5\exe-core\out\Adder_tk`
+- Project folder: `<test folder>\Adder_tk`
 - Startup form: frmMain
 - Form **frmMain**: 6 control(s), 1 event handler(s) with recovered code
 

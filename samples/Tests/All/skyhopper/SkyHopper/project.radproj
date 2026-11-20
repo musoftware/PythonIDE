@@ -1,0 +1,17 @@
+{
+  "name": "SkyHopper",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Scene1.py"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "SkyHopper",
+    "start_scene": "Scene1"
+  }
+}

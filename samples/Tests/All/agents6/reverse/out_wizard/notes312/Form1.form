@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Notes",
+    "Width": 200,
+    "Height": 200,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": []
+}

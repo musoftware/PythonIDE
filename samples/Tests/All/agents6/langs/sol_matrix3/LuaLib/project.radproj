@@ -1,0 +1,10 @@
+{
+  "name": "LuaLib",
+  "language": "lua-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "LuaLib.lua"
+  ],
+  "kind": "library"
+}

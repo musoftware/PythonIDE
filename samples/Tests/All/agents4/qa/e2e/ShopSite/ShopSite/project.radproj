@@ -1,0 +1,63 @@
+{
+  "name": "ShopSite",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "public",
+    "start": "index.php",
+    "port": 0,
+    "live_reload": true,
+    "template": "php-sqlite-app"
+  },
+  "databases": [
+    {
+      "name": "app",
+      "kind": "sqlite",
+      "path": "data/app.sqlite"
+    }
+  ],
+  "publish": [
+    {
+      "name": "Local",
+      "kind": "folder",
+      "host": "",
+      "port": 0,
+      "user": "",
+      "remote_dir": "",
+      "site_url": "",
+      "local_dir": "",
+      "passive": true,
+      "verify_tls": true,
+      "host_key": "",
+      "key_file": "",
+      "excludes": [
+        ".git",
+        ".svn",
+        ".hg",
+        ".radide",
+        ".radide_backup*",
+        "project.radproj",
+        "*.radsln",
+        "__pycache__",
+        "*.pyc",
+        ".vscode",
+        ".idea",
+        "Thumbs.db",
+        ".DS_Store",
+        "*.bak",
+        "*.tmp",
+        "~$*",
+        "data/*.sqlite",
+        "data/*.sqlite-*",
+        "data/*.db",
+        "data/sessions"
+      ],
+      "delete_removed": false,
+      "save_password": true,
+      "timeout": 30
+    }
+  ]
+}

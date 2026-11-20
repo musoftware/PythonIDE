@@ -1,0 +1,18 @@
+; Engine configuration file - written by RAD IDE (Godot 4.2)
+config_version=5
+
+[application]
+
+config/name="GodotDbg"
+run/main_scene="res://Scene1.tscn"
+config/features=PackedStringArray("4.2")
+
+[display]
+
+window/size/viewport_width=800
+window/size/viewport_height=600
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

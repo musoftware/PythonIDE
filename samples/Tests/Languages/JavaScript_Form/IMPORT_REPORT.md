@@ -3,7 +3,7 @@
 ## Result
 
 - Target language: **javascript**
-- Project folder: `C:\Users\Mahmo\AppData\Local\Temp\claude\a04f521f5a700edd\e4285af5-0b45-4335-a89a-d0dc219b139e\scratchpad\agents5\exe-managed\proj_dotnet_javascript`
+- Project folder: `<test folder>\proj_dotnet_javascript`
 - Startup form: Form1
 - Form **Form1**: 6 control(s), 4 event handler(s) with recovered code
 

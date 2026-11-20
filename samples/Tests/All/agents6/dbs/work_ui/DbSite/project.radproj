@@ -1,0 +1,27 @@
+{
+  "name": "DbSite",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "databases": [
+    {
+      "name": "Local MariaDB",
+      "kind": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "radide",
+      "database": "radide",
+      "remember_password": true
+    },
+    {
+      "name": "Local PostgreSQL",
+      "kind": "postgresql",
+      "host": "127.0.0.1",
+      "port": 5432,
+      "user": "radide",
+      "database": "radide",
+      "remember_password": true
+    }
+  ]
+}

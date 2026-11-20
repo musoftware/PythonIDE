@@ -1,0 +1,35 @@
+{
+  "name": "C_ruby_bridge",
+  "language": "ruby-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "RbCons.rb"
+  ],
+  "references": [
+    "GoLib",
+    "LuaLib",
+    "RbLib",
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "GoLib": [
+      "golib_ref.rb"
+    ],
+    "LuaLib": [
+      "lualib_ref.rb"
+    ],
+    "RbLib": [
+      "rblib_ref.rb"
+    ],
+    "PyLib": [
+      "pylib_ref.rb"
+    ],
+    "CsLib": [
+      "cslib_ref.rb"
+    ]
+  }
+}

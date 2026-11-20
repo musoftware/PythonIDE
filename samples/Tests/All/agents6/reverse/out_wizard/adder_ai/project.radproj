@@ -1,0 +1,11 @@
+{
+  "name": "Adder",
+  "language": "python-tk",
+  "forms": [
+    "frmMain"
+  ],
+  "startup": "frmMain",
+  "modules": [
+    "Adder_native.py"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "MyGame",
+  "projects": [
+    {
+      "name": "MyGame",
+      "path": "MyGame"
+    }
+  ],
+  "startup": "MyGame"
+}

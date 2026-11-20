@@ -2,7 +2,7 @@
   "name": "PyApp",
   "language": "python-tk",
   "forms": [],
-  "startup": "",
+  "startup": "main",
   "modules": [
     "main.py"
   ],

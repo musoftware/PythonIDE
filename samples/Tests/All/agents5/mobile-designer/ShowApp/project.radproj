@@ -1,0 +1,9 @@
+{
+  "name": "ShowApp",
+  "language": "flutter",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": []
+}

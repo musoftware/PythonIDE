@@ -1,0 +1,46 @@
+{
+  "name": "Matrix3",
+  "projects": [
+    {
+      "name": "GoLib",
+      "path": "GoLib"
+    },
+    {
+      "name": "LuaLib",
+      "path": "LuaLib"
+    },
+    {
+      "name": "RbLib",
+      "path": "RbLib"
+    },
+    {
+      "name": "PyLib",
+      "path": "PyLib"
+    },
+    {
+      "name": "CsLib",
+      "path": "CsLib"
+    },
+    {
+      "name": "C_go_bridge",
+      "path": "C_go_bridge"
+    },
+    {
+      "name": "C_lua_bridge",
+      "path": "C_lua_bridge"
+    },
+    {
+      "name": "C_ruby_bridge",
+      "path": "C_ruby_bridge"
+    },
+    {
+      "name": "C_python_tk",
+      "path": "C_python_tk"
+    },
+    {
+      "name": "C_csharp_bridge",
+      "path": "C_csharp_bridge"
+    }
+  ],
+  "startup": "C_go_bridge"
+}

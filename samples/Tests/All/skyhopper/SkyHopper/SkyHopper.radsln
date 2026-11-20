@@ -1,0 +1,10 @@
+{
+  "name": "SkyHopper",
+  "projects": [
+    {
+      "name": "SkyHopper",
+      "path": "."
+    }
+  ],
+  "startup": "SkyHopper"
+}

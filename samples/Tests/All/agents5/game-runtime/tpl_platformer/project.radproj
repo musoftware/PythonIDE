@@ -1,0 +1,17 @@
+{
+  "name": "Tplatformer",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Level1.py"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "Tplatformer",
+    "start_scene": "Level1"
+  }
+}

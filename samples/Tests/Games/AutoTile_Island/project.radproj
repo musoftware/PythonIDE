@@ -1,0 +1,17 @@
+{
+  "name": "AutoTile_Island",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Scene1.py"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "AutoTile Island",
+    "start_scene": "Scene1"
+  }
+}

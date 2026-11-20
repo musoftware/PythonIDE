@@ -1,0 +1,9 @@
+{
+  "name": "IdeKivy",
+  "language": "kivy",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": []
+}

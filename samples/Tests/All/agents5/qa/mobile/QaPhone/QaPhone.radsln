@@ -1,0 +1,10 @@
+{
+  "name": "QaPhone",
+  "projects": [
+    {
+      "name": "QaPhone",
+      "path": "QaPhone"
+    }
+  ],
+  "startup": "QaPhone"
+}

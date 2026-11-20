@@ -2,8 +2,10 @@
   "name": "PyApp",
   "language": "python-tk",
   "forms": [],
-  "startup": "",
-  "modules": [],
+  "startup": "t",
+  "modules": [
+    "t.py"
+  ],
   "references": [
     "PerlLib",
     "DartLib"

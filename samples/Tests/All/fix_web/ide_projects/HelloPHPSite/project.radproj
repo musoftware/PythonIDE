@@ -1,0 +1,22 @@
+{
+  "name": "HelloPHPSite",
+  "language": "php-web",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": "public",
+    "start": "index.php",
+    "port": 0,
+    "live_reload": true,
+    "template": "php-sqlite-app"
+  },
+  "databases": [
+    {
+      "name": "app",
+      "kind": "sqlite",
+      "path": "data/app.sqlite"
+    }
+  ]
+}

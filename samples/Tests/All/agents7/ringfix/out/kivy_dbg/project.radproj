@@ -1,0 +1,9 @@
+{
+  "name": "KivyDbg",
+  "language": "kivy",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": []
+}

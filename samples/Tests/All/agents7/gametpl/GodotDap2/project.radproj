@@ -1,0 +1,16 @@
+{
+  "name": "GodotDap2",
+  "language": "godot",
+  "forms": [],
+  "startup": "Level1",
+  "modules": [
+    "Level1.gd"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "GodotDap2",
+    "start_scene": "Level1"
+  }
+}

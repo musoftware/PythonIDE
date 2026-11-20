@@ -1,0 +1,12 @@
+{
+  "name": "QaPhone",
+  "language": "flutter",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "mobile": {
+    "device": "chrome"
+  }
+}

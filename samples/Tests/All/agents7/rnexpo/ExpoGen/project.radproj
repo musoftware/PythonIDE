@@ -1,0 +1,14 @@
+{
+  "name": "ExpoApp1",
+  "language": "expo",
+  "forms": [
+    "MainScreen",
+    "DetailsScreen",
+    "AllControls"
+  ],
+  "startup": "AllControls",
+  "modules": [],
+  "expo": {
+    "device": "emulator-5554"
+  }
+}

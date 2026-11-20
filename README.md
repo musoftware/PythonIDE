@@ -143,3 +143,15 @@ protocols.
 - VB6 interpreter: no Class modules, GoSub, or `Declare` API calls.
 - Web: MySQL/PostgreSQL were tested only with mock drivers (no servers on this machine); no debugger for web sites
   yet (F5 runs the server); Firefox screenshots in SuperPreview untested (Firefox not installed).
+
+## Git client
+
+**Git** menu + the Git Changes window (`radide/features/git_full.py`, logic in `radide/git_ops.py`):
+branches (new / switch / rename / delete, local + remote, track), Fetch / Pull / Push / Sync with a progress
+bar and plain-language explanations of sign-in and network errors, merge and rebase with Continue / Abort,
+a **3-way conflict resolver** (Incoming | Base | Current, take left / right / both, editable result, Accept
+marks the file resolved), stashes, **commit graph** with branch lanes, **blame** (blame window + inline blame
+in the editor), compare a file with any commit, tags, cherry-pick / revert / reset, amend, undo last commit,
+.gitignore editor with templates, remotes and git settings, and a **GitHub** tab (pull requests / issues,
+create and checkout a PR) through the GitHub CLI - downloaded on request into
+`%LOCALAPPDATA%\RADIDE\tools\gh` if it is missing. Try it: `samples/Tests/Git/GitClient_Demo`.

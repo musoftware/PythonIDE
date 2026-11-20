@@ -1,0 +1,17 @@
+{
+  "name": "P1",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Level1.py"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "P1",
+    "start_scene": "Level1"
+  }
+}

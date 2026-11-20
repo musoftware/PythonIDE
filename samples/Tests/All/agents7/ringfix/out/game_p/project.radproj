@@ -1,0 +1,17 @@
+{
+  "name": "GameP",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Level1.py"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "GameP",
+    "start_scene": "Level1"
+  }
+}

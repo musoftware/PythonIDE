@@ -1,0 +1,9 @@
+{
+  "name": "R",
+  "language": "ruby-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

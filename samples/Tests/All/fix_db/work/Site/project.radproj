@@ -1,0 +1,14 @@
+{
+  "name": "Site",
+  "language": "python-tk",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "databases": [
+    {
+      "name": "app",
+      "kind": "sqlite",
+      "path": "App_Data/app.db"
+    }
+  ]
+}

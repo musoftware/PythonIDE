@@ -1,0 +1,16 @@
+{
+  "name": "Gempty",
+  "language": "godot",
+  "forms": [],
+  "startup": "Scene1",
+  "modules": [
+    "Scene1.gd"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "Gempty",
+    "start_scene": "Scene1"
+  }
+}

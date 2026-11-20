@@ -1,0 +1,609 @@
+[gd_scene load_steps=26 format=3 uid="uid://c4f7iwfxvji60"]
+
+[ext_resource type="Script" path="res://Level1.gd" id="1_Level1"]
+[ext_resource type="Texture2D" uid="uid://e2udjmcepisw" path="res://assets/player.png" id="2_player"]
+[ext_resource type="Texture2D" uid="uid://rgfuj7lgur0n" path="res://assets/coin.png" id="3_coin"]
+[ext_resource type="Texture2D" uid="uid://16tvautnt3kg" path="res://assets/enemy.png" id="4_enemy"]
+[ext_resource type="Texture2D" uid="uid://dji8xs1l5khc5" path="res://assets/tiles.png" id="5_tiles"]
+[ext_resource type="Texture2D" uid="uid://dffql6efgs0vw" path="res://assets/cloud.png" id="6_cloud"]
+[ext_resource type="Texture2D" uid="uid://dsfr2h56satp7" path="res://assets/flag.png" id="7_flag"]
+
+[sub_resource type="TileSetAtlasSource" id="src_tiles"]
+texture = ExtResource("5_tiles")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
+
+[sub_resource type="TileSet" id="ts_tiles"]
+tile_size = Vector2i(32, 32)
+sources/0 = SubResource("src_tiles")
+
+[sub_resource type="AtlasTexture" id="at_coin_0"]
+atlas = ExtResource("3_coin")
+region = Rect2(0, 0, 24, 24)
+
+[sub_resource type="AtlasTexture" id="at_coin_1"]
+atlas = ExtResource("3_coin")
+region = Rect2(24, 0, 24, 24)
+
+[sub_resource type="AtlasTexture" id="at_coin_2"]
+atlas = ExtResource("3_coin")
+region = Rect2(48, 0, 24, 24)
+
+[sub_resource type="AtlasTexture" id="at_coin_3"]
+atlas = ExtResource("3_coin")
+region = Rect2(72, 0, 24, 24)
+
+[sub_resource type="SpriteFrames" id="sf_coin"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_coin_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_coin_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_coin_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_coin_3")
+}],
+"loop": true,
+"name": &"spin",
+"speed": 8.0
+}]
+
+[sub_resource type="AtlasTexture" id="at_enemy_0"]
+atlas = ExtResource("4_enemy")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_enemy_1"]
+atlas = ExtResource("4_enemy")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="sf_enemy"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_enemy_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_enemy_1")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 4.0
+}]
+
+[sub_resource type="AtlasTexture" id="at_player_0"]
+atlas = ExtResource("2_player")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_1"]
+atlas = ExtResource("2_player")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_6"]
+atlas = ExtResource("2_player")
+region = Rect2(192, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_2"]
+atlas = ExtResource("2_player")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_3"]
+atlas = ExtResource("2_player")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_4"]
+atlas = ExtResource("2_player")
+region = Rect2(128, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="at_player_5"]
+atlas = ExtResource("2_player")
+region = Rect2(160, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="sf_player"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_player_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_player_1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_player_6")
+}],
+"loop": true,
+"name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_player_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_player_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_player_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("at_player_5")
+}],
+"loop": true,
+"name": &"run",
+"speed": 10.0
+}]
+
+[node name="Level1" type="Node2D"]
+script = ExtResource("1_Level1")
+metadata/rad_scene = {
+"background": "#6EC1E4",
+"follow": "Player",
+"fps": 60,
+"gravity": 900.0,
+"height": 480,
+"report": "Player",
+"sounds": {
+"coin": "res://assets/coin.wav",
+"jump": "res://assets/jump.wav"
+},
+"timers": [],
+"width": 800,
+"world_h": 480,
+"world_w": 1920
+}
+
+[node name="Background" type="Node2D" parent="."]
+
+[node name="Cloud1" type="Sprite2D" parent="Background"]
+position = Vector2(108, 60)
+texture = ExtResource("6_cloud")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(96, 40)
+metadata/behaviours = []
+metadata/group = "Cloud"
+
+[node name="Cloud2" type="Sprite2D" parent="Background"]
+position = Vector2(468, 100)
+texture = ExtResource("6_cloud")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(96, 40)
+metadata/behaviours = []
+metadata/group = "Cloud"
+
+[node name="Cloud3" type="Sprite2D" parent="Background"]
+position = Vector2(948, 50)
+texture = ExtResource("6_cloud")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(96, 40)
+metadata/behaviours = []
+metadata/group = "Cloud"
+
+[node name="Cloud4" type="Sprite2D" parent="Background"]
+position = Vector2(1398, 90)
+texture = ExtResource("6_cloud")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(96, 40)
+metadata/behaviours = []
+metadata/group = "Cloud"
+
+[node name="Cloud5" type="Sprite2D" parent="Background"]
+position = Vector2(1748, 60)
+texture = ExtResource("6_cloud")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(96, 40)
+metadata/behaviours = []
+metadata/group = "Cloud"
+
+[node name="Ground" type="TileMap" parent="."]
+tile_set = SubResource("ts_tiles")
+format = 2
+layer_0/tile_data = PackedInt32Array(262173, 131072, 0, 262174, 131072, 0, 262175, 131072, 0, 262176, 131072, 0, 262177, 131072, 0, 262178, 131072, 0, 262179, 131072, 0, 393226, 131072, 0, 393227, 131072, 0, 393228, 131072, 0, 393229, 131072, 0, 393230, 131072, 0, 393248, 196608, 0, 393252, 196608, 0, 393267, 131072, 0, 393268, 131072, 0, 393269, 131072, 0, 393270, 131072, 0, 524307, 196608, 0, 524308, 131072, 0, 524309, 196608, 0, 524312, 131072, 0, 524313, 131072, 0, 524314, 131072, 0, 524315, 131072, 0, 524316, 131072, 0, 524317, 131072, 0, 524328, 131072, 0, 524329, 131072, 0, 524330, 131072, 0, 524331, 131072, 0, 524332, 131072, 0, 524333, 131072, 0, 524334, 131072, 0, 524335, 131072, 0, 589873, 131072, 0, 589874, 131072, 0, 589875, 131072, 0, 851968, 0, 0, 851969, 0, 0, 851970, 0, 0, 851971, 0, 0, 851972, 0, 0, 851973, 0, 0, 851974, 0, 0, 851975, 0, 0, 851976, 0, 0, 851977, 0, 0, 851978, 0, 0, 851979, 0, 0, 851980, 0, 0, 851981, 0, 0, 851982, 0, 0, 851983, 0, 0, 851984, 0, 0, 851985, 0, 0, 851986, 0, 0, 851987, 0, 0, 851988, 0, 0, 851989, 0, 0, 851990, 0, 0, 851991, 0, 0, 851995, 0, 0, 851996, 0, 0, 851997, 0, 0, 851998, 0, 0, 851999, 0, 0, 852000, 0, 0, 852001, 0, 0, 852002, 0, 0, 852003, 0, 0, 852004, 0, 0, 852005, 0, 0, 852006, 0, 0, 852007, 0, 0, 852008, 0, 0, 852009, 0, 0, 852010, 0, 0, 852011, 0, 0, 852015, 0, 0, 852016, 0, 0, 852017, 0, 0, 852018, 0, 0, 852019, 0, 0, 852020, 0, 0, 852021, 0, 0, 852022, 0, 0, 852023, 0, 0, 852024, 0, 0, 852025, 0, 0, 852026, 0, 0, 852027, 0, 0, 917504, 65536, 0, 917505, 65536, 0, 917506, 65536, 0, 917507, 65536, 0, 917508, 65536, 0, 917509, 65536, 0, 917510, 65536, 0, 917511, 65536, 0, 917512, 65536, 0, 917513, 65536, 0, 917514, 65536, 0, 917515, 65536, 0, 917516, 65536, 0, 917517, 65536, 0, 917518, 65536, 0, 917519, 65536, 0, 917520, 65536, 0, 917521, 65536, 0, 917522, 65536, 0, 917523, 65536, 0, 917524, 65536, 0, 917525, 65536, 0, 917526, 65536, 0, 917527, 65536, 0, 917531, 65536, 0, 917532, 65536, 0, 917533, 65536, 0, 917534, 65536, 0, 917535, 65536, 0, 917536, 65536, 0, 917537, 65536, 0, 917538, 65536, 0, 917539, 65536, 0, 917540, 65536, 0, 917541, 65536, 0, 917542, 65536, 0, 917543, 65536, 0, 917544, 65536, 0, 917545, 65536, 0, 917546, 65536, 0, 917547, 65536, 0, 917551, 65536, 0, 917552, 65536, 0, 917553, 65536, 0, 917554, 65536, 0, 917555, 65536, 0, 917556, 65536, 0, 917557, 65536, 0, 917558, 65536, 0, 917559, 65536, 0, 917560, 65536, 0, 917561, 65536, 0, 917562, 65536, 0, 917563, 65536, 0)
+metadata/collision = true
+
+[node name="Sprites" type="Node2D" parent="."]
+
+[node name="Goal" type="Sprite2D" parent="Sprites"]
+position = Vector2(1872, 384)
+texture = ExtResource("7_flag")
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(32, 64)
+metadata/behaviours = []
+metadata/group = "Goal"
+
+[node name="Coin1" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(976, 112)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin2" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1040, 112)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin3" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1104, 112)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin4" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(368, 176)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin5" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(432, 176)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin6" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1680, 176)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin7" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1712, 176)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin8" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(720, 240)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin9" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(784, 240)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Enemy1" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1296, 240)
+sprite_frames = SubResource("sf_enemy")
+animation = &"walk"
+autoplay = "walk"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(32, 32)
+metadata/behaviours = [{
+"axis": "x",
+"distance": 128,
+"speed": 70,
+"type": "enemy_patrol"
+}]
+metadata/group = "Enemy"
+
+[node name="Coin10" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1360, 240)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin11" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1424, 240)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin12" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1488, 240)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin13" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(144, 336)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin14" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(208, 336)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin15" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(272, 336)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin16" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1744, 336)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Coin17" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1808, 336)
+sprite_frames = SubResource("sf_coin")
+animation = &"spin"
+autoplay = "spin"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(24, 24)
+metadata/behaviours = [{
+"score": 1,
+"sound": "coin",
+"type": "collectible"
+}]
+metadata/group = "Coin"
+
+[node name="Enemy2" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(496, 400)
+sprite_frames = SubResource("sf_enemy")
+animation = &"walk"
+autoplay = "walk"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(32, 32)
+metadata/behaviours = [{
+"axis": "x",
+"distance": 128,
+"speed": 70,
+"type": "enemy_patrol"
+}]
+metadata/group = "Enemy"
+
+[node name="Enemy3" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(1136, 400)
+sprite_frames = SubResource("sf_enemy")
+animation = &"walk"
+autoplay = "walk"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(32, 32)
+metadata/behaviours = [{
+"axis": "x",
+"distance": 128,
+"speed": 70,
+"type": "enemy_patrol"
+}]
+metadata/group = "Enemy"
+
+[node name="Player" type="AnimatedSprite2D" parent="Sprites"]
+position = Vector2(48, 400)
+sprite_frames = SubResource("sf_player")
+animation = &"idle"
+autoplay = "idle"
+metadata/rad_centered = true
+metadata/rad_kind = "sprite"
+metadata/rad_size = Vector2(32, 32)
+metadata/behaviours = [{
+"jump": 560,
+"speed": 220,
+"type": "platformer"
+}]
+metadata/group = "Player"
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ScoreText" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 10.0
+offset_right = 234.4
+offset_bottom = 46.4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "Score: {score}"
+metadata/template = "Score: {score}"
+metadata/props = {
+"FontSize": 26,
+"ForeColor": "#FFFFFF"
+}
+metadata/rad_kind = "text"
+metadata/rad_size = Vector2(218.4, 36.4)
+metadata/behaviours = []
+metadata/group = "ScoreText"
+
+[node name="LivesText" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 42.0
+offset_right = 200.8
+offset_bottom = 72.8
+theme_override_colors/font_color = Color(1, 0.953, 0.69, 1)
+theme_override_font_sizes/font_size = 22
+text = "Lives: {lives}"
+metadata/template = "Lives: {lives}"
+metadata/props = {
+"FontSize": 22,
+"ForeColor": "#FFF3B0"
+}
+metadata/rad_kind = "text"
+metadata/rad_size = Vector2(184.8, 30.8)
+metadata/behaviours = []
+metadata/group = "LivesText"
+
+[node name="HelpText" type="Label" parent="UI"]
+offset_left = 450.0
+offset_top = 12.0
+offset_right = 784.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Arrows move - Space jumps - R restarts"
+horizontal_alignment = 2
+metadata/template = "Arrows move - Space jumps - R restarts"
+metadata/props = {
+"Align": "right",
+"FontSize": 18,
+"ForeColor": "#FFFFFF"
+}
+metadata/rad_kind = "text"
+metadata/rad_size = Vector2(334, 24)
+metadata/behaviours = []
+metadata/group = "HelpText"

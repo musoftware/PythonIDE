@@ -1,0 +1,16 @@
+{
+  "name": "GodotDbg",
+  "language": "godot",
+  "forms": [],
+  "startup": "Scene1",
+  "modules": [
+    "Scene1.gd"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "GodotDbg",
+    "start_scene": "Scene1"
+  }
+}

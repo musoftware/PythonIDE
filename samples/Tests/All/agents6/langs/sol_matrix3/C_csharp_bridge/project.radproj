@@ -1,0 +1,35 @@
+{
+  "name": "C_csharp_bridge",
+  "language": "csharp-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "CsCons.cs"
+  ],
+  "references": [
+    "GoLib",
+    "LuaLib",
+    "RbLib",
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "GoLib": [
+      "GoLib.ref.cs"
+    ],
+    "LuaLib": [
+      "LuaLib.ref.cs"
+    ],
+    "RbLib": [
+      "RbLib.ref.cs"
+    ],
+    "PyLib": [
+      "PyLib.ref.cs"
+    ],
+    "CsLib": [
+      "CsLib.ref.cs"
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Contact | StaticSite</title>
+    <meta name="description" content="Contact StaticSite">
+    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body class="d-flex flex-column min-vh-100">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="index.html">StaticSite</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="about.html">About</a></li>
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="contact.html">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<main class="container my-5" style="max-width: 640px">
+    <h1>Contact</h1>
+    <p>This static form validates in the browser; connect it to a PHP or Node.js back end
+       (or a form service) to receive the messages.</p>
+    <form id="contactForm" class="needs-validation" novalidate>
+        <div class="mb-3">
+            <label class="form-label" for="name">Name</label>
+            <input class="form-control" id="name" required>
+            <div class="invalid-feedback">Please enter your name.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="email">E-mail</label>
+            <input class="form-control" id="email" type="email" required>
+            <div class="invalid-feedback">Please enter a valid e-mail.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="message">Message</label>
+            <textarea class="form-control" id="message" rows="5" minlength="10" required></textarea>
+            <div class="invalid-feedback">At least 10 characters.</div>
+        </div>
+        <button class="btn btn-primary" type="submit">Send</button>
+        <div id="sent" class="alert alert-success mt-3 d-none">Thank you! (demo - nothing was sent)</div>
+    </form>
+</main>
+<footer class="mt-auto py-3 bg-light border-top">
+    <div class="container text-muted small">&copy; <span id="year"></span> StaticSite &middot; Bootstrap 5.3</div>
+</footer>
+<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

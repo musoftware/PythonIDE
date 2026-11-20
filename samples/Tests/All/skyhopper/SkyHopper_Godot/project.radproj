@@ -1,0 +1,16 @@
+{
+  "name": "SkyHopper_Godot",
+  "language": "godot",
+  "forms": [],
+  "startup": "Scene1",
+  "modules": [
+    "Scene1.gd"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "SkyHopper",
+    "start_scene": "Scene1"
+  }
+}

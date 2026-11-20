@@ -1,0 +1,1 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>My site home page</title></head><body><h1>Hi</h1><a href="missing.php">x</a><img src="a.png"></body></html>

@@ -1,0 +1,17 @@
+{
+  "name": "Physics_Playground",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Scene1.py"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "Physics Playground",
+    "start_scene": "Scene1"
+  }
+}

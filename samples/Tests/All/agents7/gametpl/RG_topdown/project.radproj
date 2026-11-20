@@ -1,0 +1,17 @@
+{
+  "name": "RGtopdown",
+  "language": "ring-game",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.ring",
+    "Room1.ring"
+  ],
+  "scenes": [
+    "Room1"
+  ],
+  "game": {
+    "title": "RGtopdown",
+    "start_scene": "Room1"
+  }
+}

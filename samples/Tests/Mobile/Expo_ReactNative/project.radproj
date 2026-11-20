@@ -9,12 +9,5 @@
   "modules": [],
   "expo": {
     "device": "emulator-5554"
-  },
-  "databases": [
-    {
-      "name": "site",
-      "kind": "sqlite",
-      "path": "C:\\Users\\Mahmo\\Documents\\site.db"
-    }
-  ]
+  }
 }

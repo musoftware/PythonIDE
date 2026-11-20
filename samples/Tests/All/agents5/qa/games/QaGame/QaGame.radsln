@@ -1,0 +1,10 @@
+{
+  "name": "QaGame",
+  "projects": [
+    {
+      "name": "QaGame",
+      "path": "QaGame"
+    }
+  ],
+  "startup": "QaGame"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "C_go_bridge",
+  "language": "go-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "GoCons.go"
+  ],
+  "references": [
+    "GoLib",
+    "LuaLib",
+    "RbLib",
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "GoLib": [
+      "GoLib_ref.go"
+    ],
+    "LuaLib": [
+      "LuaLib_ref.go"
+    ],
+    "RbLib": [
+      "RbLib_ref.go"
+    ],
+    "PyLib": [
+      "PyLib_ref.go"
+    ],
+    "CsLib": [
+      "CsLib_ref.go"
+    ]
+  }
+}

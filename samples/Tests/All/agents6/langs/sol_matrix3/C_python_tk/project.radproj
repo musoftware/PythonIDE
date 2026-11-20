@@ -1,0 +1,35 @@
+{
+  "name": "C_python_tk",
+  "language": "python-tk",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "pycons.py"
+  ],
+  "references": [
+    "GoLib",
+    "LuaLib",
+    "RbLib",
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "GoLib": [
+      "GoLib.py"
+    ],
+    "LuaLib": [
+      "LuaLib.py"
+    ],
+    "RbLib": [
+      "RbLib.py"
+    ],
+    "PyLib": [
+      "PyLib.py"
+    ],
+    "CsLib": [
+      "CsLib.py"
+    ]
+  }
+}

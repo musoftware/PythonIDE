@@ -19,7 +19,7 @@
 ## Result
 
 - Target language: **python-qt**
-- Project folder: `C:\Users\Mahmo\AppData\Local\Temp\claude\a04f521f5a700edd\e4285af5-0b45-4335-a89a-d0dc219b139e\scratchpad\agents5\exe-core\out\Greeter_python-qt`
+- Project folder: `<test folder>\Greeter_python-qt`
 - Startup form: frmGreeter
 - Form **frmGreeter**: 12 control(s), 6 event handler(s) with recovered code
 - Form **frmAboutGreeter**: 3 control(s), 1 event handler(s) with recovered code

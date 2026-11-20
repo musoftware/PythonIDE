@@ -1,0 +1,13 @@
+{
+  "name": "HelloMobile",
+  "language": "flutter",
+  "forms": [
+    "ContactsScreen",
+    "EditScreen"
+  ],
+  "startup": "ContactsScreen",
+  "modules": [],
+  "mobile": {
+    "device": "chrome"
+  }
+}

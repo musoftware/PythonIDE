@@ -1,0 +1,16 @@
+{
+  "name": "IdeGodot",
+  "language": "godot",
+  "forms": [],
+  "startup": "Level1",
+  "modules": [
+    "Level1.gd"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "IdeGodot",
+    "start_scene": "Level1"
+  }
+}

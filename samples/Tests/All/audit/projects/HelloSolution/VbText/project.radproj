@@ -1,0 +1,10 @@
+{
+  "name": "VbText",
+  "language": "vb-basic",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "VbText.bas"
+  ],
+  "kind": "library"
+}

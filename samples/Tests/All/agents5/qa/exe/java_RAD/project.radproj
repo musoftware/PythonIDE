@@ -1,0 +1,9 @@
+{
+  "name": "JavaHello",
+  "language": "python-tk",
+  "forms": [
+    "MainFrame"
+  ],
+  "startup": "MainFrame",
+  "modules": []
+}

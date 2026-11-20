@@ -1,0 +1,16 @@
+{
+  "name": "IdeProj",
+  "language": "flutter",
+  "forms": [
+    "MainScreen",
+    "DetailsScreen",
+    "AboutScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [
+    "lib/Helpers.dart"
+  ],
+  "mobile": {
+    "device": "windows"
+  }
+}

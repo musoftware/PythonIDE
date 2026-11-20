@@ -1,0 +1,21 @@
+{
+  "name": "H5empty",
+  "language": "html5-game",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "index.html",
+    "port": 0,
+    "live_reload": true
+  },
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "H5empty",
+    "start_scene": "Scene1"
+  }
+}

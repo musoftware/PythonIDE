@@ -1,0 +1,35 @@
+{
+  "name": "C_lua_bridge",
+  "language": "lua-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "LuaCons.lua"
+  ],
+  "references": [
+    "GoLib",
+    "LuaLib",
+    "RbLib",
+    "PyLib",
+    "CsLib"
+  ],
+  "reference_files": {
+    "GoLib": [
+      "GoLib.ref.lua"
+    ],
+    "LuaLib": [
+      "LuaLib.ref.lua"
+    ],
+    "RbLib": [
+      "RbLib.ref.lua"
+    ],
+    "PyLib": [
+      "PyLib.ref.lua"
+    ],
+    "CsLib": [
+      "CsLib.ref.lua"
+    ]
+  }
+}

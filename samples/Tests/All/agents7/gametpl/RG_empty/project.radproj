@@ -1,0 +1,17 @@
+{
+  "name": "RGempty",
+  "language": "ring-game",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.ring",
+    "Scene1.ring"
+  ],
+  "scenes": [
+    "Scene1"
+  ],
+  "game": {
+    "title": "RGempty",
+    "start_scene": "Scene1"
+  }
+}

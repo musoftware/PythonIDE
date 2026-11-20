@@ -1,0 +1,16 @@
+{
+  "name": "G1",
+  "language": "godot",
+  "forms": [],
+  "startup": "Level1",
+  "modules": [
+    "Level1.gd"
+  ],
+  "scenes": [
+    "Level1"
+  ],
+  "game": {
+    "title": "G1",
+    "start_scene": "Level1"
+  }
+}
