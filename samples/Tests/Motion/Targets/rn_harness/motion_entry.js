@@ -1,0 +1,45 @@
+// Runs the generated Motion_Expo screen in Node (bundled by check_targets.py with stubs.js)
+import Form1 from '../Motion_Expo/Form1.jsx';
+
+const out = {};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  const f = new Form1({});
+  f.componentDidMount();
+  f.render();
+  await sleep(150);
+  out.titleMid = f.lblTitle.Text;
+  out.titleTxMid = f._radFx.values('lblTitle').tx._v;
+  await sleep(1300);
+  out.title = f.lblTitle.Text;
+  out.titleTx = f._radFx.values('lblTitle').tx._v;
+  f.fireAny(f.btnShake, ['Click', 'Tap']);
+  await sleep(120);
+  out.shakeMid = f._radFx.values('btnShake').tx._v;
+  out.wantsClick = f.hasHandler(f.pnlBox, ['Click', 'Tap']) === false && f.hasHandler(f.btnShake, ['Click']) === true;
+  await sleep(700);
+  out.shakeEnd = f._radFx.values('btnShake').tx._v;
+  f.fireAny(f.btnMove, ['Click', 'Tap']);
+  await sleep(600);
+  out.moveTx = f._radFx.values('btnMove').tx._v;
+  out.moveTyChained = f._radFx.values('btnMove').ty._v;
+  f.btnHide_Click();
+  await sleep(150);
+  out.infoOpacityMid = f._radFx.values('lblInfo').opacity._v;
+  await sleep(600);
+  out.infoVisible = f.lblInfo.Visible;
+  f.SetVisible('lblInfo', true);
+  await sleep(600);
+  out.infoShown = f.lblInfo.Visible && f._radFx.values('lblInfo').opacity._v === 1;
+  await sleep(1500);
+  out.boxColorChanged = f.pnlBox.BackColor !== '#3399FF';
+  f._radFx.event('btnPulse', 'enter');
+  await sleep(300);
+  out.hoverScale = f._radFx.values('btnPulse').sx._v;
+  f._radFx.event('btnPulse', 'leave');
+  await sleep(400);
+  out.hoverBack = f._radFx.values('btnPulse').sx._v;
+  f.componentWillUnmount();
+  console.log('RESULT ' + JSON.stringify(out));
+  process.exit(0);
+})();

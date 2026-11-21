@@ -117,6 +117,14 @@ class KivyPlugin(LanguagePlugin):
                 p.write_text(text, encoding="utf-8")
                 written.append(rel)
         put("radkivy.py", kg.RUNTIME)
+        from ..mobile import kivy_fx                        # animations / layout sizes / TwoPane of the forms
+        for name in project.forms:
+            try:
+                if project.form_language(name) == self.id and kivy_fx.KivyFx(Form.load(project.form_path(name))).active:
+                    put(kivy_fx.FX_FILE, kivy_fx.runtime_source())
+                    break
+            except Exception:  # noqa: BLE001 - a broken form must not stop the project files
+                continue
         put("buildozer.spec", kg.buildozer_spec(project.name, snake(project.name).replace("_", "")),
             only_missing=True)
         put("requirements.txt", "kivy>=2.3\n", only_missing=True)

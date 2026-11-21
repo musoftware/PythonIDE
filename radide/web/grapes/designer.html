@@ -36,11 +36,20 @@
   .gjs-block-category .gjs-title, .gjs-sm-sector-title, .gjs-trait-category .gjs-title, .gjs-layer-item {
     color: var(--rad-text); }
   .rad-empty { padding: 10px; color: var(--rad-muted); }
+  /* "This size only": style edits go into the @media rule of the device shown (orange frame like the form designer) */
+  body.rad-size-only .gjs-frame-wrapper { outline: 4px solid #F7630C; outline-offset: 0; }
+  #rad-size-label { display: none; position: absolute; left: 8px; top: 6px; z-index: 20; padding: 2px 8px;
+                    background: #F7630C; color: #fff; font: 600 11px "Segoe UI", sans-serif; border-radius: 3px;
+                    pointer-events: none; }
+  .rad-hinge { position: absolute; top: 0; bottom: 0; background: rgba(20, 20, 20, .75); pointer-events: none; z-index: 5; }
+  .rad-hinge.rad-crease { background: none; border-left: 2px dashed rgba(120, 120, 120, .9); }
+  #wrap { position: relative; }
 </style>
 <style id="rad-theme"></style>
 </head>
 <body>
 <div id="wrap">
+  <div id="rad-size-label"></div>
   <div id="gjs"></div>
   <div id="side-toggle" title="Hide / show the Toolbox, Layers, CSS and Attributes panel">&#9656;</div>
   <div id="side">

@@ -2476,6 +2476,8 @@ def load_form(path) -> Form:
     form = ld.build()
     form.extra["winforms"]["notes"] = ld.notes
     _load_vb_handles(form, s)
+    from . import winforms_fx          # animations / layout sizes kept in Form1.radide.json (never in .Designer)
+    winforms_fx.load_sidecar(form, s.path)
     return form
 
 
@@ -2590,6 +2592,11 @@ def save_form(form: Form, path=None) -> list[str]:
         if s.dialect.lang == "cs":
             wf["events"] = {f"{o or form.name}.{e}": m for o, e, m, _i in s.doc.events} | \
                 (wf.get("new_events") or {})
+    from . import winforms_fx          # Form1.radide.json + generated partial Form1.RadFx.cs / .vb
+    try:
+        r.report.extend(winforms_fx.save(form, dp, s.dialect.lang))
+    except OSError as e:
+        r.report.append(f"animations / layout sizes not written: {e}")
     return r.report
 
 

@@ -1,5 +1,13 @@
 {
  "strings": {
+  "When visible": "عند الظهور على الشاشة",
+  "Galaxy Z Fold6 open (882)": "Galaxy Z Fold6 مفتوح (882)",
+  "Galaxy Z Fold6 cover (360)": "Galaxy Z Fold6 الشاشة الخارجية (360)",
+  "Pixel Fold open (841)": "Pixel Fold مفتوح (841)",
+  "Surface Duo 2 spanned (1106)": "Surface Duo 2 على الشاشتين (1106)",
+  "Tablet (770)": "جهاز لوحي (770)",
+  "Phone landscape (568)": "هاتف أفقي (568)",
+  "Phone portrait (320)": "هاتف عمودي (320)",
   "#AARRGGBB (colorTo)": "#AARRGGBB (للحركة colorTo)",
   "Animated value - right-click the property name to change or remove it": "قيمة متحركة - انقر بزر الفأرة الأيمن على اسم الخاصية لتغييرها أو إزالتها",
   "controller field (manual: play:<name>)": "حقل المتحكم (يدويًا: play:<الاسم>)",

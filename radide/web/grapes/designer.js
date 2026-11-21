@@ -37,6 +37,18 @@
     selectorManager: { appendTo: '#selectors' },
     styleManager: { appendTo: '#styles' },
     traitManager: { appendTo: '#traits' },
+    // the GrapesJS default devices + foldables (style edits of a non-desktop device go into its @media block)
+    deviceManager: { devices: [
+      { id: 'desktop', name: 'Desktop', width: '' },
+      { id: 'tablet', name: 'Tablet', width: '770px', widthMedia: '992px' },
+      { id: 'mobileLandscape', name: 'Mobile landscape', width: '568px', widthMedia: '768px' },
+      { id: 'mobilePortrait', name: 'Mobile portrait', width: '320px', widthMedia: '480px' },
+      { id: 'foldOpen', name: 'Galaxy Z Fold6 open', width: '882px', height: '1104px', widthMedia: '992px' },
+      { id: 'foldCover', name: 'Galaxy Z Fold6 cover', width: '360px', height: '860px', widthMedia: '480px' },
+      { id: 'pixelFold', name: 'Pixel Fold open', width: '841px', height: '701px', widthMedia: '992px' },
+      { id: 'flip', name: 'Galaxy Z Flip6', width: '412px', height: '1004px', widthMedia: '480px' },
+      { id: 'duoSpanned', name: 'Surface Duo 2 spanned', width: '1106px', height: '720px' },
+    ] },
     plugins,
   });
   window.radEditor = editor;
@@ -190,6 +202,54 @@
   window.radRedo = () => { editor.UndoManager.redo(); };
   window.radHasUndo = () => [editor.UndoManager.hasUndo(), editor.UndoManager.hasRedo()];
   window.radDevice = name => { editor.setDevice(name); };
+  // "This size only" frame: style edits on a non-desktop device go into its @media rule (the other sizes keep
+  // theirs); hinge = [left, width] of a dual-screen / half-open device's hinge band in canvas pixels
+  window.radSizeFrame = function (label, hinge) {
+    document.body.classList.toggle('rad-size-only', !!label);
+    const tag = document.getElementById('rad-size-label');
+    tag.textContent = label || '';
+    tag.style.display = label ? 'block' : 'none';
+    const fw = editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
+    const host = fw && fw.parentElement;
+    if (!host) return;
+    let band = host.querySelector('.rad-hinge');
+    if (!hinge) { if (band) band.remove(); return; }
+    if (!band) {
+      band = document.createElement('div');
+      band.className = 'rad-hinge';
+      band.title = 'Hinge';
+      host.appendChild(band);
+    }
+    band.style.left = hinge[0] + 'px';
+    band.style.width = Math.max(2, hinge[1]) + 'px';
+    band.classList.toggle('rad-crease', hinge[1] < 2);
+  };
+  // labels of the Animate traits (the IDE language)
+  let L = { animate: 'Animate', on: 'Animate on', none: '(none)', delay: 'Delay (ms)', duration: 'Duration (ms)' };
+  window.radLabels = function (labels) { L = Object.assign(L, labels || {}); };
+  const RADFX = ['fadeIn', 'fadeOut', 'move', 'slideIn', 'slideOut', 'bounce', 'shake', 'pulse', 'rotate', 'flip',
+                 'scaleIn', 'scaleOut', 'zoom', 'colorTo', 'typewriter'];
+  editor.TraitManager.addType('radfx', {
+    createInput({ trait }) {
+      const el = document.createElement('select');
+      [['', L.none]].concat(RADFX.map(p => [p, (trait.get('names') || {})[p] || p])).forEach(([v, t]) => {
+        const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o);
+      });
+      return el;
+    },
+    onEvent({ elInput, component }) {
+      const v = elInput.value;
+      const cls = component.getClasses().filter(c => c === 'radfx' || RADFX.indexOf(String(c).replace('radfx-', '')) >= 0);
+      cls.forEach(c => component.removeClass(c));
+      if (v) component.addClass(['radfx', 'radfx-' + v]);
+    },
+    onUpdate({ elInput, component }) {
+      const c = component.getClasses().find(x => RADFX.indexOf(String(x).replace('radfx-', '')) >= 0 && x !== 'radfx');
+      elInput.value = c ? String(c).replace('radfx-', '') : '';
+    },
+  });
+  window.radFxNames = {};
+  window.radSetFxNames = names => { window.radFxNames = names || {}; };
   window.radBorders = on => { on ? editor.runCommand('core:component-outline') : editor.stopCommand('core:component-outline'); };
   window.radPreview = on => { on ? editor.runCommand('core:preview') : editor.stopCommand('core:preview'); };
   window.radSetRaw = function (cid, code, label) {
@@ -217,6 +277,18 @@
     if (c && c.get('type') !== 'rad-raw' && c.get('type') !== 'textnode' && c.getTrait && !c.getTrait('data-radstyle'))
       c.addTrait({ type: 'text', name: 'data-radstyle', label: 'Inline style', placeholder: 'color: red; margin: 4px' },
                  { at: 0 });
+    // Animate: class="radfx radfx-<preset>" + data-radfx-trigger / -delay / -duration (radfx.css / radfx.js)
+    if (c && c.get('type') !== 'rad-raw' && c.get('type') !== 'textnode' && c.getTrait && !c.getTrait('radfx-preset')) {
+      c.addTrait([
+        { type: 'radfx', name: 'radfx-preset', label: L.animate, changeProp: false, names: window.radFxNames },
+        { type: 'select', name: 'data-radfx-trigger', label: L.on, options: [
+          { id: '', name: L.load || 'On load' }, { id: 'visible', name: L.visible || 'When visible' },
+          { id: 'click', name: L.click || 'On click' }, { id: 'hover', name: L.hover || 'On hover' },
+          { id: 'timer', name: L.timer || 'On timer' }, { id: 'manual', name: L.manual || 'Manual (from code)' }] },
+        { type: 'number', name: 'data-radfx-delay', label: L.delay, min: 0, step: 100 },
+        { type: 'number', name: 'data-radfx-duration', label: L.duration, min: 0, step: 100 },
+      ]);
+    }
   });
   editor.on('component:selected', c => {
     document.getElementById('sel-info').textContent = describe(c);

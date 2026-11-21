@@ -634,6 +634,61 @@ def add_head_link(parts: PageParts, href: str) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- animations (radfx.css / radfx.js)
+RADFX_FILES = ("radfx.css", "radfx.js")
+# web devices of the Design View: GrapesJS id -> (radide.devices id, orientation) for the hinge drawing
+WEB_FOLDABLES = {"foldOpen": ("galaxy_z_fold6", "Portrait"), "pixelFold": ("pixel_fold", "Landscape"),
+                 "flip": ("galaxy_z_flip6", "Portrait"), "foldCover": ("galaxy_z_fold6", "Portrait"),
+                 "duoSpanned": ("surface_duo2", "Landscape")}
+
+
+def uses_radfx(text: str) -> bool:
+    """Does the page use the Animate presets (class="radfx ...") or the foldable helpers (rad-two-pane)?"""
+    return bool(re.search(r"""class\s*=\s*["'][^"']*\b(radfx|rad-two-pane|rad-hide-folded)\b""", text or "", re.I))
+
+
+def add_radfx(text: str, path: Path) -> tuple[str, dict[Path, str]]:
+    """Page text with radfx.css / radfx.js linked (when it uses them and has a <head>) and the files to write
+    next to the page ({path: text}, only missing / outdated ones)."""
+    if not uses_radfx(text):
+        return text, {}
+    files: dict[Path, str] = {}
+    for name in RADFX_FILES:
+        src = (GRAPES_DIR / name).read_text(encoding="utf-8")
+        dst = Path(path).parent / name
+        try:
+            cur = dst.read_text(encoding="utf-8") if dst.is_file() else None
+        except OSError:
+            cur = None
+        if cur != src:
+            files[dst] = src
+    hm = re.search(r"</head\s*>", text, re.I)
+    if not hm:
+        return text, files
+    head = text[:hm.start()]
+    ins = ""
+    if not re.search(r"""href\s*=\s*["'][^"']*radfx\.css""", head, re.I):
+        ins += '  <link rel="stylesheet" href="radfx.css">\n'
+    if not re.search(r"""src\s*=\s*["'][^"']*radfx\.js""", text, re.I):
+        ins += '  <script src="radfx.js" defer></script>\n'
+    if ins:
+        line_start = text.rfind("\n", 0, hm.start()) + 1
+        text = text[:line_start] + ins + text[line_start:]
+    return text, files
+
+
+def device_hinge(device: str) -> list | None:
+    """[left, width] of the vertical hinge / crease of a foldable web device (None = none or horizontal)."""
+    spec = WEB_FOLDABLES.get(device)
+    if spec is None or device == "foldCover":
+        return None
+    from .. import devices as _dev
+    r = _dev.hinge_screen_rect(spec[0], spec[1], "Flat")
+    if not r or r[2] > r[3]:            # a horizontal fold (Flip): nothing to draw across the width
+        return None
+    return [int(r[0]), int(r[2])]
+
+
 def canvas_styles(parts: PageParts, path: Path, site_root: Path | None = None) -> list[str]:
     """URLs of the page's stylesheets for the design canvas."""
     from urllib.parse import urljoin
@@ -907,7 +962,9 @@ if _HAVE_QT:
 
         MODES = ("design", "split", "code")
         DEVICES = (("Desktop", "desktop"), ("Tablet (770)", "tablet"), ("Phone landscape (568)", "mobileLandscape"),
-                   ("Phone portrait (320)", "mobilePortrait"))
+                   ("Phone portrait (320)", "mobilePortrait"), ("Galaxy Z Fold6 open (882)", "foldOpen"),
+                   ("Galaxy Z Fold6 cover (360)", "foldCover"), ("Pixel Fold open (841)", "pixelFold"),
+                   ("Galaxy Z Flip6 (412)", "flip"), ("Surface Duo 2 spanned (1106)", "duoSpanned"))
 
         def __init__(self, win, path, parent=None, mode: str = "design"):
             super().__init__(parent)
@@ -945,7 +1002,7 @@ if _HAVE_QT:
             for text, _dev in self.DEVICES:
                 self.device.addItem(text)
             self.device.setToolTip("Device size of the design surface")
-            self.device.currentIndexChanged.connect(lambda i: self._js(f"radDevice({json.dumps(self.DEVICES[i][1])});"))
+            self.device.currentIndexChanged.connect(self._device_changed)
             tb.addWidget(self.device)
             tb.addSeparator()
             self.a_undo = tb.addAction("Undo", self.undo)
@@ -1116,8 +1173,30 @@ if _HAVE_QT:
                 loop.exec()
             return box.get("v")
 
+        def _device_changed(self, i: int):
+            """GrapesJS device + the orange "This size only" frame (non-desktop devices: CSS edits go into the
+            device's @media rule, the other sizes keep theirs) + the hinge of a foldable."""
+            text, dev = self.DEVICES[i]
+            from ..i18n import tr
+            label = "" if dev == "desktop" else f"{tr('This size only')}: {tr(text)}"
+            self._js(f"radDevice({json.dumps(dev)}); radSizeFrame({json.dumps(label)}, {json.dumps(device_hinge(dev))});")
+
+        def _send_labels(self):
+            from ..i18n import tr
+            labels = {"animate": tr("Animate"), "on": tr("Animate on"), "none": tr("(none)"),
+                      "delay": tr("Delay (ms)"), "duration": tr("Duration (ms)"), "load": tr("On load"),
+                      "visible": tr("When visible"), "click": tr("On click"), "hover": tr("On hover"),
+                      "timer": tr("On timer"), "manual": tr("Manual (from code)")}
+            try:
+                from ..motion.presets import CATALOG
+                names = {k: tr(p.label) for k, p in CATALOG.items()}
+            except Exception:  # noqa: BLE001
+                names = {}
+            self._js(f"radLabels({json.dumps(labels)}); radSetFxNames({json.dumps(names)});")
+
         def _on_ready(self):
             self._ready = True
+            self._send_labels()
             self._apply_theme()
             self._load_design(self._text)
             for code in self._pending_js:
@@ -1340,12 +1419,20 @@ if _HAVE_QT:
         def save(self) -> bool:
             text = self.sync_now()
             comp = self._last_composed if (self._last_composed is not None and self._last_composed.text == text) else None
+            fx_text, fx_files = add_radfx(text, self.path)     # Animate presets: link + copy radfx.css / radfx.js
+            if fx_text != text:
+                text = self._text = fx_text
+                self._parts = parse_page(text, self.path, self.site_root)
+                if self._mode in ("code", "split"):
+                    self._set_code_text(text)
             try:
                 write_text_file(self.path, text, self._file_info)
                 if comp is not None:
                     for p, t in comp.files.items():
                         info = read_text_file(p)[1] if p.exists() else {"encoding": "utf-8"}
                         write_text_file(p, t, info)
+                for p, t in fx_files.items():
+                    p.write_text(t, encoding="utf-8")
             except OSError as e:
                 QMessageBox.warning(self, "Design View", f"Could not save {self.path.name}:\n{e}")
                 return False

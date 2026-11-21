@@ -192,6 +192,8 @@ class DartFormGen:
         self.handlers = handlers          # handler name -> takes an event argument
         self.code = "_code"               # getter returning the user class
         self.user_class = user_class
+        from .fx_dart import DartFx       # animations / layout sizes / TwoPane (radmotion.dart, radlayout.dart)
+        self.fx = DartFx(form)
 
     # ---------------------------------------------------------------- events
     def handler(self, c, events) -> str | None:
@@ -235,6 +237,8 @@ class DartFormGen:
             return fn(c, s, p, en)
         if t in ("Column", "Row", "Stack", "Panel"):
             return self.container(c)
+        if t == "TwoPane":
+            return self.fx.two_pane(self, c)
         from ..components import codegen as _comp      # component packages: their "flutter" target
         if _comp.handles(t):
             return _comp.dart_widget(self, c)
@@ -513,7 +517,7 @@ class DartFormGen:
                 size = f"height: {h}" if al == "stretch" else f"width: {w}, height: {h}"
             else:
                 size = f"width: {w}" if al == "stretch" else f"width: {w}, height: {h}"
-            children.append(f"if ({k.name}.visible) SizedBox({size}, child: {self.widget(k)})")
+            children.append(f"if ({k.name}.visible) SizedBox({size}, child: {self.fx.wrap(k.name, self.widget(k))})")
         widget = "Column" if kind == "column" else "Row"
         inner = (f"{widget}(crossAxisAlignment: {cross}, mainAxisAlignment: {main}, spacing: {spacing}, "
                  f"children: [{', '.join(children)}])")
@@ -532,10 +536,31 @@ class DartFormGen:
             pl = places[id(px)]
             dynamic |= not pl.is_static()
             k = px.ctrl
-            out.append(f"if ({k.name}.visible) Positioned(left: {_term(pl.x, pl.rx, 'cw')}, "
-                       f"top: {_term(pl.y, pl.ry, 'ch')}, width: {_term(pl.w, pl.rw, 'cw')}, "
-                       f"height: {_term(pl.h, pl.rh, 'ch')}, child: {self.widget(k)})")
+            fx = self.fx
+            left = fx.pick(k.name, "Left", _term(pl.x, pl.rx, 'cw'), lambda q: _term(q.x, q.rx, 'cw'))
+            top = fx.pick(k.name, "Top", _term(pl.y, pl.ry, 'ch'), lambda q: _term(q.y, q.ry, 'ch'))
+            width = fx.pick(k.name, "Width", _term(pl.w, pl.rw, 'cw'), lambda q: _term(q.w, q.rw, 'cw'))
+            height = fx.pick(k.name, "Height", _term(pl.h, pl.rh, 'ch'), lambda q: _term(q.h, q.rh, 'ch'))
+            out.append(f"if ({k.name}.visible) Positioned(left: {left}, "
+                       f"top: {top}, width: {width}, "
+                       f"height: {height}, child: {fx.wrap(k.name, self.widget(k))})")
         return out, dynamic
+
+    def places_of_form(self) -> dict:
+        """{control: layout.Place} of the controls placed by Stack / Positioned (as generate() places them)."""
+        from ..layout import group_places
+        _a, _b, _d, _f, body_kids, dy, fw, body_h, _dh = self._body()
+        out = {}
+        proxies = [_Proxy(k, dy) for k in body_kids]
+        places = group_places(proxies, fw, body_h)
+        out.update({px.ctrl.name: places[id(px)] for px in proxies})
+        for c in self.form.controls:
+            if c.type in ("Stack", "Panel", "Card", "GroupBox"):
+                kids = form_children(self.form, c.name)
+                px2 = [_Proxy(k, 0) for k in kids]
+                pl2 = group_places(px2, to_int(c.props.get("Width"), 0), to_int(c.props.get("Height"), 0))
+                out.update({px.ctrl.name: pl2[id(px)] for px in px2})
+        return out
 
     def stack(self, kids, cw: int, ch: int) -> str:
         children, dynamic = self.positioned(kids, cw, ch)
@@ -546,8 +571,9 @@ class DartFormGen:
                 f"return {st}; }})")
 
     # ---------------------------------------------------------------- screen
-    def generate(self, user_file: str) -> str:
-        f, n = self.form, self.form.name
+    def _body(self):
+        """(appbar, bottom, drawer, fab, body controls, dy, form width, body height, design height)."""
+        f = self.form
         top = form_children(f, "")
         appbar = next((c for c in top if c.type == "AppBar"), None)
         bottom = next((c for c in top if c.type == "BottomNav"), None)
@@ -568,6 +594,12 @@ class DartFormGen:
         content_h = max([to_int(c.props.get("Top")) + to_int(c.props.get("Height")) - dy for c in body_kids
                          if c.props.get("Dock") in (None, "", "None")] or [0]) + 8
         design_h = max(body_h, content_h)
+        return appbar, bottom, drawer, fab, body_kids, dy, fw, body_h, design_h
+
+    def generate(self, user_file: str) -> str:
+        f, n = self.form, self.form.name
+        appbar, bottom, drawer, fab, body_kids, dy, fw, body_h, design_h = self._body()
+        fx = self.fx
 
         all_ctrls = [c for c in f.controls if not c.ctype.nonvisual]
         timers = [c for c in f.controls if c.type == "Timer"]
@@ -581,7 +613,7 @@ class DartFormGen:
              "  @override",
              f"  State<{n}> createState() => {self.user_class}();",
              "}", "",
-             f"abstract class {n}Designer extends State<{n}> with RadForm<{n}> {{"]
+             f"abstract class {n}Designer extends State<{n}> with RadForm<{n}>{fx.mixins()} {{"]
         for c in all_ctrls:
             L.append(f"  final {c.name} = {_state_init(c)};")
         for c in others_nonvisual:
@@ -591,6 +623,7 @@ class DartFormGen:
             cb = f"() {{{tick} }}" if tick else "null"
             L.append(f"  late final {c.name} = RadTimer(interval: {max(1, to_int(c.props.get('Interval'), 100))}, "
                      f"enabled: {'true' if truthy(c.props.get('Enabled')) else 'false'}, onTick: {cb});")
+        L += fx.members(n)
         L += ["", f"  {self.user_class} get {self.code} => this as {self.user_class};", "",
               "  @override",
               "  List<RadControl> get radControls => [" + ", ".join(c.name for c in all_ctrls + others_nonvisual) + "];",
@@ -604,16 +637,18 @@ class DartFormGen:
         if load in self.handlers:
             arg = "const RadEvent()" if self.handlers[load] else ""
             L.append(f"    WidgetsBinding.instance.addPostFrameCallback((_) {{ if (mounted) {self.code}.{load}({arg}); }});")
+        L += fx.init_lines()
         L += ["  }", ""]
-        if timers:
+        if timers or fx.dispose_lines():
             L += ["  @override", "  void dispose() {"] + [f"    {c.name}.stop();" for c in timers] + \
-                 ["    super.dispose();", "  }", ""]
+                fx.dispose_lines() + ["    super.dispose();", "  }", ""]
         # build
         bg = dcolor(f.props.get("BackColor"))
-        title_expr = dstr(f.props.get("Text") or n)
-        L += ["  @override", "  Widget build(BuildContext context) {", "    return Scaffold("]
-        if bg:
-            L.append(f"      backgroundColor: {bg},")
+        title_expr = fx.form_pick("Text", dstr(f.props.get("Text") or n))
+        L += ["  @override", "  Widget build(BuildContext context) {"] + fx.build_start() + ["    return Scaffold("]
+        bg_pick = fx.form_pick("BackColor", bg or "null")
+        if bg or bg_pick != "null":
+            L.append(f"      backgroundColor: {bg_pick},")
         if appbar is not None:
             a = appbar.name
             call = self.fire(appbar, ("Click", "Tap", "Changed"),
@@ -635,13 +670,17 @@ class DartFormGen:
             L.append(f"      bottomNavigationBar: {bottom.name}.visible && {bottom.name}.items.length >= 2 "
                      f"? {self.bottom_nav(bottom)} : null,")
         children, _dyn = self.positioned(body_kids, fw, body_h, dy)
-        L += ["      body: SafeArea(child: LayoutBuilder(builder: (context, box) {",
+        if fx.plan and "" in fx.wrapped:                 # an animation of the whole screen
+            L.append("      body: radMotion.wrap('', SafeArea(child: LayoutBuilder(builder: (context, box) {")
+        else:
+            L.append("      body: SafeArea(child: LayoutBuilder(builder: (context, box) {")
+        L += [
               "        final cw = box.maxWidth;",
               f"        final ch = box.maxHeight.isFinite && box.maxHeight > {design_h} ? box.maxHeight : "
               f"{design_h}.0;",
               "        return SingleChildScrollView(child: SizedBox(width: cw, height: ch, "
               f"child: Stack(clipBehavior: Clip.none, children: [{', '.join(children)}])));",
-              "      })),",
+              "      })))," if fx.plan and "" in fx.wrapped else "      })),",
               "    );", "  }", "}", ""]
         return format_dart("\n".join(L))
 

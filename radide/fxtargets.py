@@ -26,7 +26,7 @@ from __future__ import annotations
 
 EASE_NAMES = ("linear", "in", "out", "inout", "back", "elastic", "bounce", "sine")
 TRANSFORM_TARGETS = ("kivy", "rn", "dart", "css")
-TARGET_LABELS = {"ring": "Ring (RingQt)", "dart": "Flutter", "kivy": "Kivy", "rn": "React Native (Expo)",
+TARGET_LABELS = {"ring": "Ring", "dart": "Flutter", "kivy": "Kivy", "rn": "React Native (Expo)",
                  "winforms": "WinForms", "css": "the web page"}
 # plugin id -> fx target
 PLUGIN_TARGETS = {"ring-qt": "ring", "ring-script": "ring", "ring-app": "ring", "flutter": "dart",

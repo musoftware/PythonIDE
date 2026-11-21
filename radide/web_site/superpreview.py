@@ -71,6 +71,26 @@ def preset_segments(preset: Preset, rotated: bool = False) -> list[tuple]:
     land = (preset.width > preset.height) != rotated
     o = "Landscape" if land else "Portrait"
     return segments(preset.device, o, preset.posture)
+
+
+def preset_hinges(preset: Preset | None, rotated: bool = False) -> list[tuple]:
+    """What to draw over the page of a foldable preset (CSS px): [(x, y, w, h, kind)] with kind "band" (the
+    gap between two viewport segments: a dual-screen hinge or a half-open fold) or "crease" (a flat,
+    seamless fold: a line).  Empty for other presets and folded (cover screen) postures."""
+    if preset is None or not preset.device:
+        return []
+    from ..devices import hinge_screen_rect
+    segs = preset_segments(preset, rotated)
+    if len(segs) == 2:
+        (ax, ay, aw, ah), (bx, by, _bw, _bh) = segs
+        if bx > ax:                                   # side by side
+            return [(ax + aw, 0, max(0, bx - ax - aw), ah, "band")]
+        return [(0, ay + ah, aw, max(0, by - ay - ah), "band")]
+    land = (preset.width > preset.height) != rotated
+    r = hinge_screen_rect(preset.device, "Landscape" if land else "Portrait", preset.posture)
+    if not r:
+        return []
+    return [(r[0], r[1], r[2], r[3], "band" if (r[2] and r[3]) else "crease")]
 CUSTOM = "Custom"
 MOBILE_UA = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) "
              "Chrome/124.0.0.0 Mobile Safari/537.36")
@@ -255,6 +275,33 @@ class _ShotSignals(QObject):
     done = pyqtSignal(int, bool, str, str)       # request id, ok, message, png path
 
 
+class _HingeOverlay(QWidget):
+    """The hinge of a foldable / dual-screen preset drawn over the page (mouse events go through)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.bands: list[tuple] = []
+        self.scale = 1.0
+
+    def paintEvent(self, _e):  # noqa: N802
+        from PyQt6.QtGui import QColor, QPainter, QPen
+        if not self.bands:
+            return
+        p = QPainter(self)
+        s = self.scale
+        for x, y, w, h, kind in self.bands:
+            if kind == "band":
+                p.fillRect(int(x * s), int(y * s), max(2, int(round(w * s))), max(2, int(round(h * s))),
+                           QColor(20, 20, 20, 200))
+            else:
+                pen = QPen(QColor(110, 110, 110, 220), 2, Qt.PenStyle.DashLine)
+                p.setPen(pen)
+                p.drawLine(int(x * s), int(y * s), int((x + w) * s), int((y + h) * s))
+        p.end()
+
+
 class PreviewPane(QWidget):
     """One side of SuperPreview: preset/size/rotate/engine controls above a scaled view."""
     changed = pyqtSignal()
@@ -310,6 +357,7 @@ class PreviewPane(QWidget):
         self.shot.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self.shot.setStyleSheet("background: white;")
         self.shot.hide()
+        self.hinge = _HingeOverlay(self.stage)          # foldables: the hinge / fold over the page
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
@@ -390,6 +438,13 @@ class PreviewPane(QWidget):
             if abs(self.view.zoomFactor() - s) > 1e-3:
                 self.view.setZoomFactor(s)
         self.shot.setGeometry(x, y, dw, dh)
+        p = self.current_preset()
+        bands = preset_hinges(p, self._rotated) if p is not None and {w, h} == {p.width, p.height} else []
+        self.hinge.bands, self.hinge.scale = bands, s
+        self.hinge.setGeometry(x, y, dw, dh)
+        self.hinge.setVisible(bool(bands))
+        self.hinge.raise_()
+        self.hinge.update()
         if self.image is not None:
             self.shot.setPixmap(QPixmap.fromImage(self.image).scaled(
                 dw, dh, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))

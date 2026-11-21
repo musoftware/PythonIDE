@@ -255,7 +255,12 @@ class FlutterPlugin(LanguagePlugin):
         put(".gitignore", ".dart_tool/\nbuild/\n.flutter-plugins\n.flutter-plugins-dependencies\n*.iml\n.idea/\n",
             only_missing=True)
         from ..components.codegen import flutter_radapp     # + exports of the component packages' Dart files
-        put("lib/radapp.dart", flutter_radapp(cg.RADAPP, folder, loaded))
+        radapp = flutter_radapp(cg.RADAPP, folder, loaded)
+        from ..mobile import fx_dart                        # animations / layout sizes / TwoPane of the forms
+        fx_files = sorted({f for form in loaded for f in fx_dart.DartFx(form).files})
+        for f in fx_files:
+            put(f"lib/{f}", fx_dart.dart_source(f))
+        put("lib/radapp.dart", fx_dart.radapp_exports(radapp, fx_files))
         if webview:
             put("lib/radwebview.dart", cg.RADWEBVIEW)
         seed = str(project.extra.get("theme_color") or "")

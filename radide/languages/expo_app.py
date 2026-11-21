@@ -177,6 +177,7 @@ class ExpoPlugin(LanguagePlugin):
         folder = Path(project.folder)
         written: list[str] = []
         forms, images = [], set()
+        fx_needed = False                                   # radfx.js: animations / layout sizes / TwoPane
         for name in project.forms:
             if project.form_language(name) != self.id:
                 continue
@@ -185,6 +186,8 @@ class ExpoPlugin(LanguagePlugin):
             except Exception:  # noqa: BLE001 - a broken form must not stop the others
                 continue
             forms.append((name, str(form.props.get("Text") or name)))
+            from ..mobile.fx_rn import RnFx
+            fx_needed = fx_needed or RnFx(form).active
             for c in form.controls:
                 img = str(c.props.get("Image") or "").strip()
                 if img and not re.match(r"^(https?:)?//|^data:", img):
@@ -213,6 +216,9 @@ class ExpoPlugin(LanguagePlugin):
         put("index.js", rn.INDEX_JS, only_missing=True)
         put(".gitignore", rn.GITIGNORE, only_missing=True)
         put("radapp.js", RADAPP_JS)
+        if fx_needed:
+            from ..mobile.rn_runtime import RADFX_JS
+            put("radfx.js", RADFX_JS)
         put("App.js", rn.generate_app(project.name, forms, project.startup))
         return written
 

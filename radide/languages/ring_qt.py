@@ -223,6 +223,8 @@ def write_runtime(folder: Path) -> None:
             target.write_text(RING_RT, encoding="utf-8")
     except OSError:
         pass
+    from . import ring_fx                           # animations / layout sizes / TwoPane
+    ring_fx.write_runtime(folder)
 
 
 def _style(p) -> str:
@@ -303,8 +305,11 @@ class RingQtPlugin(LanguagePlugin):
             rows.append(f"[{client}, 0, {top}, 0, {-top}, 0, 0, 1, 1]")
             hosts[n] = rows
         places = {k: v for k, v in place_specs(form).items() if not v.is_static()}
+        from . import ring_fx                       # animations / layout sizes / TwoPane (_radfx.ring)
+        fx_on = ring_fx.needs_runtime(form)
+        sized = ring_fx.managed(form) if fx_on else set()
         for c in form.ordered():
-            if c.name in places:
+            if c.name in places and c.name not in sized:
                 hosts.setdefault(self._parent_expr(form, c, client), []).append(
                     f"[{c.name}, {_spec(places[c.name])[1:-1]}]")
 
@@ -324,9 +329,13 @@ class RingQtPlugin(LanguagePlugin):
         globals_ += [it["Name"] for it in menu_leaves(items)]
         for i in range(1, len(hosts) + 1):
             globals_ += [f"{n}_Lay{i}", f"{n}_LayEv{i}"]
+        if fx_on:
+            globals_ += ring_fx.globals_(form)
         L = [HEADER.format(form=n), 'load "guilib.ring"']
         if hosts or dialogs:
             L.append(f'load "{RT_FILE}"      # written by RAD IDE when the program runs')
+        if fx_on:
+            L.append(f'load "{ring_fx.FX_FILE}"      # animations / layout sizes, written by RAD IDE when the program runs')
         L.append("")
         L += [f"{g} = NULL" for g in globals_]
         L += ["", f"func {n}_Create",
@@ -381,6 +390,9 @@ class RingQtPlugin(LanguagePlugin):
             elif t.type in DIALOG_CLASS:
                 L += ["", "    " + self._dialog(t, n)]
         L += ["    " + s for s in self._filter(n, n, None, form, user_code)]
+        if fx_on:
+            L.append("")
+            L += ["    " + s for s in ring_fx.create_lines(self, form, user_code, client, self._parent_expr)]
         for i, (host, rows) in enumerate(hosts.items(), 1):
             lay, ev = f"{n}_Lay{i}", f"{n}_LayEv{i}"
             L += ["", f"    # Anchor / Dock: re-place the children of {host} when it is resized",
@@ -389,10 +401,17 @@ class RingQtPlugin(LanguagePlugin):
                   f"    {ev}.setEventOutput(false)",
                   f"    {ev}.setResizeEvent(\"RadQt_Place({lay})\")",
                   f"    {host}.installEventFilter({ev})"]
+        if fx_on:
+            L += ["    " + s if s else s for s in ring_fx.filter_lines(form, client)]
         if has(f"{n}_Load"):
             L += ["", f"    {n}_Load()"]
+        if fx_on:
+            L += ["    " + s for s in ring_fx.load_lines(form)]
         show = "showMaximized" if fp.get("WindowState") == "Maximized" else "show"
         L += ["", f"func {n}_Show", f"    if isNull({n}) {n}_Create() ok", f"    {n}.{show}()", ""]
+        if fx_on:
+            lays = list(hosts)
+            L += ring_fx.api_lines(form, f"{n}_Lay{lays.index(client) + 1}" if client in lays else "")
         return "\n".join(L)
 
     @staticmethod
@@ -489,6 +508,9 @@ class RingQtPlugin(LanguagePlugin):
         if _comp.handles(t):
             return _comp.ring_control_lines(self, parent, c, form, user_code)
         q = lambda s: quote(s, RING_QUOTES)
+        if t == "TwoPane":          # foldables: a frame whose two first children are split by RadPane_Place
+            return [f"{n} = new qFrame({parent}, 0)",
+                    f"{n}.setGeometry({int(p['Left'])}, {int(p['Top'])}, {int(p['Width'])}, {int(p['Height'])})"]
         cls = QT_CLASS[t]
         multiline = t == "TextBox" and p.get("Multiline")
         if multiline:

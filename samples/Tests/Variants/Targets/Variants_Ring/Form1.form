@@ -1,0 +1,126 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Sizes (Ring)",
+    "Width": 640,
+    "Height": 400,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnGo",
+        "Text": "Go",
+        "Left": 400,
+        "Top": 20,
+        "Width": 200,
+        "Height": 30,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Right",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      },
+      "variants": {
+        "small": {
+          "Left": 20,
+          "Top": 340,
+          "Width": 380,
+          "Text": "Go (small)"
+        }
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblSide",
+        "Text": "Side panel",
+        "Left": 20,
+        "Top": 20,
+        "Width": 200,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      },
+      "variants": {
+        "small": {
+          "Visible": false
+        }
+      }
+    },
+    {
+      "type": "Panel",
+      "props": {
+        "Name": "pnlMain",
+        "Left": 20,
+        "Top": 80,
+        "Width": 600,
+        "Height": 300,
+        "BackColor": "#e8eefc",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Parent": ""
+      }
+    }
+  ],
+  "variants": {
+    "sizes": [
+      {
+        "id": "small",
+        "label": "Small",
+        "when": {
+          "maxWidth": 499
+        },
+        "preview": {
+          "width": 420,
+          "height": 400
+        }
+      }
+    ],
+    "form": {
+      "small": {
+        "Text": "Sizes (Ring) - small"
+      }
+    }
+  }
+}

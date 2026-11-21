@@ -133,6 +133,8 @@ class RnFormGen:
     def __init__(self, form):
         ensure_types()
         self.form = form
+        from .fx_rn import RnFx            # animations / layout sizes / TwoPane (radfx.js)
+        self.fx = RnFx(form)
 
     def attrs(self, c, style: str) -> str:
         return f"form={{this}} c={{this.{c.name}}} style={{{style}}}"
@@ -148,6 +150,8 @@ class RnFormGen:
             return self.flex(c, style)
         if t in ("Stack", "Panel"):
             return f"<R.Container {a}>{self.inner_stack(c)}</R.Container>"
+        if t == "TwoPane":
+            return self.fx.two_pane(self, c, style)
         return f"<R.Unknown {a} type={jstr(t)} />"
 
     # ----------------------------------------------------------------- simple controls
@@ -273,7 +277,7 @@ class RnFormGen:
             x, y, w, h = places[id(px)].rect(cw, ch)
             k = px.ctrl
             style = f"{{ position: 'absolute', left: {x}, top: {y}, width: {w}, height: {h} }}"
-            out.append(f"{{this.{k.name}.Visible && {self.widget(k, style)}}}")
+            out.append(f"{{this.{k.name}.Visible && {self.fx.place(self, k, style)}}}")
         return "".join(out)
 
     def flex(self, c, style: str) -> str:
@@ -287,14 +291,37 @@ class RnFormGen:
                 st = f"{{ height: {h} }}" if al == "stretch" else f"{{ width: {w}, height: {h} }}"
             else:
                 st = f"{{ width: {w} }}" if al == "stretch" else f"{{ width: {w}, height: {h} }}"
-            out.append(f"{{this.{k.name}.Visible && {self.widget(k, st)}}}")
+            out.append(f"{{this.{k.name}.Visible && {self.fx.place(self, k, st)}}}")
         return (f"<R.Flex {self.attrs(c, style)} dir=\"{dir_}\" spacing={{{to_int(c.props.get('Spacing'), 0)}}} "
                 f"align=\"{al}\" padding={{{to_int(c.props.get('Padding'), 0)}}}>{''.join(out)}</R.Flex>")
 
     # ----------------------------------------------------------------- screen
+    def body_metrics(self):
+        """(body controls, dy, form width, design height) - how generate() places the screen body."""
+        f = self.form
+        top = form_children(f, "")
+        appbar = next((c for c in top if c.type == "AppBar"), None)
+        bottom = next((c for c in top if c.type == "BottomNav"), None)
+        slots = {id(x) for x in (appbar, bottom, next((c for c in top if c.type == "Drawer"), None),
+                                 next((c for c in top if c.type == "Fab"), None)) if x is not None}
+        body_kids = [c for c in top if id(c) not in slots]
+        dy = 0
+        if appbar is not None:
+            ah = to_int(appbar.props.get("Height"), 56)
+            if appbar.props.get("Dock") == "Top":
+                dy = ah
+            elif to_int(appbar.props.get("Top"), 0) <= 8:
+                dy = to_int(appbar.props.get("Top"), 0) + ah
+        bh = to_int(bottom.props.get("Height"), 80) if bottom is not None else 0
+        fw, fh = to_int(f.props.get("Width"), 360), to_int(f.props.get("Height"), 640)
+        content_h = max([to_int(c.props.get("Top")) + to_int(c.props.get("Height")) - dy for c in body_kids
+                         if c.props.get("Dock") in (None, "", "None")] or [0]) + 8
+        return body_kids, dy, fw, max(max(1, fh - dy - bh), content_h)
+
     def generate(self, user_file: str) -> str:
         from ..layout import group_places
         f, n = self.form, self.form.name
+        fx = self.fx
         top = form_children(f, "")
         appbar = next((c for c in top if c.type == "AppBar"), None)
         bottom = next((c for c in top if c.type == "BottomNav"), None)
@@ -322,7 +349,8 @@ class RnFormGen:
 
         L = [HEADER.format(form=n, user=user_file).rstrip("\n"),
              "import React from 'react';",
-             "import { R, RadControl, RadForm, RadTimer } from './radapp';", "",
+             "import { R, RadControl, RadForm, RadTimer } from './radapp';",
+             *fx.imports(), "",
              "/* eslint-disable */",
              f"export class {n}Designer extends RadForm {{",
              f"  static formName = {jstr(n)};",
@@ -336,7 +364,9 @@ class RnFormGen:
             L.append(f"    this.{c.name} = new RadTimer(this, {jstr(c.name)}, "
                      f"{max(1, to_int(c.props.get('Interval'), 100))}, "
                      f"{'true' if truthy(c.props.get('Enabled')) else 'false'});")
+        L += fx.constructor_lines()
         L += ["  }", ""]
+        L += fx.method_lines()
         proxies = [_Proxy(k, dy) for k in body_kids]
         places = group_places(proxies, fw, design_h)
         children = []
@@ -345,11 +375,15 @@ class RnFormGen:
             k = px.ctrl
             style = (f"this.P({jnum(pl.x)}, {round(pl.rx, 3)}, {jnum(pl.y)}, {round(pl.ry, 3)}, "
                      f"{jnum(pl.w)}, {round(pl.rw, 3)}, {jnum(pl.h)}, {round(pl.rh, 3)})")
-            children.append(f"        {{this.{k.name}.Visible && {self.widget(k, style)}}}")
+            style = fx.style(k.name, (pl.x, pl.rx, pl.y, pl.ry, pl.w, pl.rw, pl.h, pl.rh), dy) or style
+            children.append(f"        {{this.{k.name}.Visible && {fx.place(self, k, style)}}}")
         bg = jcolor(f.props.get("BackColor"))
         title = jstr(f.props.get("Text") or n)
         screen = ["form={this}", f"designHeight={{{design_h}}}"]
-        if bg:
+        back = fx.screen_back(bg)
+        if back:
+            screen.append(f"backColor={{{back}}}")
+        elif bg:
             screen.append(f"backColor={{{bg}}}")
         if appbar is not None:
             a = appbar.name
@@ -362,11 +396,14 @@ class RnFormGen:
             screen.append(f"fab={{this.{fab.name}.Visible && {self.fab(fab)}}}")
         if drawer is not None:
             screen.append(f"drawer={{{self.drawer(drawer)}}}")
-        L += ["  render() {",
+        screen_open = "      <R.Screen " + ("\n        ".join(screen)) + ">"
+        if fx.plan and "" in fx.wrapped:              # an animation of the whole screen
+            screen_open = "      <FxBox fx={this._radFx} name=\"\" style={{ flex: 1 }}>" + screen_open[6:]
+        L += ["  render() {", *fx.render_lines(),
               "    return (",
-              "      <R.Screen " + ("\n        ".join(screen)) + ">",
+              screen_open,
               *children,
-              "      </R.Screen>",
+              "      </R.Screen></FxBox>" if fx.plan and "" in fx.wrapped else "      </R.Screen>",
               "    );",
               "  }",
               "}", ""]

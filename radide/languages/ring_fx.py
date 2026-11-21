@@ -49,6 +49,11 @@ func RadFx_Init oParent, lRespect
 
 func RadFx_Keep oObject
     add(RadFx_aObj, oObject)
+    return len(RadFx_aObj)
+
+# qAllEvents eats the event unless setEventOutput(false) is called while it is handled
+func RadFx_Pass nObj
+    RadFx_aObj[nObj].setEventOutput(false)
 
 func RadFx_Widget pObj, nKind, nText, cBg, cFg, cFont, nSize, lBold, lItalic, cPre, cPost, cText, lVisible, cParent
     add(RadFx_aW, [pObj, nKind, nText, cBg, cFg, cFont, nSize, lBold, lItalic, cPre, cPost, 1, cText, lVisible,
@@ -56,7 +61,7 @@ func RadFx_Widget pObj, nKind, nText, cBg, cFg, cFont, nSize, lBold, lItalic, cP
     return len(RadFx_aW)
 
 func RadFx_Add cName, nW, aTracks, nCount, lForever, lAutoRev, nDelay, lRestore, nDur, cDone
-    add(RadFx_aSB, [cName, nW, aTracks, nCount, lForever, lAutoRev, nDelay, lRestore, nDur, [], cDone])
+    add(RadFx_aSB, [cName, nW, aTracks, nCount, lForever, lAutoRev, nDelay, lRestore, nDur, [], cDone, []])
     return len(RadFx_aSB)
 
 func RadFx_Chain nAfter, nNext
@@ -218,6 +223,7 @@ func RadFx_Value nW, cProp, k, vStart, aStarts
     switch k[2]
     on 0 return k[3]
     on 1
+        if isString(vStart) return vStart ok
         v = vStart * k[3] + k[4]
         if k[6] != "" v += k[5] * RadFx_StartOf(nW, k[6], aStarts) ok
         if lower(cProp) = "opacity"
@@ -290,7 +296,12 @@ func RadFx_TrackAt nW, aTrack, t, vStart, aStarts
 func RadFx_Apply nSB, t, aStarts
     sb = RadFx_aSB[nSB]
     nW = sb[2]
-    x = "" y = "" w = "" h = ""
+    p = RadFx_aW[nW][1]
+    x = QWidget_x(p)
+    y = QWidget_y(p)
+    w = QWidget_width(p)
+    h = QWidget_height(p)
+    lGeo = 0
     for i = 1 to len(sb[3])
         tr = sb[3][i]
         v = RadFx_TrackAt(nW, tr, t, aStarts[i][2], aStarts)
@@ -299,20 +310,23 @@ func RadFx_Apply nSB, t, aStarts
             n = len(aStarts[i][3])
             RadFx_aW[nW][13] = aStarts[i][3]
             RadFx_SetText(nW, left(aStarts[i][3], floor(n * v + 0.5)))
-        but c = "left" x = v
-        but c = "top" y = v
-        but c = "width" w = v
-        but c = "height" h = v
+        but c = "left"
+            x = v
+            lGeo = 1
+        but c = "top"
+            y = v
+            lGeo = 1
+        but c = "width"
+            w = v
+            lGeo = 1
+        but c = "height"
+            h = v
+            lGeo = 1
         else
             RadFx_Set(nW, tr[1], v)
         ok
     next
-    if x != "" or y != "" or w != "" or h != ""
-        p = RadFx_aW[nW][1]
-        if x = "" x = QWidget_x(p) ok
-        if y = "" y = QWidget_y(p) ok
-        if w = "" w = QWidget_width(p) ok
-        if h = "" h = QWidget_height(p) ok
+    if lGeo
         if w < 0 w = 0 ok
         if h < 0 h = 0 ok
         QWidget_setGeometry(p, floor(x + 0.5), floor(y + 0.5), floor(w + 0.5), floor(h + 0.5))
@@ -365,8 +379,16 @@ func RadFx_End nSB, aStarts, lHide
     t = sb[9]
     if sb[6] t = 0 ok
     RadFx_Apply(nSB, t, aStarts)
+    RadFx_aSB[nSB][12] = aStarts
     RadFx_aW[sb[2]][16] = 0
     if lHide RadFx_Set(sb[2], "Visible", 0) ok
+    if not RadFx_aW[sb[2]][14]
+        # hidden at the end (exit): colours / opacity come back for the next show
+        for s in aStarts
+            c = lower(s[1])
+            if c = "backcolor" or c = "forecolor" or c = "opacity" RadFx_Set(sb[2], s[1], s[2]) ok
+        next
+    ok
     for n in sb[10]
         RadFx_Begin(n)
     next
@@ -381,10 +403,19 @@ func RadFx_Stop nSB
 
 # hover left: "reverse" plays back from where it is, "stop" stops, "none" lets it finish
 func RadFx_Leave nSB, cMode
+    if cMode = "none" return ok
     i = RadFx_Find(nSB)
-    if i = 0 or cMode = "none" return ok
     if cMode = "stop"
         RadFx_Stop(nSB)
+        return
+    ok
+    if i = 0
+        # already at its end: play it back from there
+        sb = RadFx_aSB[nSB]
+        if sb[6] or len(sb[12]) = 0 return ok
+        add(RadFx_aRun, [nSB, RadFx_Ms(), -1, sb[9], 0, sb[12]])
+        RadFx_aW[sb[2]][16] = 1
+        if not RadFx_oTimer.isActive() RadFx_oTimer.start() ok
         return
     ok
     r = RadFx_aRun[i]
@@ -487,10 +518,18 @@ func RadVar_Match aSizes, w, h
     aOut = []
     for s in aSizes
         ok1 = 1
-        if not isString(s[2]) and w < s[2] ok1 = 0 ok
-        if not isString(s[3]) and w > s[3] ok1 = 0 ok
-        if not isString(s[4]) and h < s[4] ok1 = 0 ok
-        if not isString(s[5]) and h > s[5] ok1 = 0 ok
+        if not isString(s[2])
+            if w < s[2] ok1 = 0 ok
+        ok
+        if not isString(s[3])
+            if w > s[3] ok1 = 0 ok
+        ok
+        if not isString(s[4])
+            if h < s[4] ok1 = 0 ok
+        ok
+        if not isString(s[5])
+            if h > s[5] ok1 = 0 ok
+        ok
         if s[6] != "" and s[6] != cOrient ok1 = 0 ok
         if s[7] != "" and s[7] != cPosture ok1 = 0 ok
         if s[8] != "" and s[8] != cSpan ok1 = 0 ok
@@ -538,9 +577,11 @@ func RadVar_Apply aSizes, aCtl, pHost
         ok
         for pv in aProps
             vNow = RadFx_Get(nW, pv[1])
-            if isString(vNow) != isString(pv[2]) or vNow != pv[2]
-                RadFx_Set(nW, pv[1], pv[2])
+            lSet = 1
+            if isString(vNow) = isString(pv[2])
+                if vNow = pv[2] lSet = 0 ok
             ok
+            if lSet RadFx_Set(nW, pv[1], pv[2]) ok
         next
     next
     return aAct
@@ -718,7 +759,6 @@ def create_lines(plugin, form, user_code: str, client: str, parent_expr) -> list
         for sb in plan["storyboards"]:
             for nxt in sb["chain"]:
                 L.append(f"RadFx_Chain({sbvar[sb['fx']]}, {sbvar[nxt]})")
-        ev_i = 0
         by_src: dict[tuple, list] = {}
         for t in plan["triggers"]:
             v = sbvar.get(t["fx"])
@@ -728,25 +768,23 @@ def create_lines(plugin, form, user_code: str, client: str, parent_expr) -> list
                 src = t["source"] or t["target"]
                 by_src.setdefault((src, t["on"]), []).append((v, t))
             elif t["on"] == "timer":
-                ev_i += 1
-                tv = f"{n}_FxTimer{ev_i}"
                 L += [f"oFxT = new qTimer({n})", f"oFxT.setInterval({max(1, int(t['intervalMs'] or 1000))})",
                       f"oFxT.setTimeoutEvent(\"RadFx_Begin(\" + {v} + \")\")", "oFxT.start()", "RadFx_Keep(oFxT)"]
-                del tv
         for (src, on), lst in by_src.items():
             obj = n if not src else src
-            ev_i += 1
-            L += [f"oFxE = new qAllEvents({obj})", "oFxE.setEventOutput(false)"]
+            L += [f"oFxE = new qAllEvents({obj})", "nFxE = RadFx_Keep(oFxE)"]
             code = " + \" \" + ".join(f"\"RadFx_Begin(\" + {v} + \")\"" for v, _t in lst)
+            code += " + \" RadFx_Pass(\" + nFxE + \")\""
             if on == "click":
                 L.append(f"oFxE.setMouseButtonReleaseEvent({code})")
             else:
                 L.append(f"oFxE.setEnterEvent({code})")
                 leave = " + \" \" + ".join(f"\"RadFx_Leave(\" + {v} + \", '{t['leave']}')\"" for v, t in lst)
+                leave += " + \" RadFx_Pass(\" + nFxE + \")\""
                 L.append(f"oFxE.setLeaveEvent({leave})")
                 L.append(f"{obj}.setMouseTracking(true)")
-            L += [f"{obj}.installEventFilter(oFxE)", "RadFx_Keep(oFxE)"]
-    # layout sizes: rows for RadVar_Apply (installed before the Anchor / Dock filters, so it runs after them)
+            L.append(f"{obj}.installEventFilter(oFxE)")
+    # layout sizes: rows for RadVar_Apply
     if vplan:
         rows = []
         for s in vplan["sizes"]:
@@ -790,19 +828,31 @@ def create_lines(plugin, form, user_code: str, client: str, parent_expr) -> list
             spec = ", ".join(_n(x) for x in base_spec) if base_spec else ""
             ctl_rows.append(f"[{wid(name)}, {parent}.pObject, [{spec}], [{base}], [{', '.join(ovs)}]]")
         L.append(f"{n}_VCtl = [{', '.join(ctl_rows)}]")
-        L += ["oFxV = new qAllEvents(" + client + ")", "oFxV.setEventOutput(false)",
-              f"oFxV.setResizeEvent(\"{n}_ApplySizes()\")", f"{client}.installEventFilter(oFxV)", "RadFx_Keep(oFxV)",
-              f"{n}_ApplySizes()"]
     for i, tp in enumerate(panes, 1):
         start, end = tp["panes"]
         ps = f"{start}.pObject" if start else "NULL"
         pe = f"{end}.pObject" if end else "NULL"
+        L.append(f"{n}_Pane{i} = [{tp['name']}.pObject, {ps}, {pe}, {_q(tp['mode'])}, {_n(tp['ratio'])}, "
+                 f"{2 if tp['single'] == 'End' else 1}, {1 if tp['hinge_aware'] else 0}]")
+    return L
+
+
+def filter_lines(form, client: str) -> list[str]:
+    """Resize filters of the layout sizes / TwoPanes, installed AFTER the Anchor / Dock filters: Qt calls the
+    filter installed last first, so they run first, place the anchored controls themselves (the
+    <Form>_ApplySizes function) and pass the event on."""
+    n = form.name
+    L: list[str] = []
+    if variant_plan(form):
+        L += ["", "# layout sizes: re-applied when the window is resized",
+              f"oFxV = new qAllEvents({client})", "nFxV = RadFx_Keep(oFxV)",
+              f"oFxV.setResizeEvent(\"{n}_ApplySizes() RadFx_Pass(\" + nFxV + \")\")",
+              f"{client}.installEventFilter(oFxV)", f"{n}_ApplySizes()"]
+    for i, tp in enumerate(two_panes(form), 1):
         var = f"{n}_Pane{i}"
-        L += [f"{var} = [{tp['name']}.pObject, {ps}, {pe}, {_q(tp['mode'])}, {_n(tp['ratio'])}, "
-              f"{2 if tp['single'] == 'End' else 1}, {1 if tp['hinge_aware'] else 0}]",
-              f"oFxP = new qAllEvents({tp['name']})", "oFxP.setEventOutput(false)",
-              f"oFxP.setResizeEvent(\"RadPane_Place({var})\")", f"{tp['name']}.installEventFilter(oFxP)",
-              "RadFx_Keep(oFxP)", f"RadPane_Place({var})"]
+        L += [f"oFxP = new qAllEvents({tp['name']})", "nFxP = RadFx_Keep(oFxP)",
+              f"oFxP.setResizeEvent(\"RadPane_Place({var}) RadFx_Pass(\" + nFxP + \")\")",
+              f"{tp['name']}.installEventFilter(oFxP)", f"RadPane_Place({var})"]
     return L
 
 
@@ -837,7 +887,7 @@ def globals_(form) -> list[str]:
     return out
 
 
-def api_lines(form) -> list[str]:
+def api_lines(form, client_lay: str = "") -> list[str]:
     """Functions of the form for user code (after <Form>_Show)."""
     n = form.name
     plan = fx_plan(form, "ring")
@@ -864,7 +914,10 @@ def api_lines(form) -> list[str]:
             L.append("    ok")
         L += ["    eval(cName + \".setVisible(\" + lOn + \")\")", ""]
     if vplan:
-        L += [f"func {n}_ApplySizes", f"    return RadVar_Apply({n}_VSizes, {n}_VCtl, {_client_of(form)}.pObject)", "",
+        L += [f"func {n}_ApplySizes"]
+        if client_lay:
+            L.append(f"    RadQt_Place({client_lay})")
+        L += [f"    return RadVar_Apply({n}_VSizes, {n}_VCtl, {_client_of(form)}.pObject)", "",
               f"func {n}_CurrentSizes",
               f"    return RadVar_Match({n}_VSizes, QWidget_width({_client_of(form)}.pObject), "
               f"QWidget_height({_client_of(form)}.pObject))", ""]
@@ -898,5 +951,5 @@ def write_runtime(folder) -> None:
         pass
 
 
-__all__ = ["RING_FX", "FX_FILE", "needs_runtime", "managed", "create_lines", "load_lines", "globals_", "api_lines",
+__all__ = ["RING_FX", "FX_FILE", "needs_runtime", "managed", "create_lines", "filter_lines", "load_lines", "globals_", "api_lines",
            "write_runtime"]

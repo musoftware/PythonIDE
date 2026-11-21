@@ -53,6 +53,8 @@ class KivyFormGen:
         ensure_types()
         self.form = form
         self.binds: list[str] = []          # python lines for __init__ (event wiring)
+        from .kivy_fx import KivyFx         # animations / layout sizes / TwoPane (radkivyfx.py)
+        self.fx = KivyFx(form)
 
     # ------------------------------------------------------------ widgets
     def common(self, c, ind: str) -> list[str]:
@@ -197,6 +199,8 @@ class KivyFormGen:
                 L += self.flex_child(k, t, al, i2)
             if al != "between":
                 L.append(f"{i2}Widget:")           # fills the rest (children keep their size)
+        elif t == "TwoPane":
+            L = self.fx.two_pane_lines(self, c, ind)
         elif t in ("Card", "Stack", "Panel", "GroupBox"):
             L = [f"{ind}RadCard:" if t == "Card" else f"{ind}FloatLayout:"]
             if t == "Card":
@@ -250,13 +254,19 @@ class KivyFormGen:
             L = self.widget(px.ctrl, ind)
             i2 = ind + "    "
             wexpr, hexpr = _lin(pl.w, pl.rw, f"{box}.width"), _lin(pl.h, pl.rh, f"{box}.height")
-            L += [f"{i2}size_hint: None, None",
-                  f"{i2}size: {wexpr}, {hexpr}",
-                  f"{i2}x: {box}.x + {_lin(pl.x, pl.rx, f'{box}.width')}",
-                  f"{i2}top: {box}.top - ({_lin(pl.y, pl.ry, f'{box}.height')})"]
+            geo = self.fx.geometry(px.ctrl.name, box, (pl.x, pl.y, pl.w, pl.h, pl.rx, pl.ry, pl.rw, pl.rh))
+            if geo:                                    # layout sizes move / resize it
+                L += [f"{i2}size_hint: None, None", f"{i2}size: {geo['size']}", f"{i2}x: {geo['x']}",
+                      f"{i2}top: {geo['top']}"]
+            else:
+                L += [f"{i2}size_hint: None, None",
+                      f"{i2}size: {wexpr}, {hexpr}",
+                      f"{i2}x: {box}.x + {_lin(pl.x, pl.rx, f'{box}.width')}",
+                      f"{i2}top: {box}.top - ({_lin(pl.y, pl.ry, f'{box}.height')})"]
             if not truthy(px.ctrl.props.get("Visible", True)):
                 L += [f"{i2}opacity: 0", f"{i2}disabled: True"]
                 self.binds.append(f"        self.{px.ctrl.name}.visible = False")
+            L += self.fx.take_tail(px.ctrl.name)          # TwoPane: its panes after its own properties
             out += L
         return out
 
@@ -285,6 +295,7 @@ class KivyFormGen:
              "from kivy.lang import Builder",
              "",
              "from radkivy import RadEvent, RadScreen, RadTimer, run_app  # noqa: F401",
+             *self.fx.imports(),
              "",
              "KV = '''",
              *[line.replace("'''", "\\'\\'\\'") for line in kv],
@@ -296,6 +307,7 @@ class KivyFormGen:
              f"    form_name = {n!r}",
              f"    design_size = ({W}, {H})",
              f"    title = {str(f.props.get('Text') or n)!r}",
+             *self.fx.class_lines(),
              "",
              "    def __init__(self, **kw):",
              f"        kw.setdefault('name', {n!r})",
@@ -308,6 +320,9 @@ class KivyFormGen:
             L.append(f"        self.{t.name} = RadTimer({max(1, to_int(t.props.get('Interval'), 100))}, "
                      f"{truthy(t.props.get('Enabled'))}, lambda: self._call({[t.name + '_Tick']!r}, None))")
         L += self.binds
+        if self.fx.active:
+            L += self.fx.init_lines()
+            L += self.fx.method_lines()
         L.append("")
         return "\n".join(L)
 

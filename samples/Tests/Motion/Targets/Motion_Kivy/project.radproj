@@ -1,0 +1,9 @@
+{
+  "name": "Motion_Kivy",
+  "language": "kivy",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

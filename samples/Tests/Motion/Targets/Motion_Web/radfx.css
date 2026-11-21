@@ -1,0 +1,80 @@
+/* RAD IDE animation presets for web pages (written next to the page by the Design View - do not edit, it is
+   replaced). An element animates with  class="radfx radfx-bounce"  and is started by radfx.js:
+     data-radfx-trigger   load (default) | visible | click | hover | timer | after | manual
+     data-radfx-delay / data-radfx-duration (ms)   data-radfx-repeat (0 = forever)   data-radfx-reverse
+     data-radfx-from      left | right | top | bottom (slide)   data-radfx-color (colour)   data-radfx-scale
+   Presets: fadeIn fadeOut move slideIn slideOut bounce shake pulse rotate flip scaleIn scaleOut zoom colorTo
+   typewriter. prefers-reduced-motion: the end state at once.
+   Foldables: .rad-two-pane (two panes split at the hinge with the viewport-segment environment variables). */
+.radfx { --radfx-dur: 500ms; --radfx-delay: 0ms; --radfx-ease: cubic-bezier(.25, .8, .35, 1); --radfx-repeat: 1;
+         --radfx-dir: normal; --radfx-dx: 0px; --radfx-dy: 0px; --radfx-dist: 80px; --radfx-scale: 1.2;
+         --radfx-color: #3399ff; --radfx-chars: 24; }
+.radfx-wait.radfx-fadeIn, .radfx-wait.radfx-slideIn, .radfx-wait.radfx-scaleIn, .radfx-wait.radfx-typewriter { visibility: hidden; }
+.radfx.radfx-play { animation-duration: var(--radfx-dur); animation-delay: var(--radfx-delay);
+                    animation-timing-function: var(--radfx-ease); animation-iteration-count: var(--radfx-repeat);
+                    animation-direction: var(--radfx-dir); animation-fill-mode: both; }
+.radfx-play.radfx-fadeIn { animation-name: radfx-fadeIn; }
+.radfx-play.radfx-fadeOut { animation-name: radfx-fadeOut; }
+.radfx-play.radfx-move { animation-name: radfx-move; }
+.radfx-play.radfx-slideIn { animation-name: radfx-slideIn; }
+.radfx-play.radfx-slideOut { animation-name: radfx-slideOut; }
+.radfx-play.radfx-bounce { animation-name: radfx-bounce; animation-timing-function: linear; }
+.radfx-play.radfx-shake { animation-name: radfx-shake; animation-timing-function: linear; }
+.radfx-play.radfx-pulse { animation-name: radfx-pulse; animation-timing-function: ease-in-out; }
+.radfx-play.radfx-rotate { animation-name: radfx-rotate; }
+.radfx-play.radfx-flip { animation-name: radfx-flip; }
+.radfx-play.radfx-scaleIn { animation-name: radfx-scaleIn; animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
+.radfx-play.radfx-scaleOut { animation-name: radfx-scaleOut; }
+.radfx-play.radfx-zoom { animation-name: radfx-zoom; }
+.radfx-play.radfx-colorTo { animation-name: radfx-colorTo; animation-timing-function: ease-in-out; }
+.radfx-play.radfx-typewriter { animation-name: radfx-typewriter; animation-timing-function: steps(var(--radfx-chars), end);
+                               white-space: nowrap; overflow: hidden; }
+.radfx[data-radfx-from="left"] { --radfx-sx: -1; --radfx-sy: 0; }
+.radfx[data-radfx-from="right"] { --radfx-sx: 1; --radfx-sy: 0; }
+.radfx[data-radfx-from="top"] { --radfx-sx: 0; --radfx-sy: -1; }
+.radfx[data-radfx-from="bottom"] { --radfx-sx: 0; --radfx-sy: 1; }
+
+@keyframes radfx-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes radfx-fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
+@keyframes radfx-move { to { translate: var(--radfx-dx) var(--radfx-dy); } }
+@keyframes radfx-slideIn {
+  from { opacity: 0; translate: calc(var(--radfx-sx, -1) * var(--radfx-dist)) calc(var(--radfx-sy, 0) * var(--radfx-dist)); }
+  to { opacity: 1; translate: 0 0; } }
+@keyframes radfx-slideOut {
+  from { opacity: 1; translate: 0 0; }
+  to { opacity: 0; visibility: hidden;
+       translate: calc(var(--radfx-sx, 1) * var(--radfx-dist)) calc(var(--radfx-sy, 0) * var(--radfx-dist)); } }
+@keyframes radfx-bounce {
+  0% { translate: 0 0; animation-timing-function: ease-out; } 30% { translate: 0 -20px; animation-timing-function: ease-in; }
+  55% { translate: 0 0; animation-timing-function: ease-out; } 75% { translate: 0 -8px; animation-timing-function: ease-in; }
+  100% { translate: 0 0; } }
+@keyframes radfx-shake {
+  0%, 100% { translate: 0 0; } 16% { translate: -10px 0; } 33% { translate: 10px 0; } 50% { translate: -10px 0; }
+  66% { translate: 10px 0; } 83% { translate: -5px 0; } }
+@keyframes radfx-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
+@keyframes radfx-rotate { from { rotate: 0deg; } to { rotate: 360deg; } }
+@keyframes radfx-flip { from { scale: -1 1; } to { scale: 1 1; } }
+@keyframes radfx-scaleIn { from { opacity: 0; scale: .3; } to { opacity: 1; scale: 1; } }
+@keyframes radfx-scaleOut { from { opacity: 1; scale: 1; } to { opacity: 0; scale: .3; visibility: hidden; } }
+@keyframes radfx-zoom { from { scale: 1; } to { scale: var(--radfx-scale); } }
+@keyframes radfx-colorTo { to { background-color: var(--radfx-color); } }
+@keyframes radfx-typewriter { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .radfx.radfx-play { animation-duration: 1ms !important; animation-delay: 0ms !important;
+                      animation-iteration-count: 1 !important; }
+}
+
+/* ---------------------------------------------------------------- foldables / dual screens */
+.rad-two-pane { display: grid; grid-template-columns: 1fr; gap: 0; }
+@media (min-width: 600px) { .rad-two-pane { grid-template-columns: 1fr 1fr; } }
+@media (horizontal-viewport-segments: 2) {
+  .rad-two-pane { grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+                  column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0)); }
+}
+@media (vertical-viewport-segments: 2) {
+  .rad-two-pane { grid-template-columns: 1fr;
+                  grid-template-rows: env(viewport-segment-height 0 0) env(viewport-segment-height 0 1);
+                  row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0)); }
+}
+@media (device-posture: folded) { .rad-hide-folded { display: none !important; } }
