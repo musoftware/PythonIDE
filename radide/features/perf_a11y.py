@@ -145,7 +145,14 @@ def suggested_name(w: QWidget) -> str:
 
 
 def _buddy_label(w: QWidget) -> str:
-    top = w.window()
+    # a buddy label sits next to its field (same form / dialog page): search a few levels up, not the
+    # whole main window - findChildren over thousands of IDE widgets for every new editor (e.g. each
+    # Properties grid refresh) cost ~30 ms per editor
+    top, win = w, w.window()
+    for _ in range(3):
+        if top is win or top.parentWidget() is None or isinstance(top, QDockWidget):
+            break
+        top = top.parentWidget()
     for lab in top.findChildren(QLabel):
         try:
             if lab.buddy() is w and lab.text():

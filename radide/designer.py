@@ -10,7 +10,7 @@ ones follow when the form is resized; Lock Controls and a Tab Order mode
 from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QHBoxLayout, QMenu, QScrollArea, QToolButton, QWidget)
 
 from .controls import CONTROL_TYPES, MENU_TYPES, TOOLSTRIP_H
@@ -80,10 +80,17 @@ class Surface(QWidget):
             return
         back = self.view.form_props().get("BackColor") or FORM_BACK
         p.fillRect(self.rect(), QColor(back))
-        p.setPen(QColor(0, 0, 0, 140))
-        for x in range(0, self.width(), GRID):
-            for y in range(0, self.height(), GRID):
-                p.drawPoint(x, y)
+        # the grid dots: one GRIDxGRID tile repeated (a drawPoint per dot cost ~4 ms per repaint)
+        tile = getattr(self, "_grid_tile", None)
+        if tile is None:
+            tile = QPixmap(GRID, GRID)
+            tile.fill(Qt.GlobalColor.transparent)
+            tp = QPainter(tile)
+            tp.setPen(QColor(0, 0, 0, 140))
+            tp.drawPoint(0, 0)
+            tp.end()
+            self._grid_tile = tile
+        p.drawTiledPixmap(self.rect(), tile)
 
 
 class Overlay(QWidget):
@@ -181,10 +188,12 @@ class Overlay(QWidget):
         if not self.recorded:
             self.doc.checkpoint()
             self.recorded = True
+            self.view.begin_live()      # the drag's steps update geometry only; the rest on release
 
     # ------------------------------------------------------------------ mouse
     def mousePressEvent(self, e):
         self.setFocus()
+        self.view.end_live()            # a drag whose release never arrived
         pos = e.position().toPoint()
         ctrl_key = bool(e.modifiers() & Qt.KeyboardModifier.ControlModifier)
         self.recorded = False
@@ -265,11 +274,15 @@ class Overlay(QWidget):
             if abs(dx) < 2 and abs(dy) < 2 and not self.recorded:
                 return
             self._record()
+            moved = False
             for c in self._movable():
                 s = self.starts.get(id(c))
                 if s is not None:     # size: the base value (a previewed state / keyframe size stays as is)
                     self.doc.set_geometry(c, snap(s.x() + dx), snap(s.y() + dy),
-                                          int(c.props["Width"]), int(c.props["Height"]))
+                                          int(c.props["Width"]), int(c.props["Height"]), relayout=False)
+                    moved = True
+            if moved:                 # docked controls snap once per step, not once per moved control
+                self.doc.relayout_docked()
             return
         if self.mode == "resize":
             c = self.doc.selected
@@ -303,6 +316,7 @@ class Overlay(QWidget):
 
     def mouseReleaseEvent(self, e):
         mode, self.mode = self.mode, None
+        self.view.end_live()            # ONE controlChanged per dragged control (Properties, previews ...)
         if mode == "band":
             band = self.band
             self.band = QRect()
@@ -463,6 +477,7 @@ class FormFrame(QWidget):
         self.view = view
         self.setMouseTracking(True)
         self._resizing = None
+        self._recorded = False
         self._press = QPoint()
         self._start = (0, 0)
         self.menu_rects: list[tuple[QRect, dict]] = []
@@ -525,8 +540,7 @@ class FormFrame(QWidget):
         self._press = pos
         fp = self.view.form_props()
         self._start = (int(fp["Width"]), int(fp["Height"]))
-        if self._resizing:
-            doc.checkpoint()
+        self._recorded = False
 
     def mouseMoveEvent(self, e):
         pos = e.position().toPoint()
@@ -535,11 +549,20 @@ class FormFrame(QWidget):
         if self._resizing:
             dx, dy = pos.x() - self._press.x(), pos.y() - self._press.y()
             doc = self.view.doc
+            fp = doc.form.props                 # what set_prop compares with
+            w = max(80, snap(self._start[0] + dx)) if self._resizing[0] else None
+            h = max(60, snap(self._start[1] + dy)) if self._resizing[1] else None
+            if (w is None or w == fp.get("Width")) and (h is None or h == fp.get("Height")):
+                return                          # still on the same grid step: nothing to do
+            if not self._recorded:              # ONE undo step for the whole drag, on its first change
+                doc.checkpoint()
+                self._recorded = True
+                self.view.begin_live()          # steps: frame + anchored children only; the rest on release
             # set_prop moves / resizes anchored and docked controls with the form
-            if self._resizing[0]:
-                doc.set_prop(None, "Width", max(80, snap(self._start[0] + dx)), record=False)
-            if self._resizing[1]:
-                doc.set_prop(None, "Height", max(60, snap(self._start[1] + dy)), record=False)
+            if w is not None:
+                doc.set_prop(None, "Width", w, record=False)
+            if h is not None:
+                doc.set_prop(None, "Height", h, record=False)
             return
         edge = self._edge(pos)
         cursors = {(True, True): Qt.CursorShape.SizeFDiagCursor,
@@ -549,6 +572,7 @@ class FormFrame(QWidget):
 
     def mouseReleaseEvent(self, _e):
         self._resizing = None
+        self.view.end_live()                    # one controlChanged(None) + anchored children
 
     def mouseDoubleClickEvent(self, e):
         pos = e.position().toPoint()
@@ -776,6 +800,7 @@ class DesignerView(QScrollArea):
         self._zoom_host = None
         doc.structureChanged.connect(self.rebuild)
         doc.controlChanged.connect(self.on_control_changed)
+        doc.liveChanged.connect(self.on_live_changed)
         doc.selectionChanged.connect(self._on_selection)
         # bound method of a QObject: PyQt disconnects it when the overlay is deleted (a lambda
         # would outlive a closed designer and raise "wrapped C/C++ object deleted" -> abort)
@@ -900,6 +925,36 @@ class DesignerView(QScrollArea):
             if ctrl.type == "TabControl" or "TabPage" in ctrl.props:
                 self.sync_pages()
         self.overlay.update()
+
+    def on_live_changed(self, ctrl) -> None:
+        """One step of a drag (FormDocument.begin_live): only geometry follows the mouse - the full
+        preview update (apply_props, Blend / localization previews, Properties ...) runs on release."""
+        if ctrl is None or ctrl.type in MENU_TYPES:
+            self.layout_form()
+        else:
+            w = self.previews.get(id(ctrl))
+            if w is not None:
+                p = self.design_props(ctrl)
+                try:
+                    w.setGeometry(int(p["Left"]), int(p["Top"]), max(4, int(p["Width"])), max(4, int(p["Height"])))
+                except (KeyError, TypeError, ValueError):
+                    apply_props(w, ctrl)
+        self.overlay.update()
+
+    def live_drag_ok(self) -> bool:
+        """A drag may use the cheap live path - not while edits are recorded into a visual state /
+        timeline keyframes, in a mirrored (RightToLeftLayout) language or on a phone form: there the
+        listeners rewrite every step (record, mirror, Column / Row order)."""
+        lp = getattr(self, "_loc_preview", None)
+        return not (self.blend_recording() or (lp is not None and lp.mirrored) or self.phone.active)
+
+    def begin_live(self) -> None:
+        if self.live_drag_ok():
+            self.doc.begin_live()
+
+    def end_live(self) -> None:
+        if self.doc.live:
+            self.doc.end_live()
 
     def _on_selection(self, c):
         # selecting a control on a hidden page (Properties / Document Outline) shows that page

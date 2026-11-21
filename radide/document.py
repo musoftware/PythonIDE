@@ -32,6 +32,10 @@ class FormDocument(QObject):
     renamed = pyqtSignal(str, str)             # old name, new name (control)
     formRenameRequested = pyqtSignal(str, str) # old, new (form)
     undoStateChanged = pyqtSignal()
+    # a mouse drag in the designer (move / resize a control, resize the form) is in progress: only
+    # the designer follows each step (cheap geometry update); controlChanged - and with it the
+    # Properties grid, Document Outline, localization / Blend previews ... - fires once on release
+    liveChanged = pyqtSignal(object)           # Control | None, while live (see begin_live)
 
     def __init__(self, form: Form, path: Path):
         super().__init__()
@@ -41,6 +45,7 @@ class FormDocument(QObject):
         self._modified = False
         self._undo: list[str] = []
         self._redo: list[str] = []
+        self._live: dict | None = None         # id -> Control (None key = the form) changed while live
 
     # ------------------------------------------------------------ state
     @property
@@ -100,6 +105,7 @@ class FormDocument(QObject):
             self._restore(self._redo.pop())
 
     def _restore(self, snap: str) -> None:
+        self._live = None                       # an undo replaces every control: nothing left to commit
         names = [c.name for c in self.selection]
         restored = Form.from_dict(json.loads(snap))
         self.form.props = restored.props
@@ -158,7 +164,12 @@ class FormDocument(QObject):
         props[name] = value
         if resized:          # anchored children follow the container / the form
             for c in resize_children(self.form, owner, before, client_size(self.form, owner)):
-                self.controlChanged.emit(c)
+                self._emit_changed(c)
+        if self._live is not None and name in ("Left", "Top", "Width", "Height"):
+            self._emit_changed(owner)          # a drag step: designer only, the rest on release
+            self._relayout()
+            self.set_modified()
+            return
         if name in REBUILD_PROPS:
             self.structureChanged.emit()
         if name == "Name" and owner is not None:
@@ -172,24 +183,65 @@ class FormDocument(QObject):
             self._relayout()
         self.set_modified()
 
-    def set_geometry(self, ctrl: Control, x: int, y: int, w: int, h: int) -> None:
-        """No checkpoint: callers record one for the whole gesture."""
+    def set_geometry(self, ctrl: Control, x: int, y: int, w: int, h: int, relayout: bool = True) -> None:
+        """No checkpoint: callers record one for the whole gesture. relayout=False: the caller moves
+        several controls and calls relayout_docked() once after the last one."""
+        new = [int(v) for v in (x, y, w, h)]
+        keys = ("Left", "Top", "Width", "Height")
+        if self._live is not None and [ctrl.props.get(k) for k in keys] == new:
+            return                              # a drag step that did not reach the next grid line
         before = client_size(self.form, ctrl) if ctrl.ctype.container else None
-        for k, v in (("Left", x), ("Top", y), ("Width", w), ("Height", h)):
-            ctrl.props[k] = int(v)
+        for k, v in zip(keys, new):
+            ctrl.props[k] = v
         if before is not None:
             for c in resize_children(self.form, ctrl, before, client_size(self.form, ctrl)):
-                self.controlChanged.emit(c)
-        self.controlChanged.emit(ctrl)
-        self._relayout()
+                self._emit_changed(c)
+        self._emit_changed(ctrl)
+        if relayout:
+            self._relayout()
         self.set_modified()
+
+    def relayout_docked(self) -> None:
+        """Snap docked controls after a batch of set_geometry(..., relayout=False) calls."""
+        self._relayout()
 
     def _relayout(self, emit: bool = True) -> None:
         """Snap docked controls to their edges (after any geometry change)."""
         changed = relayout(self.form)
         if emit:
             for c in dict.fromkeys(changed):
+                self._emit_changed(c)
+
+    # ------------------------------------------------------------ live drags
+    @property
+    def live(self) -> bool:
+        return self._live is not None
+
+    def begin_live(self) -> None:
+        """A designer drag starts: geometry changes notify liveChanged only, until end_live()."""
+        if self._live is None:
+            self._live = {}
+
+    def end_live(self) -> None:
+        """The drag ended: ONE controlChanged per control (and the form) changed during it."""
+        pending, self._live = self._live, None
+        if not pending:
+            return
+        if None in pending:                     # the form first (layout), then its controls
+            self.controlChanged.emit(None)
+        alive = {id(c) for c in self.form.controls}
+        for key, c in pending.items():
+            if key is not None and key in alive:
                 self.controlChanged.emit(c)
+
+    def _emit_changed(self, c) -> None:
+        if self._live is None:
+            self.controlChanged.emit(c)
+            return
+        key = None if c is None else id(c)
+        self._live.pop(key, None)               # keep "last changed" order
+        self._live[key] = c
+        self.liveChanged.emit(c)
 
     def _set_tab_page(self, ctrl: Control) -> None:
         """Controls dropped on a TabControl go to its selected page."""

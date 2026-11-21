@@ -606,6 +606,11 @@ class LocPreview:
             self._shadow[id(c)] = {k: c.props.get(k) for k in (*localizable_props(self.form, c),
                                                               "Left", "Top", "Width", "Height")}
         self._shadow["form"] = {k: self.form.props.get(k) for k in ("Text", *FLAGS)}
+        self._form_sig = self._form_signature()
+
+    def _form_signature(self) -> str:
+        """The form's properties except its size (see _form_changed)."""
+        return repr(sorted((k, v) for k, v in self.form.props.items() if k not in ("Width", "Height")))
 
     def sync(self, force: bool = False) -> None:
         code = language_code(self.form.props.get("Language"))
@@ -728,6 +733,13 @@ class LocPreview:
                 self.doc.set_modified()
         self.sync()
         self._shadow["form"] = {k: f.props.get(k) for k in ("Text", *FLAGS)}
+        # only the form's size changed (a resize drag in the designer) and nothing is mirrored: the
+        # designer already laid the frame out - re-applying every control and rebuilding the whole
+        # Properties grid here made each resize step cost 100-900 ms
+        sig = self._form_signature()
+        last, self._form_sig = getattr(self, "_form_sig", None), sig
+        if sig == last and not self.mirrored and before == (self.code, self.mirrored, self.rtl):
+            return
         if before == (self.code, self.mirrored, self.rtl):
             self.refresh()
         win = self.view.window()
