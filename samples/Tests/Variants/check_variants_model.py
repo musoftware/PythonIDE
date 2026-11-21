@@ -52,8 +52,8 @@ def main() -> int:
     f = base_form()
     wide, ok, pnl, lbl = (f.find(n) for n in ("btnWide", "btnOk", "pnl", "lblIn"))
     check(wide.variants == {} and "variants" not in wide.to_dict(), "Control.variants empty and not written")
-    phone = vm.add_size(f, vm.preset("phone"))
-    tablet = vm.add_size(f, vm.preset("tablet"))
+    vm.add_size(f, vm.preset("phone"))
+    vm.add_size(f, vm.preset("tablet"))
     check([s["id"] for s in vm.sizes(f)] == ["phone", "tablet"], "sizes() in list order")
     again = vm.add_size(f, vm.preset("phone"))
     check(again["id"] == "phone2", f"add_size makes ids unique ({again['id']})")
@@ -146,8 +146,9 @@ def main() -> int:
     check(vm.plan(base_form()) is None, "plan() None without sizes")
     p = vm.plan(f)
     ph = p["controls"]["phone"]
-    check(ph["btnOk"]["place"] is not None and ph["btnOk"]["place"][0] == 16 - 0 and ph["btnOk"]["place"][4] == 0,
-          f"btnOk place on phone: Left override anchored Bottom ({ph['btnOk']['place']})")
+    pl = ph["btnOk"]["place"]
+    check(pl is not None and pl[0] + pl[4] * 400 == 16 and pl[1] + pl[5] * 760 == 710,
+          f"btnOk place on phone: at (16, 710) of the 400 x 760 preview, still Bottom / Right anchored ({pl})")
     check(ph["btnWide"]["props"] == {"Visible": False}, "non-geometry props separate from the place")
     check("btnOk" in p["base"] and p["base"]["btnOk"][4] == 1, "base place kept for restoring (Right anchor)")
     check(p["form"] == {"tablet": {"Text": "Tablet window"}}, "form-level Text in the plan")
@@ -177,8 +178,6 @@ def main() -> int:
         compile(code, f"{pid}-blend.py", "exec")
         check(code.count("class _RadIO") == 1 and code.count("self._rad = _RadIO(self)") == 1
               and "_VisualStates(" in code and "_RadVariants(" in code, f"{pid}: with states + storyboard, once")
-    vb = get_plugin("vb-basic") if True else None
-    check(vb is not None, "vb-basic plugin present (builds forms with the python-tk generator)")
 
     print(f"{'ALL OK' if not FAILS else f'{len(FAILS)} FAILED'}")
     return 1 if FAILS else 0

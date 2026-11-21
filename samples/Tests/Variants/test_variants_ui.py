@@ -313,4 +313,27 @@ keys = ["Edit:", "All sizes", "This size only", "Sizes", "Add Size...", "Edit Si
 missing = [k for k in keys if not cat.get(k)]
 check("Arabic strings for the sizes UI", not missing, missing)
 
+# ---------------------------------------------------------------- no sizes: the designer draws exactly as before
+from radide.designer import DesignerView  # noqa: E402
+from radide.document import FormDocument  # noqa: E402
+from radide.model import Form  # noqa: E402
+
+same = []
+for rel in ("HelloPython/Form1.form", "HelloVB/Form1.form", "HelloCSharp/Form1.form", "HelloRing/Form1.form",
+            "HelloMobile/ContactsScreen.form", "HelloPolyglot/Form2.form"):
+    path = Path(ROOT) / "samples" / rel
+    pics = []
+    for with_sizes_ui in (False, True):
+        dv = DesignerView(FormDocument(Form.load(path), path))
+        dv.resize(1200, 900)
+        dv.show()
+        if with_sizes_ui:
+            fv.attach(dv)
+        pump(0.3)
+        pics.append(dv.content.grab().toImage())
+        dv.close()
+        dv.deleteLater()
+    same.append((rel, pics[0] == pics[1]))
+check("forms without sizes look identical with the sizes bar attached", all(ok for _, ok in same), same)
+
 finish(w)

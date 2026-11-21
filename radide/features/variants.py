@@ -606,7 +606,9 @@ class VariantBanner(QWidget):
         f.setBold(True)
         p.setFont(f)
         tw = min(p.fontMetrics().horizontalAdvance(self.text) + 20, self.width() - 20)
-        r = QRectF(self.width() - tw - 22, 10, tw, p.fontMetrics().height() + 8)
+        th = p.fontMetrics().height() + 8          # top-right (bottom-right on a phone: its device bar is on top)
+        phone = getattr(getattr(self.view, "phone", None), "active", False)
+        r = QRectF(self.width() - tw - 22, self.height() - th - 14 if phone else 10, tw, th)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(col)
         p.drawRoundedRect(r, 5, 5)
@@ -647,8 +649,8 @@ class VariantBar(QWidget):
         self.combo.setObjectName("variantSize")
         self.combo.setMinimumContentsLength(14)
         self.combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.combo.setToolTip(tr("The window size shown in the designer. Base design = the size you designed; "
-                                 "pick a size to see (and, with This size only, change) its layout."))
+        self.combo.setToolTip("The window size shown in the designer. Base design = the size you designed; "
+                              "pick a size to see (and, with This size only, change) its layout.")
         self.combo.activated.connect(self._picked)
         lay.addWidget(self.combo)
         self.btn_add = self._tool("Add Size...", "Add a window size (Phone, Tablet, Landscape, foldable postures "
@@ -694,8 +696,7 @@ class VariantBar(QWidget):
     def _tool(self, text, tip, checkable=False) -> QToolButton:
         b = QToolButton()
         b.setText(text)
-        b.setToolTip(tr(tip))
-        b.setStatusTip(tr(tip))
+        b.setToolTip(tip)                   # the i18n setters translate (and switch back) these
         b.setAutoRaise(True)
         b.setCheckable(checkable)
         return b
@@ -704,6 +705,11 @@ class VariantBar(QWidget):
         if obj is self.view and ev.type() in (QEvent.Type.Resize, QEvent.Type.Show):
             self._place()
         return False
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == QEvent.Type.LanguageChange:        # Tools > Options > Language: texts built with tr()
+            QTimer.singleShot(0, self.sync)
 
     def _place(self) -> None:
         fw = self.view.frameWidth()
@@ -1084,17 +1090,17 @@ def apply_sizes(vp, work: list[dict]) -> None:
 
 
 # ====================================================================== Sizes gallery dock
-def render_size(form, path, vid, max_w: int, max_h: int) -> QPixmap:
-    """A picture of *form* on size *vid* (None = the base design): its effective form in a hidden designer."""
-    from ..designer import DesignerView
-    from ..document import FormDocument
+def render_size(form, path, vid, max_w: int, max_h: int, host=None) -> QPixmap:
+    """A picture of *form* on size *vid* (None = the base design): its effective form drawn by a hidden
+    designer (*host*: a DesignerView made by renderer() and reused, else a temporary one)."""
     ef = vm.effective_form(form, vid) if vid else copy.deepcopy(form)
-    doc = FormDocument(ef, path)
-    v = DesignerView(doc)
+    v = host if host is not None else renderer(path)
     try:
-        v.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
-        v.resize(1600, 1400)
-        v.show()
+        v.doc.form, v.doc.path = ef, path
+        v.doc.selection = []
+        if getattr(v.phone, "previewing", False):
+            v.phone.preview()
+        v.rebuild()
         if vid and getattr(v.phone, "active", False):
             ctx = vm.context(form, vid)
             from .. import devices
@@ -1103,12 +1109,25 @@ def render_size(form, path, vid, max_w: int, max_h: int) -> QPixmap:
         v.layout_form()
         pm = v.frame.grab()
     finally:
-        v.hide()
-        v.deleteLater()
+        if host is None:
+            v.hide()
+            v.deleteLater()
     if pm.width() > max_w or pm.height() > max_h:
         pm = pm.scaled(max_w, max_h, Qt.AspectRatioMode.KeepAspectRatio,
                        Qt.TransformationMode.SmoothTransformation)
     return pm
+
+
+def renderer(path):
+    """A hidden DesignerView for render_size() (never shown on screen)."""
+    from ..designer import DesignerView
+    from ..document import FormDocument
+    from ..model import Form
+    v = DesignerView(FormDocument(Form(), path))
+    v.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+    v.resize(1600, 1400)
+    v.show()
+    return v
 
 
 class SizesPanel(QWidget):
@@ -1151,6 +1170,7 @@ class SizesPanel(QWidget):
         self.timer.timeout.connect(self.render)
         self._vp = None
         self._doc = None
+        self._host = None               # hidden DesignerView that draws the thumbnails (reused)
 
     def thumb_size(self) -> QSize:
         return QSize(340, 300) if self.side_by_side else QSize(150, 130)
@@ -1186,6 +1206,18 @@ class SizesPanel(QWidget):
     def showEvent(self, e):
         super().showEvent(e)
         self.schedule()
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == QEvent.Type.LanguageChange:        # captions / hint are built with tr()
+            QTimer.singleShot(0, self._retranslate)
+
+    def _retranslate(self) -> None:
+        try:
+            if self.list.count() or self.hint.text():
+                self.render()
+        except RuntimeError:
+            pass
 
     def set_side_by_side(self, on: bool) -> None:
         self.side_by_side = bool(on)
@@ -1230,7 +1262,9 @@ class SizesPanel(QWidget):
         entries = [(None, tr("Base design"))] + [(s["id"], tr(vm.label(s))) for s in sizes]
         for vid, text in entries:
             try:
-                pm = render_size(form, view.doc.path, vid, ts.width() - 8, ts.height() - 8)
+                if self._host is None:
+                    self._host = renderer(view.doc.path)
+                pm = render_size(form, view.doc.path, vid, ts.width() - 8, ts.height() - 8, self._host)
             except Exception as e:  # noqa: BLE001 - a thumbnail must never break the designer
                 pm = QPixmap(ts.width() - 8, ts.height() - 8)
                 pm.fill(QColor("#dddddd"))
@@ -1317,8 +1351,8 @@ def install(win) -> None:
         a = sub.addAction(tr("All sizes"), lambda: vp.set_mode("all"))
         a.setCheckable(True)
         a.setChecked(not vp.this_size)
-        a = sub.addAction(tr("This size only"), lambda: (vp.active or vm.sizes(vp.form)) and
-                          (vp.active or vp.set_size(vm.sizes(vp.form)[0]["id"]), vp.set_mode("this")))
+        bar = getattr(v, "_variant_bar", None)
+        a = sub.addAction(tr("This size only"), lambda: bar._mode("this") if bar is not None else vp.set_mode("this"))
         a.setCheckable(True)
         a.setChecked(vp.this_size)
         sub.addSeparator()

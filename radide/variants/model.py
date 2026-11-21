@@ -34,6 +34,7 @@ RUNTIME_PROPS = ("Visible", "Text", "FontSize", "FontBold", "BackColor", "ForeCo
 FORM_RUNTIME_PROPS = ("Text", "BackColor")
 _INT = {"Left", "Top", "Width", "Height", "FontSize", "Spacing"}
 _BOOL = {"Visible", "FontBold"}
+MIN_SHOWN = 8                   # effective_form(): smallest width / height a control is shown with
 WHEN_KEYS = ("minWidth", "maxWidth", "minHeight", "maxHeight", "orientation", "posture", "span", "fold")
 
 # ---------------------------------------------------------------------------------------------- matching
@@ -455,6 +456,10 @@ def effective_form(form, sz=None, active=None):
         relayout(f)
     except Exception:  # noqa: BLE001 - a broken mobile layout container must not break the preview
         pass
+    for c in f.visual():            # anchors on a much smaller size can squeeze a control to nothing:
+        for k in ("Width", "Height"):   # keep it big enough to see and select in the designer
+            if int(c.props.get(k, 0) or 0) < MIN_SHOWN:
+                c.props[k] = MIN_SHOWN
     return f
 
 
