@@ -224,8 +224,9 @@ def core_tests():
         check(f"New Project template {tmpl}", (d / fname).is_file() and pr.language == "retro-dos"
               and "dos" in pr.extra)
     spec = plug.run_spec(WORK / "projects" / "dos_asm", "HELLO.ASM", "")
-    check("run_spec = python -m radide.retro.emu dos <file>", spec.args[:3] == ["-m", "radide.retro.emu", "dos"]
-          and "PYTHONPATH" in (spec.env or {}))
+    check("run_spec = python [-u] -m radide.retro.emu dos <file> (whole environment + PYTHONPATH)",
+          [a for a in spec.args if a != "-u"][:3] == ["-m", "radide.retro.emu", "dos"]
+          and "PYTHONPATH" in (spec.env or {}) and "PATH" in {k.upper() for k in (spec.env or {})})
     if manager.find("dosbox-x"):
         import subprocess
         d = WORK / "projects" / "dos_asm"

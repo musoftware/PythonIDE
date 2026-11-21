@@ -159,9 +159,84 @@ class EmulatorBar:
                 pass
 
 
+# ====================================================================== Mesen controller offer
+MESEN_OFFER_KEY = "retro/emu/mesen_input_offered"
+
+
+def mesen_input_offer(win, force: bool = False):
+    """Once: when the portable Mesen 2 RAD IDE downloaded has a settings.json whose NES / SNES / Game Boy port 1
+    is "None" without keys (made by an older RAD IDE), show a non-blocking bar under the status bar with
+    "Apply Controller Defaults" (radide/retro/emu/inputs.py) and log it to Output. Returns the bar or None."""
+    settings = getattr(win, "settings", None)
+    if not force and settings is not None and str(settings.value(MESEN_OFFER_KEY, "") or "") in ("1", "true"):
+        return None
+    from ..retro.emu import inputs, manager
+    sp = manager.mesen_settings_file()
+    todo = inputs.needs_mesen_defaults(sp) if sp is not None else []
+    if not todo:
+        return None
+    from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
+
+    def done(apply: bool) -> None:
+        if settings is not None:
+            settings.setValue(MESEN_OFFER_KEY, "1")
+        if apply:
+            try:
+                changed = inputs.apply_mesen_defaults(sp)
+                msg = (f"[retro] Mesen 2: controller port 1 set for {', '.join(changed)} - arrows, X/Z = A/B, "
+                       "Enter = Start, Shift/Backspace = Select (close an open Mesen window first; "
+                       "Mesen > Settings > Input changes it)." if changed else "[retro] Mesen 2: nothing to change.")
+            except OSError as e:
+                msg = f"[retro] Mesen 2 settings could not be written: {e}"
+            try:
+                win.log(msg)
+            except Exception:  # noqa: BLE001
+                pass
+        bar.hide()
+        bar.deleteLater()
+        win.mesen_input_bar = None
+
+    bar = QFrame(win)
+    bar.setObjectName("MesenInputBar")
+    bar.setFrameShape(QFrame.Shape.StyledPanel)
+    lay = QHBoxLayout(bar)
+    lay.setContentsMargins(6, 1, 6, 1)
+    text = (f"Mesen 2 has no controller in port 1 ({', '.join(todo)}): games cannot be played with the keyboard.")
+    lay.addWidget(QLabel(text))
+    b_apply = QPushButton("Apply Controller Defaults")
+    b_apply.setObjectName("MesenInputApply")
+    b_later = QPushButton("Not Now")
+    b_apply.clicked.connect(lambda: done(True))
+    b_later.clicked.connect(lambda: done(False))
+    lay.addWidget(b_apply)
+    lay.addWidget(b_later)
+    try:
+        win.statusBar().addPermanentWidget(bar)
+    except Exception:  # noqa: BLE001
+        pass
+    win.mesen_input_bar = bar
+    try:
+        win.log("[retro] " + text + " Use the \"Apply Controller Defaults\" button at the bottom of the window.")
+    except Exception:  # noqa: BLE001
+        pass
+    return bar
+
+
+def _safe_offer(win) -> None:
+    try:
+        mesen_input_offer(win)
+    except Exception:  # noqa: BLE001 - only an offer
+        pass
+
+
 # ====================================================================== install
 def install(win) -> None:
     register_detector()
+    try:
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(4000, lambda: _safe_offer(win))
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from ..retro.filebus import subscribe
         subscribe(win, _on_file_changed(win))

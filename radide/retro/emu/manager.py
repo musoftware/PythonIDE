@@ -265,10 +265,19 @@ def prepare_portable(emu_id: str) -> None:
         elif emu_id == "dosbox-x":
             config_dir(emu_id)
         elif emu_id == "mesen":                                 # settings.json next to Mesen.exe = portable
-            if not (folder / "settings.json").exists():
-                (folder / "settings.json").write_text("{}", encoding="utf-8")
+            from .inputs import write_new_mesen_settings        # port 1 = a controller with keys (only if new)
+            write_new_mesen_settings(folder / "settings.json")
     except OSError:
         pass
+
+
+def mesen_settings_file() -> Path | None:
+    """settings.json of the portable Mesen RAD IDE downloaded (None = no RAD IDE copy / not created yet)."""
+    exe = find("mesen")
+    if not exe or str(install_dir("mesen")) not in exe:
+        return None
+    p = Path(exe).parent / "settings.json"
+    return p if p.is_file() else None
 
 
 def version_of(emu_id: str) -> str:
@@ -288,5 +297,5 @@ def version_of(emu_id: str) -> str:
 
 
 __all__ = ["config_dir", "download_verified", "ensure", "find", "install", "install_dir", "installed_version",
-           "local_root", "missing_hint", "prepare_portable", "set_configured", "status", "tools_root", "uninstall",
+           "local_root", "mesen_settings_file", "missing_hint", "prepare_portable", "set_configured", "status", "tools_root", "uninstall",
            "version_of"]

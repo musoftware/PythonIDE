@@ -845,3 +845,56 @@ block in a fresh DOS project with the free compiler and runs it headless in DOSB
 compile-error specs in hidden `<!-- test: -->` comments; see the course README). CHM:
 `python tools/build_chm.py dos-programming --verify` -> `docs/chm/RADIDE_DOS_PROGRAMMING_ar.chm`. The tutorial
 engine has no runner for these blocks, so the viewer shows them without a "جرّبه" button.
+
+## Retro / NASA QA and courses (QA of the rom / dev / gfx / emu / nasa slices)
+
+End-to-end checks as a user, in the real IDE (offscreen, QSettings "RADIDE-TEST", `widget.grab()` screenshots),
+with the real toolchains and emulators: `samples/Tests/Retro/QA/` (README there).
+
+* `e2e_projects.py` - New Project for every type of the groups Retro Games / Retro / Space & Science -> Build
+  Project -> F5 in Stella / Mesen / mGBA / VICE / DOSBox-X -> Stop; AGC F5 opens the DSKY dock; Fortran output.
+* `e2e_workflows.py` - the ROM hacking chain across slices (hex edit, IPS capture, Tile Editor on the same working
+  copy with file-bus refresh of the open hex editor, Script Dump / Insert with the project's table, BPS capture,
+  Build == working copy, original untouched, Create / Apply Patch dialogs, F5 with the patched ROM); Disassemble ROM
+  into Project byte-identical for NES (ca65), Game Boy (RGBDS) and the ROM slice's synthetic NES ROM; Hello DSKY
+  V35E clicked on the DSKY; Comanche055 downloaded, Build with yaYUL (0 errors), F5 in yaAGC answers V35E, Stop
+  ends yaAGC; the OrbitTable sample.
+* `e2e_arabic_dark.py` - Arabic + Dark theme over every retro / NASA window: every Tools > Retro item in Arabic,
+  no untranslated UI text (`i18n.missing()`), dark backgrounds.
+* `e2e_regression.py` - existing languages unaffected (Python Tk, C, NASM, Fortran, VB create + run, Open Folder
+  detection of the old samples, file routing).
+
+Bugs found and fixed:
+
+* **Stop left the emulator running.** `python -m radide.retro.dev.run` (and `radide.retro.rom run`) started the
+  emulator but the IDE's Stop kills only the runner, so Stella / Mesen / VICE stayed open. Both runners now tie the
+  emulator to themselves with `radide.retro.emu.launch.tie_to_this_process` (Windows job object), and
+  `radide.retro.rom run` now waits for the emulator like the other runners (the run ends when the emulator closes).
+* **Build > Build Project failed** for retro-* , retro-romhack and dos-* projects ("No module named 'radide'"): the
+  IDE runs `build_command` in the project folder without PYTHONPATH. New `radide/retro/pycmd.py`
+  (`module_command(module, *args)`: puts the IDE folder on sys.path, then runpy like `-m`) is used by
+  `radide/retro/dev/plugin.py`, `radide/languages/retro_romhack.py` and `radide/retro/dos/plugin.py`.
+* **F5 of a DOS Program project did nothing**: `RetroDosPlugin.run_spec` passed an environment with only
+  PYTHONPATH (a RunSpec env replaces the whole environment, so Python could not start). It now passes the whole
+  environment (+ unbuffered output, `-u`).
+* The built-in AGC assembler silently accepted register names (`Q`, `A`, ...) and `RETURN` without their `EQUALS`
+  lines, which yaYUL rejects ("Symbol Q undefined"): it now warns (English / Arabic) once per name.
+* 43 Arabic strings / 6 patterns for hex editor, Patch Manager, tile editor navigation, AGC status texts.
+
+Courses (Arabic), both with a course checker that runs every runnable block, and CHMs built with `--verify`:
+
+* `radide/tutorials/retro-games/` - 10 lessons: ROMs and the law, hex editor + IPS / BPS (pure Python
+  patchers), Atari 2600 first program (DASM, 262 lines), sprites / playfield / joystick, NES (ca65) and Game Boy
+  (RGBDS), disassembling, graphics (NES tile codec), text tables incl. Arabic shaping / visual order, emulators
+  and debugging (BCD), final project. `tools/check_lessons.py` builds `dasm` / `ca65` / `rgbds` blocks in fresh
+  template projects; `dasm` blocks run in `tools/sim2600.py`, an original 6502 + 2600 bus simulator (scanlines per
+  frame, RAM, TIA registers, joystick held). -> `docs/chm/RADIDE_RETRO_GAMES_ar.chm`.
+* `radide/tutorials/apollo-agc/` - reorganised to 8 lessons (story, architecture, first program, interrupts and
+  alarms, DSKY relay words, reading Comanche055 incl. the real 1201 / 1202 code in EXECUTIVE.agc, Fortran
+  IV/66/77 with runnable fixed-form programs, final project: a countdown on the DSKY that runs with the hardware
+  alarms on). `tools/check_lessons.py` runs every `agc` block in the built-in emulator (symbols, DSKY, restarts)
+  and, when Virtual AGC is installed, checks the yaYUL rope is identical word for word; `fortran` blocks with
+  gfortran. -> `docs/chm/RADIDE_APOLLO_AGC_ar.chm`.
+
+Not covered: what the emulator shows on screen (external windows cannot be grabbed with `widget.grab()`; the
+tests check the process, its command line and the ROM bytes instead), Luminary099, `V37E 00E` on Comanche.
