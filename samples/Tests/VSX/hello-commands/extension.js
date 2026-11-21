@@ -112,6 +112,17 @@ function activate(context) {
   }, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }));
   vscode.languages.setLanguageConfiguration('plaintext', { comments: { lineComment: '#' }, wordPattern: /[A-Za-z_]\w*/ });
 
+  // ---- tree view
+  const fruits = { Fruits: ['Apple', 'Banana'], Colors: ['Red'] };
+  context.subscriptions.push(vscode.window.registerTreeDataProvider('helloCommands.view', {
+    getChildren(el) { return el ? fruits[el] || [] : Object.keys(fruits); },
+    getTreeItem(el) {
+      const item = new vscode.TreeItem(el, fruits[el] ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+      if (!fruits[el]) item.command = { command: 'helloCommands.sayHello', title: 'Hello', arguments: [el] };
+      return item;
+    },
+  }));
+
   // an unsupported API must not break activation
   try { vscode.window.createWebviewPanel('x', 'x', vscode.ViewColumn.One, {}); } catch (e) { out.appendLine('webview threw: ' + e); }
   return { hello: (who) => `${vscode.workspace.getConfiguration('helloCommands').get('greeting')} ${who}` };

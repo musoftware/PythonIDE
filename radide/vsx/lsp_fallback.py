@@ -19,7 +19,7 @@ from pathlib import Path
 
 # relative paths tried first, then a search by name
 CANDIDATES = [
-    "server/out/server.js", "server/dist/server.js", "server/server.js", "out/server.js", "out/server/server.js",
+    "server.js", "server/out/server.js", "server/dist/server.js", "server/server.js", "out/server.js", "out/server/server.js",
     "dist/server.js", "dist/languageserver.js", "dist/language-server.js", "dist/server/server.js",
     "out/src/server.js", "lib/server.js", "server/out/main.js", "dist/serverMain.js", "dist/node/server.js",
 ]

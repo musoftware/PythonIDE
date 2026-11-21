@@ -722,6 +722,33 @@ def goto_definition(win):
     if m is None:
         return
     word = m.group()
+    client = getattr(ed, "lsp", None)
+    if client is not None and callable(getattr(client, "definition", None)) and not getattr(win, "_rad_lsp_def_busy", False):
+        # F12 / Edit > Go to Definition on an editor with a language server (rust-analyzer, ...): ask it
+        # first; without an answer fall back to the plugin / text search below
+        def done(res):
+            if res:
+                p, target_line = Path(res[0]), int(res[1])
+                try:
+                    if win.project and p.parent.resolve() == win.project.folder.resolve() and win._editor_for_file(p.name):
+                        win._editor_for_file(p.name).goto_line(target_line)
+                        return
+                    if callable(getattr(win, "open_file", None)) and p.is_file() and win.open_file(p, target_line + 1) is not None:
+                        return
+                except Exception:  # noqa: BLE001
+                    pass
+                win.statusBar().showMessage(f"{word}: defined in {p} line {target_line + 1}", 6000)
+                return
+            win._rad_lsp_def_busy = True
+            try:
+                goto_definition(win)
+            finally:
+                win._rad_lsp_def_busy = False
+        try:
+            client.definition(ed.path, line, col, done)
+            return
+        except Exception:  # noqa: BLE001 - the server failed: use the fallbacks
+            pass
     plugin = getattr(ed, "plugin", None) or win.plugin
     finder = getattr(type(plugin), "definition", None)
     if finder is not None and getattr(finder, "__qualname__", "").split(".")[0] != "LanguagePlugin":

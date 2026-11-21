@@ -306,6 +306,15 @@ class CompositeClient(QObject):
         if want_real:
             real_call(lambda r: got("real", r))
 
+    def _plugin_owns(self) -> bool:
+        """The editor's language plugin is the file's own language (not just the fallback plugin of a
+        loose file): its IntelliSense is worth merging."""
+        ed = self.editor
+        try:
+            return str(getattr(ed.plugin, "code_ext", "")).lower() == Path(ed.path).suffix.lower()
+        except Exception:  # noqa: BLE001
+            return False
+
     def _plugin_items(self, line, col):
         ed = self.editor
         try:
@@ -323,7 +332,10 @@ class CompositeClient(QObject):
         def merge(real, vsx):
             out = list(vsx or [])
             seen = {i.get("label") for i in out}
-            base = real if self.real is not None else self._plugin_items(line, col)
+            if self.real is not None:
+                base = real
+            else:
+                base = self._plugin_items(line, col) if (not out or self._plugin_owns()) else []
             out += [i for i in (base or []) if i.get("label") not in seen]
             return out
         self._both(lambda c: self.real.completion(path, text, line, col, c),
@@ -334,7 +346,7 @@ class CompositeClient(QObject):
         kinds = self._kinds()
 
         def merge(real, vsx):
-            if self.real is None and not real:
+            if self.real is None and not real and (not vsx or self._plugin_owns()):
                 try:
                     ed = self.editor
                     real = ed.plugin.hover(ed.text(), line, col, ed.path, ed.names) or ""

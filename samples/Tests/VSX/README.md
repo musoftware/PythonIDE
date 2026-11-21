@@ -68,3 +68,37 @@ it into a .vsix at run time.
 
 Font-glyph icon themes (e.g. `file-icons.file-icons`) work too; their WOFF2 fonts are converted to TTF with
 fontTools and need the optional `brotli` module (without it those glyphs fall back to the IDE's icons).
+
+## Extension host (extension code: commands, providers, language servers, debuggers) - `test_vsx_host.py`
+
+    python samples\Tests\VSX\test_vsx_host.py <scratch folder>
+
+Code under test: `radide/vsx/host/*.js` (the Node extension host and its `vscode` API), `radide/vsx/bridge.py`
+(JSON-RPC), `radide/vsx/host_ide.py` (IDE wiring), `radide/vsx/lsp_client.py`, `radide/vsx/debuggers.py`,
+`radide/vsx/lsp_fallback.py`, `radide/vsx/when.py`. Real `MainWindow`, `RADIDE_VSX_ROOT` = `<scratch>\vsx_host_test\vsxroot`,
+`RADIDE-TEST` QSettings (cleared at the end). Needs Node.js and npm (npm installs `vscode-languageclient@9.0.1`,
+`vscode-languageserver@9.0.1`, `vscode-languageserver-textdocument@1.0.12` - all MIT - into the scratch copy of
+`mini-lsp`; nothing is committed). Dialogs are answered by a timer (the real QMessageBox / quick pick / input
+box widgets are used). Screenshots `vsx_host_*.png` (widget.grab()). Checks (56): activation events
+(onStartupFinished, onLanguage, onCommand, onDebug), contributed commands in the Command Palette, status bar
+item, message box with items, quick pick, input box with validateInput, configuration update + change event,
+completion (snippet item), hover, definition, formatting, diagnostics (Monaco markers), code actions + their
+WorkspaceEdit, registerTextEditorCommand + TextEditorEdit, document events, an unsupported API failing softly,
+editor/context menu, tree view in a dock (children + item command with arguments), the vscode-languageclient
+extension (diagnostics / completion / hover from its server), F5 with a declarative debugger (breakpoint, stack,
+locals), an inline debug adapter served by the host (relay.js), debug events reaching the extension, and the LSP
+fallback (the extension's server run by `radide/lsp.py`).
+
+These test extensions are written for RAD IDE (MIT) and packed into .vsix files at run time:
+
+| Folder | What it exercises |
+|---|---|
+| `hello-commands` | commands, status bar, messages, quick pick, input box, output channel, configuration, globalState, document events, completion / hover / definition / formatting / code action providers, a diagnostic collection, `setLanguageConfiguration`, a tree view, editor/context + commandPalette menus with `when`, an unsupported API (webview) |
+| `mini-lsp` | the standard `vscode-languageclient/node` client (`TransportKind.ipc`) + a `vscode-languageserver` server (`server.js`): completion, hover, push diagnostics, formatting; language `minilang` (`.mini`) |
+| `mini-debug` | `contributes.debuggers` with `program` + `runtime: node` (`adapter.js`, a tiny DAP adapter), a configuration provider filling an empty configuration from the active editor, a `${command:PickProgram}` variable, an inline adapter (`DebugAdapterInlineImplementation`, setting `miniDebug.inline`), custom DAP events |
+
+Real Open VSX extensions: the host was not run with downloaded third-party extension code in this test (the
+agent's sandbox did not allow executing it). A static scan of `redhat.vscode-yaml` 2.1, `christian-kohler.path-intellisense`
+2.8 and `ms-vscode.mock-debug` 0.52 found that every `vscode.*` API member they reference is implemented by
+`radide/vsx/host/api.js`; `radide/vsx/lsp_fallback.py` finds the YAML server (`dist/languageserver.js`). Try them
+from the Extensions view (Open VSX) - their output goes to View > Extension Output.

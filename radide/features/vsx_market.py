@@ -175,6 +175,8 @@ class ExtCard(QFrame):
         self.pub = QLabel(publisher)
         theme.role(self.pub, "muted")
         bot.addWidget(self.pub, 1)
+        for lb in (self.title, self.desc, self.pub):     # extension content ("Go", "Snippets" ...) stays as published
+            lb.setProperty("i18n_skip", True)
         self.buttons = QHBoxLayout()
         self.buttons.setSpacing(4)
         bot.addLayout(self.buttons)
@@ -426,7 +428,9 @@ class ExtensionsView(QWidget):
         for x in own:
             name = getattr(x, "name", None) or getattr(x, "id", None) or str(x)
             off = "" if getattr(x, "enabled", True) else " (" + _tr("Disabled") + ")"
-            self._add_header(self.installed, QLabel("  • " + _esc(str(name)) + off))
+            own_label = QLabel("  • " + _esc(str(name)) + off)
+            own_label.setProperty("i18n_skip", True)
+            self._add_header(self.installed, own_label)
         self.tabs.setTabText(1, _tr("Installed") + f" ({len(exts)})")
 
     def _installed_card(self, e: P.Extension) -> ExtCard:
@@ -723,6 +727,8 @@ class DetailsPage(QWidget):
         col.addWidget(self.meta)
         self.desc = QLabel()
         self.desc.setWordWrap(True)
+        for lb in (self.name, self.meta, self.desc):     # extension content: never through the UI translator
+            lb.setProperty("i18n_skip", True)
         col.addWidget(self.desc)
         self.compat = QLabel()
         self.compat.setWordWrap(True)

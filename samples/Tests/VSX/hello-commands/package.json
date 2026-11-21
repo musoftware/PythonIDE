@@ -17,6 +17,7 @@
       { "command": "helloCommands.insertDate", "title": "Insert Date", "category": "Hello" },
       { "command": "helloCommands.state", "title": "Show Counters", "category": "Hello" }
     ],
+    "views": { "explorer": [ { "id": "helloCommands.view", "name": "Hello View" } ] },
     "menus": {
       "editor/context": [ { "command": "helloCommands.insertDate", "when": "editorLangId == plaintext", "group": "navigation" } ],
       "commandPalette": [ { "command": "helloCommands.insertDate", "when": "editorLangId == plaintext" } ]

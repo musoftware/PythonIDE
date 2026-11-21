@@ -228,6 +228,20 @@ m = QMenu()
 ed.contextMenuAboutToShow.emit(m)
 menu_items = [a.text() for a in m.actions()]
 check("Insert Date" in menu_items, "editor/context menu contribution", menu_items)
+svc.show_view("helloCommands.view")
+tree = svc._view_docks["helloCommands.view"].widget()
+check(wait(lambda: tree.topLevelItemCount() == 2, 10), "tree view (registerTreeDataProvider) in a dock",
+      [tree.topLevelItem(i).text(0) for i in range(tree.topLevelItemCount())])
+top = tree.topLevelItem(0)
+if top is not None:
+    top.setExpanded(True)
+    check(wait(lambda: top.childCount() == 2, 10), "tree children load on expand",
+          [top.child(i).text(0) for i in range(top.childCount())])
+    n = len(DIALOG_ANSWERS)
+    if top.childCount():
+        svc._activate_item(top.child(0))
+    check(wait(lambda: len(DIALOG_ANSWERS) > n and "Apple" in DIALOG_ANSWERS[-1][1], 10),
+          "tree item command (with arguments) runs", DIALOG_ANSWERS[-1:])
 win.grab().save(str(SCRATCH / "vsx_host_editor.png"))
 
 # ---------------------------------------------------------------- vscode-languageclient extension
@@ -256,8 +270,10 @@ ed3.set_breakpoints([1])           # 0-based editor line = line 2
 ed3.setFocus()
 stops = []
 check(svc.should_debug_with_extension(ed3), "F5 picks the extension debugger for this file")
-ok = svc.debug_start(ed=ed3)
-check(ok, "debug session started (declarative adapter)")
+win.session = None
+win.start_or_continue()                 # F5 (no project): radide/vsx/host_ide.py wraps run_project
+check(wait(lambda: getattr(win.session, "debug_type", "") == "minidbg", 10),
+      "F5 started the debug session (declarative program/runtime adapter)", getattr(win, "session", None))
 s = win.session
 s.stopped.connect(lambda info: stops.append(info))
 check(wait(lambda: stops, 15), "stopped at breakpoint", [(i.line, i.variables) for i in stops])
@@ -288,7 +304,8 @@ done.clear()
 s.finished.connect(lambda c: done.append(c))
 wait(lambda: s.paused, 5)
 s.cont()
-check(wait(lambda: done, 15), "inline session finished", (s.paused, s.running(), dbg_out[-5:]))
+check(wait(lambda: done, 15), "inline session finished",
+      (s.paused, [(i.line, i.reason) for i in stops], dbg_out[-3:], svc.output.texts.get("Extension Host", "")[-600:]))
 out = svc.output.texts.get("Mini Debug", "")
 check("custom event custom/finished" in out and "session started minidbg" in out,
       "debug events reach the extension (onDidStartDebugSession, custom events)", out[-300:])
@@ -299,14 +316,40 @@ timer.stop()
 pid = (svc.host.init_result or {}).get("pid")
 svc.stop()
 check(not svc.host.running(), "extension host stopped")
+
+# ---------------------------------------------------------------- LSP fallback (no host): the IDE's LSP client
+from radide.vsx import get as vsx_get  # noqa: E402
+
+mini_ext = vsx_get("radide-test.mini-lsp")
+svc._lsp_fallback(mini_ext)
+from radide import lsp as LSP  # noqa: E402
+
+check("minilang" in LSP.SERVERS, "fallback registered the extension's server for its language")
+mini2 = ws / "other.mini"
+mini2.write_text("print bad here\n", "utf-8")
+ed4 = win.open_any_file(mini2)
+check(ed4 is not None and wait(lambda: ed4._ready, 30), "second minilang editor opened")
+check(wait(lambda: ed4.lsp is not None and not isinstance(ed4.lsp, CompositeClient), 15),
+      "radide/lsp.py LspClient attached (server.js --stdio)", type(ed4.lsp))
+markers = []
+check(wait(lambda: (markers.append(js(ed4, "monaco.editor.getModelMarkers({owner: 'rad'}).map(m => m.message)", 2))
+                    or markers[-1]), 20), "fallback server diagnostics as markers", markers[-1:] if markers else None)
+for c in list(getattr(win, "lsp_manager").clients.values()):
+    if c is not None:
+        c.stop()
+from radide.vsx import lsp_fallback  # noqa: E402
+
+lsp_fallback.unregister_all()
 for e in list(svc.live_editors()):
     try:
         e.setModified(False)
     except Exception:  # noqa: BLE001
         pass
+fails = [r for r in RESULTS if not r[0]]
+print(f"\n{len(RESULTS) - len(fails)}/{len(RESULTS)} passed; screenshots in {SCRATCH}", flush=True)
+(SCRATCH / "results.json").write_text(json.dumps(RESULTS, indent=1), "utf-8")
+QSettings().clear()
 win.close()
 QSettings().clear()
-fails = [r for r in RESULTS if not r[0]]
-print(f"\n{len(RESULTS) - len(fails)}/{len(RESULTS)} passed; screenshots in {SCRATCH}")
-(SCRATCH / "results.json").write_text(json.dumps(RESULTS, indent=1), "utf-8")
+sys.stdout.flush()
 os._exit(len(fails))

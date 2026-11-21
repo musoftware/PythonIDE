@@ -210,7 +210,9 @@ class DapSession(QObject):
             info.frames = [(f.get("name", ""), f.get("source", {}).get("path", ""), f.get("line", 0)) for f in frames]
 
             def got_scopes(sb, _m):
-                scopes = [s for s in sb.get("scopes", []) if not s.get("expensive")]
+                # (gdb's DAP also reports a "Registers" scope: not shown in Locals)
+                scopes = [s for s in sb.get("scopes", []) if not s.get("expensive")
+                          and s.get("presentationHint") != "registers" and s.get("name") != "Registers"]
                 if not scopes:
                     self._emit_stop(info)
                     return

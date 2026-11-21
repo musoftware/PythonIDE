@@ -30,7 +30,7 @@ from PyQt6.QtCore import QObject, Qt, QTimer, QUrl
 from PyQt6.QtGui import QDesktopServices, QFont
 from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog, QDialogButtonBox, QDockWidget,
                              QFileDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
-                             QPlainTextEdit, QToolButton, QVBoxLayout, QWidget)
+                             QPlainTextEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from . import when as W
 from .bridge import VsxHost, find_node
@@ -350,11 +350,16 @@ class VsxService(QObject):
                   "appRoot": str(Path(__file__).resolve().parents[1]), "language": lang, "apiVersion": API_LEVEL,
                   "themeKind": kind, "languages": languages}
         self._synced.clear()
+        self._active_sent = None                 # a new host knows nothing: send the active editor again
         ok = self.host.start(params, node)
         if not ok:
             self.log("the extension host could not be started")
             return False
         self.log(f"extension host starting ({len(self.extensions)} extension(s) with code, node {node})")
+        try:
+            self._setup_views()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"views: {e}")
         for ed in list(self._editors):          # documents already open
             self._open_doc(ed)
         return True
@@ -1101,6 +1106,118 @@ class VsxService(QObject):
         if ed is not None:
             self._decorate(ed, p["key"], p.get("ranges") or [])
 
+    # ------------------------------------------------------------ tree views (contributes.views)
+    def contributed_views(self) -> dict:
+        """view id -> title of the views the enabled extensions with code contribute."""
+        out = {}
+        for ext in self.extensions:
+            for _container, views in (ext.contributes.get("views") or {}).items():
+                for v in views if isinstance(views, list) else []:
+                    if isinstance(v, dict) and v.get("id") and v.get("type", "tree") == "tree":
+                        out[v["id"]] = str(v.get("name") or v["id"])
+        return out
+
+    def _setup_views(self):
+        views = self.contributed_views()
+        if not views:
+            return
+        try:
+            from ..i18n import tr
+        except Exception:  # noqa: BLE001
+            def tr(t):
+                return t
+        menu = getattr(self, "_views_menu", None)
+        if menu is None:
+            view = next((a.menu() for a in self.win.menuBar().actions()
+                         if a.menu() and a.text().replace("&", "") in ("View", tr("View"))), None)
+            if view is None:
+                return
+            menu = self._views_menu = view.addMenu(tr("Extension Views"))
+        menu.clear()
+        for vid, title in views.items():
+            menu.addAction(title, lambda vid=vid: self.show_view(vid))
+
+    def show_view(self, view_id: str):
+        dock = self._view_dock(view_id)
+        dock.show()
+        dock.raise_()
+        tree = dock.widget()
+        if tree.topLevelItemCount() == 0:
+            self._load_children(view_id, tree, None)
+
+    def _view_dock(self, view_id: str) -> QDockWidget:
+        self._view_docks = getattr(self, "_view_docks", {})
+        d = self._view_docks.get(view_id)
+        if d is not None:
+            return d
+        title = self.contributed_views().get(view_id, view_id)
+        d = QDockWidget(title, self.win)
+        d.setObjectName("vsxView_" + re.sub(r"\W+", "_", view_id))
+        tree = QTreeWidget()
+        tree.setHeaderHidden(True)
+        tree.itemExpanded.connect(lambda it, v=view_id, t=tree: self._expand(v, t, it))
+        tree.itemActivated.connect(lambda it, _c=0: self._activate_item(it))
+        tree.itemClicked.connect(lambda it, _c=0: self._activate_item(it))
+        d.setWidget(tree)
+        self.win.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, d)
+        d.hide()
+        self._view_docks[view_id] = d
+        return d
+
+    def _load_children(self, view_id, tree, parent_item):
+        if not self.host.running():
+            return
+        handle = parent_item.data(0, Qt.ItemDataRole.UserRole) if parent_item is not None else None
+
+        def got(items):
+            try:
+                if parent_item is not None:
+                    parent_item.takeChildren()
+                else:
+                    tree.clear()
+            except RuntimeError:
+                return
+            for it in items or []:
+                label = codicons(it.get("label") or "")
+                if it.get("description"):
+                    label += "   " + codicons(it["description"])
+                node = QTreeWidgetItem([label])
+                node.setData(0, Qt.ItemDataRole.UserRole, it.get("handle"))
+                node.setData(0, Qt.ItemDataRole.UserRole + 1, it.get("command"))
+                node.setData(0, Qt.ItemDataRole.UserRole + 2, it.get("path"))
+                node.setToolTip(0, it.get("tooltip") or "")
+                if it.get("collapsible"):
+                    node.setChildIndicatorPolicy(QTreeWidgetItem.ChildIndicatorPolicy.ShowIndicator)
+                (parent_item.addChild if parent_item is not None else tree.addTopLevelItem)(node)
+                if it.get("collapsible") == 2:
+                    node.setExpanded(True)
+        self.before_request()
+        self.host.request("tree/children", {"viewId": view_id, "handle": handle}, got, timeout_ms=15000)
+
+    def _expand(self, view_id, tree, item):
+        if not item.data(0, Qt.ItemDataRole.UserRole + 3):
+            item.setData(0, Qt.ItemDataRole.UserRole + 3, True)
+            self._load_children(view_id, tree, item)
+
+    def _activate_item(self, item):
+        cmd = item.data(0, Qt.ItemDataRole.UserRole + 1)
+        if isinstance(cmd, dict) and cmd.get("command"):
+            self.execute(cmd["command"], cmd.get("arguments") or [])
+        elif item.data(0, Qt.ItemDataRole.UserRole + 2):
+            self.open_path(item.data(0, Qt.ItemDataRole.UserRole + 2))
+
+    def _n_tree_registered(self, p):
+        vid = p.get("viewId")
+        if vid in self.contributed_views():
+            d = self._view_dock(vid)
+            if d.isVisible():
+                self._load_children(vid, d.widget(), None)
+
+    def _n_tree_changed(self, p):
+        d = getattr(self, "_view_docks", {}).get(p.get("viewId"))
+        if d is not None and d.isVisible():
+            self._load_children(p["viewId"], d.widget(), None)
+
     def _n_extension_activated(self, p):
         self.activation[p["id"]] = "active"
 
@@ -1135,6 +1252,11 @@ class VsxService(QObject):
         if not langs:
             return
         mgr = getattr(self.win, "lsp_manager", None)
+        if mgr is not None:                      # forget "no server" answers cached for these languages
+            from ..lsp import server_key
+            keys = {server_key(lang) for lang in langs}
+            for k in [k for k, c in mgr.clients.items() if c is None and k[0] in keys]:
+                mgr.clients.pop(k, None)
         for ed in self.live_editors():
             if editor_lang(ed) in langs and getattr(ed, "lsp", None) is None and mgr is not None:
                 ed.languageChanged.emit(ed.language_id())     # lsp_support attaches the new server
@@ -1182,11 +1304,10 @@ class VsxService(QObject):
         proj = getattr(self.win, "project", None)
         if proj is None:
             return True
-        try:
-            plugin = self.win.run_plugin()
-            return not plugin.supports_debug or Path(ed.path).suffix.lower() != str(plugin.code_ext).lower()
+        try:          # a project with its own debugger keeps F5 (Debug > Debug with Extension Debugger stays)
+            return not self.win.run_plugin().supports_debug
         except Exception:  # noqa: BLE001
-            return True
+            return False
 
     def debug_start(self, config=None, folder=None, ed=None, debug_type=None) -> bool:
         from . import debuggers

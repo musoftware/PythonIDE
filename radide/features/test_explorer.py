@@ -276,7 +276,16 @@ class TestExplorer(QWidget):
     # ---------------------------------------------------------------- discovery
     def project_root(self) -> Path | None:
         p = getattr(self.win, "project", None)
-        return Path(p.folder) if p is not None else None
+        if p is None:
+            return None
+        folder = Path(p.folder)
+        if (folder / "Cargo.toml").is_file():     # a cargo workspace member: test the whole workspace
+            try:
+                from ..rust_tools import workspace_root
+                return workspace_root(folder)
+            except Exception:  # noqa: BLE001
+                return folder
+        return folder
 
     def discover(self, force=False):
         root = self.project_root()

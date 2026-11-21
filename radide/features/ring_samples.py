@@ -85,12 +85,17 @@ class RingSamplesPanel(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search Ring samples (title, folder, library, description)...")
         self.search.setClearButtonEnabled(True)
+        try:
+            from ..i18n import tr as _tr
+        except Exception:  # noqa: BLE001
+            def _tr(x):
+                return x
         self.kind = QComboBox()
         for text, data in KINDS:
-            self.kind.addItem(text, data)
+            self.kind.addItem(_tr(text), data)
         self.status = QComboBox()
         for text, data in STATUSES:
-            self.status.addItem(text, data)
+            self.status.addItem(_tr(text), data)
         top.addWidget(self.search, 1)
         top.addWidget(self.kind)
         top.addWidget(self.status)
@@ -184,6 +189,8 @@ class RingSamplesPanel(QWidget):
             self.entries, self.meta = [], {}
             self.win.log(f"[Ring Samples] cannot read the samples: {e}")
         self.refill()
+        if self.current is None:               # the placeholder text depends on self.root (now known)
+            self._show_entry(None)
 
     def reload(self) -> None:
         self._loaded = False
@@ -275,6 +282,11 @@ class RingSamplesPanel(QWidget):
         if st:
             parts.append(f"Last test: {st.get('ok', 0)} OK, {st.get('input', 0)} need input, "
                          f"{st.get('fail', 0)} fail, {st.get('timeout', 0)} timeout")
+        try:                                  # translate each part (the joined text matches no catalog entry)
+            from ..i18n import tr
+            parts = [tr(x) for x in parts]
+        except Exception:  # noqa: BLE001
+            pass
         self.info.setText("   |   ".join(parts))
 
     def entry(self, entry_id: str) -> dict | None:
