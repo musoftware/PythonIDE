@@ -49,7 +49,7 @@ def main(argv=None) -> int:
             if cmd == "run":
                 from .emulink import RunError, run_rom
                 try:
-                    proc = run_rom(out, rp.system or None)
+                    proc = run_rom(out, rp.system or None, emulator=rp.extra.get("emulator") or None)
                     if getattr(proc, "popen", None) is None and hasattr(proc, "command"):
                         _say("Emulator command (dry run): " + " ".join(map(str, proc.command)))
                     else:

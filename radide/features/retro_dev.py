@@ -5,7 +5,11 @@
 * Editors of retro sources keep their own IntelliSense (6502 / SM83 / Z80): the x86 assembly overlay of
   radide/features/asm_ide.py is kept away from them.
 * Tools > Retro > Retro Development: Disassemble ROM into Project..., Re-disassemble with Hints, Rebuild Check,
-  Retro Toolchains... (DASM, cc65, RGBDS, sjasmplus: status and one-click download).
+  Import Labels into Hints..., Retro Toolchains... (DASM, cc65, RGBDS, sjasmplus: status and one-click download).
+* Disassembly projects: hints.json shows in Solution Explorer (open, re-disassemble, import labels from a ca65
+  .dbg / RGBDS .sym / Mesen .mlb / FCEUX .nl file); the source editor's and the hex editor's context menus have
+  "Disassembly Hints" (mark as code / data / jump table / RTS jump table, add a label or comment) - the hint goes
+  into hints.json and the ROM is disassembled again.
 """
 from __future__ import annotations
 
@@ -273,23 +277,24 @@ def show_disassemble(win, rom: str = "") -> None:
     DisassembleDialog(win, rom).exec()
 
 
-def redisassemble(win) -> None:
+def redisassemble(win, ask: bool = True):
     project = getattr(win, "project", None)
     s = ((getattr(project, "extra", {}) or {}).get("retro") or {}) if project is not None else {}
     if not s.get("disassembly"):
         QMessageBox.information(win, _tr("Re-disassemble with Hints"),
                                 _tr("The active project was not made with 'Disassemble ROM into Project'."))
-        return
-    if QMessageBox.question(win, _tr("Re-disassemble with Hints"),
-                            _tr("Disassemble the original ROM again with hints.json? The main source is saved "
-                                "as a .bak file first and then replaced.")) != QMessageBox.StandardButton.Yes:
-        return
+        return None
+    if ask and QMessageBox.question(win, _tr("Re-disassemble with Hints"),
+                                    _tr("Disassemble the original ROM again with hints.json? The main source is "
+                                        "saved as a .bak file first and then replaced.")) != \
+            QMessageBox.StandardButton.Yes:
+        return None
     try:
         from ..retro.dev.fromrom import redisassemble as redo
         res = redo(project.folder, log=win.log)
     except Exception as e:  # noqa: BLE001
         QMessageBox.warning(win, _tr("Re-disassemble with Hints"), str(e))
-        return
+        return None
     win.log(res.summary())
     try:
         for i in range(win.tabs.count()):
@@ -301,6 +306,262 @@ def redisassemble(win) -> None:
     except Exception:  # noqa: BLE001
         pass
     QMessageBox.information(win, _tr("Re-disassemble with Hints"), res.summary())
+    return res
+
+
+# ============================================================================ disassembly hints
+def disasm_project_folder(path) -> Path | None:
+    """The folder of the disassembly project that *path* (its source, hints.json or rom/ copy) belongs to."""
+    import json
+    try:
+        p = Path(path).resolve()
+    except (OSError, TypeError):
+        return None
+    for d in [p] + list(p.parents)[:3]:
+        rp = d / "project.radproj"
+        if rp.is_file():
+            try:
+                data = json.loads(rp.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return None
+            return d if ((data.get("retro") or {}).get("disassembly")) else None
+    return None
+
+
+def _activate_folder(win, folder: Path) -> None:
+    proj = getattr(win, "project", None)
+    try:
+        if proj is not None and Path(proj.folder).resolve() == folder.resolve():
+            return
+        for st in getattr(win, "_pstates", {}).values():
+            pr = st.get("project") if isinstance(st, dict) else None
+            if pr is not None and Path(pr.folder).resolve() == folder.resolve():
+                win.activate_project(pr)
+                return
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def apply_hint(win, folder, kind: str, start: int, end: int | None = None, text: str = "",
+               redo: bool = True):
+    """Write one hint into hints.json and (by default) disassemble again."""
+    from ..retro.dev.fromrom import add_hint
+    folder = Path(folder)
+    try:
+        add_hint(folder, kind, start, end, text)
+    except (OSError, ValueError) as e:
+        QMessageBox.warning(win, _tr("Disassembly Hints"), str(e))
+        return None
+    what = {"code": "code", "data": "data", "word_table": "jump table", "rts_table": "RTS jump table",
+            "label": f"label {text}", "comment": "comment"}[kind]
+    rng = f"${start:04X}" + (f"-${end:04X}" if end is not None and end != start else "")
+    win.log(f"[disassembly] hint: {rng} = {what} (hints.json)")
+    try:
+        win._fill_solution()
+    except Exception:  # noqa: BLE001
+        pass
+    if not redo:
+        return True
+    _activate_folder(win, folder)
+    return redisassemble(win, ask=False)
+
+
+def _ask_text(win, title: str, label: str) -> str:
+    from PyQt6.QtWidgets import QInputDialog
+    text, ok = QInputDialog.getText(win, title, label)
+    return text.strip() if ok else ""
+
+
+def _hint_submenu(win, menu, folder: Path, start: int | None, end: int | None, where: str):
+    sub = menu.addMenu(_tr("Disassembly Hints"))
+    if start is None:
+        a = sub.addAction(_tr("(no address on this line)"))
+        a.setEnabled(False)
+    else:
+        rng = f"${start:04X}" + (f"-${end:04X}" if end is not None and end != start else "")
+        sub.addAction(f"{_tr('Mark as Code')} ({rng[:5]})", lambda: apply_hint(win, folder, "code", start))
+        sub.addAction(f"{_tr('Mark as Data')} ({rng})", lambda: apply_hint(win, folder, "data", start, end))
+        sub.addAction(f"{_tr('Mark as Jump Table (addresses)')} ({rng})",
+                      lambda: apply_hint(win, folder, "word_table", start, end))
+        sub.addAction(f"{_tr('Mark as RTS Jump Table (address-1)')} ({rng})",
+                      lambda: apply_hint(win, folder, "rts_table", start, end))
+        sub.addSeparator()
+
+        def label():
+            t = _ask_text(win, _tr("Add Label"), f"{_tr('Label name for')} ${start:04X}:")
+            if t:
+                apply_hint(win, folder, "label", start, text=t)
+
+        def comment():
+            t = _ask_text(win, _tr("Add Comment"), f"{_tr('Comment above')} ${start:04X}:")
+            if t:
+                apply_hint(win, folder, "comment", start, text=t)
+        sub.addAction(_tr("Add Label..."), label)
+        sub.addAction(_tr("Add Comment..."), comment)
+    sub.addSeparator()
+    sub.addAction(_tr("Re-disassemble with Hints"), lambda: (_activate_folder(win, folder), redisassemble(win)))
+    sub.addAction(_tr("Open hints.json"), lambda: win.open_any_file(folder / "hints.json"))
+    sub.setProperty("radHintWhere", where)
+    return sub
+
+
+def editor_hint_range(ed) -> tuple[int | None, int | None]:
+    """(first, last) address of the selected lines (or the current line) of a disassembly source."""
+    from ..retro.dev.fromrom import address_of_line
+    l1 = l2 = None
+    sel = getattr(ed, "_selection", None)
+    if isinstance(sel, tuple) and len(sel) == 4 and (sel[0], sel[1]) != (sel[2], sel[3]):
+        l1, l2 = min(sel[0], sel[2]), max(sel[0], sel[2])
+    else:
+        try:
+            c = ed.textCursor()
+            if c.hasSelection() and hasattr(ed, "document"):
+                doc = ed.document()
+                l1 = doc.findBlock(c.selectionStart()).blockNumber()
+                l2 = doc.findBlock(max(c.selectionStart(), c.selectionEnd() - 1)).blockNumber()
+        except Exception:  # noqa: BLE001
+            pass
+    if l1 is None:
+        l1 = l2 = ed.getCursorPosition()[0]
+    n = ed.lines()
+    start = None
+    for ln in range(l1, min(n, l1 + 4)):                 # a label line: the address is on the next line
+        start = address_of_line(ed.text(ln))
+        if start is not None:
+            break
+    if start is None:
+        return None, None
+    end = start
+    for ln in range(l2 + 1, min(n, l2 + 6)):             # the next line's address - 1 = the last byte
+        a = address_of_line(ed.text(ln))
+        if a is not None:
+            end = max(start, a - 1)
+            break
+    return start, end
+
+
+def editor_hint_menu(win, ed, menu):
+    """Context menu of a source editor: "Disassembly Hints" when the file belongs to a disassembly project."""
+    path = getattr(ed, "path", None)
+    if path is None or Path(path).suffix.lower() not in (".s", ".asm"):
+        return None
+    folder = disasm_project_folder(path)
+    if folder is None:
+        return None
+    start, end = editor_hint_range(ed)
+    menu.addSeparator()
+    return _hint_submenu(win, menu, folder, start, end, "editor")
+
+
+_IMAGES: dict = {}
+
+
+def _rom_image(path: Path):
+    from ..retro.cpu import romfmt
+    key = (str(path).lower(), path.stat().st_mtime_ns)
+    img = _IMAGES.get(key)
+    if img is None:
+        img = romfmt.load(path)
+        _IMAGES.clear()
+        _IMAGES[key] = img
+    return img
+
+
+def hex_hint_menu(win, doc, menu, offset: int, sel):
+    """HexDocument.menu_hooks entry: hints from file offsets of a disassembly project's ROM (rom/<file>)."""
+    path = getattr(doc, "path", None)
+    if path is None:
+        return None
+    folder = disasm_project_folder(path)
+    if folder is None:
+        return None
+    from ..retro.cpu.romfmt import file_to_cpu
+    try:
+        img = _rom_image(Path(path))
+    except (OSError, ValueError):
+        return None
+    s0, n = sel
+    first = s0 if n else offset
+    last = s0 + n - 1 if n else offset
+    a = file_to_cpu(img, first)
+    b = file_to_cpu(img, last)
+    menu.addSeparator()
+    return _hint_submenu(win, menu, folder, a[0] if a else None, b[0] if b else (a[0] if a else None), "hex")
+
+
+def import_labels_dialog(win, folder=None, path: str | None = None):
+    project = getattr(win, "project", None)
+    folder = Path(folder) if folder else (Path(project.folder) if project is not None else None)
+    if folder is None or disasm_project_folder(folder / "project.radproj") is None:
+        QMessageBox.information(win, _tr("Import Labels"),
+                                _tr("The active project was not made with 'Disassemble ROM into Project'."))
+        return None
+    if path is None:
+        from ..retro.cpu.labels import LABEL_FILTER
+        path, _ = QFileDialog.getOpenFileName(win, _tr("Import Labels into Hints"), str(folder), LABEL_FILTER)
+        if not path:
+            return None
+    from ..retro.dev.fromrom import import_labels
+    try:
+        n, kind = import_labels(folder, path)
+    except (OSError, ValueError) as e:
+        QMessageBox.warning(win, _tr("Import Labels"), str(e))
+        return None
+    win.log(f"[disassembly] {n} labels imported from {Path(path).name} ({kind}) into hints.json")
+    _activate_folder(win, folder)
+    res = redisassemble(win, ask=True) if n else None
+    return n, res
+
+
+# ---------------------------------------------------------------------------- Solution Explorer node
+def _add_hint_nodes(win) -> None:
+    from PyQt6.QtWidgets import QTreeWidgetItem
+    try:
+        from .solution_ui import PROJECT_ROLE
+    except ImportError:
+        return
+    role = Qt.ItemDataRole.UserRole
+    tree = win.solution
+    stack = [tree.topLevelItem(i) for i in range(tree.topLevelItemCount())]
+    while stack:
+        it = stack.pop()
+        stack.extend(it.child(i) for i in range(it.childCount()))
+        data = it.data(0, role)
+        if not data or data[0] != "project":
+            continue
+        key = it.data(0, PROJECT_ROLE)
+        st = getattr(win, "_pstates", {}).get(key)
+        project = st["project"] if st else None
+        s = ((getattr(project, "extra", {}) or {}).get("retro") or {}) if project is not None else {}
+        if not s.get("disassembly"):
+            continue
+        if any((it.child(i).data(0, role) or ("",))[0] == "retro_hints" for i in range(it.childCount())):
+            continue
+        hp = Path(project.folder) / "hints.json"
+        n = QTreeWidgetItem(["hints.json  (disassembly hints)"])
+        n.setData(0, role, ("retro_hints", str(hp)))
+        n.setData(0, PROJECT_ROLE, key)
+        n.setToolTip(0, _tr("Code / data / jump table hints and labels for Re-disassemble with Hints "
+                            "(double-click: open; right-click: re-disassemble, import labels)"))
+        n.setIcon(0, win.style().standardIcon(win.style().StandardPixmap.SP_FileDialogInfoView))
+        it.insertChild(0, n)
+
+
+def _tree_dclick(win, item, _col) -> None:
+    data = item.data(0, Qt.ItemDataRole.UserRole)
+    if data and data[0] == "retro_hints":
+        win.open_any_file(Path(data[1]))
+
+
+def hints_tree_menu(win, item, m) -> None:
+    data = item.data(0, Qt.ItemDataRole.UserRole) if item is not None else None
+    if not data or data[0] != "retro_hints":
+        return
+    folder = Path(data[1]).parent
+    m.addSeparator()
+    m.addAction(_tr("Open hints.json"), lambda: win.open_any_file(Path(data[1])))
+    m.addAction(_tr("Re-disassemble with Hints"), lambda: (_activate_folder(win, folder), redisassemble(win)))
+    m.addAction(_tr("Import Labels (.dbg / .sym / .mlb / .nl)..."), lambda: import_labels_dialog(win, folder))
 
 
 def rebuild_check(win) -> None:
@@ -413,6 +674,7 @@ def install(win) -> None:
 
     win.show_retro_disassemble = lambda rom="": show_disassemble(win, rom)
     win.show_retro_toolchains = lambda: show_toolchains(win)
+    _install_hints_ui(win)
     try:
         from ..retro.menu import section
         m = section(win, "Retro &Development")
@@ -426,5 +688,48 @@ def install(win) -> None:
     win.a_retro_disassemble = a
     m.addAction("Re-disassemble with Hints").triggered.connect(lambda: redisassemble(win))
     m.addAction("Rebuild Check (compare with the original)").triggered.connect(lambda: rebuild_check(win))
+    m.addAction("Import Labels into Hints...").triggered.connect(lambda: import_labels_dialog(win))
     m.addSeparator()
     m.addAction("Retro Toolchains...").triggered.connect(lambda: show_toolchains(win))
+
+
+def _install_hints_ui(win) -> None:
+    """Disassembly hints in the source editor, the hex editor and Solution Explorer."""
+    try:
+        from .. import editor as editor_mod
+
+        def hook(ed):
+            if getattr(ed, "contextMenuAboutToShow", None) is not None:
+                ed.contextMenuAboutToShow.connect(lambda m, e=ed: editor_hint_menu(win, e, m))
+        hook._rad_retro_hints = True
+        if not any(getattr(h, "_rad_retro_hints", False) for h in editor_mod.EDITOR_HOOKS):
+            editor_mod.EDITOR_HOOKS.append(hook)
+    except Exception as e:  # noqa: BLE001
+        win.log(f"[retro dev] editor hints menu: {e}")
+    try:
+        from ..retro.rom.hexdoc import HexDocument
+
+        def hex_hook(doc, menu, offset, sel):
+            hex_hint_menu(win, doc, menu, offset, sel)
+        HexDocument.menu_hooks.append(hex_hook)
+    except Exception as e:  # noqa: BLE001
+        win.log(f"[retro dev] hex hints menu: {e}")
+    try:
+        from . import solution_ui
+        solution_ui.MENU_HOOKS.append(lambda w, item, m: hints_tree_menu(win, item, m) if w is win else None)
+    except Exception:  # noqa: BLE001
+        pass
+    orig_fill = getattr(win, "_fill_solution", None)
+    if callable(orig_fill):
+        def fill_solution(*a, **k):
+            r = orig_fill(*a, **k)
+            try:
+                _add_hint_nodes(win)
+            except Exception as e:  # noqa: BLE001 - never break Solution Explorer
+                win.log(f"[retro dev] {e}")
+            return r
+        win._fill_solution = fill_solution
+    try:
+        win.solution.itemDoubleClicked.connect(lambda item, col: _tree_dclick(win, item, col))
+    except Exception:  # noqa: BLE001
+        pass

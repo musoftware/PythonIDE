@@ -88,6 +88,42 @@ def load(path, system: str | None = None, base: int | None = None, entry: int | 
     return img
 
 
+# ---------------------------------------------------------------------------------------------- file offsets
+def segment_file_offsets(img: RomImage) -> list[tuple[Segment, int]]:
+    """(segment, file offset of its first byte) for every segment found in the original file."""
+    cache = getattr(img, "_seg_offsets", None)
+    if cache is not None:
+        return cache
+    out = []
+    cursor = 0
+    for seg in img.segments:
+        n = len(seg.data)
+        if n and img.data[cursor:cursor + n] == seg.data:
+            pos = cursor
+        else:
+            pos = img.data.find(seg.data) if n else -1
+        if pos >= 0:
+            out.append((seg, pos))
+            cursor = pos + n
+    img._seg_offsets = out          # type: ignore[attr-defined]
+    return out
+
+
+def file_to_cpu(img: RomImage, file_off: int) -> tuple[int, Segment] | None:
+    """CPU address (and segment) of a byte of the original file; None for headers / CHR / unknown bytes."""
+    for seg, pos in segment_file_offsets(img):
+        if seg.trace and pos <= file_off < pos + len(seg.data):
+            return seg.base + (file_off - pos), seg
+    return None
+
+
+def cpu_to_file(img: RomImage, addr: int, bank: int | None = None) -> int | None:
+    for seg, pos in segment_file_offsets(img):
+        if seg.trace and (bank is None or seg.bank == bank or seg.fixed) and seg.exact(addr) is not None:
+            return pos + addr - seg.base
+    return None
+
+
 # ---------------------------------------------------------------------------------------------- Atari 2600
 def _atari2600(data: bytes) -> RomImage:
     size = len(data)

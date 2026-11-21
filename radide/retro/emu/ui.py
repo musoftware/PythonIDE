@@ -231,14 +231,107 @@ def run_rom_dialog(win, debug: bool = False, path: str = ""):
     return start_rom(win, path, debug=debug)
 
 
-def start_rom(win, path: str, system: str | None = None, debug: bool = False, symbols=None):
+# ---------------------------------------------------------------------- the emulator of a project
+def project_system(project) -> str:
+    """The emulator system id of a retro game / ROM Hacking project ("" = none)."""
+    if project is None:
+        return ""
+    try:
+        from ..dev.systems import system_of
+        sysd = system_of(project)
+        if sysd is not None:
+            return sysd.emu_system
+    except Exception:  # noqa: BLE001
+        pass
+    if getattr(project, "language", "") == "retro-romhack":
+        try:
+            from ..rom.detect import EMU_SYSTEM
+            from ..rom.project import RomProject
+            rp = RomProject.load(project.folder)
+            return EMU_SYSTEM.get(rp.system, rp.system or "")
+        except Exception:  # noqa: BLE001
+            return ""
+    return ""
+
+
+def project_emulator(project) -> str:
+    """The emulator chosen for the project ("" = automatic: the first installed one for its system).
+    Stored in project.radproj ``retro.emulator`` (game projects) or rom.json ``emulator`` (ROM Hacking)."""
+    if project is None:
+        return ""
+    if getattr(project, "language", "") == "retro-romhack":
+        try:
+            from ..rom.project import RomProject
+            return str(RomProject.load(project.folder).extra.get("emulator") or "")
+        except Exception:  # noqa: BLE001
+            return ""
+    return str(((getattr(project, "extra", {}) or {}).get("retro") or {}).get("emulator") or "")
+
+
+def set_project_emulator(project, emu_id: str) -> bool:
+    if project is None:
+        return False
+    if getattr(project, "language", "") == "retro-romhack":
+        from ..rom.project import RomProject
+        rp = RomProject.load(project.folder)
+        if emu_id:
+            rp.extra["emulator"] = emu_id
+        else:
+            rp.extra.pop("emulator", None)
+        rp.save()
+        return True
+    extra = getattr(project, "extra", None)
+    if extra is None or "retro" not in extra:
+        return False
+    if emu_id:
+        extra["retro"]["emulator"] = emu_id
+    else:
+        extra["retro"].pop("emulator", None)
+    project.save()
+    return True
+
+
+def emulator_choices(system: str) -> list[tuple[str, str, bool]]:
+    """(id, title, installed) of the emulators for *system*, in the order "automatic" would try them."""
+    from .catalog import emulators_for
+    return [(e.id, e.title, bool(manager.find(e.id))) for e in emulators_for(system)]
+
+
+def resolve_emulator(system: str, wanted: str = "") -> tuple[str, str]:
+    """(emulator id to use, note): the wanted one when it is installed and runs *system*, else the first
+    installed one ("" when none is installed)."""
+    choices = emulator_choices(system)
+    if wanted:
+        for eid, title, ok in choices:
+            if eid == wanted and ok:
+                return eid, ""
+        note = f"{EMULATORS[wanted].title if wanted in EMULATORS else wanted} is not installed / does not run "                f"{SYSTEM_TITLES.get(system, system)} - using the first available emulator"
+    else:
+        note = ""
+    first = next((eid for eid, _t, ok in choices if ok), "")
+    return first, note
+
+
+def start_rom(win, path: str, system: str | None = None, debug: bool = False, symbols=None,
+              emulator: str | None = None):
+    """Run *path* in an emulator. *emulator*: an id, or None = the project's choice (Emulator combo on the
+    toolbar / project setting), falling back to the first installed emulator for the system."""
     from .launch import EmuError, run_rom
+    from .systems import detect_system
     apply_settings(getattr(win, "settings", None))
     if symbols is None:
         cands = [Path(path).with_suffix(e) for e in (".sym", ".lst", ".dbg", ".lbl", ".mlb", ".vs", ".labels")]
         symbols = [str(c) for c in cands if c.is_file()]
+    if emulator is None:
+        sysid = system or detect_system(path)
+        wanted = project_emulator(getattr(win, "project", None)) if sysid else ""
+        if wanted and sysid:
+            emulator, note = resolve_emulator(sysid, wanted)
+            if note:
+                _log(win, f"[retro] {note}")
+            emulator = emulator or None
     try:
-        proc = run_rom(path, system, debug=debug, symbols=symbols)
+        proc = run_rom(path, system, debug=debug, symbols=symbols, emulator=emulator or None)
     except EmuError as e:
         QMessageBox.warning(win, "Retro Emulators", str(e))
         return None
@@ -675,4 +768,5 @@ def dos_settings(win) -> None:
 
 
 __all__ = ["DosSettingsDialog", "EmulatorManager", "RetroDebugger", "apply_settings", "dos_settings",
-           "ensure_debugger", "hex_dump", "hot_reload", "run_rom_dialog", "show_manager", "start_rom"]
+           "ensure_debugger", "hex_dump", "hot_reload", "run_rom_dialog", "show_manager", "start_rom",
+           "emulator_choices", "project_emulator", "project_system", "resolve_emulator", "set_project_emulator"]

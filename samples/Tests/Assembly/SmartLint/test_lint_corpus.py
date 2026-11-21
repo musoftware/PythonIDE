@@ -137,7 +137,8 @@ check("quick fix titles exist in Arabic", ar_titles and all(ARABIC.search(t) for
 # ============================================================================ 4. no false positives
 git = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "samples/Tests/Assembly"], cwd=ROOT,
                      capture_output=True, text=True).stdout.split()
-skip = ("SmartSim/buggy", "SmartLint/NasmMistakes", "SmartLint/Emu8086Mistakes", "CoreErrorList")
+skip = ("SmartSim/buggy", "SmartLint/NasmMistakes", "SmartLint/Emu8086Mistakes", "CoreErrorList",
+        "SmartStudentQA/")      # beginner programs that are wrong on purpose (the student QA)
 srcs = [ROOT / f for f in git if f.lower().endswith((".asm", ".s")) and not any(s in f for s in skip)]
 fps = []
 for f in srcs:

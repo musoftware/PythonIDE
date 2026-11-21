@@ -12,7 +12,20 @@
 Hints (``hints.json`` in a disassembly project, all optional)::
 
     {"code": ["F123", ...], "data": [["F800", "F8FF"], ...], "labels": {"F000": "Start"},
-     "comments": {"F000": "entry"}, "undocumented": false}
+     "comments": {"F000": "entry"}, "undocumented": false,
+     "jump_tables": [["A000", "A01F", "word"], ["A100", "A10F", "rts"], ["A200", "A207", "rts", "A208"]],
+     "auto_tables": true}
+
+Jump tables (6502): besides the user's ``jump_tables`` hints (``word`` = addresses, ``rts`` = address-1 for the
+"push and RTS" trick; a 4th field = the high-byte table of a split lo / hi table), the tracer finds the common
+dispatch idioms itself (``auto_tables``, on by default):
+
+* ``lda Tab+1,x / pha / lda Tab,x / pha / ... / rts``   (also ``,y`` and split ``TabHi`` / ``TabLo`` tables)
+* ``lda Tab,x / sta ptr / lda Tab+1,x / sta ptr+1 / ... / jmp (ptr)``   and ``jmp (vector)`` into the ROM
+
+Every entry becomes a code entry point with a label, and the table is written as ``.word Label-1`` /
+``.word Label`` (ca65 split tables: ``.byte <(Label-1)`` / ``.byte >(Label-1)``), so it still rebuilds
+byte-identical.
 """
 from __future__ import annotations
 
@@ -61,6 +74,9 @@ class Hints:
     labels: dict = field(default_factory=dict)          # addr -> name
     comments: dict = field(default_factory=dict)        # addr -> text
     undocumented: bool = False
+    jump_tables: list = field(default_factory=list)     # [(start, end inclusive, "word" | "rts", hi start | None)]
+    auto_tables: bool = True                            # find the RTS / JMP (indirect) dispatch idioms
+    bank_labels: dict = field(default_factory=dict)     # (bank, addr) -> name  ("bank:addr" keys in hints.json)
 
     @classmethod
     def load(cls, path) -> "Hints":
@@ -68,13 +84,40 @@ class Hints:
             d = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return cls()
-        h = lambda v: int(str(v).lstrip("$").replace("0x", ""), 16) if isinstance(v, str) else int(v)   # noqa: E731
+        return cls.from_dict(d)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Hints":
+        h = lambda v: int(str(v).strip().lstrip("$").replace("0x", ""), 16) if isinstance(v, str) else int(v)   # noqa: E731
+        tables = []
+        for t in d.get("jump_tables", []) or []:
+            try:
+                kind = str(t[2]).lower() if len(t) > 2 else "word"
+                tables.append((h(t[0]), h(t[1]), "rts" if kind == "rts" else "word",
+                               h(t[3]) if len(t) > 3 and t[3] not in (None, "") else None))
+            except (IndexError, TypeError, ValueError):
+                continue
+        labels, bank_labels = {}, {}
+        for k, v in (d.get("labels", {}) or {}).items():
+            try:
+                if isinstance(k, str) and ":" in k:
+                    b, _c, a = k.partition(":")
+                    bank_labels[(h(b), h(a))] = str(v)
+                else:
+                    labels[h(k)] = str(v)
+            except ValueError:
+                continue
         return cls([h(a) for a in d.get("code", [])], [(h(a), h(b)) for a, b in d.get("data", [])],
-                   {h(k): str(v) for k, v in d.get("labels", {}).items()},
-                   {h(k): str(v) for k, v in d.get("comments", {}).items()}, bool(d.get("undocumented")))
+                   labels, {h(k): str(v) for k, v in d.get("comments", {}).items()}, bool(d.get("undocumented")),
+                   tables, bool(d.get("auto_tables", True)), bank_labels)
 
     def is_data(self, addr: int) -> bool:
-        return any(a <= addr <= b for a, b in self.data)
+        if any(a <= addr <= b for a, b in self.data):
+            return True
+        for a, b, _k, hi in self.jump_tables:
+            if a <= addr <= b or (hi is not None and hi <= addr <= hi + (b - a)):
+                return True
+        return False
 
 
 DIALECTS = {
@@ -108,6 +151,10 @@ class Disassembly:
         self.equate_docs: dict[str, str] = {}
         self.refs: dict[tuple[int, int], tuple[str, str]] = {}                      # (seg, instr off) -> (name, k)
         self.conflicts: list[str] = []
+        # jump tables: (seg id, byte offset) -> (part "word" | "lo" | "hi", target address, minus one)
+        self.table_words: dict[tuple[int, int], tuple[str, int, bool]] = {}
+        self.tables: list[dict] = []           # {"seg", "addr", "hi", "kind", "count", "site", "how"}
+        self._sites: set = set()
 
     # ------------------------------------------------------------------ tracing
     def _trace(self, seg: Segment, start: int, undocumented: bool) -> None:
@@ -121,6 +168,8 @@ class Disassembly:
                     break
                 if off in owner:                         # lands inside another instruction
                     self.conflicts.append(f"{seg.name}: jump into the middle of an instruction at {hex16(addr)}")
+                    break
+                if (id(seg), off) in self.table_words:   # runs into a jump table found earlier
                     break
                 cpu_addr = seg.base + off
                 if self.hints.is_data(cpu_addr):
@@ -166,11 +215,175 @@ class Disassembly:
             starts += [a for a in self.hints.code if seg.exact(a) is not None]
             for a in starts:
                 self._trace(seg, a, undoc)
+        self._drain(undoc)
+        self._hint_tables(undoc)
+        if self.hints.auto_tables and self.cpu == "6502":
+            for _round in range(64):                    # new code can hold more dispatchers
+                if not self._find_jump_tables(undoc):
+                    break
+        self._make_labels()
+        return self
+
+    def _drain(self, undoc: bool) -> None:
         while self._pending:
             s2, a = self._pending.pop()
             self._trace(s2, a, undoc)
-        self._make_labels()
-        return self
+
+    # ------------------------------------------------------------------ jump tables
+    def _prev_ins(self, seg: Segment, off: int):
+        """(offset, Instr) of the traced instruction that ends right before *off*, or None."""
+        start = self.owner[id(seg)].get(off - 1)
+        if start is None:
+            return None
+        ins = self.code[id(seg)].get(start)
+        return (start, ins) if ins is not None and start + ins.size == off else None
+
+    def _window(self, seg: Segment, off: int, n: int) -> list:
+        """Up to *n* traced instructions straight before *off*, nearest first."""
+        out = []
+        while len(out) < n:
+            p = self._prev_ins(seg, off)
+            if p is None:
+                break
+            out.append(p)
+            off = p[0]
+        return out
+
+    @staticmethod
+    def _is_indexed_load(ins) -> bool:
+        return ins.mnemonic == "lda" and ins.mode in ("absx", "absy") and ins.target is not None
+
+    def _hint_tables(self, undoc: bool) -> None:
+        for start, end, kind, hi in self.hints.jump_tables:
+            n = (end - start + 1) if hi is not None else (end - start + 1) // 2
+            seg = next((s for s in self.segments if s.trace and s.exact(start) is not None), None)
+            if seg is None or n <= 0:
+                continue
+            self._read_table(seg, start, hi, kind == "rts", undoc, n, "hint", strict=False)
+
+    def _find_jump_tables(self, undoc: bool) -> bool:
+        new = False
+        for seg in self.segments:
+            if not seg.trace:
+                continue
+            for off, ins in sorted(self.code[id(seg)].items()):
+                key = (id(seg), off)
+                if key in self._sites:
+                    continue
+                if ins.mnemonic == "rts":
+                    self._sites.add(key)
+                    new |= self._rts_dispatch(seg, off, undoc)
+                elif ins.mnemonic == "jmp" and ins.mode == "ind" and ins.target is not None:
+                    self._sites.add(key)
+                    new |= self._jmp_indirect(seg, off, ins, undoc)
+        return new
+
+    def _rts_dispatch(self, seg: Segment, off: int, undoc: bool) -> bool:
+        """``lda hi,x / pha / lda lo,x / pha / [other instructions] / rts``."""
+        win = self._window(seg, off, 10)
+        k = 0
+        while k < len(win) and win[k][1].mnemonic != "pha":          # instructions between the pushes and rts
+            i = win[k][1]
+            if i.kind or i.mnemonic in ("pla", "php", "plp", "txs", "rti", "brk"):
+                return False
+            k += 1
+        if k + 3 >= len(win):
+            return False
+        pha2, lo, pha1, hi = (win[k + j][1] for j in range(4))
+        if not (pha2.mnemonic == "pha" and pha1.mnemonic == "pha" and self._is_indexed_load(lo) and
+                self._is_indexed_load(hi) and lo.mode == hi.mode):
+            return False
+        split = hi.target != lo.target + 1
+        return self._read_table(seg, lo.target, hi.target if split else None, True, undoc, 128,
+                                f"rts dispatch at {hex16(seg.base + off)}") > 0
+
+    def _jmp_indirect(self, seg: Segment, off: int, ins, undoc: bool) -> bool:
+        ptr = ins.target
+        for s2 in self._segments_for(seg, ptr):            # jmp (vector in the ROM)
+            poff = s2.exact(ptr)
+            if poff is not None and poff + 1 < len(s2.data):
+                return self._read_table(s2, ptr, None, False, undoc, 1,
+                                        f"jmp ({hex16(ptr)}) at {hex16(seg.base + off)}") > 0
+        win = self._window(seg, off, 14)
+        lo_t = hi_t = None
+        mode = None
+        for j in range(len(win) - 1):
+            st, ld = win[j][1], win[j + 1][1]
+            if st.mnemonic != "sta" or st.mode not in ("zp", "abs") or not self._is_indexed_load(ld):
+                continue
+            if st.target == ptr and lo_t is None:
+                lo_t, mode = ld.target, mode or ld.mode
+            elif st.target == ptr + 1 and hi_t is None:
+                hi_t, mode = ld.target, mode or ld.mode
+        if lo_t is None or hi_t is None:
+            return False
+        split = hi_t != lo_t + 1
+        return self._read_table(seg, lo_t, hi_t if split else None, False, undoc, 128,
+                                f"jmp ({hex16(ptr)}) dispatch at {hex16(seg.base + off)}") > 0
+
+    def _read_table(self, seg_from: Segment, lo_addr: int, hi_addr: int | None, minus1: bool, undoc: bool,
+                    limit: int, how: str, strict: bool = True) -> int:
+        """Read a jump table (interleaved words, or split lo / hi byte tables) and trace every entry.
+        Stops at the first entry that is not a plausible code address (or runs into code / another table)."""
+        tsegs = self._segments_for(seg_from, lo_addr)
+        if not tsegs:
+            return 0
+        tseg = tsegs[0]
+        base_off = tseg.exact(lo_addr)
+        if base_off is None:
+            return 0
+        hi_off0 = None
+        if hi_addr is not None:
+            hi_off0 = tseg.exact(hi_addr)
+            if hi_off0 is None:
+                return 0
+            if hi_addr > lo_addr:
+                limit = min(limit, hi_addr - lo_addr)
+        owner = self.owner[id(tseg)]
+        data = tseg.data
+        n = 0
+        for i in range(limit):
+            if hi_addr is None:
+                lo_off, hi_off = base_off + 2 * i, base_off + 2 * i + 1
+            else:
+                lo_off, hi_off = base_off + i, hi_off0 + i
+            if hi_off >= len(data) or lo_off >= len(data):
+                break
+            if lo_off in owner or hi_off in owner:
+                break
+            if i and ((id(tseg), lo_off) in self.table_words or (id(tseg), hi_off) in self.table_words):
+                break
+            val = data[lo_off] | (data[hi_off] << 8)
+            target = (val + 1) & 0xFFFF if minus1 else val
+            s2s = self._segments_for(tseg, target)
+            if not s2s:
+                break
+            s2 = s2s[0]
+            toff = s2.offset(target)
+            if toff is None:
+                break
+            if s2 is tseg and (base_off <= toff <= hi_off or (hi_off0 is not None and hi_off0 <= toff <= hi_off)):
+                break                                   # points into the table itself
+            if strict and self.hints.is_data(target):
+                break
+            o2 = self.owner[id(s2)]
+            if toff in o2 and o2[toff] != toff:
+                break                                   # into the middle of an instruction
+            if toff not in self.code[id(s2)] and self.dec.decode(s2.data, toff, s2.base + toff, undoc) is None:
+                break
+            if hi_addr is None:
+                self.table_words[(id(tseg), lo_off)] = ("word", target, minus1)
+                self.table_words[(id(tseg), hi_off)] = ("cont", target, minus1)
+            else:
+                self.table_words[(id(tseg), lo_off)] = ("lo", target, minus1)
+                self.table_words[(id(tseg), hi_off)] = ("hi", target, minus1)
+            self._trace(s2, target, undoc)
+            self._drain(undoc)
+            n += 1
+        if n:
+            self.tables.append({"seg": tseg.name, "addr": lo_addr, "hi": hi_addr, "kind": "rts" if minus1 else "word",
+                                "count": n, "how": how})
+        return n
 
     # ------------------------------------------------------------------ labels
     def _label_name(self, seg: Segment, addr: int) -> str:
@@ -213,6 +426,18 @@ class Disassembly:
                 off = seg.exact(addr)
                 if off is not None and self._line_start(seg, off):
                     add(seg, off, name)
+            for (bank, addr), name in self.hints.bank_labels.items():
+                off = seg.exact(addr)
+                if seg.bank == bank and off is not None and self._line_start(seg, off):
+                    add(seg, off, name)
+        by_id = {id(s): s for s in self.segments}
+        for (sid, _off), (part, target, _m1) in sorted(self.table_words.items(), key=lambda kv: kv[0][1]):
+            if part not in ("word", "lo") or sid not in by_id:
+                continue
+            for s2 in self._segments_for(by_id[sid], target):
+                toff = s2.exact(target)
+                if toff is not None and self._line_start(s2, toff) and toff in self.code[id(s2)]:
+                    add(s2, toff, self._label_name(s2, target))
         rw_names: dict[tuple[int, str], str] = {}
         for seg in self.segments:
             for off, ins in sorted(self.code[id(seg)].items()):
@@ -226,8 +451,24 @@ class Disassembly:
                         hit = (s2, toff)
                 if hit is not None:                  # (ld hl,nn into the program = a data pointer: same value)
                     s2, toff = hit
+                    tw = self.table_words.get((id(s2), toff))
+                    if tw is not None and tw[0] == "cont" and (id(s2), toff) not in self.labels:
+                        # lda Table+1,x: name the table, not its second byte (keeps the .word lines whole)
+                        wname = self.labels.get((id(s2), toff - 1)) or add(s2, toff - 1,
+                                                                            self._label_name(s2, t - 1))
+                        self.refs[(id(seg), off)] = (f"{wname}+1", "label")
+                        continue
                     name = self.labels.get((id(s2), toff)) or add(s2, toff, self._label_name(s2, t))
                     self.refs[(id(seg), off)] = (name, "label")
+                    continue
+                user = self.hints.labels.get(t)              # the user's name for RAM (imported labels)
+                if user and not any(s2.exact(t) is not None for s2 in self.segments if s2.trace):
+                    nm = user
+                    if self.equates.get(nm, t) != t or any(n == nm for n in self.labels.values()):
+                        nm = f"{user}_{t:04X}"
+                    self.equates[nm] = t
+                    self.equate_docs.setdefault(nm, "named in hints.json")
+                    self.refs[(id(seg), off)] = (nm, "equ")
                     continue
                 # hardware register / ROM routine / system variable
                 acc = "call" if ins.kind in ("call", "jump") else self._access(ins)
@@ -334,7 +575,8 @@ class Disassembly:
             addr = seg.base + off
             label = self.labels.get((id(seg), off))
             comment = self.hints.comments.get(addr)
-            if label or comment or off in code or off in vec_at:
+            tw = self.table_words.get((id(seg), off)) if off not in code else None
+            if label or comment or off in code or off in vec_at or tw is not None:
                 flush()
             if comment:
                 lines.append(f"; {comment}")
@@ -351,6 +593,21 @@ class Disassembly:
                 lines.append(f"{indent}{d['word']} {name or hex16(v)}".ljust(48) + f"; {addr:04X} {vec_at[off]} vector")
                 off += 2
                 continue
+            if tw is not None:
+                part, target, m1 = tw
+                name = self._label_at(seg, target)
+                expr = (name + ("-1" if m1 else "")) if name else ""
+                note = "jump table (RTS trick: address-1)" if m1 else "jump table"
+                if part == "word" and expr and off + 1 < n and (id(seg), off + 1) not in self.labels and \
+                        off + 1 not in code:
+                    lines.append(f"{indent}{d['word']} {expr}".ljust(48) + f"; {addr:04X} {note}")
+                    off += 2
+                    continue
+                if part in ("lo", "hi") and expr and dialect == "ca65":
+                    op = "<" if part == "lo" else ">"
+                    lines.append(f"{indent}{d['byte']} {op}({expr})".ljust(48) + f"; {addr:04X} {note} ({part})")
+                    off += 1
+                    continue
             ins = code.get(off)
             if ins is not None:
                 if self.needs_bytes(ins, dialect):
@@ -370,6 +627,13 @@ class Disassembly:
             off += 1
         flush()
         return "\n".join(lines)
+
+    def _label_at(self, seg: Segment, addr: int) -> str:
+        for s2 in self._segments_for(seg, addr):
+            toff = s2.exact(addr)
+            if toff is not None and (id(s2), toff) in self.labels:
+                return self.labels[(id(s2), toff)]
+        return ""
 
     def listing(self, seg: Segment) -> list[tuple[int, str, str, str]]:
         """(address, hex bytes, text, kind "code" / "data") rows of a segment, for viewers."""
@@ -393,7 +657,8 @@ class Disassembly:
         code = sum(len(self.owner[id(s)]) for s in self.segments if s.trace)
         return {"bytes": total, "code_bytes": code, "data_bytes": total - code,
                 "instructions": sum(len(self.code[id(s)]) for s in self.segments),
-                "labels": len(self.labels), "equates": len(self.equates), "conflicts": len(self.conflicts)}
+                "labels": len(self.labels), "equates": len(self.equates), "conflicts": len(self.conflicts),
+                "jump_tables": len(self.tables), "table_entries": sum(t["count"] for t in self.tables)}
 
 
 def analyze(segments: list[Segment], cpu: str, system: str = "", hints: Hints | None = None,

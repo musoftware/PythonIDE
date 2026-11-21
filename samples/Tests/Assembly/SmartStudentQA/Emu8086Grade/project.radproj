@@ -1,0 +1,7 @@
+{
+  "name": "Emu8086Grade",
+  "language": "emu8086",
+  "forms": [],
+  "startup": "main",
+  "modules": ["main.asm"]
+}

@@ -1025,8 +1025,9 @@ class Flow:
         between_code = nxt is not None and all(
             p.stmts[k].skind in ("code", "any", "") and p.stmts[k].kind not in ("data",)
             for k in range(last_i + 1, nxt.stmts[0]))
-        if u.explicit is not None:
-            self.add("ASM302", last, last.mcol, last.end_col, where=f"procedure '{u.name}'",
+        if u.explicit is not None and not (self.abi == "dos16" and u.entry):
+            fx = self.insert_after(last, ["ret"], "Add RET", "أضف RET")
+            self.add("ASM302", last, last.mcol, last.end_col, [fx], where=f"procedure '{u.name}'",
                      where_ar=f"الإجراء '{u.name}'", need="RET", need_ar="RET")
             return
         if nxt is not None and between_code and nxt.name:
@@ -1394,10 +1395,47 @@ class Flow:
                 else:
                     what = f"{-S.depth} byte(s) too many were removed from the stack"
                     what_ar = f"تمت إزالة {-S.depth} بايت زيادة من المكدس"
-                self.add("ASM304", st, st.mcol, st.end_col, mnem=m.upper(), what=what, what_ar=what_ar)
+                fixes = []
+                left = u.pushed - u.popped
+                if S.depth > 0 and len(left) == 1 and S.depth == self.mode // 8:
+                    fam = next(iter(left))
+                    push = next((self.p.stmts[i] for i in u.stmts if self.p.stmts[i].kind == "instr" and
+                                 (self.p.stmts[i].mnem or "").lower() == "push" and self.p.stmts[i].ops and
+                                 self.p.stmts[i].ops[0].kind == "reg" and
+                                 GP.get(self.p.stmts[i].ops[0].reg, ("",))[0] == fam), None)
+                    if push is not None:
+                        reg = push.ops[0].text
+                        fixes.append(self.insert_before(st, [f"pop {reg}"], f"Add pop {reg} before {m.upper()}",
+                                                        f"أضف pop {reg} قبل {m.upper()}"))
+                self.add("ASM304", st, st.mcol, st.end_col, fixes, mnem=m.upper(), what=what, what_ar=what_ar)
 
     def sp_name(self) -> str:
         return {16: "SP", 32: "ESP", 64: "RSP"}.get(self.mode, "ESP")
+
+    def shadow_fix(self, u: Unit):
+        """Win64 quick fix for a procedure that never touches RSP: 'sub rsp, 40' as its first instruction and
+        'add rsp, 40' before each RET (32 bytes of shadow space + 8 to realign RSP to 16 bytes)."""
+        p = self.p
+        instrs = [p.stmts[i] for i in u.stmts if p.stmts[i].kind == "instr"]
+        if not instrs or u.explicit is not None and u.explicit.kind == "fasm":
+            return None
+        rets = []
+        for st in instrs:
+            m = (st.mnem or "").lower()
+            stack_ops = ("push", "pop", "enter", "leave", "pushf", "popf", "pushfq", "popfq")
+            uses_rsp = any(o.kind == "reg" and GP.get(o.reg, ("",))[0] == "rsp" for o in st.ops) or \
+                any(o.kind == "mem" and "rsp" in (o.text or "").lower() for o in st.ops)
+            if m in stack_ops or uses_rsp:
+                return None
+            if m in ("ret", "retn"):
+                rets.append(st)
+        first = instrs[0]
+        edits = [{"range": [first.line, first.mcol, first.line, first.mcol],
+                  "text": "sub rsp, 40\n" + " " * first.mcol}]
+        for st in rets:
+            edits.append({"range": [st.line, st.mcol, st.line, st.mcol], "text": "add rsp, 40\n" + " " * st.mcol})
+        return Fix("Reserve shadow space: sub rsp, 40 at the start, add rsp, 40 before RET",
+                   "احجز مساحة الظل: sub rsp, 40 في البداية و add rsp, 40 قبل RET", edits)
 
     # ------------------------------------------------------------ calls
     def callee_of(self, st: Stmt):
@@ -1422,10 +1460,14 @@ class Flow:
         if report and external and name:
             if self.abi in ("win64", "sysv") and S.mod not in (None, 0) and not managed:
                 conv = CONV_NAME[self.abi]
-                self.add("ASM502", st, st.mcol, st.end_col, callee=name, mod=S.mod, conv=f"The {conv} convention",
+                fx = self.shadow_fix(u) if self.abi == "win64" and S.depth == 0 else None
+                self.add("ASM502", st, st.mcol, st.end_col, [fx] if fx else None, callee=name, mod=S.mod,
+                         conv=f"The {conv} convention",
                          conv_ar=f"اتفاقية {CONV_NAME_AR[self.abi]}")
             if self.abi == "win64" and S.alloc is not None and shadow(S.alloc) < 32 and not managed and                     S.depth is not None:
-                self.add("ASM501", st, st.mcol, st.end_col, callee=name, have=shadow(S.alloc))
+                fx = self.shadow_fix(u) if S.depth == 0 else None
+                self.add("ASM501", st, st.mcol, st.end_col, [fx] if fx else None, callee=name,
+                         have=shadow(S.alloc))
             if api is not None and self.abi in ("win64", "sysv"):
                 locs = apis.arg_locations(api, self.abi)
                 n_rep = 0

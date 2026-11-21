@@ -35,8 +35,9 @@ TEMPLATES = [
      "The forms program in 16-bit assembly (MASM / TASM / JWasm syntax): a .COM file that writes to B800h and "
      "reads INT 16h / INT 33h.", "SP_DriveHDIcon"),
     ("tui_quickbasic", "Forms App - QuickBASIC 4.5 (your own copy)",
-     "QuickBASIC 4.5 dialect (CALL INTERRUPT for the mouse). Needs your own QB.EXE / BC.EXE (Tools > DOS "
-     "Toolchains): FreeBASIC has no CALL INTERRUPT, so choose the QBasic / FreeBASIC app to build without them.",
+     "QuickBASIC 4.5 dialect (CALL INTERRUPT for the mouse). Needs your own QB.EXE / BC.EXE (Tools > Retro > "
+     "DOS Programming > DOS Toolchains): FreeBASIC has no CALL INTERRUPT, so choose the QBasic / FreeBASIC app to "
+     "build without them.",
      "SP_FileDialogListView"),
     ("tui_qbasic", "Forms App - QBasic 1.1 (keyboard only)",
      "Plain QBasic 1.1 dialect (no mouse, no COMMAND$): runs in your own QBASIC.EXE; FreeBASIC builds it too.",

@@ -1,13 +1,21 @@
 {
   "id": "dos-programming",
-  "title_ar": "برمجة DOS: تصميم شاشات وضع النص وتوليد البرامج",
-  "title_en": "DOS Programming: Designing Text-Mode Screens and Generating Programs",
-  "language": "dos-tuiforms",
+  "title_ar": "برمجة DOS: QBasic وباسكال و C والتجميع والمصممات المرئية",
+  "title_en": "DOS Programming: QBasic, Pascal, C, Assembly and Visual Designers",
+  "language": "dos-qbasic",
   "level": "beginner",
-  "description_ar": "دورة عربية عن برامج DOS بأسلوب Visual Basic: ترسم الشاشة بالفأرة في مصمم وضع النص (نوافذ وأزرار ومربعات نص وقوائم وشريط حالة)، فتولّد RAD IDE البرنامج بلغة QBasic/FreeBASIC أو باسكال أو C أو تجميع 16 بت، ثم تبنيه بمترجم مجاني وتشغّله في DOSBox-X. وتتعلم كتابة كود الأحداث، وذاكرة الفيديو B800 وحروف CP437، ورسم فن ANSI واستخدامه شاشةً افتتاحية.",
+  "description_ar": "دورة عربية لبرمجة نظام DOS في RAD IDE: قصة DOS ومحاكي DOSBox-X، ثم أول برامج حقيقية بلغة QBasic (يبنيها FreeBASIC لنظام DOS)، وباسكال بوحدة Crt (Free Pascal)، ولغة C مع ذاكرة الشاشة B800 (Open Watcom)، والتجميع 16 بت والمقاطعات (JWasm). بعدها التصميم المرئي بأسلوب Visual Basic: مصمم شاشات وضع النص والأحداث وفن ANSI، ورسوم الوضع 13h ومصممات الألعاب (أتاري 2600 و NES وجيم بوي و DOS)، وتشغيل برامج DOS وألعابها القديمة التي تملكها، ومشروع نهائي. كل البرامج تُبنى بمترجمات مجانية وتعمل في DOSBox-X.",
   "lessons": [
-    {"id": "01-text-mode-designer", "file": "01-text-mode-designer.md", "title_ar": "مصمم وضع النص: ارسم شاشة DOS", "minutes": 30},
-    {"id": "02-events-and-code", "file": "02-events-and-code.md", "title_ar": "الأحداث والكود: من الشاشة إلى برنامج يعمل", "minutes": 40},
-    {"id": "03-ansi-art-and-splash", "file": "03-ansi-art-and-splash.md", "title_ar": "فن ANSI والشاشة الافتتاحية وما يجري تحت الغطاء", "minutes": 35}
+    {"id": "01-dos-and-dosbox", "file": "01-dos-and-dosbox.md", "title_ar": "ما هو DOS؟ ومحاكي DOSBox-X", "minutes": 30},
+    {"id": "02-qbasic", "file": "02-qbasic.md", "title_ar": "أول برنامج QBasic مع FreeBASIC", "minutes": 45},
+    {"id": "03-pascal-crt", "file": "03-pascal-crt.md", "title_ar": "باسكال ووحدة Crt", "minutes": 45},
+    {"id": "04-c-watcom", "file": "04-c-watcom.md", "title_ar": "لغة C مع Open Watcom وذاكرة الشاشة", "minutes": 45},
+    {"id": "05-asm-interrupts", "file": "05-asm-interrupts.md", "title_ar": "التجميع 16 بت والمقاطعات", "minutes": 50},
+    {"id": "06-text-mode-designer", "file": "06-text-mode-designer.md", "title_ar": "مصمم وضع النص: ارسم شاشة DOS", "minutes": 30},
+    {"id": "07-events-and-code", "file": "07-events-and-code.md", "title_ar": "الأحداث والكود: من الشاشة إلى برنامج يعمل", "minutes": 40},
+    {"id": "08-ansi-art-and-splash", "file": "08-ansi-art-and-splash.md", "title_ar": "فن ANSI والشاشة الافتتاحية وما يجري تحت الغطاء", "minutes": 35},
+    {"id": "09-mode13h-games", "file": "09-mode13h-games.md", "title_ar": "رسوم الوضع 13h ومصممات الألعاب", "minutes": 50},
+    {"id": "10-old-programs", "file": "10-old-programs.md", "title_ar": "تشغيل برامج DOS وألعابها القديمة التي تملكها", "minutes": 35},
+    {"id": "11-final-project", "file": "11-final-project.md", "title_ar": "المشروع النهائي: اختبار سريع في وضع النص", "minutes": 60}
   ]
 }

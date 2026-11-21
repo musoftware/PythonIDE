@@ -7,6 +7,9 @@
   mGBA's GDB stub (GBA).
 * Project > DOS Settings... for DOS Program projects (radide/languages/retro_dos.py).
 * File > Open Folder: a folder of MS-DOS executables is offered as "DOS program (DOSBox-X)".
+* The "Emulator" toolbar (retro game and ROM Hacking projects): which emulator F5 / Run in Emulator uses for the
+  project - "Automatic" (the first installed one for the system) or a chosen one, stored in the project
+  (project.radproj ``retro.emulator`` / rom.json ``emulator``).
 """
 from __future__ import annotations
 
@@ -81,6 +84,81 @@ def _on_file_changed(win):
     return cb
 
 
+# ====================================================================== emulator per project
+class EmulatorBar:
+    """Toolbar combo: the emulator of the active retro / ROM Hacking project."""
+
+    def __init__(self, win):
+        from PyQt6.QtWidgets import QComboBox, QLabel, QToolBar
+        self.win = win
+        self._key = None
+        tb = QToolBar("Retro Emulator", win)
+        tb.setObjectName("RetroEmulator")
+        self.label = QLabel(" Emulator: ")
+        tb.addWidget(self.label)
+        self.combo = QComboBox()
+        self.combo.setMinimumWidth(220)
+        self.combo.setToolTip("The emulator F5 and Run in Emulator use for this project (Automatic = the first "
+                              "installed emulator for the system)")
+        self.combo.activated.connect(self._chosen)
+        tb.addWidget(self.combo)
+        win.addToolBar(tb)
+        tb.setVisible(False)
+        self.toolbar = tb
+        orig_update = getattr(win, "_update_actions", None)
+        if callable(orig_update):
+            def update_actions(*a, **k):
+                r = orig_update(*a, **k)
+                try:
+                    self.update_ui()
+                except Exception:  # noqa: BLE001 - never break the IDE
+                    pass
+                return r
+            win._update_actions = update_actions
+
+    def update_ui(self, force: bool = False) -> None:
+        from ..retro.emu import ui
+        project = getattr(self.win, "project", None)
+        system = ui.project_system(project)
+        on = bool(system) and system != "dos"
+        key = (str(getattr(project, "folder", "")), system)
+        if on and (force or key != self._key):
+            self.refill(system, ui.project_emulator(project))
+        self._key = key if on else None
+        if self.toolbar.isVisible() != on:
+            self.toolbar.setVisible(on)
+
+    def refill(self, system: str, current: str) -> None:
+        from ..retro.emu import ui
+        choices = ui.emulator_choices(system)
+        first = next((t for _i, t, ok in choices if ok), "")
+        self.combo.blockSignals(True)
+        self.combo.clear()
+        self.combo.addItem(f"Automatic ({first})" if first else "Automatic (none installed)", "")
+        for eid, title, ok in choices:
+            self.combo.addItem(title + ("" if ok else "  (not installed)"), eid)
+        i = self.combo.findData(current or "")
+        self.combo.setCurrentIndex(max(0, i))
+        self.combo.blockSignals(False)
+
+    def select(self, emu_id: str) -> bool:
+        i = self.combo.findData(emu_id or "")
+        if i < 0:
+            return False
+        self.combo.setCurrentIndex(i)
+        self._chosen(i)
+        return True
+
+    def _chosen(self, i: int) -> None:
+        from ..retro.emu import ui
+        eid = self.combo.itemData(i) or ""
+        if ui.set_project_emulator(getattr(self.win, "project", None), eid):
+            try:
+                self.win.log(f"[retro] emulator of this project: {eid or 'automatic'}")
+            except Exception:  # noqa: BLE001
+                pass
+
+
 # ====================================================================== install
 def install(win) -> None:
     register_detector()
@@ -91,6 +169,13 @@ def install(win) -> None:
         pass
     from ..retro.emu import ui
     ui.apply_settings(getattr(win, "settings", None))
+    try:
+        win.retro_emulator_bar = EmulatorBar(win)
+    except Exception as e:  # noqa: BLE001 - the toolbar is optional
+        try:
+            win.log(f"[retro emulators] toolbar: {e}")
+        except Exception:  # noqa: BLE001
+            pass
     try:
         from PyQt6.QtGui import QAction, QKeySequence
         try:

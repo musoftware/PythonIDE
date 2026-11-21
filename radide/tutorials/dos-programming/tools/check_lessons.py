@@ -14,7 +14,8 @@ New Project > DOS, so a learner pastes the block into MAIN.BAS / MAIN.PAS / MAIN
 * ``exercise`` blocks must build; a ``solution`` block after them is run like a ``run`` block;
 * hidden ``<!-- test: {...} -->`` before a block: ``"keys"`` typed for the program (RADKEYS syntax: ``~`` Enter,
   `````` ` `````` Esc, ``_`` Space), ``"com": true`` (.COM output), ``"mode13": true`` (a 256-colour mode 13h frame
-  must be captured), ``"build_only": true``, ``"error_line": N`` (the build must fail with an Error List row at
+  must be captured), ``"screen": true`` (standard output is not redirected: only the text screen is compared,
+  for programs that draw with LOCATE / COLOR), ``"build_only": true``, ``"error_line": N`` (the build must fail with an Error List row at
   line N of the main file), ``"timeout"``;
 * ``dos-tuiforms``, ``qb``, ``text`` ... blocks are snippets, not run; quiz JSON is validated.
 
@@ -105,6 +106,32 @@ def build_block(block, kind: str, spec: dict, work: Path, log: list):
     return ok, work, B.settings_for(Project.load(work)), main
 
 
+def screen_run(run, folder: Path, cmd: str, keys: str, timeout: int) -> dict:
+    """Like dosbox.capture_text but without redirecting standard output (a program that draws with LOCATE /
+    COLOR / PRINT must write to the screen): the text screen is saved by RADSCR.COM afterwards."""
+    import os
+    from radide.retro.dos import dosbox, helpers
+    tools = folder / "_build" / "radtools"
+    helpers.write_helpers(tools)
+    for f in ("_SCREEN.TXT", "_SCR13.RAW"):
+        try:
+            (folder / f).unlink()
+        except OSError:
+            pass
+    rel = os.path.relpath(tools, folder).replace("/", "\\")
+    pre = [f"C:\\{rel}\\RADCAP.COM"] + ([f"C:\\{rel}\\RADKEYS.COM {keys}"] if keys else [])
+    run.commands = list(run.commands) + pre + [cmd, f"C:\\{rel}\\RADSCR.COM"]
+    rc, timed_out = dosbox.run_headless(run, folder / "_build", timeout, log=lambda *_a: None)
+    res = {"rc": rc, "timed_out": timed_out, "stdout": "", "screen": "", "graphics": None}
+    try:
+        res["screen"] = (folder / "_SCREEN.TXT").read_bytes().decode("cp437", "replace")
+    except OSError:
+        pass
+    if (folder / "_SCR13.RAW").is_file():
+        res["graphics"] = str(folder / "_SCR13.RAW")
+    return res
+
+
 def check_block(block, kind, role, expected, work: Path) -> tuple[bool, str]:
     from radide.retro.dos import build as B
     from radide.retro.dos import dosbox, helpers
@@ -122,8 +149,11 @@ def check_block(block, kind, role, expected, work: Path) -> tuple[bool, str]:
         return True, ""
     cmd = ("CALL " + s["main"]) if kind == "batch" else B.output_name(s)
     run = dosbox.DosRun(mounts=[("C", folder)], path=["Z:\\BIN", "Z:\\DOS"])
-    r = dosbox.capture_text(run, folder, cmd, keys=spec.get("keys", ""), timeout=int(spec.get("timeout", 25)),
-                            log=lambda *_a: None)
+    if spec.get("screen"):
+        r = screen_run(run, folder, cmd, spec.get("keys", ""), int(spec.get("timeout", 25)))
+    else:
+        r = dosbox.capture_text(run, folder, cmd, keys=spec.get("keys", ""), timeout=int(spec.get("timeout", 25)),
+                                log=lambda *_a: None)
     if r["timed_out"]:
         return False, "timed out (does the program wait for more keys?)\n" + r["stdout"][-400:] + r["screen"][-600:]
     problems = []

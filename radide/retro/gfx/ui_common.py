@@ -128,7 +128,8 @@ class SystemPaletteDialog(QDialog):
 
 
 class PaletteBar(QWidget):
-    """The colour slots of the current format; click = drawing colour, double-click = choose system colour."""
+    """The colour slots of the current format; click = drawing colour, double-click = choose system colour
+    (or any RGB colour when the slots are free colours, e.g. a GBC / SNES palette read from the ROM)."""
     colorPicked = pyqtSignal(int)
     slotsChanged = pyqtSignal()
 
@@ -136,6 +137,7 @@ class PaletteBar(QWidget):
         super().__init__(parent)
         self.system = "nes"
         self.slots: list[int] = [0, 1, 2, 3]
+        self.custom: list[tuple[int, int, int]] | None = None     # free RGB colours instead of system indices
         self.current = 1
         self.setMinimumHeight(30)
         self.setMouseTracking(True)
@@ -143,10 +145,29 @@ class PaletteBar(QWidget):
     def set_slots(self, system: str, slots: list[int]) -> None:
         self.system = system
         self.slots = list(slots)
+        self.custom = None
         self.current = min(self.current, len(self.slots) - 1)
         self.update()
 
+    def set_custom(self, colors) -> None:
+        """Free RGB colours (one per slot)."""
+        self.custom = [tuple(int(v) for v in c[:3]) for c in colors]
+        self.slots = list(range(len(self.custom)))
+        self.current = min(self.current, len(self.slots) - 1)
+        self.update()
+
+    def set_slot(self, i: int, value) -> None:
+        """Change slot *i* (a system palette index, or an (r, g, b) tuple for free colours) and emit slotsChanged."""
+        if self.custom is not None:
+            self.custom[i] = tuple(int(v) for v in value[:3])
+        else:
+            self.slots[i] = int(value)
+        self.slotsChanged.emit()
+        self.update()
+
     def colors(self) -> list[tuple[int, int, int]]:
+        if self.custom is not None:
+            return list(self.custom)
         pal = palettes.palette(self.system)
         return [pal[s % len(pal)] for s in self.slots]
 
@@ -182,6 +203,12 @@ class PaletteBar(QWidget):
     def mouseDoubleClickEvent(self, e) -> None:
         i = self.slot_at(int(e.position().x()))
         if i < 0:
+            return
+        if self.custom is not None:
+            from PyQt6.QtWidgets import QColorDialog
+            c = QColorDialog.getColor(QColor(*self.custom[i]), self, "Choose Color")
+            if c.isValid():
+                self.set_slot(i, (c.red(), c.green(), c.blue()))
             return
         dlg = SystemPaletteDialog(self.system, self.slots[i], self)
         if dlg.exec():

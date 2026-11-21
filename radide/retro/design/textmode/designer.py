@@ -823,6 +823,7 @@ class TuiDesigner(QWidget):
         # properties
         self.props = PropertyGrid()
         split.addWidget(self.props)
+        split.setStretchFactor(1, 1)              # a wider tab widens the screen, not the side panels
         split.setSizes([140, 760, 300])
         self.canvas.selectionChanged.connect(self._sync_props)
         self.canvas.changed.connect(self._snapshot)

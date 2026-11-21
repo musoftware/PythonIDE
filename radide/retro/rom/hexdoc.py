@@ -28,6 +28,9 @@ class HexDocument(QWidget):
     saved = pyqtSignal()
     compareRequested = pyqtSignal(str, str)      # left path, right path
     message = pyqtSignal(str)
+    # callables(doc, menu, offset, (sel_start, sel_len)) that add entries to the hex view's context menu
+    # (radide/features/retro_dev.py: "Mark as code / data / jump table" for disassembly projects)
+    menu_hooks: list = []
 
     def __init__(self, path=None, data: bytes | None = None, parent=None, read_only: bool = False):
         super().__init__(parent)
@@ -44,6 +47,8 @@ class HexDocument(QWidget):
         self.view.selectionChanged.connect(lambda *_a: self._update_status())
         self.view.edited.connect(self._on_edited)
         self.view.modeChanged.connect(lambda _m: self._update_status())
+        self.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.view.customContextMenuRequested.connect(self._context_menu)
         self._info_timer = QTimer(self, singleShot=True, interval=600)
         self._info_timer.timeout.connect(self.refresh_info)
         self.refresh_info()
@@ -225,6 +230,27 @@ class HexDocument(QWidget):
         self.status = QLabel()
         self.status.setContentsMargins(6, 2, 6, 2)
         lay.addWidget(self.status)
+
+    def build_context_menu(self) -> QMenu:
+        """The hex view's context menu (copy / paste / go to / bookmark + the entries of ``menu_hooks``)."""
+        m = QMenu(self)
+        m.addAction("Copy", lambda: self.edit_op("copy"))
+        if not self.read_only:
+            m.addAction("Paste", lambda: self.edit_op("paste"))
+        m.addAction("Select All", lambda: self.edit_op("select_all"))
+        m.addSeparator()
+        m.addAction("Go To Offset...", self.goto_dialog)
+        m.addAction("Toggle Bookmark", lambda: self.toggle_bookmark())
+        sel = self.view.selection()
+        for hook in list(HexDocument.menu_hooks):
+            try:
+                hook(self, m, self.view.cursor, sel)
+            except Exception as e:  # noqa: BLE001 - a hook must not break the menu
+                self.message.emit(f"[hex editor] menu: {e}")
+        return m
+
+    def _context_menu(self, pos) -> None:
+        self.build_context_menu().exec(self.view.mapToGlobal(pos))
 
     def _shortcut(self, combo: str) -> bool:
         fn = self._keys.get(combo)

@@ -4,6 +4,8 @@ Left: the tile sheet (a page of ``columns x rows`` tiles from the offset); click
 the Select tool to choose a block.  Right: the zoomed editing area (pencil, fill, line; right-click picks a
 colour), the colour slots, flip / rotate, and for Atari 2600 player graphics a preview with reflect and NUSIZ.
 File > Save (Ctrl+S) writes the bytes back into the file; other open editors of the file are refreshed.
+ROM Palette... draws the tiles in a palette read from the ROM (colour edits are written back); Compressed
+Graphics... opens a compressed block (PB53, RLE, LZ - compress.py) for editing and packs it again on Save.
 """
 from __future__ import annotations
 
@@ -235,6 +237,11 @@ class TileEditor(RetroDoc):
         key = fmt or (guess_format(path) if path else "nes")
         raw = bytearray(data) if data is not None else bytearray(Path(path).read_bytes()) if path else bytearray(8192)
         self.retro_path = Path(path) if path else None
+        self._file = raw                     # the file's bytes (the sheet shows them, or a decompressed block)
+        self._file_dirty = False             # palette / packed-block changes not covered by the undo history
+        self.region = None                   # compress.Region while a compressed block is open
+        self.rom_pal = None                  # rompal.RomPalette bound to the colour slots
+        self._raw_offset = 0
         self.sheet = TileSheet(raw, get_format(key))
         self.sheet.offset = suggested_offset(raw, key)
         self.edit_origin = (0, 0, 1, 1)
@@ -345,7 +352,16 @@ class TileEditor(RetroDoc):
             self.sys_combo.addItem(name, k)
         self.sys_combo.currentIndexChanged.connect(self._on_system)
         tb2.addWidget(self.sys_combo)
+        self.a_rom_pal = tb2.addAction("ROM Palette...", self.rom_palette_dialog)
+        self.a_rom_pal.setToolTip("Draw the tiles in a palette stored in the ROM (offset or detected table); "
+                                  "colour edits are written back")
+        self.a_compressed = tb2.addAction("Compressed Graphics...", self.compressed_dialog)
+        self.a_compressed.setToolTip("Open a compressed block of tiles (PB53, RLE, LZ), or find one")
         lay.addWidget(tb2)
+        from .ui_romgfx import RegionBar
+        self.region_bar = RegionBar(self)
+        self.region_bar.hide()
+        lay.addWidget(self.region_bar)
 
         split = QSplitter(Qt.Orientation.Horizontal)
         self.sheet_view = SheetView(self)
@@ -361,6 +377,7 @@ class TileEditor(RetroDoc):
         rl.setContentsMargins(4, 0, 0, 0)
         self.palette = PaletteBar()
         self.palette.slotsChanged.connect(self._redraw)
+        self.palette.slotsChanged.connect(self._on_slots_changed)
         self.pixels = PixelView(self)
         rl.addWidget(self.pixels, 1)
         rl.addWidget(QLabel("Colors (click = draw, double-click = system color, right-click in the editor = pick)"))
@@ -418,6 +435,8 @@ class TileEditor(RetroDoc):
         self.sys_combo.blockSignals(False)
         self.palette.set_slots(system, palettes.default_slots(system, f.colors))
         self.palette.current = min(1, f.colors - 1)
+        if self.rom_pal is not None:
+            self._show_rom_palette()
         if not keep_offset:
             self.sheet.offset = min(self.sheet.offset, max(0, len(self.sheet.data) - 1))
         self.off_spin.setMaximum(max(0, len(self.sheet.data) - 1))
@@ -472,6 +491,7 @@ class TileEditor(RetroDoc):
         self._redraw()
 
     def _on_system(self, _i=None) -> None:
+        self.rom_pal = None                  # a system palette chosen by hand replaces the ROM palette
         system = self.sys_combo.currentData()
         self.palette.set_slots(system, palettes.default_slots(system, self.sheet.fmt.colors))
         self._redraw()
@@ -535,9 +555,147 @@ class TileEditor(RetroDoc):
         changes = self.sheet.set_block(tx, ty, block)
         if changes:
             self.history.push(changes)
-            self.set_modified(self.history.modified)
+            self._update_modified()
         self._load_block()
         self.sheet_view.update()
+
+    def _update_modified(self) -> None:
+        self.set_modified(self.history.modified or self._file_dirty)
+
+    # ------------------------------------------------------------ palette from the ROM
+    @property
+    def file_data(self) -> bytearray:
+        return self._file
+
+    def apply_rom_palette(self, rp) -> bool:
+        """Bind the colour slots to a palette in the ROM (rompal.RomPalette)."""
+        if rp is None or not rp.valid(self._file):
+            return False
+        self.rom_pal = rp
+        self._show_rom_palette()
+        self.log(f"[tile editor] palette from the ROM: {rp.layout} at 0x{rp.offset:X}, sub-palette {rp.index}")
+        return True
+
+    def _show_rom_palette(self) -> None:
+        rp = self.rom_pal
+        n = self.sheet.fmt.colors
+        self.palette.blockSignals(True)
+        if rp.system():
+            slots = rp.slots(self._file)
+            slots = (slots + palettes.default_slots(rp.system(), n))[:n] if len(slots) < n else slots[:n]
+            self.palette.set_slots(rp.system(), slots)
+            self.sys_combo.blockSignals(True)
+            self.sys_combo.setCurrentIndex(self.sys_combo.findData(rp.system()))
+            self.sys_combo.blockSignals(False)
+        else:
+            cols = rp.colors(self._file)
+            cols = (cols + [(0, 0, 0)] * n)[:n]
+            self.palette.set_custom(cols)
+        self.palette.blockSignals(False)
+        self._redraw()
+
+    def set_palette_slot(self, slot: int, value) -> None:
+        """Change colour *slot* (NES colour number / GB shade, or (r, g, b)) - written to the ROM when bound."""
+        self.palette.set_slot(slot, value)
+
+    def _on_slots_changed(self) -> None:
+        rp = self.rom_pal
+        if rp is None:
+            return
+        changes = []
+        values = self.palette.custom if self.palette.custom is not None else self.palette.slots
+        for i, v in enumerate(values):
+            changes += rp.set_slot(self._file, i, v)
+        if not changes:
+            return
+        if self.region is None:                       # same buffer as the tiles: undoable
+            self.history.push(changes)
+        else:
+            self._file_dirty = True
+        self._update_modified()
+        self.log("[tile editor] palette bytes changed at " +", ".join(f"0x{o:X}" for o, _a, _b in changes))
+
+    def rom_palette_dialog(self) -> None:
+        from .ui_romgfx import RomPaletteDialog
+        dlg = RomPaletteDialog(self)
+        if dlg.exec():
+            self.apply_rom_palette(dlg.palette())
+
+    # ------------------------------------------------------------ compressed blocks
+    def open_compressed(self, codec: str, offset: int, size: int | None = None):
+        """Decompress the block at *offset* and edit its tiles (Save packs and writes it back)."""
+        from .compress import Region
+        if self.region is not None and not self.close_compressed():
+            return None
+        region = Region.open(codec, self._file, offset, size)
+        self._file_dirty = self._file_dirty or self.history.modified
+        self._raw_offset = self.sheet.offset
+        self.region = region
+        self.sheet.data = bytearray(region.raw)
+        self.sheet.offset = 0
+        self.history = ByteHistory()
+        self.off_spin.setMaximum(max(0, len(self.sheet.data) - 1))
+        self._sync_offset()
+        self._load_block()
+        self.region_bar.refresh()
+        self._update_modified()
+        self.log(f"[tile editor] opened the {codec} block at 0x{offset:X}: {region.used} bytes -> {region.size} "
+                 f"bytes ({region.size // 16} tiles)")
+        return region
+
+    def pack_region(self, allow_grow: bool | None = None) -> bool:
+        """Recompress the open block into the file bytes (size check; asks before overwriting what follows)."""
+        from .compress import CodecError
+        r = self.region
+        if r is None:
+            return True
+        if bytes(self.sheet.data) == r.raw:
+            return True
+        try:
+            new, room, old = r.write_back(self._file, bytes(self.sheet.data), allow_grow=bool(allow_grow))
+        except CodecError as e:
+            if allow_grow is None and "only" in str(e):
+                ans = QMessageBox.question(self, "Compressed Graphics",
+                                           f"{e}.\n\nWrite it anyway? The bytes after the block will be "
+                                           f"overwritten - only do this when you know that space is unused.")
+                if ans == QMessageBox.StandardButton.Yes:
+                    return self.pack_region(True)
+            else:
+                QMessageBox.warning(self, "Compressed Graphics", str(e))
+            self.log(f"[tile editor] not written: {e}")
+            return False
+        self._file_dirty = True
+        self.region_bar.refresh()
+        self.log(f"[tile editor] packed the block again: {old} -> {new} bytes (room {room})")
+        return True
+
+    def close_compressed(self) -> bool:
+        if self.region is None:
+            return True
+        if not self.pack_region():
+            return False
+        modified = self.history.modified
+        self.region = None
+        self.sheet.data = self._file
+        self.sheet.offset = min(self._raw_offset, max(0, len(self._file) - 1))
+        self.history = ByteHistory()
+        self._file_dirty = self._file_dirty or modified
+        self.off_spin.setMaximum(max(0, len(self._file) - 1))
+        self._sync_offset()
+        self._load_block()
+        self.region_bar.refresh()
+        self._update_modified()
+        return True
+
+    def compressed_dialog(self) -> None:
+        from .ui_romgfx import CompressedDialog
+        dlg = CompressedDialog(self)
+        if dlg.exec():
+            codec, off, size = dlg.choice()
+            try:
+                self.open_compressed(codec, off, size)
+            except Exception as e:  # noqa: BLE001 - CodecError / IndexError: shown to the user
+                QMessageBox.warning(self, "Compressed Graphics", f"Cannot decompress at 0x{off:X}:\n{e}")
 
     def transform(self, fn, what: str, square: bool = False) -> None:
         b = self.pixels.block
@@ -549,13 +707,13 @@ class TileEditor(RetroDoc):
 
     def undo(self) -> None:
         if self.history.undo(self.sheet.data) is not None:
-            self.set_modified(self.history.modified)
+            self._update_modified()
             self._load_block()
             self.sheet_view.update()
 
     def redo(self) -> None:
         if self.history.redo(self.sheet.data) is not None:
-            self.set_modified(self.history.modified)
+            self._update_modified()
             self._load_block()
             self.sheet_view.update()
 
@@ -577,7 +735,7 @@ class TileEditor(RetroDoc):
             block = pngio.image_to_block(img, self.palette.colors(), tcols * s.tw, trows * s.th, s.fmt.aspect)
         changes = s.set_block(tx, ty, block)
         self.history.push(changes)
-        self.set_modified(self.history.modified)
+        self._update_modified()
         self._load_block()
         self.sheet_view.update()
         return len(changes)
@@ -602,14 +760,19 @@ class TileEditor(RetroDoc):
             if not f:
                 return False
             self.retro_path = Path(f)
+        if self.region is not None:
+            if not self.pack_region():
+                return False
+            self.region.raw = bytes(self.sheet.data)
         try:
-            self.retro_path.write_bytes(bytes(self.sheet.data))
+            self.retro_path.write_bytes(bytes(self._file))
         except OSError as e:
             QMessageBox.warning(self, "Tile Editor", f"Cannot write the file:\n{e}")
             return False
         self.history.mark_clean()
+        self._file_dirty = False
         self.set_modified(False)
-        self.log(f"[tile editor] wrote {len(self.sheet.data)} bytes to {self.retro_path}")
+        self.log(f"[tile editor] wrote {len(self._file)} bytes to {self.retro_path}")
         self.notify_written(self.retro_path)
         return True
 
@@ -620,7 +783,10 @@ class TileEditor(RetroDoc):
             self.log(f"[tile editor] {self.retro_path.name} changed on disk; the tile editor has unsaved "
                      f"changes and kept them")
             return
-        self.sheet.data = bytearray(self.retro_path.read_bytes())
+        self._file = bytearray(self.retro_path.read_bytes())
+        self.region = None
+        self.region_bar.refresh()
+        self.sheet.data = self._file
         self.history = ByteHistory()
         self.off_spin.setMaximum(max(0, len(self.sheet.data) - 1))
         self._load_block()

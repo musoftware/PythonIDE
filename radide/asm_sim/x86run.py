@@ -577,13 +577,16 @@ class Runner:
             return None
 
     def _reloc_label(self, ins) -> L.Label | None:
+        # a RIP-relative operand gives the exact address (relocations are already applied); the relocation's
+        # addend does not: NASM puts -4 in a COFF REL32 field when an imm32 follows ('mov dword [a], 0'), and that
+        # address falls into the previous variable
+        op = self._mem_operand(ins)
+        if op is not None and op.mem.base == CX.X86_REG_RIP:
+            return self.img.label_at(ins.address + ins.size + op.mem.disp, code=False)
         for k in range(ins.size):
             t = self.img.reloc_targets.get(ins.address + k)
             if t is not None:
                 return self.img.label_at(t, code=False)
-        op = self._mem_operand(ins)
-        if op is not None and op.mem.base == CX.X86_REG_RIP:
-            return self.img.label_at(ins.address + ins.size + op.mem.disp, code=False)
         return None
 
     def _update_tags(self, addr: int, ins) -> None:

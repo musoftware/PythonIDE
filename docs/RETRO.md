@@ -470,6 +470,10 @@ embedded bytes checked against a JWasm build by the tests): `RADKEYS.COM` stuffs
 `RADSCR.COM` saves the text screen (`_SCREEN.TXT`, Crt / conio write to video memory) and the resident
 `RADCAP.COM` saves the last mode 13h frame (`_SCR13.RAW`, pixels + palette) when the program switches back to
 text mode. Tools > Retro > DOS Programming > Show Last DOS Screen displays both.
+`dosbox.capture_clicks(run, folder, cmd, [(col, row), ...])` adds mouse clicks: the resident `RADMOUSE.COM` is a
+stand-in INT 33h driver (reset / show / hide / status, and the AX=0Ch event handler Free Pascal's Mouse unit
+installs) that clicks the left button over the given text cells during the program's status polls, then saves the
+text screen to `_MOUSE.BIN` (char / attribute pairs) and types Esc keys so that the program can end.
 
 ### Old sources and Open Folder
 
@@ -497,7 +501,7 @@ Not done yet: FreeBASIC graphics programs are not frame-captured (its DOS graphi
 through the real-mode INT 10h vector RADCAP hooks; their text output is captured), the DOSBox-X debugger does not
 load the symbol map itself (it is printed / opened in the IDE), DJGPP is used only when installed by the user,
 QuickBASIC / Turbo Pascal / Turbo C paths were tested with configuration only (no proprietary copies available),
-mode 12h (BGI) frames are not captured, and there is no DOS tutorial course yet (`radide/tutorials/dos-programming/`).
+mode 12h (BGI) frames are not captured. Course: `radide/tutorials/dos-programming/` (see "DOS QA and course" below).
 
 ## Retro game designers (slice "gamedesign": `radide/retro/design/game`, `radide/features/retro_design.py`)
 
@@ -725,7 +729,8 @@ from radide.retro.design.textmode.sim import Sim   # the run-time in Python (Tes
 
 CLI: `python -m radide.retro.design.textmode.project generate|build|run|capture <folder>`.
 
-Course: `radide/tutorials/dos-programming/` (Arabic, 3 lessons: the designer, events and code, ANSI art + B800).
+Course: `radide/tutorials/dos-programming/` (Arabic, 11 lessons; the designer, events and code, ANSI art + B800 are
+lessons 6-8).
 Other DOS lessons can be added to the same course.json.
 
 ### Tests (`samples/Tests/Retro/DesignTextMode`, sample `samples/Tests/Retro/DesignTUI_Contacts`)
@@ -739,6 +744,34 @@ in the emulator; skips offline),
 windows do), list boxes have no scroll bar, there are no 40-column screens, a Pascal 80x43 program shows 50 lines on VGA
 (Crt's Font8x8; the bottom 7 stay empty), Turbo Pascal / Turbo C / QuickBASIC / QBasic outputs are checked only by
 reading (no proprietary copies; the QuickBASIC dialect needs QB.BI / CALL INTERRUPT, so FreeBASIC cannot build
-it), mouse clicks in the DOS programs were not automated (the mouse driver is detected and polled in every DOSBox-X
-run, clicks were not injected), DJGPP is untested (not downloadable), and the asm target has no `TuiAddItem` /
+it), DJGPP is untested (not downloadable), and the asm target has no `TuiAddItem` /
 `TuiClearList` (fixed item lists).
+
+## DOS QA and course (QA of the dosdev / tuidesign / gamedesign slices)
+
+**End to end in the real IDE** - `samples/Tests/Retro/DOSQA/qa_dos_e2e.py` (qh.py harness, QSettings `RADIDE-TEST`,
+`widget.grab()` screenshots; `QA_LANG=ar QA_THEME=dark` for Arabic + dark; phases `dos old tui ansi game i18n`):
+File > New Project with the real dialog for one project of every DOS type -> Tools > Retro > DOS Programming >
+Build DOS Program (real MZ / COM) -> Run with Captured Output (keys typed) -> Show Last DOS Screen, plus a windowed
+DOSBox-X run that ends by itself; File > Open Folder on the old QBasic / Turbo Pascal / Turbo C samples -> build
+(sources unchanged) -> run; DOS Text-Mode Forms App for FreeBASIC, Pascal, C and asm: TextBox + Button drawn with
+the toolbox, handler code from a double-click, regenerate, build, keyboard (Tab, typing, Enter) and a mouse click
+in DOSBox-X compared cell by cell with the simulator, Build && Run in a DOSBox-X window; the ANSI editor (box /
+text / fill with mouse and keys, .ANS + SAUCE and .BIN round trips, PNG); the four game designers' Build && Run with
+their checks and the emulators (Stella, Mesen, mGBA, DOSBox-X) started and stopped; the DOS / designer menus
+translated in Arabic and no DOS string seen on screen missing from ar.json.
+
+**Mouse clicks** - `samples/Tests/Retro/DesignTextMode/test_mouse.py`: OK, File > About... and an empty area clicked
+in real DOSBox-X through `RADMOUSE.COM` for all four targets, each screen equal to `sim.Sim.click`. This found
+that Free Pascal 3.2's DOS Mouse unit returns 1-based `GetMouseX` / `GetMouseY` (its `SysGetMouseX` adds 1), so
+every click of a generated Pascal program landed one cell right and one row down; `codegen/pascal.py` now
+subtracts 1.
+
+**Course** - `radide/tutorials/dos-programming/` (11 Arabic lessons: DOS and DOSBox-X, QBasic with FreeBASIC,
+Pascal and Crt, C with Open Watcom and B800, 16-bit assembly and interrupts, the text-mode designer, events and
+code, ANSI art, mode 13h and the game designers, old programs and games you own, final project).
+`tools/check_lessons.py` builds every ```` ```dos-qbasic / dos-pascal / dos-c / dos-asm / dos-batch run ````
+block in a fresh DOS project with the free compiler and runs it headless in DOSBox-X (keys, screen, mode 13h and
+compile-error specs in hidden `<!-- test: -->` comments; see the course README). CHM:
+`python tools/build_chm.py dos-programming --verify` -> `docs/chm/RADIDE_DOS_PROGRAMMING_ar.chm`. The tutorial
+engine has no runner for these blocks, so the viewer shows them without a "جرّبه" button.

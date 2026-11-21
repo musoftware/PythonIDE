@@ -1,0 +1,20 @@
+{
+  "id": "retro-games",
+  "title_ar": "الألعاب القديمة: تعديل الـ ROM وبرمجة أتاري و NES و Game Boy",
+  "title_en": "Retro Games: ROM Hacking and Programming the Atari 2600, NES and Game Boy",
+  "language": "retro-atari2600",
+  "level": "intermediate",
+  "description_ar": "دورة عربية عن الألعاب والأجهزة القديمة في RAD IDE: ما هو ملف الـ ROM وما المسموح به قانونيًا، ومحرر السادس عشر والرقع IPS و BPS في مشروع تعديل ROM، وأول لعبة لجهاز أتاري 2600 بلغة تجميع 6502 والمجمِّع DASM (سباق شعاع الشاشة و262 سطرًا في الإطار)، والشخصيات والخلفية (Playfield) وعصا التحكم، وأساسيات NES و Game Boy، وتفكيك ROM إلى مشروع يُعاد بناؤه مطابقًا بايتًا ببايت، ومحرر الرسوم والبلاطات، وترجمة نصوص الألعاب بجداول الحروف ومنها العربية، والمحاكيات والتصحيح، ثم مشروع نهائي. كل كود في الدورة أصلي، ولا تُستخدم أي ROM تجارية.",
+  "lessons": [
+    {"id": "01-roms-and-law", "file": "01-roms-and-law.md", "title_ar": "ما هو الـ ROM؟ وما المسموح به قانونيًا", "minutes": 30},
+    {"id": "02-hex-and-patches", "file": "02-hex-and-patches.md", "title_ar": "محرر السادس عشر والرقع IPS و BPS", "minutes": 50},
+    {"id": "03-atari-first-game", "file": "03-atari-first-game.md", "title_ar": "أتاري 2600: أول برنامج بـ DASM وسباق الشعاع", "minutes": 55},
+    {"id": "04-sprites-playfield", "file": "04-sprites-playfield.md", "title_ar": "الشخصيات والخلفية وعصا التحكم", "minutes": 55},
+    {"id": "05-nes-gameboy", "file": "05-nes-gameboy.md", "title_ar": "أساسيات NES و Game Boy", "minutes": 50},
+    {"id": "06-disassembling", "file": "06-disassembling.md", "title_ar": "تفكيك ROM إلى مشروع وإعادة بنائه مطابقًا", "minutes": 45},
+    {"id": "07-graphics-editor", "file": "07-graphics-editor.md", "title_ar": "محرر الرسوم: البلاطات والشخصيات والخرائط", "minutes": 45},
+    {"id": "08-text-tables", "file": "08-text-tables.md", "title_ar": "ترجمة نصوص الألعاب بجداول الحروف (ومنها العربية)", "minutes": 55},
+    {"id": "09-emulators-debugging", "file": "09-emulators-debugging.md", "title_ar": "المحاكيات والتصحيح", "minutes": 45},
+    {"id": "10-final-project", "file": "10-final-project.md", "title_ar": "المشروع النهائي: لعبة أتاري وتعديلها", "minutes": 90}
+  ]
+}

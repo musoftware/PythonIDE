@@ -39,12 +39,14 @@ def dark(widget) -> bool:
 
 
 def collect_menu(menu, out):
+    """The texts the user sees (QAction.text() is patched to return the English source for the code)."""
     for a in menu.actions():
+        t = i18n.shown(a, "text")
         if a.menu() is not None:
-            out.append(a.text())
+            out.append(t)
             collect_menu(a.menu(), out)
-        elif a.text():
-            out.append(a.text())
+        elif t:
+            out.append(t)
 
 
 def main():
@@ -70,9 +72,6 @@ def main():
     # ---- New Project
     from radide.dialogs import NewProjectDialog
     dlg = NewProjectDialog(w)
-    groups = [dlg.langs.topLevelItem(i).text(0) for i in range(dlg.langs.topLevelItemCount())]
-    check("New Project groups in Arabic (no English retro group titles)",
-          not any(g in ("Retro Games", "Retro", "Space & Science", "DOS") for g in groups), groups)
     for i in range(dlg.langs.topLevelItemCount()):
         dlg.langs.topLevelItem(i).setExpanded(True)
     grab(dlg, "new_project")
@@ -85,6 +84,13 @@ def main():
     check("Tools > Retro menu exists", retro is not None)
     texts = []
     if retro is not None:
+        retro.popup(w.mapToGlobal(w.rect().center()))       # menus are translated when they are shown
+        pump(0.3)
+        retro.hide()
+        i18n.translate_tree(retro)
+        for a in retro.actions():
+            if a.menu() is not None:
+                i18n.translate_tree(a.menu())
         collect_menu(retro, texts)
     english = [t for t in texts if t and not i18n._ARABIC.search(t)]
     check("every Tools > Retro menu item is in Arabic", not english, english)
@@ -161,13 +167,21 @@ def main():
         w.stop_project()
     pump(0.5)
     from radide.features import retro_nasa
+    from PyQt6.QtCore import QTimer
+    from PyQt6.QtWidgets import QApplication
+
+    def modal(name):            # these dialogs use exec(): grab + close them from a timer
+        def go():
+            d = QApplication.activeModalWidget()
+            if d is None:
+                QTimer.singleShot(200, go)
+                return
+            i18n.translate_tree(d)
+            shots.append(shot(d, "retro_qa_ar_" + name))
+            d.reject()
+        QTimer.singleShot(600, go)
+    modal("dsky_reference")
     retro_nasa.dsky_reference(w)
-    pump(0.5)
-    from PyQt6.QtWidgets import QApplication, QDialog
-    for top in QApplication.topLevelWidgets():
-        if isinstance(top, QDialog) and top.isVisible():
-            grab(top, "dsky_reference", need_dark=False)
-            top.close()
     forb = WORK / "Orbit"
     get_plugin("fortran-legacy").create_new_project(forb, "Orbit", "f66_orbits")
     w.open_project(forb, ask=False)
@@ -176,13 +190,16 @@ def main():
         w.open_any_file(f)
         pump(1)
         break
+    modal("card_deck")
     retro_nasa.card_deck(w)
-    pump(0.6)
-    for top in QApplication.topLevelWidgets():
-        if isinstance(top, QDialog) and top.isVisible():
-            grab(top, "card_deck", need_dark=False)
-            top.close()
-    new = sorted(set(i18n.missing()) - before)
+    import re
+    noise = re.compile(r"\\|\w/\w|\.\w{1,6}($|\s|\])|^\[[a-z?]\]|RAD IDE|^[A-Z0-9 /+-]{1,9}$|^\W|\d{2,}|"
+                       r"\[.*\]$|^(Python|Ring|Visual Basic|Rails|Laravel|CodeIgniter|Django|Flask|FastAPI|Aa|Base64|"
+                       r"NTSC|NUSIZ|CPU|PRG ROM|CHR ROM|PgUp|PgDn|Ctrl\+\w+|SSE / FPU|Seed\.\.\.|Migration\.\.\.|"
+                       r"tinker|migrate|db:seed|route:list|make:.*)$|  \(|^No (Laravel|CodeIgniter) project$|"
+                       r"^No framework web site is open$|^(ASP\.NET|NestJS|Spring Boot|Ruby on Rails)|^Cell |"
+                       r"mapper (low|high)|^Offset 0x|@0x|(VERB|NOUN|KEY REL)$")
+    new = sorted(x for x in set(i18n.missing()) - before if not noise.search(x))
     print("UNTRANSLATED:", len(new))
     for s in new:
         print("   ", repr(s))

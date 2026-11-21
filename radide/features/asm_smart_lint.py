@@ -237,6 +237,14 @@ def apply_fix(ed, fix) -> None:
     finally:
         if hasattr(ed, "endUndoAction"):
             ed.endUndoAction()
+    # MonacoEditor._replace_range is muted in the page (no change event comes back): tell the listeners that
+    # follow the user's edits (the CPU view's jump arrows / register references, the outline ...) like typing does
+    sig = getattr(ed, "textEdited", None)
+    if sig is not None:
+        try:
+            sig.emit()
+        except (RuntimeError, TypeError):
+            pass
 
 
 # ============================================================================ Problems Explained panel

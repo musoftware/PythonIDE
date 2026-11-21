@@ -19,9 +19,10 @@ from .build import Builder
 from .systems import SYSTEMS
 
 
-def run_rom(path, system_id: str, log=print):
+def run_rom(path, system_id: str, log=print, emulator: str | None = None):
     """Start *path* in an emulator for *system_id* (our ids: atari2600 / nes / gameboy / c64 / zx).
-    Returns an object with ``alive()`` / ``stop()`` / ``wait()`` or None when nothing could be started."""
+    *emulator*: the project's choice (project.radproj ``retro.emulator``); when it cannot start, the first
+    available emulator is used. Returns an object with ``alive()`` / ``stop()`` / ``wait()`` or None."""
     sysd = SYSTEMS[system_id]
     if sysd.emu_system:
         try:
@@ -29,6 +30,11 @@ def run_rom(path, system_id: str, log=print):
         except Exception as e:  # noqa: BLE001 - the emulator slice is optional
             log(f"The retro emulator support is not available ({e}).")
             return None
+        if emulator:
+            try:
+                return emu_run(str(path), system=sysd.emu_system, emulator=emulator)
+            except Exception as e:  # noqa: BLE001
+                log(f"The chosen emulator ({emulator}) could not start: {e} - trying the first available one.")
         try:
             return emu_run(str(path), system=sysd.emu_system)
         except Exception as e:  # noqa: BLE001 - EmuError: no emulator installed ...
@@ -90,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "--build-only" in argv:
         return 0
-    proc = run_rom(b.out_path, b.system.id, log=lambda t: print(t, flush=True))
+    proc = run_rom(b.out_path, b.system.id, log=lambda t: print(t, flush=True),
+                   emulator=(b.s.get("emulator") or None) if isinstance(getattr(b, "s", None), dict) else None)
     if proc is None:
         return 0
     print(f"Running {b.out_path.name} ({b.system.title}) - close the emulator or press Stop to end.", flush=True)

@@ -27,8 +27,12 @@ HINTS_TEMPLATE = {
     "_help": "Hints for 'Re-disassemble with hints': code = addresses where code starts that the tracer did not "
              "reach (jump tables, code called through pointers); data = [first, last] address ranges that are "
              "data although the tracer took them for code; labels = names for addresses; comments = a comment "
-             "line above an address; undocumented = follow the 6502 undocumented opcodes. Addresses in hex.",
-    "code": [], "data": [], "labels": {}, "comments": {}, "undocumented": False,
+             "line above an address; undocumented = follow the 6502 undocumented opcodes; jump_tables = "
+             "[first, last, \"word\" | \"rts\" (address-1, the push + RTS trick), optional hi-byte table] - every "
+             "entry becomes code; auto_tables = find the RTS / JMP (indirect) dispatchers automatically. Addresses "
+             "in hex; \"bank:addr\" label keys name an address in one bank only.",
+    "code": [], "data": [], "labels": {}, "comments": {}, "undocumented": False, "jump_tables": [],
+    "auto_tables": True,
 }
 
 
@@ -115,7 +119,7 @@ def render_source(img: romfmt.RomImage, dis: disasm.Disassembly, sysd) -> tuple[
             out.append("; ---- hardware registers used by the program\n" + eq + "\n")
         for s in img.segments:
             if s.bank == 0:
-                out.append(f'\nSECTION "ROM Bank $000", ROM0[$0000]')
+                out.append('\nSECTION "ROM Bank $000", ROM0[$0000]')
             else:
                 out.append(f'\nSECTION "ROM Bank ${s.bank:03X}", ROMX[$4000], BANK[{s.bank}]')
             out.append(dis.render_segment(s, d))
@@ -218,6 +222,86 @@ def redisassemble(folder, log=print) -> Result:
     if main.is_file():
         shutil.copy2(main, main.with_suffix(main.suffix + ".bak"))
     return create_project(src, folder, project.name, d.get("system"), d.get("base"), d.get("entry"), log=log)
+
+
+# ============================================================================ hints editing (editor / hex view)
+HINT_KINDS = ("code", "data", "word_table", "rts_table", "label", "comment")
+
+
+def hints_file(folder) -> Path:
+    return Path(folder) / "hints.json"
+
+
+def load_hints_dict(folder) -> dict:
+    p = hints_file(folder)
+    try:
+        d = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+    except ValueError:
+        d = {}
+    for k, v in HINTS_TEMPLATE.items():
+        d.setdefault(k, json.loads(json.dumps(v)))
+    return d
+
+
+def add_hint(folder, kind: str, start: int, end: int | None = None, text: str = "") -> dict:
+    """Add one hint to the project's hints.json and return the new dict.
+
+    kind: ``code`` (code starts at *start*), ``data`` (*start*..*end* is data), ``word_table`` / ``rts_table``
+    (*start*..*end* is a jump table of addresses / addresses-1), ``label`` / ``comment`` (*text* at *start*)."""
+    if kind not in HINT_KINDS:
+        raise ValueError(f"unknown hint kind {kind!r}")
+    d = load_hints_dict(folder)
+    a = f"{start & 0xFFFF:04X}"
+    e = f"{(end if end is not None else start) & 0xFFFF:04X}"
+    if kind == "code":
+        lst = [str(x).upper().lstrip("$") for x in d["code"]]
+        if a not in lst:
+            d["code"].append(a)
+        d["data"] = [r for r in d["data"] if not (int(str(r[0]), 16) <= start <= int(str(r[1]), 16))]
+    elif kind == "data":
+        d["data"].append([a, e])
+        d["code"] = [c for c in d["code"] if not (start <= int(str(c), 16) <= (end if end is not None else start))]
+    elif kind in ("word_table", "rts_table"):
+        if end is None or end <= start:
+            end = start + 1
+            e = f"{end & 0xFFFF:04X}"
+        d["jump_tables"] = [t for t in d["jump_tables"] if str(t[0]).upper() != a]
+        d["jump_tables"].append([a, e, "rts" if kind == "rts_table" else "word"])
+    elif kind == "label":
+        from ..cpu.labels import clean_name
+        name = clean_name(text)
+        if not name:
+            raise ValueError("a label needs a name")
+        d["labels"][a] = name
+    else:
+        d["comments"][a] = text
+    hints_file(folder).write_text(json.dumps(d, indent=1, ensure_ascii=False), encoding="utf-8")
+    return d
+
+
+def import_labels(folder, label_file, overwrite: bool = False) -> tuple[int, str]:
+    """Merge a ca65 .dbg / RGBDS .sym / Mesen .mlb / FCEUX .nl file into hints.json -> (names added, kind)."""
+    from ...model import Project
+    from ..cpu.labels import merge_into_hints, read_labels
+    folder = Path(folder)
+    image = None
+    try:
+        s = (Project.load(folder).extra or {}).get("retro") or {}
+        d = s.get("disassembly") or {}
+        src = folder / "rom" / d.get("source", Path(s.get("original", "")).name)
+        if src.is_file():
+            image = romfmt.load(src, d.get("system"), d.get("base"), d.get("entry"))
+    except Exception:  # noqa: BLE001 - labels with CPU addresses still work without the image
+        image = None
+    ls = read_labels(label_file, image)
+    return merge_into_hints(hints_file(folder), ls, overwrite), ls.source
+
+
+def address_of_line(text: str) -> int | None:
+    """The address in a disassembly source line's ``; 1234`` comment (None when the line has none)."""
+    import re
+    m = re.search(r";\s*([0-9A-Fa-f]{4})(?![0-9A-Fa-f])", text)
+    return int(m.group(1), 16) if m else None
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -888,3 +888,18 @@ templates and the 89 runnable course blocks, assembler message translation, conf
 `test_lint_ide.py` (the IDE in Arabic and English: squiggles, gutter icons, hover widget, Ctrl+. menu and applying a
 fix, the Problems Explained panel, Error List merge, an emu8086 project). Demo projects with commented mistakes:
 `SmartLint/NasmMistakes`, `SmartLint/Emu8086Mistakes`.
+
+## Smart editor: beginner QA (samples/Tests/Assembly/SmartStudentQA)
+
+Four beginner programs (NASM x64, MASM x86, emu8086) with the usual mistakes check the three smart-editor parts
+together: the squiggle appears while the program is still being typed, the hover / Problems Explained panel say why
+in Arabic and how to fix it, the quick fixes make the program build and run (NASM + gcc, ml + link, the 8086
+emulator), "Check by running" finds the runtime problems of the half-fixed program and is clean on the fixed one, and
+the CPU view shows "jump is taken", inline values and the jump arrows while debugging. Quick fixes added by this QA:
+
+* ASM501 / ASM502 (Win64 call without shadow space / RSP not aligned) in a procedure that never touches RSP:
+  "Reserve shadow space" inserts `sub rsp, 40` as the first instruction and `add rsp, 40` before each `ret`.
+* ASM304 (stack not balanced at RET) when exactly one pushed register was never popped: "Add pop reg before RET".
+* ASM302 on an explicit procedure: "Add RET". The entry procedure of a DOS program (`main proc ... main endp` +
+  `end main`) that falls off its end now gets ASM602 "no DOS exit" with the `mov ah, 4Ch / int 21h` fix (it used to
+  say "without RET", which is wrong for a DOS .EXE).

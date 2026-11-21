@@ -1,0 +1,8 @@
+{
+  "name": "MasmSum",
+  "language": "asm-masm",
+  "forms": [],
+  "startup": "main",
+  "modules": ["main.asm"],
+  "asm": {"assembler": "masm", "arch": "x86", "linker": "link", "entry": "main"}
+}

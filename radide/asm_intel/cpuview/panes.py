@@ -861,6 +861,8 @@ class StackPane(QWidget):
             if a < snap.sp:
                 continue
             if snap.bits == 16:
+                if v == 0:            # an empty word, not DS:0 (it would show the first string on every row)
+                    continue
                 cands = [(code_seg + v, True), (data_seg + v, False)]
             else:
                 if v < 0x10000:
@@ -1135,6 +1137,8 @@ class CpuView(QWidget):
     def reg_comment(self, name: str, v) -> str:
         if not isinstance(v, int) or self.backend is None:
             return ""
+        if v == 0 and self.backend.bits == 16 and name.lower() != "ip":
+            return ""                 # BX = 0 is usually just zero, not "points to the first variable at DS:0"
         lin = self.reg_linear(name, v)
         label = self.disasm.label_of(lin) if lin is not None else ""
         return f"<{label}>" if label else ""

@@ -5,8 +5,11 @@
   content is binary.
 * Tools > Retro > ROM Workbench: Open in Hex Editor, Compare Files, Create / Apply Patch, Fix Checksum, ROM Info.
 * ROM Hacking projects (radide/languages/retro_romhack.py): Project > ROM Hacking (Set Source ROM, Patch
-  Manager, Edit Working Copy, Capture Edits as Patch, Build, Open Output) and ROM / Patches / Build nodes in
-  Solution Explorer. The source ROM always opens read-only.
+  Manager, Edit Working Copy, Capture Edits as Patch, Build, Open Output) and ROM / Patches / Tables / Build
+  nodes in Solution Explorer. The source ROM always opens read-only.
+* Text tables: a .tbl saved inside a ROM Hacking project (Text Table Editor) is added to the project's tables
+  automatically; the Tables node's context menu adds / creates / removes tables and sets the default table
+  (selected in the hex editor's text column).
 """
 from __future__ import annotations
 
@@ -49,6 +52,17 @@ class RomFeature:
         self._menus()
         try:
             win.solution.itemDoubleClicked.connect(self._on_tree_dclick)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from ..retro.filebus import subscribe
+            subscribe(win, self._on_file_written)
+        except Exception:  # noqa: BLE001 - the shared bus is optional
+            pass
+        try:
+            from . import solution_ui
+            if self._menu_hook not in solution_ui.MENU_HOOKS:
+                solution_ui.MENU_HOOKS.append(self._menu_hook)
         except Exception:  # noqa: BLE001
             pass
 
@@ -226,6 +240,8 @@ class RomFeature:
         rp = self._romproject()
         if rp is None:
             return
+        default = str(rp.extra.get("default_table") or "")
+        select = -1
         for t in rp.tables:
             p = rp.path(t)
             if p.is_file():
@@ -235,8 +251,161 @@ class RomFeature:
                     doc.tables.append(tbl)
                     idx = doc.textmode.count() - 1
                     doc.textmode.insertItem(idx, f"Table: {tbl.name}", ("table", len(doc.tables) - 1))
+                    if default and t == default:
+                        select = idx
                 except OSError:
                     pass
+        if select >= 0:
+            doc.textmode.setCurrentIndex(select)
+
+    # ================================================================== text tables of the project
+    def _romprojects_open(self) -> list:
+        out, seen = [], set()
+        projects = [st.get("project") for st in getattr(self.win, "_pstates", {}).values() if isinstance(st, dict)]
+        for proj in [self.win.project] + projects:
+            rp = self._romproject(proj) if proj is not None else None
+            if rp is not None and str(rp.folder.resolve()).lower() not in seen:
+                seen.add(str(rp.folder.resolve()).lower())
+                out.append(rp)
+        return out
+
+    def _update_rp(self, rp, change) -> bool:
+        """Apply *change(rp)* to a fresh copy of rom.json, save it, refresh open Patch Managers + the tree."""
+        from ..retro.rom.project import RomProject
+        fresh = RomProject.load(rp.folder)
+        if change(fresh) is False:
+            return False
+        fresh.save()
+        for key, w in list(self.docs.items()):
+            if key.startswith("patchmanager:") and self._alive(w) and \
+                    Path(getattr(w, "folder", "")).resolve() == fresh.folder.resolve():
+                w.reload_from_disk()
+        self._refresh_tree()
+        return True
+
+    def _on_file_written(self, path, _source=None) -> None:
+        """filebus: a .tbl written inside a ROM Hacking project joins the project's tables."""
+        p = Path(path)
+        if p.suffix.lower() != ".tbl":
+            return
+        for rp in self._romprojects_open():
+            try:
+                p.resolve().relative_to(rp.folder.resolve())
+            except ValueError:
+                continue
+            if rp.rel(p) not in rp.tables:
+                self.add_table(p, rp)
+            return
+
+    def add_table(self, path, rp=None) -> bool:
+        rp = rp or self._romproject()
+        if rp is None:
+            return False
+        p = Path(path)
+        try:
+            p.resolve().relative_to(rp.folder.resolve())
+        except ValueError:                           # outside the project: copy it into tables/
+            import shutil
+            dest = rp.folder / "tables" / p.name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if not dest.exists():
+                shutil.copyfile(p, dest)
+            p = dest
+        rel = rp.rel(p)
+
+        def change(r):
+            if rel in r.tables:
+                return False
+            r.tables.append(rel)
+        if self._update_rp(rp, change):
+            self._log(f"Table {rel} added to the ROM Hacking project")
+            return True
+        return False
+
+    def remove_table(self, rel: str, rp=None) -> bool:
+        rp = rp or self._romproject()
+        if rp is None:
+            return False
+
+        def change(r):
+            if rel not in r.tables:
+                return False
+            r.tables.remove(rel)
+            if r.extra.get("default_table") == rel:
+                r.extra.pop("default_table", None)
+        ok = self._update_rp(rp, change)
+        if ok:
+            self._log(f"Table {rel} removed from the project (the file stays in place)")
+        return ok
+
+    def set_default_table(self, rel: str, rp=None) -> bool:
+        rp = rp or self._romproject()
+        if rp is None:
+            return False
+
+        def change(r):
+            if rel not in r.tables:
+                r.tables.append(rel)
+            r.extra["default_table"] = rel
+        return self._update_rp(rp, change)
+
+    def add_table_dialog(self) -> bool:
+        rp = self._romproject()
+        if rp is None:
+            return False
+        f, _ = QFileDialog.getOpenFileName(self.win, "Add Text Table", str(rp.folder / "tables"),
+                                           "Tables (*.tbl);;All files (*)")
+        return bool(f) and self.add_table(f, rp)
+
+    def new_table(self, name: str | None = None):
+        rp = self._romproject()
+        if rp is None:
+            return None
+        if name is None:
+            from PyQt6.QtWidgets import QInputDialog
+            name, ok = QInputDialog.getText(self.win, "New Text Table", "Name of the table:", text="game")
+            if not ok or not name.strip():
+                return None
+        safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in name.strip()) or "game"
+        p = rp.folder / "tables" / f"{safe}.tbl"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if not p.exists():
+            p.write_text(f"; {safe}.tbl - character table (hex=text), /FF=<end> marks an end code\n",
+                         encoding="utf-8")
+        self.add_table(p, rp)
+        gfx = getattr(self.win, "retro_gfx", None)
+        return gfx.open_table(p) if gfx is not None else None
+
+    def open_table_editor(self, path):
+        gfx = getattr(self.win, "retro_gfx", None)
+        if gfx is not None:
+            return gfx.open_table(Path(path))
+        return self.win.open_any_file(Path(path))
+
+    def tree_menu(self, item, m) -> None:
+        """Context menu entries of the ROM Hacking nodes (Solution Explorer)."""
+        data = item.data(0, ROLE) if item is not None else None
+        if not data or not str(data[0]).startswith("romhack"):
+            return
+        kind, path = data[0], data[1]
+        m.addSeparator()
+        if kind == "romhack":
+            m.addAction("Patch Manager", self.open_manager)
+            m.addAction("Build Patched ROM", self.build_project)
+        if kind in ("romhack", "romhack_tables"):
+            m.addAction("Add Existing Table...", self.add_table_dialog)
+            m.addAction("New Table...", lambda: self.new_table())
+        if kind == "romhack_table":
+            rp = self._romproject()
+            rel = rp.rel(path) if rp is not None else str(path)
+            m.addAction("Open in Text Table Editor", lambda: self.open_table_editor(path))
+            m.addAction("Set as Default Table (hex editor text)", lambda: self.set_default_table(rel))
+            m.addSeparator()
+            m.addAction("Remove from Project", lambda: self.remove_table(rel))
+
+    def _menu_hook(self, win, item, m) -> None:
+        if win is self.win:
+            self.tree_menu(item, m)
 
     def compare(self, left, right=None):
         from ..retro.rom.diffview import CompareView
@@ -476,6 +645,16 @@ class RomFeature:
                 pnode.addChild(node(Path(e.file).name + ("" if e.enabled else "  (disabled)"), "romhack_file",
                                     rp.path(e.file), e.note or e.file, style.StandardPixmap.SP_FileIcon))
             root.addChild(pnode)
+            default = str(rp.extra.get("default_table") or "")
+            tnode = node(f"Tables ({len(rp.tables)})", "romhack_tables", project.folder,
+                         "Character tables (.tbl) of the hex editor's text column - right-click to add / remove",
+                         style.StandardPixmap.SP_DirIcon)
+            for t in rp.tables:
+                tnode.addChild(node(Path(t).name + ("  (default)" if t == default else "") +
+                                    ("" if rp.path(t).is_file() else "  (missing)"), "romhack_table", rp.path(t),
+                                    t, style.StandardPixmap.SP_FileDialogDetailedView))
+            root.addChild(tnode)
+            tnode.setExpanded(True)
             if rp.work_path is not None and rp.work_path.is_file():
                 root.addChild(node(f"Working copy: {rp.work_path.name}", "romhack_file", rp.work_path,
                                    "Edit, save, then Capture Edits as Patch", style.StandardPixmap.SP_FileIcon))
@@ -500,6 +679,11 @@ class RomFeature:
         except Exception:  # noqa: BLE001
             pass
         kind, path = data[0], data[1]
+        if kind == "romhack_tables":
+            return
+        if kind == "romhack_table":
+            self.open_table_editor(path)
+            return
         if kind == "romhack":
             self.open_manager()
         elif kind in ("romhack_rom", "romhack_out"):
