@@ -453,6 +453,95 @@ def _photo(path: str):
 
 
 # ============================================================================ controls
+# ---------------------------------------------------------------- animations (radide/motion, Blend storyboards)
+def _fx_of(vf: "VBForm"):
+    """The form's animation runtime (_RadFx), created on demand (radide/motion/runtime_py.py)."""
+    from ..motion.runtime_py import ensure_fx
+    return ensure_fx(vf.ui, "tk")
+
+
+def _animate_args(args) -> tuple[str, dict]:
+    """VB ``Command1.Animate "slideIn", 600, "from=right"`` / bridge ``CALL Button1 Animate slideIn\t600``:
+    the preset, then an optional duration (ms) and "name=value" options."""
+    if not args:
+        raise err(5, "Animate needs a preset name (e.g. \"shake\")")
+    preset = to_str(args[0]).strip()
+    opts: dict = {}
+    for a in args[1:]:
+        if a is EMPTY:
+            continue
+        text = to_str(a).strip()
+        if "=" in text:
+            k, _, v = text.partition("=")
+            k, v = k.strip(), v.strip()
+            try:
+                opts[k] = int(v) if v.lstrip("-").isdigit() else float(v)
+            except ValueError:
+                opts[k] = {"true": True, "false": False}.get(v.lower(), v)
+        elif "durationMs" not in opts:
+            try:
+                opts["durationMs"] = int(to_num(a))
+            except (TypeError, ValueError):
+                pass
+    from ..motion.presets import CATALOG
+    match = next((k for k in CATALOG if k.lower() == preset.lower()), None)
+    if match is None:
+        raise err(5, f"Unknown animation preset '{preset}' (one of: {', '.join(CATALOG)})")
+    return match, opts
+
+
+class VBStoryboard:
+    """A storyboard (Objects and Timeline) or an animation of the Animations window as a VB object:
+    ``Storyboard1.Begin``, ``fx1.Stop``, ``.Pause``, ``.Resume``, ``.Reverse``, ``.Seek ms``, ``.IsPlaying``."""
+    vb_typename = "Storyboard"
+    vb_default = "isplaying"
+
+    def __init__(self, form: "VBForm", name: str, fx: bool):
+        self.form, self.name, self.vb_name, self.fx = form, name, name, fx
+
+    def _sb(self):
+        if self.fx:
+            return _fx_of(self.form).Storyboards.get(self.name)
+        return getattr(self.form.ui, self.name, None)
+
+    def vb_get(self, name):
+        sb = self._sb()
+        if sb is None:
+            raise err(91, f"Storyboard '{self.name}' is not available")
+        if name == "isplaying":
+            return bool(sb.IsPlaying)
+        if name == "duration":
+            return sb.Duration
+        if name == "position":
+            return int(sb.Position)
+        if name == "name":
+            return self.name
+        raise err(438, f"Storyboard doesn't support '{name}'")
+
+    def vb_set(self, name, value):
+        sb = self._sb()
+        if sb is not None and name in ("repeatforever", "autoreverse"):
+            setattr(sb, "RepeatForever" if name == "repeatforever" else "AutoReverse", to_bool(value))
+            return
+        raise err(438, f"Storyboard doesn't support property '{name}'")
+
+    def vb_call(self, name, args):
+        if self.fx and name in ("begin", "stop"):
+            fx = _fx_of(self.form)
+            (fx.Begin if name == "begin" else fx.Stop)(self.name)
+            return EMPTY
+        sb = self._sb()
+        if sb is None:
+            raise err(91, f"Storyboard '{self.name}' is not available")
+        if name in ("begin", "stop", "pause", "resume", "reverse"):
+            getattr(sb, name.capitalize())()
+            return EMPTY
+        if name == "seek":
+            sb.Seek(to_num(args[0]) if args else 0)
+            return EMPTY
+        return self.vb_get(name)
+
+
 class VBControl:
     vb_default = "text"
 
@@ -705,6 +794,10 @@ class VBControl:
             _set_state(w, to_bool(value))
             return
         if name == "visible":
+            fx = self.form.ui.__dict__.get("_fx")
+            if fx is not None and (fx._show.get(self.name) or fx._hide.get(self.name)):
+                fx.SetVisible(self.name, to_bool(value))    # its "On show" / "On hide" animation
+                return
             if to_bool(value):
                 if w.winfo_manager():
                     return
@@ -786,6 +879,10 @@ class VBControl:
             v = self._ext_call(name, args)
             if v is not _NA:
                 return v
+        if name == "animate":                   # Command1.Animate "shake" (radide/motion presets)
+            preset, opts = _animate_args(args)
+            _fx_of(self.form).Animate(self.name, preset, **opts)
+            return EMPTY
         if name == "additem":
             item = to_str(args[0])
             if t == "ListBox":
@@ -1382,6 +1479,14 @@ class VBForm:
             datas = install(self)
         except Exception as ex:  # noqa: BLE001
             print(f"[VB6] data controls of {self.name}: {ex}", file=sys.stderr, flush=True)
+        for sb in self.model.extra.get("storyboards") or []:      # Storyboard1.Begin
+            nm = str(sb.get("name") or "") if isinstance(sb, dict) else ""
+            if nm and hasattr(self.ui, nm):
+                self.controls.setdefault(nm.lower(), VBStoryboard(self, nm, False))
+        fxrt = self.ui.__dict__.get("_fx")                          # fx1.Begin (Animations window)
+        for fx_id in (fxrt.Storyboards if fxrt is not None else ()):
+            if str(fx_id).isidentifier():
+                self.controls.setdefault(str(fx_id).lower(), VBStoryboard(self, fx_id, True))
         menu = self.model.menu()
         if menu is not None and hasattr(self.ui, menu.name):
             self._map_menu(getattr(self.ui, menu.name), menu.props.get("Items", []))
@@ -1505,6 +1610,20 @@ class VBForm:
         if name == "setfocus":
             self.ui.root.focus_force()
             return EMPTY
+        if name == "animate":           # Form1.Animate "fadeIn"  /  Me.Animate "Command1", "shake"
+            self.load()
+            target = ""
+            if len(args) >= 2 and to_str(args[0]).lower() in self.controls \
+                    and isinstance(self.controls[to_str(args[0]).lower()], VBControl):
+                target, args = self.controls[to_str(args[0]).lower()].name, list(args[1:])
+            preset, opts = _animate_args(args)
+            _fx_of(self).Animate(target, preset, **opts)
+            return EMPTY
+        if name in ("beginanimation", "stopanimation"):
+            self.load()
+            fx = _fx_of(self)
+            ok = (fx.Begin if name == "beginanimation" else fx.Stop)(to_str(args[0]) if args else "")
+            return bool(ok)
         if name in ("cls", "print", "move", "zorder", "circle", "line", "pset"):
             return EMPTY
         return self.vb_get(name)

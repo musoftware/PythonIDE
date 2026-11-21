@@ -30,73 +30,132 @@ from .states import (DESIGN, FLOAT_PROPS, INT_PROPS, RESERVED_NAMES, BlendPrevie
 ANIM_PROPS = ("Left", "Top", "Width", "Height", "BackColor", "ForeColor", "Opacity", "FontSize", "Value",
               "Text", "Visible")
 FORM_ANIM_PROPS = ("Width", "Height", "BackColor", "Opacity", "Text")
-EASES = ("linear", "in", "out", "inout")
+EASES = ("linear", "in", "out", "inout", "back", "elastic", "bounce", "sine")
 
 STORYBOARD_RT = r'''
 
 class _Storyboard:
     """Storyboard (Expression Blend): keyframe animation of control properties.
     Begin() starts from time 0, Stop() stops and puts the animated properties back, Pause() / Resume(),
-    Seek(ms); at the end the last values stay (HoldEnd) and the form's <Name>_Completed() runs.
-    RepeatForever and AutoReverse can be changed before Begin()."""
+    Seek(ms), Reverse() plays back to time 0; at the end the last values stay (HoldEnd), the callables in
+    Completed run and then the form's <Name>_Completed(). RepeatForever, Count (plays) and AutoReverse can
+    be changed before Begin(). Keyframe values may be relative to the values at Begin ({"d": -50} ...)."""
 
-    def __init__(self, owner, io, name, tracks, repeat=False, autoreverse=False):
+    def __init__(self, owner, io, name, tracks, repeat=False, autoreverse=False, count=1):
         self._o, self._io, self.Name = owner, io, name
-        self.Tracks = [(t, p, sorted(tuple(k) for k in keys)) for t, p, keys in tracks]
+        self._raw = [(t, p, sorted(((k[0], k[1], k[2] if len(k) > 2 else "") for k in keys), key=lambda k: k[0]))
+                     for t, p, keys in tracks]
+        self.Tracks = self._raw
         self.RepeatForever, self.AutoReverse = bool(repeat), bool(autoreverse)
-        self.Duration = max([k[0] for _t, _p, keys in self.Tracks for k in keys] or [0])
+        self.Count = max(1, int(count or 1))
+        self.Duration = max([k[0] for _t, _p, keys in self._raw for k in keys] or [0])
         self.IsPlaying, self.Position = False, 0
-        self._gen, self._saved, self._t0, self._paused = 0, {}, 0.0, None
+        self.Completed = []                 # callables run when the storyboard ends (chains)
+        self._gen, self._saved, self._t0, self._paused, self._rev, self._last = 0, {}, 0.0, None, False, {}
 
     def _remember(self):
-        if not self._saved:
-            self._saved = {(t, p): self._io.get(t, p) for t, p, _k in self.Tracks}
+        if self._saved:
+            return
+        self._saved = {(t, p): self._io.get(t, p) for t, p, _k in self._raw}
+        self._last = {}
+        if not any(_rad_has_relative(keys) for _t, _p, keys in self._raw):
+            self.Tracks = self._raw
+            return
+
+        def ref(t):
+            def get(prop):
+                if prop == "$parent":
+                    fn = getattr(self._io, "parent_bg", None)
+                    return fn(t) if fn is not None else None
+                if (t, prop) not in self._saved:
+                    self._saved[(t, prop)] = self._io.get(t, prop)
+                return self._saved[(t, prop)]
+            return get
+        self.Tracks = [(t, p, _rad_resolve_keys(p, keys, self._saved.get((t, p)), ref(t)))
+                       for t, p, keys in self._raw]
+        self._saved = {k: v for k, v in self._saved.items() if any(k == (t, p) for t, p, _k in self._raw)}
 
     def _apply(self, ms):
         self.Position = ms
         for t, p, keys in self.Tracks:
             v = _rad_value_at(p, keys, ms, self._saved.get((t, p)),
                               lambda c, t=t, p=p: self._io.rgb(t, p, c))
+            if self._last.get((t, p), self) == v and p == "Visible":
+                continue                    # (re-showing every frame re-places the widget)
+            self._last[(t, p)] = v
             self._io.set(t, p, v)
 
     def Begin(self):
         self._remember()
         self._gen += 1
-        self.IsPlaying, self._paused = True, None
+        self.IsPlaying, self._paused, self._rev = True, None, False
         self._t0 = _time.monotonic()
+        self._tick(self._gen)
+
+    def Reverse(self):
+        """Play from the current position back to time 0 (then Stop(): the values are back)."""
+        if not self._saved:
+            return
+        self._gen += 1
+        self.IsPlaying, self._paused, self._rev = True, None, True
+        self._t0 = _time.monotonic() - (self.Duration - min(self.Position, self.Duration)) / 1000.0
         self._tick(self._gen)
 
     def _tick(self, gen):
         if gen != self._gen or not self.IsPlaying:
             return
         ms = (_time.monotonic() - self._t0) * 1000.0
+        if self._rev:
+            pos = self.Duration - ms
+            if pos <= 0:
+                self.Stop()
+                return
+            self._apply(pos)
+            self._io.later(15, lambda: self._tick(gen))
+            return
         span = self.Duration * (2 if self.AutoReverse else 1)
+        total = span * self.Count
         done = False
         if span <= 0:
             ms, done = 0, True
-        elif ms >= span:
-            if self.RepeatForever:
+        elif self.RepeatForever:
+            if ms >= span:
                 self._t0 += (ms // span) * span / 1000.0
                 ms %= span
-            else:
-                ms, done = span, True
+        elif ms >= total:
+            ms, done = span, True
+        else:
+            ms %= span
         self._apply(ms if ms <= self.Duration else span - ms)
         if done:
-            self.IsPlaying = False
-            fn = getattr(self._o, self.Name + "_Completed", None)
-            if callable(fn):
-                fn()
+            self._completed()
             return
         self._io.later(15, lambda: self._tick(gen))
 
+    def _completed(self):
+        self.IsPlaying = False
+        for fn in list(self.Completed):
+            fn()
+        fn = getattr(self._o, self.Name + "_Completed", None)
+        if callable(fn):
+            fn()
+
+    def Finish(self):
+        """Jump to the end at once (reduced motion) and run the Completed callbacks."""
+        self._remember()
+        self._gen += 1
+        self._paused = None
+        self._apply(0 if self.AutoReverse else self.Duration)
+        self._completed()
+
     def Stop(self):
         self._gen += 1
-        self.IsPlaying, self._paused, self.Position = False, None, 0
+        self.IsPlaying, self._paused, self.Position, self._rev = False, None, 0, False
         for (t, p), v in self._saved.items():
             self._io.set(t, p, v)
             if p in ("Left", "Top", "Width", "Height"):
                 self._io.release(t, p)          # Anchor / Dock take the control back
-        self._saved = {}
+        self._saved, self._last = {}, {}
 
     def Pause(self):
         if self.IsPlaying:
@@ -169,7 +228,8 @@ def norm_keys(prop: str, keys) -> list[tuple]:
         except (TypeError, ValueError):
             continue
         ease = str(k[2]) if len(k) > 2 and str(k[2]) in EASES else ""
-        out.append((ms, coerce(prop, k[1]), "" if ease == "linear" else ease))
+        v = k[1] if isinstance(k[1], dict) or k[1] == "$parent" else coerce(prop, k[1])  # relative
+        out.append((ms, v, "" if ease == "linear" else ease))
     out.sort(key=lambda x: x[0])
     return out
 
@@ -295,20 +355,36 @@ def _rgb(value):
     return c
 
 
-def props_at(sb: dict, target: str, ms: float, base: dict) -> dict:
-    """Design-time values of the tracks of *target* at time *ms* (same algorithm as the generated code)."""
+def props_at(sb: dict, target: str, ms: float, base: dict, parent_bg: str | None = None) -> dict:
+    """Design-time values of the tracks of *target* at time *ms* (same algorithm as the generated code).
+    Tracks may be dicts (.form storyboards) or (target, prop, keys) tuples (motion.expand storyboards);
+    relative keyframes resolve against *base*, "$parent" against *parent_bg*."""
     out = {}
+    start_of = {}
+
+    def start(p):
+        if p not in start_of:
+            v = base.get(p, 1.0 if p == "Opacity" else None)
+            if p in ("BackColor", "ForeColor") and not v:
+                v = "#f0f0f0" if p == "BackColor" else "#000000"
+            start_of[p] = v
+        return start_of[p]
+
+    def ref(p):
+        return (parent_bg or "#f0f0f0") if p == "$parent" else start(p)
     for tr in sb.get("tracks", []):
-        if tr.get("target") != target:
+        if isinstance(tr, dict):
+            t, p, raw = tr.get("target"), tr.get("property"), tr.get("keys")
+        else:
+            t, p, raw = tr[0], tr[1], tr[2]
+        if (t or "") != (target or ""):
             continue
-        p = tr.get("property")
-        keys = norm_keys(p, tr.get("keys"))
+        keys = norm_keys(p, raw)
         if not keys:
             continue
-        start = base.get(p, 1.0 if p == "Opacity" else None)
-        if p in ("BackColor", "ForeColor") and not start:
-            start = "#f0f0f0" if p == "BackColor" else "#000000"
-        out[p] = DESIGN["_rad_value_at"](p, keys, ms, start, _rgb)
+        s0 = start(p)
+        keys = DESIGN["_rad_resolve_keys"](p, keys, s0, ref)
+        out[p] = DESIGN["_rad_value_at"](p, keys, ms, s0, _rgb)
     return out
 
 

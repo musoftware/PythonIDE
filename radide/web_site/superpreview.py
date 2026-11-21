@@ -31,6 +31,16 @@ class Preset:
     width: int
     height: int
     mobile: bool = False
+    device: str = ""            # radide/devices.py id (foldables)
+    posture: str = "Flat"       # Flat | HalfOpened | Folded (foldables)
+    segments: int = 1           # 2 = dual viewport segments (spanned across a separating hinge)
+
+
+def _fold_preset(name: str, device_id: str, posture: str = "Flat", land: bool = False) -> Preset:
+    from ..devices import screen_size, segments
+    o = "Landscape" if land else "Portrait"
+    w, h = screen_size(device_id, o, posture)
+    return Preset(name, w, h, True, device_id, posture, len(segments(device_id, o, posture)))
 
 
 PRESETS = [
@@ -39,10 +49,28 @@ PRESETS = [
     Preset("Phone - Android (Pixel 8)", 412, 915, True),
     Preset("Tablet - iPad Mini", 768, 1024, True),
     Preset("Tablet - iPad Pro 12.9", 1024, 1366, True),
+    _fold_preset("Foldable - Galaxy Z Fold6 (open)", "galaxy_z_fold6"),
+    _fold_preset("Foldable - Galaxy Z Fold6 (cover)", "galaxy_z_fold6", "Folded"),
+    _fold_preset("Foldable - Pixel Fold (open)", "pixel_fold", land=True),
+    _fold_preset("Foldable - Galaxy Z Flip6", "galaxy_z_flip6"),
+    _fold_preset("Foldable - Galaxy Z Flip6 (half-open, dual segments)", "galaxy_z_flip6", "HalfOpened"),
+    _fold_preset("Dual screen - Surface Duo 2 (spanned, dual segments)", "surface_duo2", land=True),
     Preset("Laptop 1366 x 768", 1366, 768),
     Preset("Desktop 1440 x 900", 1440, 900),
     Preset("Desktop 1920 x 1080", 1920, 1080),
 ]
+
+
+def preset_segments(preset: Preset, rotated: bool = False) -> list[tuple]:
+    """CSS viewport segments (x, y, w, h) of a foldable preset - two rects for "dual segments" presets
+    (matches @media (horizontal-viewport-segments: 2) / (vertical-viewport-segments: 2)), else one."""
+    if not preset.device:
+        w, h = (preset.height, preset.width) if rotated else (preset.width, preset.height)
+        return [(0, 0, w, h)]
+    from ..devices import segments
+    land = (preset.width > preset.height) != rotated
+    o = "Landscape" if land else "Portrait"
+    return segments(preset.device, o, preset.posture)
 CUSTOM = "Custom"
 MOBILE_UA = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) "
              "Chrome/124.0.0.0 Mobile Safari/537.36")
@@ -578,7 +606,7 @@ class SuperPreview(QMainWindow):
             bar.addWidget(wdg)
 
         self.left = PreviewPane("A", 0, self.browsers)          # phone
-        self.right = PreviewPane("B", 7, self.browsers)         # desktop 1920
+        self.right = PreviewPane("B", len(PRESETS) - 1, self.browsers)   # desktop 1920
         self.split = QSplitter(Qt.Orientation.Horizontal)
         self.split.addWidget(self.left)
         self.split.addWidget(self.right)

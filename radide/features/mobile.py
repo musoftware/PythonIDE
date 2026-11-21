@@ -62,6 +62,160 @@ def list_avds() -> list[str]:
     return [ln.strip() for ln in r.stdout.splitlines() if ln.strip() and not ln.startswith(("INFO", "WARNING"))]
 
 
+# ===================================================================== foldable emulator (docs/CONTRACTS.md 10.8)
+FOLD_AVD = "RADIDE_Fold"
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def avdmanager_exe() -> str:
+    """cmdline-tools avdmanager (latest first), or ""."""
+    root = sdk_root()
+    if not root:
+        return ""
+    name = "avdmanager.bat" if os.name == "nt" else "avdmanager"
+    cands = [root / "cmdline-tools" / "latest" / "bin" / name]
+    try:
+        cands += sorted((root / "cmdline-tools").glob(f"*/bin/{name}"), reverse=True)
+    except OSError:
+        pass
+    cands.append(root / "tools" / "bin" / name)
+    return next((str(c) for c in cands if c.is_file()), "")
+
+
+def avd_device_profiles() -> list[str]:
+    """Hardware profile ids that `avdmanager list device -c` knows."""
+    exe = avdmanager_exe()
+    if not exe:
+        return []
+    try:
+        r = subprocess.run([exe, "list", "device", "-c"], capture_output=True, text=True, timeout=120,
+                           creationflags=_NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return [ln.strip() for ln in r.stdout.splitlines() if ln.strip() and not ln.startswith(("Loading", "Warning"))]
+
+
+def host_abis() -> tuple[str, ...]:
+    import platform
+    m = platform.machine().lower()
+    return ("arm64-v8a",) if m in ("arm64", "aarch64") else ("x86_64", "x86")
+
+
+def best_system_image() -> str:
+    """The newest installed system image for this CPU, as an sdkmanager package path
+    ("system-images;android-36;google_apis_playstore;x86_64"), or ""."""
+    root = sdk_root()
+    if not root:
+        return ""
+    best, best_key = "", None
+    tags = ("google_apis_playstore", "google_apis", "default")
+    abis = host_abis()
+    try:
+        for img in (root / "system-images").glob("android-*/*/*"):
+            if not (img / "system.img").is_file() and not (img / "source.properties").is_file():
+                continue
+            api, tag, abi = img.parent.parent.name, img.parent.name, img.name
+            if abi not in abis or tag not in tags:
+                continue
+            num = re.sub(r"\D", "", api.split("-", 1)[-1]) or "0"
+            key = (int(num), -tags.index(tag), -abis.index(abi))
+            if best_key is None or key > best_key:
+                best, best_key = f"system-images;{api};{tag};{abi}", key
+    except OSError:
+        return ""
+    return best
+
+
+def foldable_avd(name: str = FOLD_AVD, log=None) -> tuple[bool, str]:
+    """Create the foldable Android emulator *name* (never touches other AVDs; an existing one of that name
+    is kept).  Returns (ok, message)."""
+    say = log or (lambda _t: None)
+    if name in list_avds():
+        return True, f"The emulator {name} already exists."
+    exe = avdmanager_exe()
+    if not exe:
+        return False, "Android SDK command-line tools (avdmanager) not found - install them with the SDK Manager."
+    image = best_system_image()
+    if not image:
+        return False, "No Android system image for this computer is installed (SDK Manager > SDK Platforms)."
+    profiles = avd_device_profiles()
+    from ..devices import FOLDABLE_AVD_PROFILES
+    profile = next((d for d in FOLDABLE_AVD_PROFILES if d in profiles), "")
+    if not profile:
+        return False, "This Android SDK has no foldable hardware profile (update the command-line tools)."
+    say(f"> avdmanager create avd -n {name} -k {image} -d {profile}\n")
+    try:
+        r = subprocess.run([exe, "create", "avd", "-n", name, "-k", image, "-d", profile],
+                           input="no\n", capture_output=True, text=True, timeout=300, creationflags=_NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return False, f"avdmanager failed: {e}"
+    say((r.stdout or "") + (r.stderr or ""))
+    if name not in list_avds():
+        return False, f"avdmanager could not create {name}: {(r.stderr or r.stdout or '').strip()[-400:]}"
+    return True, f"Created the foldable emulator {name} ({profile}, {image.split(';')[1]})."
+
+
+_STATE_NAMES = {"folded": ("CLOSED", "FOLDED", "CLOSE"),
+                "half-opened": ("HALF_OPENED", "HALF_FOLDED", "HALF_OPEN", "TABLETOP", "HALF"),
+                "flat": ("OPENED", "OPEN", "UNFOLDED", "FLAT")}
+
+
+def _adb(serial: str, *args, timeout=30) -> str:
+    adb = adb_exe()
+    if not adb:
+        return ""
+    try:
+        r = subprocess.run([adb, "-s", serial, *args], capture_output=True, text=True, timeout=timeout,
+                           creationflags=_NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return (r.stdout or "") + (r.stderr or "")
+
+
+def device_states(serial: str) -> dict[str, int]:
+    """{state name: identifier} from `cmd device_state print-states` (names vary by system image)."""
+    out = _adb(serial, "shell", "cmd", "device_state", "print-states")
+    states = {}
+    for m in re.finditer(r"identifier=(\d+),\s*name='([^']*)'", out):
+        states[m.group(2).upper()] = int(m.group(1))
+    return states
+
+
+def current_device_state(serial: str) -> str:
+    """Name of the current device state (e.g. OPENED / HALF_OPENED / CLOSED), or ""."""
+    out = _adb(serial, "shell", "cmd", "device_state", "print-state")
+    m = re.search(r"name='([^']*)'", out)
+    if m:
+        return m.group(1).upper()
+    states = {v: k for k, v in device_states(serial).items()}
+    m = re.search(r"(\d+)", out)
+    return states.get(int(m.group(1)), "") if m else ""
+
+
+def set_posture(serial: str, posture: str) -> tuple[bool, str]:
+    """Put the foldable emulator *serial* in *posture* (Flat / HalfOpened / Folded, any spelling) with
+    `cmd device_state state <id>` (fallback: the emulator console `fold` / `unfold`).  Verifies the result
+    and returns (ok, current state name)."""
+    from ..devices import posture_key
+    key = posture_key(posture)
+    states = device_states(serial)
+    ident = None
+    for nm in _STATE_NAMES[key]:
+        ident = next((i for s_, i in states.items() if s_ == nm), None)
+        if ident is not None:
+            break
+    if ident is None:                                   # a looser match (e.g. "HALF_OPENED_TENT")
+        ident = next((i for s_, i in states.items() if any(nm in s_ for nm in _STATE_NAMES[key])
+                      and not (key == "flat" and "HALF" in s_)), None)
+    if ident is not None:
+        _adb(serial, "shell", "cmd", "device_state", "state", str(ident))
+    else:
+        _adb(serial, "emu", "fold" if key == "folded" else "unfold")
+    now = current_device_state(serial)
+    ok = any(nm == now or (nm in now and not (key == "flat" and "HALF" in now)) for nm in _STATE_NAMES[key])
+    return ok, now
+
+
 def platform_of(target: str) -> str:
     """flutter devices targetPlatform -> project platform folder ('android-x64' -> 'android')."""
     t = (target or "").lower()
@@ -537,6 +691,10 @@ class MobileFeature(QObject):
             self.build_menu.addAction(text, lambda k=kind: self.build_app(k))
         self.build_menu.addSeparator()
         self.a_cancel_build = self.build_menu.addAction("&Cancel Build", self.cancel_build)
+        self.build_menu.addSeparator()
+        self.a_fold_avd = self.build_menu.addAction("Create Foldable Emulator", self.create_foldable_emulator)
+        self.a_fold_avd.setToolTip(f"Create the Android emulator {FOLD_AVD} (a foldable phone) - other emulators "
+                                   "are not changed")
         # Debug menu: hot reload / restart / the Dart debugger option
         dbg = next((a.menu() for a in mb.actions() if a.menu() is not None
                     and a.text().replace("&", "") == "Debug"), None)
@@ -856,11 +1014,75 @@ class MobileFeature(QObject):
         sp.start()
         self.update_ui()
 
+    def create_foldable_emulator(self):
+        """Build > Mobile App > Create Foldable Emulator: avdmanager in a worker thread (it takes a while)."""
+        import threading
+        win = self.win
+        if FOLD_AVD in list_avds():
+            QMessageBox.information(win, "Create Foldable Emulator",
+                                    f"The foldable emulator {FOLD_AVD} already exists - choose it in the Device box.")
+            return
+        win.statusBar().showMessage(f"Creating the foldable emulator {FOLD_AVD}...")
+        result: dict = {}
+
+        def work():
+            result["r"] = foldable_avd(FOLD_AVD)
+
+        th = threading.Thread(target=work, daemon=True)
+        th.start()
+        timer = QTimer(self)
+
+        def poll():
+            if th.is_alive():
+                return
+            timer.stop()
+            ok, msg = result.get("r", (False, "failed"))
+            win.log(msg)
+            win.statusBar().showMessage(msg, 8000)
+            if ok:
+                self._fill_devices([d for d in self.devices if d.get("kind") == "device"
+                                    and d["id"] not in ("windows", "chrome", "web-server")])
+            else:
+                QMessageBox.warning(win, "Create Foldable Emulator", msg)
+        timer.timeout.connect(poll)
+        timer.start(500)
+
     def cancel_build(self):
         if self.build is not None and self.build.running():
             self.build.cancel()
             self.win.log("\n------ Build cancelled ------")
 
 
+def foldable_diags(win) -> list:
+    """Error List provider: controls lying across the hinge of a foldable / dual-screen form."""
+    proj = getattr(win, "project", None)
+    if proj is None:
+        return []
+    from ..tools import Diag
+    from ..mobile.controls import hinge_conflicts, is_foldable
+    out = []
+    docs = getattr(win, "docs", {}) or {}
+    for name in list(getattr(proj, "forms", []) or []):
+        try:
+            if name in docs:
+                form = docs[name].form
+            else:
+                from ..model import Form
+                path = proj.form_path(name)
+                if not path.is_file() or "Device" not in path.read_text(encoding="utf-8", errors="replace"):
+                    continue
+                form = Form.load(path)
+            if not is_foldable(form.props.get("Device")):
+                continue
+            for _ctrl, msg in hinge_conflicts(form):
+                out.append(Diag("Warning", f"Controls cross the hinge: {msg}", f"{name}.form", 1))
+        except Exception:  # noqa: BLE001 - never break the Error List
+            continue
+    return out
+
+
 def install(win) -> None:
     win.mobile = MobileFeature(win)
+    providers = win.__dict__.setdefault("diag_providers", [])
+    if foldable_diags not in providers:
+        providers.append(foldable_diags)

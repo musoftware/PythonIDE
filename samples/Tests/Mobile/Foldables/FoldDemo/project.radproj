@@ -1,0 +1,10 @@
+{
+  "name": "FoldDemo",
+  "language": "flutter",
+  "forms": [
+    "MasterDetail",
+    "DuoHinge"
+  ],
+  "startup": "MasterDetail",
+  "modules": []
+}

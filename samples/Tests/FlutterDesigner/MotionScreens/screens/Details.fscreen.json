@@ -1,0 +1,158 @@
+{
+ "version": 1,
+ "name": "Details",
+ "route": "/details",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Details"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "ListView",
+    "props": {
+     "padding": {
+      "all": 16
+     }
+    },
+    "children": [
+     {
+      "id": "w5",
+      "type": "Card",
+      "slots": {
+       "child": {
+        "id": "w6",
+        "type": "ListTile",
+        "slots": {
+         "title": {
+          "id": "w7",
+          "type": "Text",
+          "props": {
+           "data": "Flip X"
+          }
+         }
+        }
+       }
+      },
+      "anim": {
+       "type": "flipX",
+       "durationMs": 700
+      }
+     },
+     {
+      "id": "w8",
+      "type": "Card",
+      "slots": {
+       "child": {
+        "id": "w9",
+        "type": "ListTile",
+        "slots": {
+         "title": {
+          "id": "w10",
+          "type": "Text",
+          "props": {
+           "data": "Flip Y"
+          }
+         }
+        }
+       }
+      },
+      "anim": {
+       "type": "flipY",
+       "delayMs": 150,
+       "durationMs": 700
+      }
+     },
+     {
+      "id": "w11",
+      "type": "Card",
+      "slots": {
+       "child": {
+        "id": "w12",
+        "type": "ListTile",
+        "slots": {
+         "title": {
+          "id": "w13",
+          "type": "Text",
+          "props": {
+           "data": "Zoom in"
+          }
+         }
+        }
+       }
+      },
+      "anim": {
+       "type": "zoomIn",
+       "delayMs": 300
+      }
+     },
+     {
+      "id": "w14",
+      "type": "SizedBox",
+      "props": {
+       "height": 900
+      }
+     },
+     {
+      "id": "w15",
+      "type": "Card",
+      "slots": {
+       "child": {
+        "id": "w16",
+        "type": "ListTile",
+        "slots": {
+         "title": {
+          "id": "w17",
+          "type": "Text",
+          "props": {
+           "data": "Appears when scrolled into view"
+          }
+         }
+        }
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "trigger": "visible",
+       "durationMs": 600
+      }
+     },
+     {
+      "id": "w18",
+      "type": "TextButton",
+      "slots": {
+       "child": {
+        "id": "w19",
+        "type": "Text",
+        "props": {
+         "data": "Back"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "back"
+      }
+     }
+    ]
+   }
+  }
+ },
+ "transition": {
+  "type": "scale"
+ }
+}

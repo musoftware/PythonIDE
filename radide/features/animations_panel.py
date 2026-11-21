@@ -32,7 +32,7 @@ TRIGGERS = (("load", "On load"), ("click", "On click"), ("hover", "On hover"), (
             ("show", "On show"), ("hide", "On hide"), ("after", "After animation"),
             ("manual", "Manual (from code)"))
 EASINGS = (("linear", "Linear"), ("in", "Ease in"), ("out", "Ease out"), ("inout", "Ease in-out"),
-           ("back", "Back"), ("elastic", "Elastic"), ("bounce", "Bounce"), ("sine", "Sine"))
+           ("back", "Back (overshoot)"), ("elastic", "Elastic"), ("bounce", "Bounce"), ("sine", "Sine"))
 LEAVES = (("reverse", "Reverse"), ("stop", "Stop"), ("none", "Keep"))
 GROUPS = ("Entrance", "Exit", "Attention", "Color", "Text")
 # shown until radide.motion (slice A) is importable - same ids / labels as its CATALOG
@@ -47,6 +47,9 @@ FALLBACK_CATALOG = (("fadeIn", "Fade In", "Entrance"), ("slideIn", "Slide In", "
 PREVIEW_LOOPS = 3          # a "forever" animation is previewed this many times
 HOLD_MS = 500              # the last frame stays this long before the designed form comes back
 ERR_TAG = "radide-animations"
+# display text of preset parameter choices (the stored values stay as they are)
+CHOICE_LABELS = {"left": "Left side", "right": "Right side", "top": "Top side", "bottom": "Bottom side",
+                 "x": "Horizontal", "y": "Vertical"}
 _COLOR_PROPS = ("BackColor", "ForeColor")
 _INT_PROPS = ("Left", "Top", "Width", "Height", "FontSize", "Value")
 
@@ -63,8 +66,10 @@ def _tr(text: str) -> str:
 def _motion():
     """(presets, model, expand) modules of radide.motion, or None while it is not available."""
     try:
-        from ..motion import expand, model, presets
-        return presets, model, expand
+        import importlib
+        pkg = __name__.rsplit(".", 2)[0] + ".motion"
+        # (import_module: radide.motion re-exports the expand() function under the module's name)
+        return tuple(importlib.import_module(f"{pkg}.{n}") for n in ("presets", "model", "expand"))
     except Exception:  # noqa: BLE001 - slice A not installed / broken: the panel still opens
         return None
 
@@ -543,6 +548,7 @@ class AnimationsPanel(QWidget):
         self.win = win
         self.view = None
         self._filling = False
+        self._editing = False
         self._last_cp = None            # (fx id, field) of the last undo checkpoint (typing coalesces)
         self._pv: FxPreview | None = None
         self._pv_t0 = 0.0
@@ -685,6 +691,13 @@ class AnimationsPanel(QWidget):
         lay.addStretch(1)
         self.bind(None)
 
+    def changeEvent(self, ev):  # noqa: N802 - Qt API
+        """The IDE language changed: the list / combos hold translated text made here - rebuild them."""
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.LanguageChange:
+            QTimer.singleShot(0, self.refresh_list)
+        super().changeEvent(ev)
+
     # ------------------------------------------------------------ binding
     def bind(self, view) -> None:
         if view is self.view and view is not None:
@@ -728,6 +741,9 @@ class AnimationsPanel(QWidget):
             self.refresh_list()
 
     def _on_structure(self, *_a) -> None:
+        if self._editing:
+            return
+        self._last_cp = None
         self.refresh_list()
         self.update_errors()
 
@@ -765,9 +781,9 @@ class AnimationsPanel(QWidget):
                 set_note(self.note, "")
             t = self._target_name()
             if self.all.isChecked():
-                self.caption.setText(_tr("Animations of {}").format(self.form.name))
+                self.caption.setText(f"Animations of {self.form.name}")      # (setText translates)
             else:
-                self.caption.setText(_tr("Animations of {}").format(t or f"{self.form.name} (form)"))
+                self.caption.setText(f"Animations of {t or self.form.name + ' (form)'}")
             for a in self._shown():
                 who = a.get("target") or self.form.name
                 text = f"{who}: {describe(a)}" if self.all.isChecked() else describe(a)
@@ -827,6 +843,10 @@ class AnimationsPanel(QWidget):
             for w in (self.editor, self.btn_del, self.btn_preview, self.btn_bake):
                 w.setEnabled(has)
             self.btn_stop.setEnabled(self._pv is not None)
+            for cb, items in ((self.trigger, TRIGGERS), (self.easing, EASINGS), (self.leave, LEAVES)):
+                cb.clear()                      # (rebuilt: the IDE language may have changed)
+                for key, text in items:
+                    cb.addItem(_tr(text), key)
             self.preset.clear()
             for p in catalog():
                 self.preset.addItem(f"{_tr(p['label'])}  ({_tr(p['group'])})", p["id"])
@@ -897,7 +917,7 @@ class AnimationsPanel(QWidget):
                     if isinstance(ch, (list, tuple)):
                         w.addItem(str(ch[1] if len(ch) > 1 else ch[0]), ch[0])
                     else:
-                        w.addItem(str(ch), ch)
+                        w.addItem(_tr(CHOICE_LABELS.get(str(ch), str(ch))), ch)
                 self._set_combo(w, v)
                 w.currentIndexChanged.connect(lambda *_, n=name, w=w: self._set_param(n, w.currentData()))
             elif t in ("bool", "boolean"):
@@ -942,11 +962,15 @@ class AnimationsPanel(QWidget):
         if self.view is None:
             return
         doc = self.view.doc
-        if key is None or key != self._last_cp:
-            doc.checkpoint()
-        self._last_cp = key
-        fn()
-        doc.set_modified()
+        self._editing = True            # (checkpoint / set_modified signals must not rebuild the editor
+        try:                            #  under the widget that is sending the edit)
+            if key is None or key != self._last_cp:
+                doc.checkpoint()
+            self._last_cp = key
+            fn()
+            doc.set_modified()
+        finally:
+            self._editing = False
         if refresh:
             self._refresh_item_text()
         self.update_errors()
@@ -1240,7 +1264,7 @@ class AnimationsPanel(QWidget):
                 tp.rebuild()
             except Exception:  # noqa: BLE001
                 pass
-        set_note(self.note, _tr("Converted to storyboard {} (Objects and Timeline).").format(name))
+        set_note(self.note, f"Converted to storyboard {name} (Objects and Timeline).")
 
 
 # ====================================================================== install

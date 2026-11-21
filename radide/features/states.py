@@ -33,7 +33,8 @@ FLOAT_PROPS = {"Opacity"}
 PYTHON_PLUGINS = ("python-tk", "python-qt")
 # names a storyboard / data source cannot take (attributes of the generated form classes)
 RESERVED_NAMES = {"root", "show", "hide", "close", "destroy", "after", "title", "update", "resize", "move",
-                  "Refresh", "RefreshBindings", "GoToState", "setWindowTitle", "x", "y", "width", "height"}
+                  "Refresh", "RefreshBindings", "GoToState", "setWindowTitle", "x", "y", "width", "height",
+                  "Animate", "BeginAnimation", "StopAnimation", "SetVisible"}
 
 
 # ====================================================================== model helpers
@@ -107,11 +108,14 @@ def rename_references(form, old: str, new: str) -> None:
     for b in form.extra.get("bindings") or []:
         if b.get("control") == old:
             b["control"] = new
+    from ..motion.model import rename_references as motion_rename      # Animations window (motion)
+    motion_rename(form, old, new)
 
 
 def uses_blend(form) -> bool:
     return bool(any(c.states for c in form.controls) or form.extra.get("states")
-                or form.extra.get("storyboards") or form.extra.get("bindings") or form.extra.get("datasources"))
+                or form.extra.get("storyboards") or form.extra.get("bindings") or form.extra.get("datasources")
+                or form.extra.get("animations"))
 
 
 # ====================================================================== generated runtime
@@ -120,6 +124,7 @@ COMMON_RT = r'''
 # ------------------------------------------------------------------ Expression Blend runtime
 import csv as _csv  # noqa: E402
 import json as _json  # noqa: E402
+import math as _math  # noqa: E402
 import time as _time  # noqa: E402
 
 _RAD_COLOR_PROPS = ("BackColor", "ForeColor")
@@ -147,28 +152,104 @@ def _rad_ease(f, ease):
         return 1 - (1 - f) * (1 - f)
     if ease == "inout":
         return 2 * f * f if f < 0.5 else 1 - 2 * (1 - f) * (1 - f)
+    if ease == "sine":
+        return -(_math.cos(_math.pi * f) - 1) / 2
+    if ease == "back":                              # overshoots a little, then settles
+        return 1 + 2.70158 * (f - 1) ** 3 + 1.70158 * (f - 1) ** 2
+    if ease == "elastic":
+        if f <= 0 or f >= 1:
+            return 1.0 if f >= 1 else 0.0
+        return 2 ** (-10 * f) * _math.sin((f * 10 - 0.75) * (2 * _math.pi / 3)) + 1
+    if ease == "bounce":
+        n, d = 7.5625, 2.75
+        if f < 1 / d:
+            return n * f * f
+        if f < 2 / d:
+            f -= 1.5 / d
+            return n * f * f + 0.75
+        if f < 2.5 / d:
+            f -= 2.25 / d
+            return n * f * f + 0.9375
+        f -= 2.625 / d
+        return n * f * f + 0.984375
     return f
 
 
+class _RadText(str):
+    """Text being typed (typewriter keyframes): mixes by the length of the common prefix."""
+
+
 def _rad_mix(prop, a, b, f, rgb):
-    """Value of property *prop* between a (f = 0) and b (f = 1); rgb(colour) -> (r, g, b)."""
+    """Value of property *prop* between a (f = 0) and b (f = 1); rgb(colour) -> (r, g, b).
+    Numbers follow f beyond 1 (back / elastic easings overshoot); colours and text stop at b."""
     if f <= 0:
         return a
-    if f >= 1:
-        return b
     if prop in _RAD_COLOR_PROPS:
+        if f >= 1:
+            return b
         ca, cb = rgb(a), rgb(b)
         if ca is None or cb is None:
             return a
         return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(x + (y - x) * f)))) for x, y in zip(ca, cb))
     if isinstance(a, bool) or isinstance(b, bool):
-        return a
+        return b if f >= 1 else a
+    if isinstance(a, _RadText) or isinstance(b, _RadText):
+        sa, sb = str(a or ""), str(b or "")
+        if sa.startswith(sb) or sb.startswith(sa):
+            longer = sa if len(sa) > len(sb) else sb
+            n = len(sa) + (len(sb) - len(sa)) * min(f, 1.0)
+            return _RadText(longer[:max(0, int(round(n)))])
+        return b if f >= 1 else a
     try:
         x, y = float(a), float(b)
     except (TypeError, ValueError):
-        return a                                   # Text...: discrete keyframes
+        return b if f >= 1 else a                  # Text...: discrete keyframes
     v = x + (y - x) * f
     return int(round(v)) if prop in _RAD_INT_PROPS else v
+
+
+def _rad_resolve(prop, v, start, ref=None):
+    """A keyframe value made absolute against *start* (the value when the animation starts):
+    {"d": n} start + n, {"m": k} start * k, {"of": "Width", "f": x} start + x * start Width,
+    {"reveal": 0..1} the start text up to that fraction, "$parent" the parent's background colour;
+    ref(prop) = start value of another property of the same control (ref("$parent") = parent colour)."""
+    if isinstance(v, str) and v == "$parent":
+        c = ref("$parent") if ref is not None else None
+        return c if c else start
+    if not isinstance(v, dict):
+        return v
+    if "reveal" in v:
+        s = "" if start is None else str(start)
+        try:
+            f = max(0.0, min(1.0, float(v["reveal"])))
+        except (TypeError, ValueError):
+            f = 1.0
+        return _RadText(s[:int(round(len(s) * f))])
+    if isinstance(start, bool) or start is None:
+        return start
+    try:
+        x = float(start)
+    except (TypeError, ValueError):
+        return start                               # colours / text: relative keys keep the start value
+    try:
+        val = x * float(v.get("m", 1)) + float(v.get("d", 0))
+        if v.get("of"):
+            other = ref(str(v["of"])) if ref is not None else None
+            val += float(v.get("f", 0)) * float(other if other is not None else 0)
+    except (TypeError, ValueError):
+        return start
+    if prop in _RAD_INT_PROPS:
+        return int(round(val))
+    return max(0.0, min(1.0, val)) if prop == "Opacity" else val
+
+
+def _rad_resolve_keys(prop, keys, start, ref=None):
+    """Keyframes [(ms, value, ease)] with relative values made absolute (see _rad_resolve)."""
+    return [(k[0], _rad_resolve(prop, k[1], start, ref)) + tuple(k[2:]) for k in keys]
+
+
+def _rad_has_relative(keys):
+    return any(isinstance(k[1], dict) or (isinstance(k[1], str) and k[1] == "$parent") for k in keys)
 
 
 def _rad_value_at(prop, keys, t, start, rgb):
@@ -288,6 +369,8 @@ TK_IO = r'''
 
 class _RadIO:
     """Reads / writes neutral properties of the Tk widgets (visual states, storyboards, bindings)."""
+    vis_hook = None         # animations: callable(name, visible) -> True when it handles the change
+    quiet = 0               # > 0 while the animations write (no show / hide hooks)
     GEO = {"Left": "x", "Top": "y", "Width": "width", "Height": "height"}
     REL = {"Left": "relx", "Top": "rely", "Width": "relwidth", "Height": "relheight"}
 
@@ -383,6 +466,9 @@ class _RadIO:
     def set(self, name, prop, v):
         if v is None:
             return
+        if prop == "Visible" and name and not self.quiet and self.vis_hook is not None \
+                and self.vis_hook(name, bool(v)):
+            return                                  # an "On show" / "On hide" animation takes over
         try:
             w = self.w(name)
             if not name:
@@ -491,6 +577,31 @@ class _RadIO:
     def later(self, ms, fn):
         self.o.root.after(int(ms), fn)
 
+    def bind(self, name, event, fn):
+        """Animation triggers: event "click" / "enter" / "leave" of a control ("" = the form) calls fn()."""
+        w = self.w(name)
+        if not name:
+            client = self.o.__dict__.get("_client")
+            w = client if client is not None else w
+        seq = {"click": "<Button-1>", "enter": "<Enter>", "leave": "<Leave>"}[event]
+
+        def call(e):
+            if not name and e.widget is not w:      # the form itself, not one of its controls
+                return
+            fn()
+        w.bind(seq, call, add="+")
+
+    def parent_bg(self, name):
+        """Background colour of the control's container (fades without transparency blend into it)."""
+        try:
+            m = self.w(name).master
+            try:
+                return str(m.cget("bg"))
+            except tk.TclError:
+                return str(ttk.Style().lookup(m.winfo_class(), "background")) or None
+        except (tk.TclError, AttributeError):
+            return None
+
     def on_select(self, name, fn):
         w = self.w(name)
         if isinstance(w, tk.Listbox):
@@ -547,8 +658,33 @@ class _RadStateEvents(QObject):
         return False
 
 
+class _RadFxEvents(QObject):
+    """Click / mouse enter / leave of one widget starts an animation (Animations window triggers)."""
+
+    def __init__(self, widget, event, fn):
+        super().__init__(widget)
+        self.w, self.fn = widget, fn
+        self.t = {"click": QEvent.Type.MouseButtonRelease, "enter": QEvent.Type.Enter,
+                  "leave": QEvent.Type.Leave}[event]
+        widget.installEventFilter(self)
+
+    def eventFilter(self, obj, ev):
+        if obj is self.w and ev.type() == self.t:
+            inside = True
+            if self.t == QEvent.Type.MouseButtonRelease:
+                try:
+                    inside = self.w.rect().contains(ev.position().toPoint())
+                except AttributeError:
+                    pass
+            if inside:
+                self.fn()
+        return False
+
+
 class _RadIO:
     """Reads / writes neutral properties of the Qt widgets (visual states, storyboards, bindings)."""
+    vis_hook = None         # animations: callable(name, visible) -> True when it handles the change
+    quiet = 0               # > 0 while the animations write (no show / hide hooks)
 
     def __init__(self, owner):
         self.o = owner
@@ -638,6 +774,9 @@ class _RadIO:
     def set(self, name, prop, v):
         if v is None:
             return
+        if prop == "Visible" and name and not self.quiet and self.vis_hook is not None \
+                and self.vis_hook(name, bool(v)):
+            return                                  # an "On show" / "On hide" animation takes over
         try:
             w = self.w(name)
             if prop == "Text":
@@ -741,6 +880,18 @@ class _RadIO:
     def later(self, ms, fn):
         QTimer.singleShot(int(ms), self.o, fn)
 
+    def bind(self, name, event, fn):
+        """Animation triggers: event "click" / "enter" / "leave" of a control ("" = the form) calls fn()."""
+        self._events.append(_RadFxEvents(self.w(name), event, fn))
+
+    def parent_bg(self, name):
+        try:
+            w = self.w(name)
+            host = w.parentWidget() or w
+            return host.palette().color(host.backgroundRole()).name()
+        except (AttributeError, RuntimeError):
+            return None
+
     def on_select(self, name, fn):
         w = self.w(name)
         sig = w.currentRowChanged if isinstance(w, QListWidget) else w.currentIndexChanged
@@ -784,13 +935,17 @@ def python_blend(form, toolkit: str) -> dict | None:
     has_states = bool(ctrl_states or fst)
     sbs = timeline.storyboards_for_code(form)
     sources, binds = databinding.for_code(form)
-    if not (has_states or sbs or sources):
+    fx = _fx_plan(form, toolkit)
+    if not (has_states or sbs or sources or fx):
         return None
     runtime = COMMON_RT
     if has_states:
         runtime += VSM_RT
-    if sbs:
+    if sbs or fx:
         runtime += timeline.STORYBOARD_RT
+    if fx:
+        from ..motion import presets as motion_presets, runtime_py
+        runtime += motion_presets.PRESETS_RT + runtime_py.FX_RT
     if sources:
         runtime += databinding.DATA_RT
     runtime += TK_IO if toolkit == "tk" else QT_IO
@@ -811,7 +966,28 @@ def python_blend(form, toolkit: str) -> dict | None:
         if sb["autostart"]:
             after.append(I + (f"self.root.after(0, self.{sb['name']}.Begin)" if toolkit == "tk"
                               else f"QTimer.singleShot(0, self.{sb['name']}.Begin)"))
+    if fx:                  # Animations window (radide/motion): presets, triggers, Animate() from code
+        from ..motion import runtime_py
+        sbs_fx = [{k: sb[k] for k in ("name", "fx", "target", "tracks", "repeat", "count", "autoreverse",
+                                      "delayMs", "restore")} for sb in fx["storyboards"]]
+        init.append(I + f"self._fx = _RadFx(self, self._rad, {_lit(sbs_fx)}, {_lit(fx['triggers'])}, "
+                        f"reduced={fx['reduced_motion']!r}, alpha={toolkit != 'tk'!r})")
+        after.append(I + ("self.root.after(0, self._fx.start)" if toolkit == "tk"
+                          else "QTimer.singleShot(0, self._fx.start)"))
+        methods += runtime_py.FX_METHODS
     return {"runtime": runtime, "init": init, "after_load": after, "methods": methods}
+
+
+def _fx_plan(form, toolkit: str) -> dict | None:
+    """motion.expand() of the form's animations for python-tk / python-qt, or None when it has none
+    (a form with only ``extra["motion"]`` still gets the runtime, for Animate() from code)."""
+    if not (form.extra.get("animations") or form.extra.get("motion")):
+        return None
+    try:
+        from ..motion.expand import expand
+        return expand(form, "py" if toolkit == "tk" else "qt")
+    except Exception:  # noqa: BLE001 - a broken animation list must never break code generation
+        return None
 
 
 VSM_METHODS = [
@@ -877,7 +1053,7 @@ class BlendPreview(QObject):
             props.update(overrides(self.doc.form, ctrl, self.state))
         if self.timeline is not None:
             sb, ms = self.timeline
-            props.update(timeline.props_at(sb, ctrl.name, ms, props))
+            props.update(timeline.props_at(sb, ctrl.name, ms, props, self._parent_bg(ctrl)))
         return props
 
     def design_props(self, ctrl) -> dict:
@@ -895,7 +1071,8 @@ class BlendPreview(QObject):
         if self.timeline is not None:
             sb, ms = self.timeline
             if sb is not None:
-                props.update(timeline.props_at(sb, "" if ctrl is None else ctrl.name, ms, props))
+                props.update(timeline.props_at(sb, "" if ctrl is None else ctrl.name, ms, props,
+                                               self._parent_bg(ctrl)))
         for k in ("Left", "Top", "Width", "Height"):
             if k in props:
                 try:
@@ -903,6 +1080,14 @@ class BlendPreview(QObject):
                 except (TypeError, ValueError):
                     props[k] = base.get(k, 0)
         return props
+
+    def _parent_bg(self, ctrl):
+        """Background colour of ctrl's container (design-time value of "$parent" keyframes)."""
+        if ctrl is None:
+            return None
+        form = self.doc.form
+        host = form.find(ctrl.parent) if ctrl.parent else None
+        return (host.props if host is not None else form.props).get("BackColor") or None
 
     def apply(self, ctrl) -> None:
         from ..model import Control

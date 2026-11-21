@@ -553,3 +553,46 @@ radide/monaco_editor.py, radide/web/editor.html, radide/lsp.py, radide/lsp_serve
 any language may use: `MonacoEditor.plugin_overlays`, `plugin.monaco_language(path)` (full Monarch grammar via
 `radRegisterMonarch`), completion items with `doc` / `insert` / `snippet` / `sort` / `edits`, and dict calltips
 (docs/ASSEMBLY.md, "Editor intelligence").
+
+### 10.8 Foldable devices and TwoPane (owner: foldables - radide/devices.py, radide/mobile/{controls,frame,render}.py, features/mobile.py AVD helpers)
+- **Shared geometry** `radide/devices.py` (pure, no Qt): `Device` (+ `fold` book|flip|dual, `fold_axis` in
+  portrait, `hinge` dp - 0 = seamless crease, `cover` (w, h) | None, `postures`, `avd` profile), `DEVICES`
+  (the 5 original ids kept + iPhone 15 Pro Max, Galaxy S20, iPad mini, `galaxy_z_fold6`, `galaxy_z_flip6`,
+  `pixel_fold`, `pixel_9_pro_fold`, `surface_duo2`; dp approximate), `screen_size / safe_insets /
+  safe_area_size(device, orientation, posture="Flat")` (Folded = cover screen), `fold_axis`,
+  `hinge_screen_rect` (screen coords), `hinge_rect(device, orientation, posture) -> (x, y, w, h) | None` in
+  **safe-area coords** (= form client area), `is_separating` (dual hinge, or HalfOpened), `span` (single|dual),
+  `segments` (CSS viewport segments), `display_features` (Flutter `MediaQuery.displayFeatures`:
+  `{"type": "hinge"|"fold", "bounds": [x, y, w, h], "state": "postureFlat"|"postureHalfOpened"}`), `two_pane()`,
+  `env_state()` (RADIDE_POSTURE / RADIDE_SPAN / RADIDE_HINGE), `device_rows()`. `radide.mobile.controls`
+  re-exports all of it (old imports keep working).
+- **Form property** `Posture` = `Flat | HalfOpened | Folded` (default Flat), written / shown only when `Device` is
+  a foldable (`form_prop_defs`); `posture_key()` gives the runtime spelling `flat | half-opened | folded`
+  (variant `when.posture`, RADIDE_POSTURE). Width / Height follow Device + Orientation + Posture.
+- **Designer**: DeviceBar Flat / Half-open / Folded buttons; hinge drawing (dual = opaque bezel band, Flat
+  fold = dashed crease, HalfOpened = crease + shaded upper / right half + "Hinge" tag); controls across a
+  separating hinge get a red dashed outline and an Error List warning ("Controls cross the hinge: ...",
+  `mobile.controls.hinge_conflicts(form, device=None, orientation=None, posture=None)`; AppBar / BottomNav /
+  MTabBar / Drawer / TwoPane and containers are allowed to span). `PhoneChrome.preview(device, orientation,
+  posture)` draws another device without touching the form (no args = back to the form's own); the form's
+  Width / Height for that preview come from `DesignerView.form_props()` (layout variants, slice C).
+- **TwoPane** (mobile Toolbox, container made in code): props `PaneMode` Auto|Horizontal|Vertical, `Ratio`
+  0.5 (float), `SinglePane` Start|End, `HingeAware` True; event `PaneModeChanged` (e.Mode). Its **first two
+  child controls** are the panes (put a Column / Stack / Panel in each). Split rule = `devices.two_pane(w, h,
+  mode, ratio, single, hinge_in_box, hinge_aware)`:
+  1. HingeAware and the hinge band lies inside the box: vertical band -> side by side, horizontal band ->
+     top / bottom, panes end exactly at the band edges (Auto, or the matching explicit mode);
+  2. else Auto: width >= 600 dp -> side by side at Ratio, narrower -> `single` (only SinglePane, full box);
+  3. Horizontal / Vertical: always two panes at Ratio.
+  At design time the hidden pane of single mode is parked just right of the box (clipped). **Runtimes / code
+  generators** (python-tk / python-qt / vbrun / bridges = slice C; Flutter, Kivy, Expo, Ring = slice D) must use
+  the same rule: desktop toolkits = two placed frames, hinge from `devices.env_state()["hinge"]` (RADIDE_HINGE
+  in window coords) else Ratio; Flutter = `RadTwoPane` (DisplayFeatureSubScreen, Ratio fallback); targets
+  without display features use the Ratio / single rule.
+- **Emulator**: `features/mobile.py` `foldable_avd(name="RADIDE_Fold")` creates (never modifies / deletes other
+  AVDs) an AVD from the first available profile of `devices.FOLDABLE_AVD_PROFILES` (pixel_9_pro_fold,
+  pixel_fold, 7.6in Foldable ...) and the newest installed system image for this CPU (Build > Mobile App >
+  Create Foldable Emulator); `set_posture(serial, posture)` uses `cmd device_state state <id>` (ids read from
+  `print-states`, they vary by image; fallback `adb emu fold|unfold`) and verifies with `print-state`.
+- **SuperPreview** foldable presets (`Preset.device / posture / segments`, `preset_segments()`): Fold6 open /
+  cover, Pixel Fold, Flip6 (flat, half-open dual segments), Surface Duo 2 spanned (dual segments).

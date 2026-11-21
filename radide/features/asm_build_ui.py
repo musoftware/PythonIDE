@@ -108,6 +108,7 @@ class ProgramInput(QWidget):
         lay.setContentsMargins(4, 2, 4, 2)
         lay.addWidget(QLabel("Input:"))
         self.edit = QLineEdit()
+        self.edit.setMinimumWidth(240)
         self.edit.setPlaceholderText("Type a line for the running program and press Enter")
         self.edit.returnPressed.connect(self.send)
         lay.addWidget(self.edit, 1)
@@ -137,8 +138,13 @@ class ProgramInput(QWidget):
 
     def end_input(self) -> None:
         s = self._session()
-        proc = getattr(s, "proc", None) if s is not None else None
-        if proc is not None:
+        if s is None:
+            return
+        if callable(getattr(s, "end_input", None)):      # F5: the program's stdin pipe, never gdb's own stdin
+            s.end_input()
+            return
+        proc = getattr(s, "proc", None)
+        if proc is not None and getattr(s, "inner", None) is None:
             proc.closeWriteChannel()
 
 
@@ -149,6 +155,9 @@ def _input_dock(win) -> QDockWidget:
         dock.setObjectName("Program Input")
         dock.setWidget(ProgramInput(win))
         win.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+        out = getattr(win, "dock_output", None)
+        if out is not None and not out.isFloating():      # a full-width row under the Output / Memory tabs
+            win.splitDockWidget(out, dock, Qt.Orientation.Vertical)
         dock.hide()
         win.dock_program_input = dock
     return dock
@@ -173,7 +182,7 @@ def _attach_session(win, s, plugin, debug: bool) -> None:
         external = settings_for(project, plugin.id).get("console") == "external"
     except Exception:  # noqa: BLE001
         external = False
-    if console and not debug and not external:
+    if console and not external and (not debug or callable(getattr(s, "end_input", None))):
         dock = _input_dock(win)
         dock.show()
         dock.raise_()

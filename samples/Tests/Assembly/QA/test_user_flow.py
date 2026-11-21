@@ -92,6 +92,9 @@ def window():
     if _WIN:
         return _WIN[0]
     from radide.app import MainWindow
+    if LANG:                                  # like radide/__main__.py does with the saved language
+        from radide import i18n
+        i18n.set_language(app, LANG)
     w = MainWindow()
     w.resize(1500, 950)
     w.show()
@@ -298,16 +301,16 @@ def p_debug():
         mv.editor.set_breakpoints(set())
         w.session.set_breakpoint("main.asm", bp + 1, False)
         w.session.cont()
+    # the template reads a number with scanf: under F5 its stdin is the Program Input bar too
+    dock = getattr(w, "dock_program_input", None)
+    check("debug: Program Input bar shown under F5", dock is not None and dock.isVisible())
+    wait(lambda: "Enter a number" in w.output.toPlainText(), 20)
+    if dock is not None:
+        dock.widget().edit.setText("7")
+        dock.widget().send()
     ended = wait(lambda: w.session is None, 25)
-    print("   F5 ended without input:", ended, "| output:", w.output.toPlainText()[-400:].replace("\n", " | "))
-    if not ended:
-        # the template reads a number with scanf: under F5 stdin comes from the Program Input bar too
-        dock = getattr(w, "dock_program_input", None)
-        if dock is not None and dock.isVisible():
-            dock.widget().edit.setText("7")
-            dock.widget().send()
-        ended = wait(lambda: w.session is None, 20)
-    check("debug: program runs to the end after Continue (stdin answered)", ended, w.output.toPlainText()[-600:])
+    out = w.output.toPlainText()
+    check("debug: program read 7 from the bar under F5 and ended", ended and "7 squared is 49" in out, out[-600:])
     if not ended:
         w.stop_project()
         wait(lambda: w.session is None, 15)
@@ -340,13 +343,33 @@ def p_cdebug():
           out[-600:])
     w.stop_project()
     wait(lambda: w.session is None, 20)
+    # a statement in Form1_Load with a breakpoint (F5 attaches gdb before the Load event runs)
+    code.write_text(code.read_text(encoding="utf-8").replace(
+        "    /* runs when the form is shown */", "    /* runs when the form is shown */\n    rad_set(\"Form1\", \"Text\", \"QA\");"),
+        encoding="utf-8")
+    src = code.read_text(encoding="utf-8").splitlines()
+    bp = next(i for i, ln in enumerate(src) if "rad_set(" in ln)
+    w.open_module("Form1.c") if "Form1.c" in getattr(w.project, "modules", []) else w.open_code("Form1") \
+        if hasattr(w, "open_code") else None
+    pump(2)
+    ed = (w.modviews.get("Form1.c") or w.codeviews.get("Form1"))
+    if ed is not None:
+        ed.editor.setText(code.read_text(encoding="utf-8"))
+        ed.editor.set_breakpoints({bp})
+    else:
+        w.breakpoints["Form1.c"] = {bp}
     w.output.clear()
     w.run_project(debug=True)
-    ok = wait(lambda: w.session is not None and ("attached" in w.output.toPlainText().lower()
-                                                  or getattr(w.session, "running", lambda: False)()), 180)
-    pump(6)
+    ok = wait(lambda: stops or w.session is None, 180)
     out = w.output.toPlainText()
-    check("cdebug: C project F5 starts under the debugger (regression)", ok and "Traceback" not in out, out[-700:])
+    check("cdebug: C project F5 stops on the breakpoint in Form1_Load (regression)",
+          ok and stops and Path(stops[-1].file).name == "Form1.c" and stops[-1].line == bp + 1,
+          (stops and (stops[-1].file, stops[-1].line)) or out[-700:])
+    hub = getattr(w, "native_debug", None)
+    if stops and hub is not None:
+        hub.docks["registers"].show()
+        rv = hub.views["registers"]
+        check("cdebug: Registers window works for C too", wait(lambda: "rip" in rv.values, 15))
     w.stop_project()
     wait(lambda: w.session is None, 20)
     w._on_stopped = orig
@@ -436,7 +459,8 @@ def p_look():
         hub.docks["disassembly"].show()
     pump(1)
     shot(w, f"look_{LANG or 'en'}_dark")
-    menus = [a.text() for a in w.menuBar().actions()]
+    from radide import i18n
+    menus = [i18n.shown(a) for a in w.menuBar().actions()]
     if LANG == "ar":
         check("look: Arabic menus", any(any("\u0600" <= ch <= "\u06ff" for ch in t) for t in menus), menus)
         texts = []
@@ -444,20 +468,51 @@ def p_look():
             m = a.menu()
             if m is not None:
                 m.aboutToShow.emit()
-                texts += [x.text() for x in m.actions()]
+                texts += [i18n.shown(x) for x in m.actions()]
                 for x in m.actions():
                     if x.menu() is not None:
                         x.menu().aboutToShow.emit()
-                        texts += [y.text() for y in x.menu().actions()]
+                        texts += [i18n.shown(y) for y in x.menu().actions()]
         asm_en = [t for t in texts if any(k in t for k in ("Assembly", "Registers", "Disassembly", "Memory 1",
-                                                         "Instruction", "8086"))]
+                                                         "Instruction", "8086"))
+                  and not any("؀" <= ch <= "ۿ" for ch in t)]
         check("look: assembly menu entries are translated", not asm_en, asm_en)
     if hub is not None:
         shot(hub.docks["registers"], f"look_{LANG or 'en'}_registers")
 
 
+def p_tutor():
+    """Tutorials view: an 'asm run' block of the Assembly course runs with "جرّبه" (try it)."""
+    w = window()
+    from radide.features import tutorials as TU
+    from radide import tutorials as T
+    course = next(c for c in T.courses() if c.id == "assembly")
+    found = None
+    for les in course.lessons:
+        panel = TU.show_tutorials(w, "assembly", les.id)
+        pump(1)
+        for n, b in panel.blocks.items():
+            if b.lang == "asm" and not b.gui and b.role in ("run", "example", "plain", "solution")                     and not b.reads_stdin() and "run" in b.info.split():
+                found = (les.id, n)
+                break
+        if found:
+            break
+    if not check("tutor: a runnable 'asm run' block exists", found):
+        return
+    shot(w, "tutor_lesson")
+    w.output.clear()
+    ok = panel.try_block(found[1])
+    check(f"tutor: جرّبه opens the block of {found[0]} as an asm-nasm project", ok and w.project is not None
+          and w.project.language == "asm-nasm", w.project and w.project.language)
+    wait(lambda: w.session is not None, 10)
+    wait(lambda: w.session is None, 180)
+    out = w.output.toPlainText()
+    check("tutor: the block builds and runs", "Build succeeded" in out and "exited with code 0" in out, out[-500:])
+
+
 PHASES = {"newproj": p_newproj, "forms": p_forms, "errors": p_errors, "intel": p_intel, "debug": p_debug,
-          "cdebug": p_cdebug, "emu": p_emu, "help": p_help, "regress": p_regress, "look": p_look}
+          "cdebug": p_cdebug, "emu": p_emu, "help": p_help, "regress": p_regress, "look": p_look,
+          "tutor": p_tutor}
 
 if __name__ == "__main__":
     chosen = sys.argv[1:] or list(PHASES)

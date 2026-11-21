@@ -27,7 +27,7 @@ M3 = {
 }
 # classic controls drawn the Material way when they sit on a phone form
 MATERIAL_CLASSIC = ("Button", "Label", "TextBox", "CheckBox", "RadioButton", "LinkLabel")
-LAYOUT_TAG = {"Column": "Column ↓", "Row": "Row →", "Stack": "Stack ⧉"}
+LAYOUT_TAG = {"Column": "Column ↓", "Row": "Row →", "Stack": "Stack ⧉", "TwoPane": "TwoPane ◫"}
 
 
 def in_phone(widget: QWidget | None) -> bool:
@@ -404,6 +404,35 @@ class MobilePreview(QWidget):
         p.fillRect(box, QColor(103, 80, 164, 200))
         self._text(p, box, tag, "#FFFFFF", f, Qt.AlignmentFlag.AlignCenter)
 
+    def _paint_TwoPane(self, p, r):
+        """Dashed box, the split (hinge or Ratio) and which pane a single screen shows."""
+        self._paint_layout(p, r)
+        form = self.form()
+        res = (form.__dict__.get("_rad_two_pane") or {}).get(self.props.get("Name")) if form is not None else None
+        if not res:
+            return
+        p.setPen(QPen(QColor(103, 80, 164, 170), 1, Qt.PenStyle.DashDotLine))
+        if res["mode"] == "single":
+            tag = f"1 pane: {'End' if res.get('shown') == 1 else 'Start'}"
+        else:
+            a, b = res["panes"][0], res["panes"][1]
+            if res["mode"] == "horizontal":
+                x0, x1 = a[0] + a[2], b[0]
+                p.drawLine(QPointF(x0 + 0.5, r.top()), QPointF(x0 + 0.5, r.bottom()))
+                if x1 != x0:
+                    p.drawLine(QPointF(x1 - 0.5, r.top()), QPointF(x1 - 0.5, r.bottom()))
+            else:
+                y0, y1 = a[1] + a[3], b[1]
+                p.drawLine(QPointF(r.left(), y0 + 0.5), QPointF(r.right(), y0 + 0.5))
+                if y1 != y0:
+                    p.drawLine(QPointF(r.left(), y1 - 0.5), QPointF(r.right(), y1 - 0.5))
+            tag = ("2 panes at hinge" if res.get("split") == "hinge" else "2 panes") +                 (" ↔" if res["mode"] == "horizontal" else " ↕")
+        f = QFont("Segoe UI", 7)
+        tw = QFontMetrics(f).horizontalAdvance(tag) + 8
+        box = QRectF(r.right() - tw, r.bottom() - 13, tw, 13)
+        p.fillRect(box, QColor(103, 80, 164, 150))
+        self._text(p, box, tag, "#FFFFFF", f, Qt.AlignmentFlag.AlignCenter)
+
     # --- classic controls on a phone form --------------------------------
     def _paint_Button(self, p, r):
         body = r.adjusted(0.5, 0.5, -0.5, -0.5)
@@ -527,6 +556,9 @@ def mobile_tool_icon(type_name: str, color: str = "#7A62C9") -> QIcon:
         if type_name == "Column":
             for y in (4, 8.5, 13):
                 p.drawRect(QRectF(4, y, 12, 3))
+        elif type_name == "TwoPane":
+            p.drawRect(QRectF(4, 4, 5, 12))
+            p.drawRect(QRectF(11, 4, 5, 12))
         elif type_name == "Row":
             for x in (4, 8.5, 13):
                 p.drawRect(QRectF(x, 4, 3, 12))

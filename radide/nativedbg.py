@@ -849,7 +849,7 @@ class AsmDapSession(_AsmMixin, DapSession):
     """gdb -i dap that launches an assembly program (see the module doc)."""
 
     def __init__(self, exe, args, cwd, env, breakpoints, linemap: AsmLineMap | None = None,
-                 stop_at_entry: bool | None = None, gdb: str = "", parent=None):
+                 stop_at_entry: bool | None = None, gdb: str = "", parent=None, stdin_pipe: bool = False):
         from .bridgedebug import gdb_env
         gdb = gdb or find_gdb()
         env = {**(env or {}), **(gdb_env(gdb) if gdb else {})}
@@ -857,9 +857,70 @@ class AsmDapSession(_AsmMixin, DapSession):
         self.argv = [gdb, "-i", "dap"] if gdb else None
         self.launch_args["stopOnEntry"] = True
         self.break_on_exception = False
+        self._stdin_server = self._stdin_sock = None
+        self._stdin_buf, self._stdin_eof = b"", False
+        if stdin_pipe and os.name == "nt":
+            self._open_stdin_pipe()
         self._asm_init(linemap, stop_at_entry)
         for note in self.linemap.notes:
             self.output.emit(f"[debugger] {note}\n")
+
+    # ------------------------------------------------------------ stdin (Program Input bar under F5)
+    def _open_stdin_pipe(self) -> None:
+        """The program's stdin is a named pipe (QLocalServer): gdb on Windows redirects ``<\\\\.\\pipe\\name``
+        itself when the arguments are given as one string, so a console program that reads input (scanf) can
+        be debugged and the Program Input bar feeds it - without the pipe it reads end-of-file at once."""
+        try:
+            from PyQt6.QtNetwork import QLocalServer
+        except ImportError:
+            return
+        name = f"radide-stdin-{os.getpid()}-{id(self):x}"
+        srv = QLocalServer(self)
+        QLocalServer.removeServer(name)
+        if not srv.listen(name):
+            return
+        self._stdin_server = srv
+        srv.newConnection.connect(self._stdin_connected)
+        args = subprocess.list2cmdline([str(a) for a in (self.launch_args.get("args") or [])])
+        self.launch_args["args"] = (args + " <" + srv.fullServerName()).strip()   # str: gdb keeps "<" as is
+        self.finished.connect(lambda *_a: self._close_stdin())
+
+    def _stdin_connected(self) -> None:
+        s = self._stdin_server.nextPendingConnection() if self._stdin_server is not None else None
+        if s is None or self._stdin_sock is not None:
+            return
+        self._stdin_sock = s
+        if self._stdin_buf:
+            s.write(self._stdin_buf)
+            s.flush()
+            self._stdin_buf = b""
+        if self._stdin_eof:
+            s.disconnectFromServer()
+
+    def send(self, text: str) -> None:
+        """A line for the program's stdin (the Program Input bar)."""
+        data = (text + "\n").encode("utf-8")
+        if self._stdin_sock is not None:
+            self._stdin_sock.write(data)
+            self._stdin_sock.flush()
+        else:
+            self._stdin_buf += data
+
+    def end_input(self) -> None:
+        """End of input (Ctrl+Z): the program's next read gets end-of-file."""
+        self._stdin_eof = True
+        if self._stdin_sock is not None:
+            self._stdin_sock.flush()
+            self._stdin_sock.disconnectFromServer()
+
+    def _close_stdin(self) -> None:
+        for o in (self._stdin_sock, self._stdin_server):
+            try:
+                if o is not None:
+                    o.close()
+            except RuntimeError:
+                pass
+        self._stdin_sock = self._stdin_server = None
 
     def _on_stopped(self, reason):
         if self._phase == "entry":                         # starti: hidden, continue to the breakpoints
@@ -927,7 +988,7 @@ def asm_sources(folder, files=None) -> list[Path]:
 
 
 def asm_debug_session(win, exe, args=(), cwd=None, env=None, sources=None, nasm_args=None,
-                      breakpoints=None, stop_at_entry: bool | None = None):
+                      breakpoints=None, stop_at_entry: bool | None = None, stdin_pipe: bool = False):
     """A ready (not started) debug session of an assembly program for the IDE (Session API).
 
     *sources*: the NASM files linked into *exe* (default: every .asm of the project folder);
@@ -940,7 +1001,7 @@ def asm_debug_session(win, exe, args=(), cwd=None, env=None, sources=None, nasm_
     srcs = list(sources) if sources is not None else asm_sources(folder)
     lm = AsmLineMap.build(exe, srcs, nasm_args)
     bps = breakpoints if breakpoints is not None else (win._all_breakpoints() if hasattr(win, "_all_breakpoints") else [])
-    return AsmDapSession(exe, list(args), folder, env, bps, lm, stop_at_entry, gdb, win)
+    return AsmDapSession(exe, list(args), folder, env, bps, lm, stop_at_entry, gdb, win, stdin_pipe=stdin_pipe)
 
 
 def asm_attach_dap(argv, attach_args, cwd, env, breakpoints, exe, sources=None, nasm_args=None, parent=None):
@@ -975,9 +1036,16 @@ def asm_console_session(win, plugin, spec, debug: bool, breakpoints=None):
     exe = Path(info.get("exe") or folder / ("_radapp" + EXE))
     env = {k: v for k, v in (spec.env or {}).items() if k.startswith(("RAD_", "PATH"))}
 
+    try:            # "console": "external" programs keep their own window; the others read the Program Input bar
+        pipe = (plugin.settings(project).get("console") or "ide") != "external"
+    except Exception:  # noqa: BLE001
+        pipe = True
+
     def factory():
-        return asm_debug_session(win, exe, [], folder, env or None, breakpoints=breakpoints)
-    return ChainSession(steps, factory, win)
+        return asm_debug_session(win, exe, [], folder, env or None, breakpoints=breakpoints, stdin_pipe=pipe)
+    chain = ChainSession(steps, factory, win)
+    chain.end_input = lambda: chain._fwd("end_input")
+    return chain
 
 
 def bridge_attach_dap(plugin, argv, attach_args, cwd, env, breakpoints, exe, parent=None):

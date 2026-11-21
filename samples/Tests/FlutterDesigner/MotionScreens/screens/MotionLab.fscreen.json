@@ -1,0 +1,588 @@
+{
+ "version": 1,
+ "name": "MotionLab",
+ "route": "/",
+ "theme": {
+  "seedColor": "#FF6750A4"
+ },
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Motion lab"
+      },
+      "anim": {
+       "type": "typewriter",
+       "durationMs": 900
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "SingleChildScrollView",
+    "props": {
+     "padding": {
+      "all": 20
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "Column",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.stretch"
+      },
+      "children": [
+       {
+        "id": "w6",
+        "type": "FadeTransition",
+        "props": {
+         "opacity": {
+          "$timeline": "intro",
+          "from": 0,
+          "to": 1,
+          "interval": [
+           0,
+           0.5
+          ],
+          "curve": "Curves.easeOut"
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w7",
+          "type": "Text",
+          "props": {
+           "data": "Welcome back",
+           "style": {
+            "fontSize": 28,
+            "fontWeight": "FontWeight.bold"
+           }
+          }
+         }
+        }
+       },
+       {
+        "id": "w8",
+        "type": "SlideTransition",
+        "props": {
+         "position": {
+          "$timeline": "intro",
+          "from": [
+           0,
+           1
+          ],
+          "to": [
+           0,
+           0
+          ],
+          "interval": [
+           0.3,
+           1
+          ]
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w9",
+          "type": "Text",
+          "props": {
+           "data": "Tap, hover and press the cards below"
+          }
+         }
+        }
+       },
+       {
+        "id": "w10",
+        "type": "SizedBox",
+        "props": {
+         "height": 16
+        }
+       },
+       {
+        "id": "w11",
+        "type": "Card",
+        "slots": {
+         "child": {
+          "id": "w12",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w13",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.vibration"
+            }
+           },
+           "title": {
+            "id": "w14",
+            "type": "Text",
+            "props": {
+             "data": "Shake on tap"
+            }
+           }
+          }
+         }
+        },
+        "anim": {
+         "type": "shake",
+         "trigger": "tap",
+         "durationMs": 600
+        }
+       },
+       {
+        "id": "w15",
+        "type": "Card",
+        "slots": {
+         "child": {
+          "id": "w16",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w17",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.mouse"
+            }
+           },
+           "title": {
+            "id": "w18",
+            "type": "Text",
+            "props": {
+             "data": "Pulse on hover"
+            }
+           }
+          }
+         }
+        },
+        "anim": {
+         "type": "pulse",
+         "trigger": "hover",
+         "scale": 1.05,
+         "durationMs": 400
+        }
+       },
+       {
+        "id": "w19",
+        "type": "Card",
+        "slots": {
+         "child": {
+          "id": "w20",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w21",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.touch_app"
+            }
+           },
+           "title": {
+            "id": "w22",
+            "type": "Text",
+            "props": {
+             "data": "Swing on long press"
+            }
+           }
+          }
+         }
+        },
+        "anim": {
+         "type": "swing",
+         "trigger": "longPress",
+         "durationMs": 900
+        }
+       },
+       {
+        "id": "w23",
+        "type": "SizedBox",
+        "props": {
+         "height": 12
+        }
+       },
+       {
+        "id": "w24",
+        "type": "Row",
+        "props": {
+         "mainAxisAlignment": "MainAxisAlignment.spaceEvenly"
+        },
+        "children": [
+         {
+          "id": "w25",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.favorite",
+           "color": "Colors.red",
+           "size": 40
+          },
+          "anim": {
+           "type": "heartBeat",
+           "repeat": 0,
+           "durationMs": 1300
+          }
+         },
+         {
+          "id": "w26",
+          "type": "Icon",
+          "name": "spinner",
+          "props": {
+           "icon": "Icons.sync",
+           "size": 40
+          },
+          "anim": {
+           "type": "rotate",
+           "trigger": "manual",
+           "controller": "spinFx",
+           "durationMs": 800,
+           "curve": "Curves.easeInOut"
+          }
+         },
+         {
+          "id": "w27",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.star",
+           "color": "Colors.amber",
+           "size": 40
+          },
+          "anim": {
+           "type": "bounce",
+           "repeat": 3,
+           "durationMs": 700
+          }
+         }
+        ]
+       },
+       {
+        "id": "w28",
+        "type": "SizedBox",
+        "props": {
+         "height": 12
+        }
+       },
+       {
+        "id": "w29",
+        "type": "FilledButton",
+        "slots": {
+         "child": {
+          "id": "w30",
+          "type": "Text",
+          "props": {
+           "data": "Spin"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "play:spinFx"
+        }
+       },
+       {
+        "id": "w31",
+        "type": "SizedBox",
+        "props": {
+         "height": 12
+        }
+       },
+       {
+        "id": "w32",
+        "type": "Container",
+        "props": {
+         "height": 56,
+         "alignment": "Alignment.center",
+         "decoration": {
+          "color": "#FFE8DEF8",
+          "borderRadius": 12
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w33",
+          "type": "Text",
+          "props": {
+           "data": "Turns orange"
+          }
+         }
+        },
+        "anim": {
+         "type": "colorTo",
+         "color": "#FFFF9800",
+         "delayMs": 600,
+         "durationMs": 800,
+         "reverse": true
+        }
+       },
+       {
+        "id": "w34",
+        "type": "SizedBox",
+        "props": {
+         "height": 12
+        }
+       },
+       {
+        "id": "w35",
+        "type": "Container",
+        "props": {
+         "height": 72,
+         "alignment": "Alignment.center",
+         "decoration": {
+          "color": "#FF6750A4",
+          "borderRadius": 16
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w36",
+          "type": "Text",
+          "props": {
+           "data": "Keyframes",
+           "style": {
+            "color": "Colors.white",
+            "fontSize": 18
+           }
+          }
+         }
+        },
+        "anim": {
+         "type": "keyframes",
+         "durationMs": 1200,
+         "tracks": {
+          "opacity": [
+           [
+            0,
+            0
+           ],
+           [
+            300,
+            1,
+            "Curves.easeOut"
+           ]
+          ],
+          "offsetY": [
+           [
+            0,
+            40
+           ],
+           [
+            600,
+            0,
+            "Curves.easeOutBack"
+           ]
+          ],
+          "scale": [
+           [
+            0,
+            0.8
+           ],
+           [
+            600,
+            1.05
+           ],
+           [
+            900,
+            1
+           ]
+          ],
+          "rotation": [
+           [
+            0,
+            0
+           ],
+           [
+            600,
+            0.02
+           ],
+           [
+            1200,
+            0
+           ]
+          ],
+          "color": [
+           [
+            0,
+            "#FF6750A4"
+           ],
+           [
+            1200,
+            "#FF00BFA5"
+           ]
+          ]
+         }
+        }
+       },
+       {
+        "id": "w37",
+        "type": "SizedBox",
+        "props": {
+         "height": 16
+        }
+       },
+       {
+        "id": "w38",
+        "type": "OutlinedButton",
+        "slots": {
+         "child": {
+          "id": "w39",
+          "type": "Text",
+          "props": {
+           "data": "Show more"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "toggle:expanded"
+        }
+       },
+       {
+        "id": "w40",
+        "type": "AnimatedContainer",
+        "props": {
+         "duration": 400,
+         "curve": "Curves.easeInOut",
+         "height": {
+          "$when": {
+           "state": "expanded",
+           "on": 120,
+           "off": 48
+          }
+         },
+         "color": {
+          "$when": {
+           "state": "expanded",
+           "on": "#FFD0BCFF",
+           "off": "#FFF3EDF7"
+          }
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w41",
+          "type": "Center",
+          "slots": {
+           "child": {
+            "id": "w42",
+            "type": "Text",
+            "props": {
+             "data": "Grows with the state"
+            }
+           }
+          }
+         }
+        }
+       },
+       {
+        "id": "w43",
+        "type": "AnimatedCrossFade",
+        "props": {
+         "duration": 300,
+         "crossFadeState": {
+          "$when": {
+           "state": "expanded",
+           "on": "CrossFadeState.showSecond",
+           "off": "CrossFadeState.showFirst"
+          }
+         }
+        },
+        "slots": {
+         "firstChild": {
+          "id": "w44",
+          "type": "Text",
+          "props": {
+           "data": "Collapsed"
+          }
+         },
+         "secondChild": {
+          "id": "w45",
+          "type": "Text",
+          "props": {
+           "data": "Expanded - more details here"
+          }
+         }
+        }
+       },
+       {
+        "id": "w46",
+        "type": "Text",
+        "props": {
+         "data": "Fades in while expanded"
+        },
+        "anim": {
+         "type": "fadeIn",
+         "trigger": "state:expanded",
+         "durationMs": 300
+        }
+       },
+       {
+        "id": "w47",
+        "type": "SizedBox",
+        "props": {
+         "height": 16
+        }
+       },
+       {
+        "id": "w48",
+        "type": "TextButton",
+        "slots": {
+         "child": {
+          "id": "w49",
+          "type": "Text",
+          "props": {
+           "data": "Replay intro"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "play:intro"
+        }
+       },
+       {
+        "id": "w50",
+        "type": "ElevatedButton",
+        "slots": {
+         "child": {
+          "id": "w51",
+          "type": "Text",
+          "props": {
+           "data": "Open details"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "push:Details?transition=slideUp&ms=400"
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "state": [
+  {
+   "name": "expanded",
+   "type": "bool",
+   "init": false
+  }
+ ],
+ "timelines": [
+  {
+   "name": "intro",
+   "durationMs": 1200,
+   "autostart": true
+  }
+ ],
+ "transition": {
+  "type": "fade",
+  "durationMs": 250
+ }
+}

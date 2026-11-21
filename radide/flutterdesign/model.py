@@ -49,14 +49,21 @@ ENUMS: dict[str, list[str]] = {
                "fastOutSlowIn", "decelerate", "bounceOut", "elasticOut", "easeOutBack"],
     "Physics": ["BouncingScrollPhysics", "ClampingScrollPhysics", "NeverScrollableScrollPhysics",
                 "AlwaysScrollableScrollPhysics"],
+    "CrossFadeState": ["showFirst", "showSecond"],
+    "RadPaneMode": ["auto", "horizontal", "vertical"],
+    "RadPane": ["start", "end"],
 }
 ANIM_TYPES = ["fadeIn", "fadeInUp", "fadeInDown", "fadeInLeft", "fadeInRight", "slideUp", "slideDown",
-              "slideLeft", "slideRight", "scaleIn", "zoomIn", "bounceIn"]
+              "slideLeft", "slideRight", "scaleIn", "zoomIn", "bounceIn",
+              # attention seekers / text / colour / keyframes (flutterdesign/motion.py)
+              "shake", "pulse", "bounce", "flipX", "flipY", "rotate", "swing", "heartBeat", "typewriter",
+              "colorTo", "keyframes"]
 
 PROP_KINDS = {"string", "int", "double", "bool", "color", "enum", "edge_insets", "border_radius", "alignment",
               "icon", "offset", "duration", "string_list", "image", "gradient", "box_shadows", "border",
               "box_decoration", "text_style", "shape", "button_style", "input_decoration", "nav_items",
-              "constraints", "physics", "code"}
+              "constraints", "physics", "code",
+              "timeline", "timeline_offset"}    # Animation<double> / Animation<Offset> (explicit transitions)
 
 
 # ========================================================================================= catalog
@@ -504,6 +511,72 @@ _w("AnimatedOpacity", "Animation", "Animates the transparency of the child",
    _CHILD, template=T("AnimatedOpacity", {"opacity": 1.0, "duration": 300}))
 _w("AnimatedSwitcher", "Animation", "Cross-fades when the child changes",
    {"duration": P("duration", 300, req=True)}, _CHILD, template=T("AnimatedSwitcher", {"duration": 300}))
+_ANIM_DUR = {"duration": P("duration", 300, req=True), "curve": P("enum:Curves")}
+_w("AnimatedPadding", "Animation", "Padding that animates to a new value",
+   {"padding": P("edge_insets", {"all": 16}, req=True, group="Layout"), **_ANIM_DUR}, _CHILD,
+   template=T("AnimatedPadding", {"padding": {"all": 16}, "duration": 300}))
+_w("AnimatedAlign", "Animation", "Align that animates to a new alignment",
+   {"alignment": P("alignment", "Alignment.center", req=True, group="Layout"), "widthFactor": P("double"),
+    "heightFactor": P("double"), **_ANIM_DUR}, _CHILD,
+   template=T("AnimatedAlign", {"alignment": "Alignment.center", "duration": 300}))
+_w("AnimatedPositioned", "Animation", "Positioned (inside a Stack) that animates to a new place",
+   {"left": P("double", group="Layout"), "top": P("double", group="Layout"), "right": P("double", group="Layout"),
+    "bottom": P("double", group="Layout"), "width": P("double", group="Layout"),
+    "height": P("double", group="Layout"), **_ANIM_DUR}, _CHILD_REQ, parent=("Stack",),
+   template=T("AnimatedPositioned", {"left": 0, "top": 0, "duration": 300}))
+_w("AnimatedScale", "Animation", "Scales the child, animating changes",
+   {"scale": P("double", 1.0, req=True), "alignment": P("alignment"), **_ANIM_DUR}, _CHILD,
+   template=T("AnimatedScale", {"scale": 1.0, "duration": 300}))
+_w("AnimatedRotation", "Animation", "Rotates the child (turns), animating changes",
+   {"turns": P("double", 0.0, req=True, help="1 = one full turn"), "alignment": P("alignment"), **_ANIM_DUR},
+   _CHILD, template=T("AnimatedRotation", {"turns": 0.0, "duration": 300}))
+_w("AnimatedSlide", "Animation", "Moves the child by a fraction of its size, animating changes",
+   {"offset": P("offset", [0, 0], req=True, help="(1, 0) = one child width to the right"), **_ANIM_DUR},
+   _CHILD, template=T("AnimatedSlide", {"offset": [0, 0], "duration": 300}))
+_w("AnimatedSize", "Animation", "Animates its size when the child's size changes",
+   {"alignment": P("alignment"), **_ANIM_DUR}, _CHILD, template=T("AnimatedSize", {"duration": 300}))
+_w("AnimatedDefaultTextStyle", "Animation", "Text style for the texts inside, animating changes",
+   {"style": P("text_style", {"fontSize": 16}, req=True, group="Text"), "textAlign": P("enum:TextAlign"),
+    **_ANIM_DUR}, _CHILD_REQ,
+   template=T("AnimatedDefaultTextStyle", {"style": {"fontSize": 16}, "duration": 300},
+              {"child": _txt("Text")}))
+_w("AnimatedCrossFade", "Animation", "Cross-fades between two children (crossFadeState)",
+   {"crossFadeState": P("enum:CrossFadeState", "CrossFadeState.showFirst", req=True),
+    "duration": P("duration", 300, req=True), "firstCurve": P("enum:Curves"), "secondCurve": P("enum:Curves"),
+    "sizeCurve": P("enum:Curves")},
+   {"firstChild": S(required=True), "secondChild": S(required=True)},
+   template=T("AnimatedCrossFade", {"crossFadeState": "CrossFadeState.showFirst", "duration": 300},
+              {"firstChild": _txt("First"), "secondChild": _txt("Second")}))
+# explicit transitions: driven by a screen timeline ({"$timeline": "intro", ...})
+_w("FadeTransition", "Animation", "Fades the child with a screen timeline",
+   {"opacity": P("timeline", req=True, help='{"$timeline": "intro", "from": 0, "to": 1}')}, _CHILD,
+   template=T("FadeTransition", {"opacity": 1.0}))
+_w("SlideTransition", "Animation", "Moves the child (fractions of its size) with a screen timeline",
+   {"position": P("timeline_offset", req=True, help='{"$timeline": "intro", "from": [0, 1], "to": [0, 0]}')},
+   _CHILD, template=T("SlideTransition", {"position": [0, 0]}))
+_w("ScaleTransition", "Animation", "Scales the child with a screen timeline",
+   {"scale": P("timeline", req=True), "alignment": P("alignment")}, _CHILD,
+   template=T("ScaleTransition", {"scale": 1.0}))
+_w("RotationTransition", "Animation", "Rotates the child (turns) with a screen timeline",
+   {"turns": P("timeline", req=True), "alignment": P("alignment")}, _CHILD,
+   template=T("RotationTransition", {"turns": 0.0}))
+_w("SizeTransition", "Animation", "Reveals the child (size factor 0..1) with a screen timeline",
+   {"sizeFactor": P("timeline", req=True), "axis": P("enum:Axis", "Axis.vertical"),
+    "axisAlignment": P("double", 0.0)}, _CHILD, template=T("SizeTransition", {"sizeFactor": 1.0}))
+_w("Lottie", "Animation", "Lottie animation (assets/animations/*.json or a URL; package:lottie)",
+   {"name": P("string", "assets/animations/anim.json", pos=0, req=True, help="asset path / URL"),
+    "width": P("double", group="Layout"), "height": P("double", group="Layout"), "fit": P("enum:BoxFit"),
+    "repeat": P("bool"), "reverse": P("bool"), "animate": P("bool")},
+   ctors={"asset": CtorSpec(), "network": CtorSpec()}, default_ctor="asset", unnamed_ctor=False,
+   const_ctor=False, library="lottie",
+   template=T("Lottie", {"name": "assets/animations/anim.json", "width": 160, "height": 160}, ctor="asset"))
+_w("RiveAnimation", "Animation", "Rive animation (*.riv asset or URL; package:rive)",
+   {"name": P("string", "assets/animations/anim.riv", pos=0, req=True, help="asset path / URL"),
+    "artboard": P("string"), "animations": P("string_list"), "stateMachines": P("string_list"),
+    "fit": P("enum:BoxFit"), "alignment": P("alignment")},
+   ctors={"asset": CtorSpec(), "network": CtorSpec()}, default_ctor="asset", unnamed_ctor=False,
+   const_ctor=False, library="rive",
+   template=T("RiveAnimation", {"name": "assets/animations/anim.riv"}, ctor="asset"))
 
 # ---------------------------------------------------------------------------------------- Cupertino
 _w("CupertinoPageScaffold", "Cupertino", "iOS page with a navigation bar",
@@ -544,13 +617,25 @@ _w("Code", "Special", "Dart code the designer does not model (kept verbatim)",
    {"code": P("code", "const SizedBox()", req=True, help="a Dart expression; #{slot:name} = a designed child")},
    const_ctor=False, library="widgets", template=T("Code", {"code": "const SizedBox()"}))
 
+_w("RadTwoPane", "Layout", "Two panes side by side / stacked, split at a foldable's hinge (lib/radlayout.dart)",
+   {"paneMode": P("enum:RadPaneMode", "RadPaneMode.auto", group="Layout"),
+    "ratio": P("double", 0.5, group="Layout", help="share of the start pane without a hinge"),
+    "singlePane": P("enum:RadPane", "RadPane.start", group="Layout", help="pane shown on a narrow screen"),
+    "hingeAware": P("bool", True, group="Layout"), "minDualWidth": P("double", 600, group="Layout")},
+   {"start": S(required=True), "end": S(required=True)}, library="radlayout",
+   template=T("RadTwoPane", slots={"start": T("Center", slots={"child": _txt("List")}),
+                                   "end": T("Center", slots={"child": _txt("Details")})}))
+
 # widgets that live in package:flutter/widgets (no Material needed) - informational for the preview host
 for _t in ("SafeArea", "Container", "Padding", "Center", "Align", "Column", "Row", "Flex", "Wrap", "Stack",
            "Positioned", "Expanded", "Flexible", "Spacer", "SizedBox", "ConstrainedBox", "AspectRatio",
            "FractionallySizedBox", "FittedBox", "Transform", "Visibility", "IntrinsicHeight",
            "SingleChildScrollView", "ListView", "GridView", "PageView", "Text", "Icon", "Image", "Placeholder",
            "Form", "GestureDetector", "Opacity", "ClipRRect", "ClipOval", "Hero", "DecoratedBox", "RotatedBox",
-           "AnimatedContainer", "AnimatedOpacity", "AnimatedSwitcher", "FlutterLogo"):
+           "AnimatedContainer", "AnimatedOpacity", "AnimatedSwitcher", "FlutterLogo", "AnimatedPadding",
+           "AnimatedAlign", "AnimatedPositioned", "AnimatedScale", "AnimatedRotation", "AnimatedSlide",
+           "AnimatedSize", "AnimatedDefaultTextStyle", "AnimatedCrossFade", "FadeTransition",
+           "SlideTransition", "ScaleTransition", "RotationTransition", "SizeTransition"):
     CATALOG[_t].library = "widgets" if _t != "FlutterLogo" else "material"
 
 # the wrappers offered by "Wrap with" (designer context menu)
@@ -1019,6 +1104,8 @@ def validate(screen: Screen | dict) -> list[Issue]:
                 if not is_code(v) and t != "Code":
                     issues.append(Issue("warning", nid, f"{t} has no property {k!r} (use a $code value)"))
                 continue
+            if isinstance(v, dict) and ("$when" in v or "$timeline" in v):
+                continue                   # animated values: checked by motion.validate
             if ps.kind == "enum" and isinstance(v, str) and v not in ps.values:
                 issues.append(Issue("error", nid, f"{k}: {v!r} is not one of {ps.enum}"))
             if ps.kind == "color" and isinstance(v, str) and not (
@@ -1047,7 +1134,8 @@ def validate(screen: Screen | dict) -> list[Issue]:
             if ev not in rs.events:
                 issues.append(Issue("warning", nid, f"{t} has no event {ev!r}"))
         for ev, h in (n.get("events") or {}).items():
-            if h and not (h == "back" or h.startswith(("nav:", "replace:", "push:")) or _IDENT.match(h)):
+            if h and not (h == "back" or h.startswith(("nav:", "replace:", "push:")) or _IDENT.match(h)
+                          or _motion_handler(h)):
                 issues.append(Issue("error", nid, f"{ev}: bad handler {h!r}"))
         a = n.get("anim")
         if a and a.get("type") not in ANIM_TYPES:
@@ -1055,7 +1143,20 @@ def validate(screen: Screen | dict) -> list[Issue]:
         if parent is not None and spec.parent and parent.get("type") not in spec.parent \
                 and parent.get("type") != "Code":
             issues.append(Issue("warning", nid, f"{t} should be inside {' / '.join(spec.parent)}"))
+    try:                                   # motion (triggers, timelines, state) and per-size variants
+        from . import motion as _MO, variants_fd as _VF
+        issues += _MO.validate(scr) + _VF.validate(scr)
+    except ImportError:
+        pass
     return issues
+
+
+def _motion_handler(h: str) -> bool:
+    try:
+        from .motion import handler_ok
+    except ImportError:
+        return False
+    return handler_ok(h)
 
 
 # ======================================================================================= patches

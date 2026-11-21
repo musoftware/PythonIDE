@@ -92,6 +92,7 @@ File > Open Project.
 | Folder | Language / feature | What it tests | How to try it |
 |---|---|---|---|
 | [`Blend/Blend_Tk_StatesStoryboards`](Blend/Blend_Tk_StatesStoryboards/) | python-tk: Blend | Visual States (MouseOver/Pressed/Focused/Disabled + custom form state `Big`), two Storyboards (Storyboard1 on click, `Intro` autostart) and data binding (people.json -> ListBox/Label/NumericUpDown, cities.csv -> ComboBox). | Open Form1: View > States / Objects and Timeline / Data panels. F5: hover Button1 (red), press it (storyboard moves it), Button2 toggles the `Big` state. |
+| [`Motion/Motion_AnimationsUI`](Motion/Motion_AnimationsUI/) | python-tk: Animations window | Animation presets in `form.extra["animations"]`: slide-in on load, fade-in chained after it, shake on click; Animations dock (add / edit / preview / Preview all on load / Convert to Storyboard), designer menu Add Animation, Error List fallbacks. Test: `Motion/test_animations_ui.py`. | Open Form1, View > Animations, select Button1 > Preview; right-click a control > Add Animation. |
 | [`Blend/Blend_Qt_StatesStoryboards`](Blend/Blend_Qt_StatesStoryboards/) | python-qt: Blend | Same Blend form generated for python-qt (PySide6). | As above. |
 | [`Blend/Blend_Tk_DataBinding`](Blend/Blend_Tk_DataBinding/) | python-tk: Blend | Data source products.json (root `items`) bound to a ListBox, and a `Slide` storyboard. | Open Form1 > Data panel shows the sample data at design time; F5. |
 

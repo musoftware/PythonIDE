@@ -4,19 +4,28 @@
   form (plugin `is_mobile = True`, or a form with a `Device` property) it draws a phone / tablet around
   the design surface - bezel, status bar with clock / signal / battery, camera cut-out, gesture bar or
   home indicator and the safe-area outline - and shows the *device bar* (device preset + Portrait /
-  Landscape).  The form's Width / Height follow the device's safe area.
-* `layout_containers(form)` lays out the children of Column / Row / Stack controls (called from
+  Landscape, and Flat / Half-open / Folded for foldables).  The form's Width / Height follow the device's
+  safe area (Folded = the cover screen).  Foldables show their hinge: a dual-screen device an opaque
+  bezel band, a seamless fold a dashed crease, a half-opened fold the crease, a shaded half and a "Hinge"
+  tag; controls lying across a separating hinge get a red dashed outline (`hinge_conflicts`).
+* `PhoneChrome.preview(device, orientation, posture)` draws another device around the form without
+  changing the form's properties (layout variants preview a size this way); `preview()` ends it.
+* `layout_containers(form)` lays out the children of Column / Row / Stack / TwoPane controls (called from
   radide/layout.py:relayout, so the designer, undo and paste all keep them laid out); dragging a child
   inside its container reorders it (`place_in_flow`).
 """
 from __future__ import annotations
 
 from PyQt6.QtCore import QPointF, QRect, QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QToolButton, QWidget
 
-from .controls import (DEVICES, LAYOUT_TYPES, ORIENTATIONS, device, ensure_mobile_props, is_mobile_form,
-                       landscape, safe_area_size, safe_insets, screen_size, supported_controls)
+from .controls import (DEVICES, LAYOUT_TYPES, ORIENTATIONS, POSTURES, device, effective_posture,
+                       ensure_mobile_props, form_posture, hinge_conflicts, hinge_rect, hinge_screen_rect,
+                       is_foldable, is_mobile_form, landscape, safe_area_size, safe_insets, screen_size,
+                       supported_controls, two_pane)
+
+POSTURE_LABELS = {"Flat": "Flat", "HalfOpened": "Half-open", "Folded": "Folded"}
 
 BAR_H = 34          # device bar height
 GAP = 10
@@ -43,9 +52,11 @@ def _set(c, **values) -> bool:
 
 
 def layout_container(form, cont) -> list:
-    """Position the children of one Column / Row / Stack. Returns the controls that moved."""
+    """Position the children of one Column / Row / Stack / TwoPane. Returns the controls that moved."""
     if cont.type not in LAYOUT_TYPES:
         return []
+    if cont.type == "TwoPane":
+        return layout_two_pane(form, cont)
     p = cont.props
     pad = max(0, int(p.get("Padding", 0) or 0))
     gap = int(p.get("Spacing", 0) or 0)
@@ -94,8 +105,54 @@ def layout_container(form, cont) -> list:
     return changed
 
 
+def two_pane_split(form, cont) -> dict:
+    """radide.devices.two_pane() for a TwoPane control of *form*: the hinge of the form's foldable Device
+    (Posture / Orientation) is converted to the TwoPane's own coordinates."""
+    p = cont.props
+    cw, ch = int(p.get("Width", 0) or 0), int(p.get("Height", 0) or 0)
+    fp = getattr(form, "props", {}) or {}
+    hinge = None
+    if "Device" in fp:
+        h = hinge_rect(fp.get("Device"), fp.get("Orientation", "Portrait"), form_posture(fp))
+        if h is not None:
+            try:
+                ox, oy = form.client_origin(cont)
+            except (KeyError, TypeError, ValueError, AttributeError):
+                ox = oy = 0
+            hinge = (h[0] - ox, h[1] - oy, h[2], h[3])
+    hinge_aware = p.get("HingeAware", True)
+    if isinstance(hinge_aware, str):
+        hinge_aware = hinge_aware.strip().lower() not in ("false", "0", "no")
+    return two_pane(cw, ch, p.get("PaneMode", "Auto"), p.get("Ratio", 0.5), p.get("SinglePane", "Start"),
+                    hinge, bool(hinge_aware))
+
+
+def layout_two_pane(form, cont) -> list:
+    """TwoPane: its first two child controls become the panes (split at the hinge or at Ratio).  On a
+    single narrow screen the SinglePane child fills the TwoPane and the other one waits just outside it
+    (clipped, so it is hidden but keeps its size and contents)."""
+    res = two_pane_split(form, cont)
+    form.__dict__.setdefault("_rad_two_pane", {})[cont.name] = res
+    drag = _dragging(form)
+    kids = [k for k in form.children(cont.name) if not k.ctype.nonvisual][:2]
+    cw = int(cont.props.get("Width", 0) or 0)
+    changed = []
+    for i, k in enumerate(kids):
+        if id(k) in drag:
+            continue
+        if res["mode"] == "single":
+            x, y, w, h = res["panes"][0]
+            if i != res["shown"]:
+                x = cw + 8                       # outside the TwoPane: clipped away at design time
+        else:
+            x, y, w, h = res["panes"][i]
+        if _set(k, Left=x, Top=y, Width=max(8, w), Height=max(8, h)):
+            changed.append(k)
+    return changed
+
+
 def layout_containers(form) -> list:
-    """Lay out every Column / Row / Stack of *form*, outer containers first."""
+    """Lay out every Column / Row / Stack / TwoPane of *form*, outer containers first."""
     changed = []
     for c in form.ordered():
         if c.type in LAYOUT_TYPES:
@@ -154,12 +211,12 @@ def bezel(dev, orientation) -> tuple[int, int, int, int]:
     return b, b, b, b
 
 
-def phone_geometry(device_id, orientation):
+def phone_geometry(device_id, orientation, posture="Flat"):
     """(frame size, screen rect in frame coords, safe-area rect in frame coords) for a preset."""
     dev = device(device_id)
-    sw, sh = screen_size(device_id, orientation)
+    sw, sh = screen_size(device_id, orientation, posture)
     bl, bt, br, bb = bezel(dev, orientation)
-    il, it, ir, ib = safe_insets(device_id, orientation)
+    il, it, ir, ib = safe_insets(device_id, orientation, posture)
     screen = QRect(bl, bt, sw, sh)
     safe = QRect(bl + il, bt + it, sw - il - ir, sh - it - ib)
     return (sw + bl + br, sh + bt + bb), screen, safe
@@ -192,6 +249,21 @@ class DeviceBar(QWidget):
             b.clicked.connect(lambda _=False, o=o: chrome.set_orientation(o))
             lay.addWidget(b)
             self.buttons[o] = b
+        self.posture_label = QLabel("Posture:")
+        self.posture_label.setToolTip("How the foldable is held (form property Posture)")
+        lay.addWidget(self.posture_label)
+        self.posture_buttons = {}
+        for pst in POSTURES:
+            b = QToolButton()
+            b.setText(POSTURE_LABELS[pst])
+            b.setCheckable(True)
+            b.setAutoRaise(True)
+            b.setToolTip({"Flat": "Fully open (form property Posture = Flat)",
+                          "HalfOpened": "Half-open: tabletop / book posture, the hinge splits the screen",
+                          "Folded": "Folded: the cover screen"}[pst])
+            b.clicked.connect(lambda _=False, pst=pst: chrome.set_posture(pst))
+            lay.addWidget(b)
+            self.posture_buttons[pst] = b
         self.size_label = QLabel()
         lay.addWidget(self.size_label)
         lay.addStretch(1)
@@ -201,16 +273,24 @@ class DeviceBar(QWidget):
         except Exception:  # noqa: BLE001 - theme roles are cosmetic
             pass
 
-    def sync(self, props: dict) -> None:
+    def sync(self, props: dict, preview: bool = False) -> None:
         self.combo.blockSignals(True)
         i = self.combo.findData(props.get("Device"))
         self.combo.setCurrentIndex(max(0, i))
         self.combo.blockSignals(False)
         for o, b in self.buttons.items():
             b.setChecked(o == props.get("Orientation", "Portrait"))
-        w, h = safe_area_size(props.get("Device"), props.get("Orientation"))
-        sw, sh = screen_size(props.get("Device"), props.get("Orientation"))
-        self.size_label.setText(f"{sw} x {sh} dp  (safe area {w} x {h})")
+        fold = is_foldable(props.get("Device"))
+        posture = effective_posture(props.get("Device"), props.get("Posture", "Flat"))
+        self.posture_label.setVisible(fold)
+        for pst, b in self.posture_buttons.items():
+            b.setVisible(fold)
+            b.setChecked(pst == posture)
+        for w in [self.combo, *self.buttons.values(), *self.posture_buttons.values()]:
+            w.setEnabled(not preview)
+        w, h = safe_area_size(props.get("Device"), props.get("Orientation"), posture)
+        sw, sh = screen_size(props.get("Device"), props.get("Orientation"), posture)
+        self.size_label.setText(("Preview: " if preview else "") + f"{sw} x {sh} dp  (safe area {w} x {h})")
 
 
 # ====================================================================== the chrome
@@ -226,6 +306,8 @@ class PhoneChrome:
         self._orig_style = view.content.styleSheet()
         self._orig_name = view.content.objectName()
         self._syncing = False
+        self._preview: dict | None = None          # preview(): device drawn instead of the form's
+        self.hinge_layer: HingeLayer | None = None
         try:
             from .. import theme
             theme.changed.connect(self._on_theme)
@@ -268,10 +350,12 @@ class PhoneChrome:
             relayout(self.doc.form)        # docked AppBar / BottomNav and Column / Row children in place
             if self.bar is None:
                 self.bar = DeviceBar(self, v.content)
-            self.bar.sync(self.doc.form.props)
+            self.bar.sync(self.shown(), self._preview is not None)
             self.bar.show()
         elif self.bar is not None:
             self.bar.hide()
+        if self.hinge_layer is not None:
+            self.hinge_layer.setVisible(self.active)
         self._apply_canvas_style()
         self.announce()
 
@@ -308,7 +392,52 @@ class PhoneChrome:
         except RuntimeError:
             pass
 
+    # ------------------------------------------------------------ shown device / preview
+    def shown(self) -> dict:
+        """Device / Orientation / Posture drawn now: the preview() device, else the form's properties."""
+        fp = self.doc.form.props
+        if self._preview is not None:
+            return dict(self._preview)
+        return {"Device": fp.get("Device"), "Orientation": fp.get("Orientation", "Portrait"),
+                "Posture": form_posture(fp)}
+
+    def preview(self, device_id=None, orientation=None, posture=None) -> None:
+        """Draw *device_id* / *orientation* / *posture* around the form without changing the form's
+        properties (a layout variant's preview device).  Missing values come from the form; call with no
+        arguments to show the form's own device again.  The form's Width / Height are not touched: the
+        caller previews the matching size through DesignerView.form_props()."""
+        if device_id is None and orientation is None and posture is None:
+            self._preview = None
+        else:
+            fp = self.doc.form.props
+            dev = device_id if device_id in DEVICES else fp.get("Device")
+            orient = orientation if orientation in ORIENTATIONS else (
+                "Landscape" if landscape(orientation) else fp.get("Orientation", "Portrait")) \
+                if orientation is not None else fp.get("Orientation", "Portrait")
+            pst = effective_posture(dev, posture if posture is not None else fp.get("Posture", "Flat"))
+            self._preview = {"Device": dev, "Orientation": orient, "Posture": pst}
+        if self.bar is not None:
+            self.bar.sync(self.shown(), self._preview is not None)
+        if self.active:
+            self.view.layout_form()
+            self.view.update()
+
+    @property
+    def previewing(self) -> bool:
+        return self._preview is not None
+
     # ------------------------------------------------------------ device changes
+    def set_posture(self, posture: str) -> None:
+        fp = self.doc.form.props
+        if not is_foldable(fp.get("Device")) or posture not in POSTURES:
+            if self.bar is not None:
+                self.bar.sync(self.shown(), self._preview is not None)
+            return
+        if posture != fp.get("Posture"):
+            self.doc.set_prop(None, "Posture", posture)
+        elif self.bar is not None:
+            self.bar.sync(self.shown(), self._preview is not None)
+
     def set_device(self, device_id: str) -> None:
         if device_id in DEVICES and device_id != self.doc.form.props.get("Device"):
             self.doc.set_prop(None, "Device", device_id)
@@ -321,10 +450,12 @@ class PhoneChrome:
 
     def _sync_size(self) -> None:
         """Width / Height follow Device + Orientation (anchored / docked controls follow the new size)."""
-        if self._syncing:
+        if self._syncing or self._preview is not None:
             return
         fp = self.doc.form.props
-        w, h = safe_area_size(fp.get("Device"), fp.get("Orientation"))
+        if is_foldable(fp.get("Device")) and fp.get("Posture") not in POSTURES:
+            fp["Posture"] = "Flat"
+        w, h = safe_area_size(fp.get("Device"), fp.get("Orientation"), form_posture(fp))
         if int(fp.get("Width", 0) or 0) == w and int(fp.get("Height", 0) or 0) == h:
             return
         self._syncing = True
@@ -344,17 +475,25 @@ class PhoneChrome:
         if fp.get("Device") not in DEVICES or fp.get("Orientation") not in ORIENTATIONS:
             ensure_mobile_props(fp)
         self._sync_size()
-        (fw, fh), _screen, safe = phone_geometry(fp["Device"], fp["Orientation"])
+        sp = self.shown()
+        (fw, fh), _screen, safe = phone_geometry(sp["Device"], sp["Orientation"], sp["Posture"])
+        if self.bar is not None:
+            self.bar.sync(sp, self._preview is not None)
         bar_w = max(fw, self.bar.sizeHint().width()) if self.bar is not None else fw
         total_w = max(bar_w + 2 * GAP, fw + 2 * GAP, v.viewport().width())
         x = max(GAP, (total_w - fw) // 2)
         top = GAP + BAR_H + GAP
         if self.bar is not None:
-            self.bar.sync(fp)
             self.bar.setGeometry(max(GAP, (total_w - bar_w) // 2), GAP, bar_w, BAR_H)
         v.frame.setGeometry(x, top, fw, fh)
         v.surface.setGeometry(safe)
         v.overlay.setGeometry(0, 0, safe.width(), safe.height())
+        if self.hinge_layer is None:
+            self.hinge_layer = HingeLayer(self, v.surface)
+        self.hinge_layer.setGeometry(0, 0, safe.width(), safe.height())
+        self.hinge_layer.show()
+        self.hinge_layer.stackUnder(v.overlay)        # above the control previews, below the selection
+        self.hinge_layer.update()
         tray_h = 40 if v.tray.isVisibleTo(v.content) else 0
         v.tray.setGeometry(0, top + fh + GAP, total_w, tray_h)
         v.content.resize(total_w, top + fh + GAP + tray_h + 4)
@@ -386,11 +525,12 @@ class PhoneChrome:
         """FormFrame.paintEvent hook: draw the device."""
         if not self.active:
             return False
-        fp = self.doc.form.props
-        dev = device(fp.get("Device"))
-        orient = fp.get("Orientation", "Portrait")
+        sp = self.shown()
+        dev = device(sp["Device"])
+        orient = sp["Orientation"]
+        posture = sp["Posture"]
         land = landscape(orient)
-        _size, screen, safe = phone_geometry(dev.id, orient)
+        _size, screen, safe = phone_geometry(dev.id, orient, posture)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         body = QRectF(frame.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         outer_r = 36 if dev.home_button else dev.radius + 12
@@ -409,7 +549,7 @@ class PhoneChrome:
         p.drawPath(path)
         p.save()
         p.setClipPath(path)
-        il, it, ir, ib = safe_insets(dev.id, orient)
+        il, it, ir, ib = safe_insets(dev.id, orient, posture)
         if it:
             p.fillRect(QRectF(sr.left(), sr.top(), sr.width(), it), self._top_bar_color())
             self._status_bar(p, QRectF(sr.left(), sr.top(), sr.width(), it), dev)
@@ -432,6 +572,9 @@ class PhoneChrome:
         elif dev.cutout == "punch":
             c = QPointF(sr.left() + 12, sr.center().y()) if land else QPointF(sr.center().x(), sr.top() + 12)
             p.drawEllipse(c, 6, 6)
+        hs = hinge_screen_rect(dev.id, orient, posture)     # the hinge across the status / navigation bars
+        if hs is not None:
+            draw_hinge(p, QRectF(hs[0] + sr.left(), hs[1] + sr.top(), hs[2], hs[3]), dev, posture, label=False)
         p.restore()
         # safe-area outline
         p.setPen(QPen(QColor(103, 80, 164, 120), 1, Qt.PenStyle.DashLine))
@@ -461,6 +604,14 @@ class PhoneChrome:
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRoundedRect(body.adjusted(1, 1, -1, -1), outer_r, outer_r)
         return True
+
+    def conflicts(self) -> list:
+        """hinge_conflicts() of the form for the device shown now."""
+        try:
+            sp = self.shown()
+            return hinge_conflicts(self.doc.form, sp["Device"], sp["Orientation"], sp["Posture"])
+        except Exception:  # noqa: BLE001 - a half-built form while loading
+            return []
 
     @staticmethod
     def _ink_for(back: QColor) -> QColor:
@@ -554,3 +705,103 @@ class PhoneChrome:
             self.doc._normalize()
             self.doc._relayout()
             self.doc.structureChanged.emit()
+
+
+# ====================================================================== hinge drawing
+def _tr(text: str) -> str:
+    try:
+        from ..i18n import tr
+        return tr(text)
+    except Exception:  # noqa: BLE001
+        return text
+
+
+def draw_hinge(p: QPainter, band: QRectF, dev, posture: str, label: bool = True, half: QRectF | None = None):
+    """Paint the hinge of *dev* in *band* (screen / surface coords): a dual-screen device gets an opaque
+    bezel band, a seamless fold a dashed crease (Flat) or a solid crease with *half* shaded (HalfOpened)."""
+    vertical = band.width() <= band.height()
+    p.save()
+    if dev.fold == "dual" and (band.width() > 0 and band.height() > 0):
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1B1B1F"))
+        p.drawRect(band)
+        p.setPen(QPen(QColor("#3A3A42"), 1))
+        if vertical:
+            p.drawLine(QPointF(band.left() + 0.5, band.top()), QPointF(band.left() + 0.5, band.bottom()))
+            p.drawLine(QPointF(band.right() - 0.5, band.top()), QPointF(band.right() - 0.5, band.bottom()))
+        else:
+            p.drawLine(QPointF(band.left(), band.top() + 0.5), QPointF(band.right(), band.top() + 0.5))
+            p.drawLine(QPointF(band.left(), band.bottom() - 0.5), QPointF(band.right(), band.bottom() - 0.5))
+    else:
+        if posture == "HalfOpened" and half is not None:
+            g = QLinearGradient(half.topLeft(), half.topRight() if vertical else half.bottomLeft())
+            g.setColorAt(0.0, QColor(0, 0, 0, 46))
+            g.setColorAt(1.0, QColor(0, 0, 0, 8))
+            p.fillRect(half, QBrush(g))
+        pen = QPen(QColor(0, 0, 0, 120 if posture == "HalfOpened" else 70), 1.5 if posture == "HalfOpened" else 1,
+                   Qt.PenStyle.SolidLine if posture == "HalfOpened" else Qt.PenStyle.DashLine)
+        p.setPen(pen)
+        if vertical:
+            x = band.left() + band.width() / 2
+            p.drawLine(QPointF(x, band.top()), QPointF(x, band.bottom()))
+        else:
+            y = band.top() + band.height() / 2
+            p.drawLine(QPointF(band.left(), y), QPointF(band.right(), y))
+    if label and (dev.fold == "dual" or posture == "HalfOpened"):
+        f = QFont("Segoe UI", 7, QFont.Weight.DemiBold)
+        p.setFont(f)
+        text = _tr("Hinge")
+        tw = p.fontMetrics().horizontalAdvance(text) + 10
+        if vertical:
+            box = QRectF(band.center().x() - tw / 2, band.top() + 6, tw, 14)
+        else:
+            box = QRectF(band.left() + 6, band.center().y() - 7, tw, 14)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(103, 80, 164, 215))
+        p.drawRoundedRect(box, 7, 7)
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+
+
+class HingeLayer(QWidget):
+    """Paints the hinge over the control previews (below the designer's selection overlay) and outlines
+    the controls lying across it in red."""
+
+    def __init__(self, chrome: "PhoneChrome", surface: QWidget):
+        super().__init__(surface)
+        self.chrome = chrome
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setObjectName("rad_hinge_layer")
+
+    def paintEvent(self, _e):
+        ch = self.chrome
+        if not ch.active:
+            return
+        sp = ch.shown()
+        h = hinge_rect(sp["Device"], sp["Orientation"], sp["Posture"])
+        if h is None:
+            return
+        dev = device(sp["Device"])
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        band = QRectF(*h)
+        vertical = band.width() <= band.height()
+        # the half that stands up when half opened: right of a vertical fold, above a horizontal one
+        half = QRectF(band.right(), 0, self.width() - band.right(), self.height()) if vertical else \
+            QRectF(0, 0, self.width(), band.top())
+        draw_hinge(p, band, dev, sp["Posture"], label=True, half=half)
+        form = ch.doc.form
+        names = {n for n, _m in ch.conflicts()}
+        if names:
+            p.setPen(QPen(QColor("#E81123"), 2, Qt.PenStyle.DashLine))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for c in form.controls:
+                if c.name in names:
+                    try:
+                        x, y = form.abs_pos(c)
+                        p.drawRect(QRectF(x - 1, y - 1, int(c.props["Width"]) + 2, int(c.props["Height"]) + 2))
+                    except (KeyError, TypeError, ValueError):
+                        pass
+        p.end()
