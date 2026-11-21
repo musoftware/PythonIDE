@@ -4,7 +4,7 @@
   "title_en": "Learn Dart from Scratch (to Flutter)",
   "language": "dart-bridge",
   "level": "beginner",
-  "description_ar": "دورة عربية في Dart، لغة تطبيقات Flutter: المتغيرات والأنواع والأمان من القيم الفارغة (Null Safety) والشروط وحلقات التكرار والدوال والقوائم والقواميس والفئات والوراثة والأخطاء والبرمجة غير المتزامنة، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير، ثم الانتقال إلى Flutter: الودجات وأول تطبيق موبايل بمصمم الشاشات.",
+  "description_ar": "دورة عربية في Dart، لغة تطبيقات Flutter: المتغيرات والأنواع والأمان من القيم الفارغة (Null Safety) والشروط وحلقات التكرار والدوال والقوائم والقواميس والأصناف والوراثة والأخطاء والبرمجة غير المتزامنة، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير، ثم الانتقال إلى Flutter: الودجات وأول تطبيق موبايل بمصمم الشاشات.",
   "lessons": [
     {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Dart: برنامجك الأول", "minutes": 20},
     {"id": "02-variables-types", "file": "02-variables-types.md", "title_ar": "المتغيرات والأنواع والإدخال", "minutes": 30},
@@ -12,7 +12,7 @@
     {"id": "04-functions", "file": "04-functions.md", "title_ar": "الدوال: المعاملات المسماة والاختيارية والسهمية", "minutes": 35},
     {"id": "05-collections", "file": "05-collections.md", "title_ar": "القوائم والقواميس والمجموعات", "minutes": 40},
     {"id": "06-null-safety-strings", "file": "06-null-safety-strings.md", "title_ar": "الأمان من القيم الفارغة والنصوص", "minutes": 35},
-    {"id": "07-classes", "file": "07-classes.md", "title_ar": "الفئات والكائنات والوراثة", "minutes": 45},
+    {"id": "07-classes", "file": "07-classes.md", "title_ar": "الأصناف والكائنات والوراثة", "minutes": 45},
     {"id": "08-errors-async", "file": "08-errors-async.md", "title_ar": "الأخطاء والبرمجة غير المتزامنة (async / await)", "minutes": 40},
     {"id": "09-gui-form", "file": "09-gui-form.md", "title_ar": "أول نافذة Dart في مصمم النماذج", "minutes": 40},
     {"id": "10-gui-project", "file": "10-gui-project.md", "title_ar": "مشروع: قائمة المهام بنافذة رسومية", "minutes": 45},

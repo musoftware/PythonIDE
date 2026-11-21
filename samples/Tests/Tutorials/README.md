@@ -18,3 +18,12 @@ Expected output of `CPP_ConsoleInput` with `input.txt`:
 ```
 
 Open any folder with File > Open Project and press F5.
+
+## Polish checks
+
+`Polish/check_polish.py` checks the polish pass of the courses: Arabic terminology (class = صنف, method = دالة,
+the alternatives only as glossary notes), lesson code blocks byte-identical to git HEAD (so the course checkers
+keep passing), code names in headings in backticks, English menu paths rendered as left-to-right isolates
+(`<span class="ltr" dir="ltr">`; viewer CSS `unicode-bidi: isolate`, CHM CSS inline-block for the IE engine of
+hh.exe), and the new lessons form-designer 12 / 13 and flutter-mobile 13. `--chm` also runs
+`tools/build_chm.py form-designer flutter-mobile --verify`.

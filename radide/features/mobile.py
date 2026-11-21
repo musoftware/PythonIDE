@@ -14,7 +14,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, QProcess, QProcessEnvironment, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QComboBox, QLabel, QMenu, QMessageBox, QToolBar
 
@@ -1081,8 +1081,98 @@ def foldable_diags(win) -> list:
     return out
 
 
+HINGE_PREFIX = "Controls cross the hinge: "
+
+
+def refresh_hinge_rows(win, form_name: str, form) -> int:
+    """Replace the Error List's hinge rows of one form by the current hinge_conflicts() (called while the
+    designer changes, so the warning does not wait for the next build / save). Returns the row count."""
+    el = getattr(win, "error_list", None)
+    if el is None:
+        return 0
+    from PyQt6.QtWidgets import QTreeWidgetItem
+    from ..mobile.controls import hinge_conflicts, is_foldable
+    from .. import i18n
+    fname = f"{form_name}.form"
+    prefixes = {HINGE_PREFIX, i18n.tr(HINGE_PREFIX.rstrip(": ")) + ": "}
+
+    def ours(it) -> bool:
+        if it.text(2) != fname:
+            return False
+        texts = [it.text(1), it.data(1, getattr(i18n, "ROLE_EN", -1)) or ""]
+        return any(str(t).startswith(p) for t in texts for p in prefixes)
+    try:
+        removed = 0
+        for i in reversed(range(el.topLevelItemCount())):
+            if ours(el.topLevelItem(i)):
+                el.takeTopLevelItem(i)
+                removed += 1
+        rows = []
+        if form is not None and is_foldable(form.props.get("Device")):
+            rows = [msg for _c, msg in hinge_conflicts(form)]
+        for msg in rows:
+            it = QTreeWidgetItem(["Warning", HINGE_PREFIX + msg, fname, "1"])
+            it.setForeground(0, Qt.GlobalColor.darkYellow)
+            el.addTopLevelItem(it)
+        dock = getattr(win, "dock_errors", None)
+        if dock is not None and (rows or removed):
+            role = getattr(i18n, "ROLE_EN", -1)
+            sev = [el.topLevelItem(i).data(0, role) or el.topLevelItem(i).text(0)
+                   for i in range(el.topLevelItemCount())]
+            dock.setWindowTitle(f"Error List ({sev.count('Error')} errors, {sev.count('Warning')} warnings)")
+        return len(rows)
+    except RuntimeError:            # the window is closing
+        return 0
+
+
+def watch_hinge(win, doc) -> None:
+    """Refresh the hinge rows of *doc*'s form when its designer opens and 250 ms after it changes (move /
+    resize, Device, Orientation or Posture, undo / redo)."""
+    if getattr(doc, "_hinge_watch", None) is not None:
+        return
+    timer = QTimer(doc)
+    timer.setSingleShot(True)
+    timer.setInterval(250)
+    doc._hinge_watch = timer
+
+    def run():
+        try:
+            refresh_hinge_rows(win, doc.form.name, doc.form)
+        except Exception as e:  # noqa: BLE001 - never break the designer
+            try:
+                win.log(f"[foldables] {e}")
+            except Exception:  # noqa: BLE001
+                pass
+    timer.timeout.connect(run)
+    for sig in (doc.controlChanged, doc.structureChanged, doc.undoStateChanged):
+        sig.connect(lambda *_a: timer.start())
+    timer.start()                   # the form as it was opened
+
+
+def install_hinge_watch(win) -> None:
+    def hook(*_a):
+        for doc in list((getattr(win, "docs", {}) or {}).values()):
+            try:
+                watch_hinge(win, doc)
+            except (AttributeError, RuntimeError):
+                pass
+    orig_open = win.open_designer
+
+    def open_designer(name, *a, **kw):
+        r = orig_open(name, *a, **kw)
+        hook()
+        return r
+    win.open_designer = open_designer
+    try:
+        win.tabs.currentChanged.connect(hook)
+    except AttributeError:
+        pass
+    hook()
+
+
 def install(win) -> None:
     win.mobile = MobileFeature(win)
     providers = win.__dict__.setdefault("diag_providers", [])
     if foldable_diags not in providers:
         providers.append(foldable_diags)
+    install_hinge_watch(win)

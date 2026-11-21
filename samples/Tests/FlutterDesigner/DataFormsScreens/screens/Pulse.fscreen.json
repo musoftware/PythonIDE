@@ -1,0 +1,121 @@
+{
+ "version": 1,
+ "name": "Pulse",
+ "route": "/pulse",
+ "theme": {},
+ "assets": [
+  "assets/animations/pulse.json"
+ ],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Timeline on numbers"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "Center",
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "Column",
+      "props": {
+       "mainAxisSize": "MainAxisSize.min",
+       "spacing": 16
+      },
+      "children": [
+       {
+        "id": "w6",
+        "type": "Container",
+        "name": "boxGrow",
+        "props": {
+         "width": {
+          "$timeline": "grow",
+          "from": 80,
+          "to": 220,
+          "curve": "Curves.easeInOut"
+         },
+         "height": 80,
+         "decoration": {
+          "color": "#FF6750A4",
+          "borderRadius": 16
+         }
+        }
+       },
+       {
+        "id": "w7",
+        "type": "Opacity",
+        "props": {
+         "opacity": {
+          "$timeline": "grow",
+          "from": 0.2,
+          "to": 1,
+          "interval": [
+           0,
+           0.5
+          ]
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w8",
+          "type": "Text",
+          "props": {
+           "data": "Fading text",
+           "style": {
+            "fontSize": 20
+           }
+          }
+         }
+        }
+       },
+       {
+        "id": "w9",
+        "type": "Text",
+        "props": {
+         "data": "Lines follow the timeline as well",
+         "maxLines": {
+          "$timeline": "grow",
+          "from": 1,
+          "to": 3
+         }
+        }
+       },
+       {
+        "id": "w10",
+        "type": "Lottie",
+        "ctor": "asset",
+        "props": {
+         "name": "assets/animations/pulse.json",
+         "width": 120,
+         "height": 120
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "timelines": [
+  {
+   "name": "grow",
+   "durationMs": 1200,
+   "autostart": true,
+   "repeat": true,
+   "reverse": true
+  }
+ ]
+}

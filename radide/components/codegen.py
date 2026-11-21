@@ -558,6 +558,7 @@ def dart_widget(gen, c) -> str:
     ``widget`` expression - ``{Prop}`` = Dart literal of a property, ``{on_<Event>}`` = the statements that
     call the event handler, ``imports`` - or ``emit(ctx)`` returning the expression; ``ctx.extra["gen"]`` is
     the Dart generator). Without a runtime: a labelled placeholder box and a warning."""
+    from . import dart as _dart
     pkg = package_of(c.type)
     res = _targets.resolve(pkg, "flutter")
     events = sorted(set(c.ctype.all_events()))
@@ -568,15 +569,10 @@ def dart_widget(gen, c) -> str:
         except Exception:  # noqa: BLE001
             fire[f"on_{e}"] = ""
     if res.kind in ("template", "emit"):
-        ctx = EmitContext(_flutter_plugin(), c, res, "", {e for e, v in fire.items() if v}, dict(fire, gen=gen))
-        ctx.lang = "dart"
-        try:
-            if res.kind == "template":
-                tpl = res.entry["template"]
-                return _fill(str(tpl.get("widget") or ""), ctx) or "const SizedBox()"
-            mod = _emit_module(pkg, str(res.entry.get("emit")))
-            r = mod.emit(ctx)
-            return str(r if isinstance(r, str) else "\n".join(_lines(r)))
+        try:     # {state} / {<Prop>_live}: the control's state object (radide/components/dart.py)
+            code = _dart.dart_expr(c, fire, dict(_dart.live_placeholders(c.name, c.ctype), gen=gen))
+            if code is not None:
+                return code
         except Exception as e:  # noqa: BLE001
             warn(f"{c.name}: component {c.type} flutter generator failed: {type(e).__name__}: {e}")
     else:

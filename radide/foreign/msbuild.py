@@ -874,6 +874,8 @@ def project_platform(platform: str, project: MSBuildProject | None = None) -> st
             names = project.platform_names()
             return "x64" if "x64" in names else (names[0] if names else "x64")
         return "Win32" if p == "x86" else p
+    if project is not None and p not in ("Any CPU", "") and p not in project.platform_names():
+        return "AnyCPU"                   # like VS: a .NET project without an x64 configuration builds AnyCPU
     return "AnyCPU" if p in ("Any CPU", "") else p
 
 

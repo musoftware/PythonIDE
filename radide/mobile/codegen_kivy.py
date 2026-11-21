@@ -53,6 +53,7 @@ class KivyFormGen:
         ensure_types()
         self.form = form
         self.binds: list[str] = []          # python lines for __init__ (event wiring)
+        self._kids: dict[str, list[str]] = {}   # child widgets kept back by widget_head() (see tail())
         from .kivy_fx import KivyFx         # animations / layout sizes / TwoPane (radkivyfx.py)
         self.fx = KivyFx(form)
 
@@ -92,11 +93,28 @@ class KivyFormGen:
         self.binds.append(f"        self._bind(self.{c.name}, {signal!r}, {names!r}, {make_event})")
 
     def widget(self, c, ind: str) -> list[str]:
-        """KV lines for control *c* (class line + properties), without its position."""
+        """KV lines for control *c* (class line + properties, then its child widgets), without its position."""
+        own, kids = self._widget(c, ind)
+        return own + kids
+
+    def widget_head(self, c, ind: str) -> list[str]:
+        """Like :meth:`widget` without the child widgets: KV wants every property of a widget (its size and
+        position too, which the caller adds) before its children - :meth:`tail` gives them afterwards."""
+        own, kids = self._widget(c, ind)
+        if kids:
+            self._kids[c.name] = kids
+        return own
+
+    def tail(self, name: str) -> list[str]:
+        """The child widgets :meth:`widget_head` kept back for control *name* (and a TwoPane's panes)."""
+        return self._kids.pop(name, []) + self.fx.take_tail(name)
+
+    def _widget(self, c, ind: str) -> tuple[list[str], list[str]]:
         t, p, n = c.type, c.props, c.name
         i2 = ind + "    "
         text = p.get("Text", "")
         L: list[str]
+        kids: list[str] = []
         if t == "Button":
             L = [f"{ind}Button:", f"{i2}text: {text!r}"] + self.text_props(c, i2)
             bc = kv_color(p.get("BackColor"))
@@ -196,9 +214,9 @@ class KivyFormGen:
                  f"{i2}spacing: dp({to_int(p.get('Spacing'), 0)})", f"{i2}padding: dp({to_int(p.get('Padding'), 0)})"]
             L += self.bg(c, i2)
             for k in form_children(self.form, n):
-                L += self.flex_child(k, t, al, i2)
+                kids += self.flex_child(k, t, al, i2)
             if al != "between":
-                L.append(f"{i2}Widget:")           # fills the rest (children keep their size)
+                kids.append(f"{i2}Widget:")        # fills the rest (children keep their size)
         elif t == "TwoPane":
             L = self.fx.two_pane_lines(self, c, ind)
         elif t in ("Card", "Stack", "Panel", "GroupBox"):
@@ -211,9 +229,9 @@ class KivyFormGen:
             else:
                 L += self.bg(c, i2)
             if t == "GroupBox":
-                L += [f"{i2}RadLabel:", f"{i2}    text: {text!r}", f"{i2}    size_hint: 1, None",
-                      f"{i2}    height: dp(20)", f"{i2}    pos: self.parent.x + dp(8), self.parent.top - dp(20)"]
-            L += self.place_children(form_children(self.form, n), to_int(p.get("Width")), to_int(p.get("Height")),
+                kids += [f"{i2}RadLabel:", f"{i2}    text: {text!r}", f"{i2}    size_hint: 1, None",
+                         f"{i2}    height: dp(20)", f"{i2}    pos: self.parent.x + dp(8), self.parent.top - dp(20)"]
+            kids += self.place_children(form_children(self.form, n), to_int(p.get("Width")), to_int(p.get("Height")),
                                      0, f"w_{n}", i2)
             if t == "Card":
                 self.bind(c, "on_tap", ("Tap", "Click"))
@@ -221,10 +239,10 @@ class KivyFormGen:
             L = [f"{ind}RadLabel:", f"{i2}text: {(t + ' ' + n)!r}"]
         L.insert(1, f"{i2}id: w_{n}")
         L += self.common(c, i2)
-        return L
+        return L, kids
 
     def flex_child(self, k, kind: str, al: str, ind: str) -> list[str]:
-        L = self.widget(k, ind)
+        L = self.widget_head(k, ind)
         i2 = ind + "    "
         w, h = to_int(k.props.get("Width")), to_int(k.props.get("Height"))
         if kind == "Column":
@@ -241,7 +259,7 @@ class KivyFormGen:
                 L.append(f"{i2}size_hint_y: 1")
             else:
                 L += [f"{i2}size_hint_y: None", f"{i2}height: dp({h})"]
-        return L
+        return L + self.tail(k.name)
 
     def place_children(self, kids, cw: int, ch: int, dy: int, box: str, ind: str) -> list[str]:
         """Absolute placement inside a FloatLayout whose KV id is *box* (Anchor / Dock aware)."""
@@ -251,7 +269,7 @@ class KivyFormGen:
         out = []
         for px in proxies:
             pl = places[id(px)]
-            L = self.widget(px.ctrl, ind)
+            L = self.widget_head(px.ctrl, ind)
             i2 = ind + "    "
             wexpr, hexpr = _lin(pl.w, pl.rw, f"{box}.width"), _lin(pl.h, pl.rh, f"{box}.height")
             geo = self.fx.geometry(px.ctrl.name, box, (pl.x, pl.y, pl.w, pl.h, pl.rx, pl.ry, pl.rw, pl.rh))
@@ -266,7 +284,7 @@ class KivyFormGen:
             if not truthy(px.ctrl.props.get("Visible", True)):
                 L += [f"{i2}opacity: 0", f"{i2}disabled: True"]
                 self.binds.append(f"        self.{px.ctrl.name}.visible = False")
-            L += self.fx.take_tail(px.ctrl.name)          # TwoPane: its panes after its own properties
+            L += self.tail(px.ctrl.name)          # children (TwoPane: its panes) after its own properties
             out += L
         return out
 

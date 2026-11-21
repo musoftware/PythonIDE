@@ -268,6 +268,158 @@ handler btnHello_Click
 endhandler
 """
 
+# ---------------------------------------------------------------------------------------------- NASM x86 forms
+NASM_FORM_X86 = r"""; Event handlers of {form} (NASM, x86 - 32-bit). The IDE draws the form (GUI Bridge); this code reacts to
+; its events and changes the controls with the macros of radgui32.inc: rad_set, rad_get, rad_get_int,
+; rad_set_int, rad_msgbox, rad_input, rad_call ... (see the top of radgui32.inc). The macros push their
+; arguments (cdecl) and remove them after the call.
+;
+; A handler is a block   handler <Control>_<Event> ... endhandler   - double-click a control in the designer
+; to add one. Inside a handler EBX, ESI and EDI are yours (they are saved); do not change EBP or ESP.
+%include "radgui32.inc"
+%include "{form}.inc"           ; generated: the names of the controls of {form} (lblMessage, btnAdd ...)
+
+section .data
+    clicks      dd 0
+
+section .text
+
+handler {form}_Load
+    rad_set lblMessage, "Text", "Hello from 32-bit assembly! Type a number and press Add 1."
+endhandler
+
+handler btnAdd_Click
+    rad_get_int txtNumber, "Text"   ; EAX = the number in the text box
+    inc eax
+    mov ebx, eax                    ; EBX survives the next macro calls
+    rad_set_int txtNumber, "Text", ebx
+    inc dword [clicks]
+    rad_set_int lblClicks, "Text", [clicks]
+    rad_set lblMessage, "Text", "The assembly handler added 1."
+endhandler
+
+handler btnHello_Click
+    rad_input "What is your name?"  ; EAX = the text typed (a C string)
+    mov ebx, eax
+    rad_set lblMessage, "Text", ebx
+    rad_msgbox "Hello from x86 assembly!"
+endhandler
+"""
+
+# ---------------------------------------------------------------------------------------------- FASM forms
+FASM_FORM = r"""; Event handlers of {form} (FASM, x64). The IDE draws the form (GUI Bridge); this code reacts to its events
+; and changes the controls with the macros of radgui_fasm.inc: rad_set, rad_get, rad_get_int, rad_set_int,
+; rad_msgbox, rad_input, rad_call ... (see the top of radgui_fasm.inc). The file becomes an object
+; (format MS64 COFF, started by radgui_fasm.inc) that gcc links with the GUI Bridge client.
+;
+; A handler is a block   handler <Control>_<Event> ... endhandler   - double-click a control in the designer
+; to add one. Inside a handler RBX, RSI, RDI and R12 are yours (they are saved); do not change RBP or RSP.
+include 'radgui_fasm.inc'       ; first: format MS64 COFF + the macros + section '.text'
+include '{form}.inc'            ; generated: the names of the controls of {form} (lblMessage, btnAdd ...)
+
+handler {form}_Load
+    rad_set lblMessage, 'Text', 'Hello from FASM! Type a number and press Add 1.'
+endhandler
+
+handler btnAdd_Click
+    rad_get_int txtNumber, 'Text'   ; RAX = the number in the text box
+    inc rax
+    mov rbx, rax                    ; RBX survives the next macro calls
+    rad_set_int txtNumber, 'Text', rbx
+    inc qword [clicks]
+    rad_set_int lblClicks, 'Text', [clicks]
+    rad_set lblMessage, 'Text', 'The assembly handler added 1.'
+endhandler
+
+handler btnHello_Click
+    rad_input 'What is your name?'  ; RAX = the text typed (a C string)
+    mov rbx, rax
+    rad_set lblMessage, 'Text', rbx
+    rad_msgbox 'Hello from FASM!'
+endhandler
+
+section '.data' data readable writeable
+    clicks      dq 0
+"""
+
+# ---------------------------------------------------------------------------------------------- GNU as forms
+GAS_FORM_ATT = r"""# Event handlers of {form} (GNU as, x64, AT&T syntax). The IDE draws the form (GUI Bridge); this code reacts
+# to its events and changes the controls with the macros of radgui_att.inc: rad_set, rad_get, rad_get_int,
+# rad_set_int, rad_msgbox, rad_input, rad_call ... (see the top of radgui_att.inc).
+# GNU as removes the quotes of macro arguments: a control or property name is simply written as a word,
+# text with spaces is quoted, an integer is $42 / %rbx / clicks(%rip).
+#
+# A handler is a block   handler <Control>_<Event> ... endhandler   - double-click a control in the designer
+# to add one. Inside a handler %rbx, %rsi, %rdi and %r12 are yours (they are saved); do not change %rbp / %rsp.
+        .include "radgui_att.inc"
+        .include "{form}.inc"           # generated: the control IDs of {form} (CTL_btnAdd ...)
+
+        .data
+        .p2align 3
+clicks: .quad 0
+
+handler {form}_Load
+        rad_set lblMessage, Text, "Hello from GNU as! Type a number and press Add 1."
+endhandler
+
+handler btnAdd_Click
+        rad_get_int txtNumber, Text     # %rax = the number in the text box
+        incq    %rax
+        movq    %rax, %rbx              # %rbx survives the next macro calls
+        rad_set_int txtNumber, Text, %rbx
+        incq    clicks(%rip)
+        rad_set_int lblClicks, Text, clicks(%rip)
+        rad_set lblMessage, Text, "The assembly handler added 1."
+endhandler
+
+handler btnHello_Click
+        rad_input "What is your name?"  # %rax = the text typed (a C string)
+        movq    %rax, %rbx
+        rad_set lblMessage, Text, %rbx
+        rad_msgbox "Hello from GNU as (AT&T)!"
+endhandler
+"""
+
+GAS_FORM_INTEL = r"""# Event handlers of {form} (GNU as, x64, Intel syntax). The IDE draws the form (GUI Bridge); this code reacts
+# to its events and changes the controls with the macros of radgui_intel.inc: rad_set, rad_get, rad_get_int,
+# rad_set_int, rad_msgbox, rad_input, rad_call ... (see the top of radgui_intel.inc).
+# GNU as removes the quotes of macro arguments: a control or property name is simply written as a word,
+# text with spaces is quoted, an integer is 42 / rbx / QWORD PTR [rip + clicks].
+#
+# A handler is a block   handler <Control>_<Event> ... endhandler   - double-click a control in the designer
+# to add one. Inside a handler RBX, RSI, RDI and R12 are yours (they are saved); do not change RBP or RSP.
+        .intel_syntax noprefix
+        .include "radgui_intel.inc"
+        .include "{form}.inc"           # generated: the control IDs of {form} (CTL_btnAdd ...)
+
+        .data
+        .p2align 3
+clicks: .quad 0
+
+handler {form}_Load
+        rad_set lblMessage, Text, "Hello from GNU as (Intel syntax)! Type a number and press Add 1."
+endhandler
+
+handler btnAdd_Click
+        rad_get_int txtNumber, Text     # RAX = the number in the text box
+        inc     rax
+        mov     rbx, rax                # RBX survives the next macro calls
+        rad_set_int txtNumber, Text, rbx
+        inc     QWORD PTR [rip + clicks]
+        rad_set_int lblClicks, Text, QWORD PTR [rip + clicks]
+        rad_set lblMessage, Text, "The assembly handler added 1."
+endhandler
+
+handler btnHello_Click
+        rad_input "What is your name?"  # RAX = the text typed (a C string)
+        mov     rbx, rax
+        rad_set lblMessage, Text, rbx
+        rad_msgbox "Hello from GNU as (Intel syntax)!"
+endhandler
+"""
+
+FORM_CODE = {"nasm32": NASM_FORM_X86, "fasm64": FASM_FORM, "gas64": GAS_FORM_ATT, "gas64i": GAS_FORM_INTEL}
+
 # ---------------------------------------------------------------------------------------------- FASM
 FASM_X64 = r"""; {name} - an x64 Windows console program written with FASM (flat assembler).
 ; FASM writes the .exe itself (format PE64): there is no separate link step. The 'invoke' / 'cinvoke' macros
@@ -609,6 +761,25 @@ TEMPLATES: list[AsmTemplate] = [
                 "The same program with .intel_syntax noprefix: GNU as with the operand order of NASM / MASM.",
                 "rad:console", {"assembler": "gas", "arch": "x64", "linker": "gcc", "entry": "main"},
                 (("main.s", GAS_INTEL),)),
+    AsmTemplate("nasm_forms_x86", "asm-nasm", "Assembly Windows Forms (x86, NASM + GUI Bridge)",
+                "The Windows Forms template in 32-bit assembly: cdecl macros that push their arguments, EAX "
+                "results. The GUI Bridge client is compiled with gcc -m32 and linked with GNU ld against "
+                "ucrtbase.dll.", "SP_TitleBarNormalButton",
+                {"assembler": "nasm", "arch": "x86", "linker": "ld", "entry": "_main"}, (), forms=True),
+    AsmTemplate("fasm_forms", "asm-fasm", "FASM Windows Forms (x64, GUI Bridge)",
+                "Design the form, double-click a control and handle the event in FASM (handler btnAdd_Click ... "
+                "endhandler). Every form file is a format MS64 COFF object linked by gcc with the GUI Bridge "
+                "client.", "SP_TitleBarNormalButton",
+                {"assembler": "fasm", "arch": "x64", "linker": "gcc", "entry": "main"}, (), forms=True),
+    AsmTemplate("gas_forms", "asm-gas", "GNU as Windows Forms (x64, AT&T syntax, GUI Bridge)",
+                "Event handlers in GNU as AT&T syntax (handler btnAdd_Click ... endhandler) with the rad_set / "
+                "rad_get_int / rad_msgbox macros; F5 debugs them by line.", "SP_TitleBarNormalButton",
+                {"assembler": "gas", "arch": "x64", "linker": "gcc", "entry": "main", "syntax": "att"}, (),
+                forms=True),
+    AsmTemplate("gas_forms_intel", "asm-gas", "GNU as Windows Forms (x64, Intel syntax, GUI Bridge)",
+                "The same form template with .intel_syntax noprefix.", "SP_TitleBarNormalButton",
+                {"assembler": "gas", "arch": "x64", "linker": "gcc", "entry": "main", "syntax": "intel"}, (),
+                forms=True),
 ]
 
 BY_ID = {t.id: t for t in TEMPLATES}
@@ -618,5 +789,19 @@ def for_plugin(plugin_id: str) -> list[AsmTemplate]:
     return [t for t in TEMPLATES if t.plugin == plugin_id]
 
 
-def form_code(form_name: str) -> str:
-    return NASM_FORM.replace("{form}", form_name)
+def form_code(form_name: str, flavor: str = "nasm64") -> str:
+    """The form template's code for *flavor* (radide/asm/formgen.py ``flavor_for``)."""
+    return FORM_CODE.get(flavor, NASM_FORM).replace("{form}", form_name)
+
+
+def new_form_code(form_name: str, flavor: str = "nasm64") -> str:
+    """An empty form's code: the header of the flavor's template + a Load handler."""
+    text = FORM_CODE.get(flavor, NASM_FORM).replace("{form}", form_name)
+    if flavor == "fasm64":
+        head = text.split("handler ", 1)[0]
+        return head + f"handler {form_name}_Load\n    ; runs when the form is shown\nendhandler\n"
+    if flavor.startswith("gas"):
+        head = text.split("        .data", 1)[0]
+        return head + f"\nhandler {form_name}_Load\n        # runs when the form is shown\nendhandler\n"
+    head = text.split("section .data", 1)[0]
+    return head + f"section .text\n\nhandler {form_name}_Load\n    ; runs when the form is shown\nendhandler\n"

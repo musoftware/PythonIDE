@@ -255,7 +255,11 @@ class SlnxModel(SlnModel):
                 if ch.tag == "Folder":
                     name = ch.get("Name", "").strip("/")
                     g = "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "slnx:" + name)).upper() + "}"
-                    e = SlnEntry(name.split("/")[-1], name, MB.FOLDER_GUID, g, parent_guid)
+                    holder = parent_guid
+                    if "/" in name and not parent_guid:          # flat "/A/B/" folders: B is inside A
+                        holder = "{" + str(uuid.uuid5(uuid.NAMESPACE_URL, "slnx:" + name.rsplit("/", 1)[0])
+                                           ).upper() + "}"
+                    e = SlnEntry(name.split("/")[-1], name, MB.FOLDER_GUID, g, holder)
                     e.items = [norm_rel(f.get("Path", "")) for f in ch if f.tag == "File"]
                     self.entries.append(e)
                     walk(ch, g)

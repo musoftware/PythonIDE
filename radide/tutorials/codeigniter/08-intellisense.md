@@ -87,7 +87,7 @@ products.index  (GET Products::index, سطر 5)
 products.edit  (GET Products::edit/$1, سطر 6)
 ```
 
-## الترجمات: lang()
+## الترجمات: `lang()`
 
 الأفضل أن تكتب نصوص الواجهة في ملفات ترجمة لتدعم أكثر من لغة (مثال المتجر يفعل ذلك في `app/Language/en/Shop.php`). ملف العربية `app/Language/ar/Shop.php` مصفوفة متداخلة:
 

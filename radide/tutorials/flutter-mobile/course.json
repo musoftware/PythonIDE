@@ -4,7 +4,7 @@
   "title_en": "Flutter Mobile Apps in RAD IDE (guide)",
   "language": "flutter",
   "level": "beginner",
-  "description_ar": "دليل خطوة بخطوة لصناعة تطبيقات الموبايل في RAD IDE: مشروع Flutter، ومصمم الهاتف، والأحداث والكود، والرسائل والقوائم والشاشات المتعددة، والمؤقت، والأجهزة والمحاكيات، وإعادة التحميل السريع، وبناء ملف APK وموقع ويب، ومصمم شجرة الودجات الجديد، ثم مشروع كامل. كل مثال يعمل: اضغط «جرّبه» لفتحه مشروعًا في البيئة، أو «تحقق» لتشغيل اختبار تلقائي.",
+  "description_ar": "دليل خطوة بخطوة لصناعة تطبيقات الموبايل في RAD IDE: مشروع Flutter، ومصمم الهاتف، والأحداث والكود، والرسائل والقوائم والشاشات المتعددة، والمؤقت، والأجهزة والمحاكيات، وإعادة التحميل السريع، وبناء ملف APK وموقع ويب، ومصمم شجرة الودجات الجديد، ثم مشروع كامل، والأجهزة القابلة للطي. كل مثال يعمل: اضغط «جرّبه» لفتحه مشروعًا في البيئة، أو «تحقق» لتشغيل اختبار تلقائي.",
   "lessons": [
     {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما هو Flutter؟ وتجهيز الأدوات", "minutes": 15},
     {"id": "02-first-app", "file": "02-first-app.md", "title_ar": "تطبيقك الأول: مشروع Flutter App", "minutes": 25},
@@ -17,6 +17,7 @@
     {"id": "09-devices-hot-reload", "file": "09-devices-hot-reload.md", "title_ar": "الأجهزة والمحاكيات وإعادة التحميل السريع", "minutes": 25},
     {"id": "10-build", "file": "10-build.md", "title_ar": "بناء التطبيق: APK و App Bundle و Windows والويب", "minutes": 20},
     {"id": "11-flutter-designer", "file": "11-flutter-designer.md", "title_ar": "مصمم شجرة الودجات (Flutter Designer) وفتح مشاريع Flutter الجاهزة", "minutes": 25},
-    {"id": "12-final-project", "file": "12-final-project.md", "title_ar": "المشروع النهائي: تطبيق قائمة المهام", "minutes": 45}
+    {"id": "12-final-project", "file": "12-final-project.md", "title_ar": "المشروع النهائي: تطبيق قائمة المهام", "minutes": 45},
+    {"id": "13-foldables", "file": "13-foldables.md", "title_ar": "الأجهزة القابلة للطي: الوضعيات والمفصل و TwoPane", "minutes": 30}
   ]
 }

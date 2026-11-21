@@ -1,0 +1,55 @@
+{
+ "version": 1,
+ "name": "RateScreen",
+ "route": "/rate_screen",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w3",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w4",
+      "type": "Text",
+      "props": {
+       "data": "Screen"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w7",
+    "type": "Column",
+    "children": [
+     {
+      "id": "w8",
+      "type": "Text",
+      "props": {
+       "data": "Rate the app"
+      }
+     },
+     {
+      "id": "w9",
+      "type": "RatingBar",
+      "name": "rate2",
+      "props": {
+       "Value": 3,
+       "MaxStars": 5,
+       "ReadOnly": false,
+       "StarColor": "#FFFFB400",
+       "EmptyColor": "#FFC8CDD5"
+      },
+      "events": {
+       "ValueChanged": "onRate2ValueChanged"
+      }
+     }
+    ]
+   }
+  }
+ }
+}

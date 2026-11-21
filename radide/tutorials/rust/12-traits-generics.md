@@ -193,7 +193,7 @@ true
 |---|---|---|
 | `the trait bound Foo: Shape is not satisfied` | النوع لا يطبق السمة | اكتب `impl Shape for Foo` |
 | `binary operation > cannot be applied to type T` | نوع عام بلا قيد مقارنة | أضف `T: PartialOrd` |
-| `not all trait items implemented, missing: area` | نسيت تابعًا مطلوبًا | اكتب التابع (أو اضغط **Ctrl+.** > «Implement missing members») |
+| `not all trait items implemented, missing: area` | نسيت دالة مطلوبة | اكتب الدالة (أو اضغط **Ctrl+.** > «Implement missing members») |
 | `doesn't implement std::fmt::Display` | طباعة بـ `{}` لنوعك | طبّق `Display` أو استخدم `{:?}` مع `Debug` |
 
 ## تمارين
@@ -279,7 +279,7 @@ fn main() {
 ## اختبر نفسك
 
 ```quiz
-{"question": "ما السمة (trait) في Rust؟", "choices": ["نوع من المتغيرات", "مجموعة توابع تصف قدرة مشتركة تطبقها الأنواع", "حلقة تكرار", "مكتبة خارجية"], "answer": 1, "explanation": "السمة تعرّف سلوكًا مشتركًا، وأي نوع يطبقها يمكن استخدامه حيث تُطلب."}
+{"question": "ما السمة (trait) في Rust؟", "choices": ["نوع من المتغيرات", "مجموعة دوال تصف قدرة مشتركة تطبقها الأنواع", "حلقة تكرار", "مكتبة خارجية"], "answer": 1, "explanation": "السمة تعرّف سلوكًا مشتركًا، وأي نوع يطبقها يمكن استخدامه حيث تُطلب."}
 ```
 
 ```quiz
@@ -293,6 +293,6 @@ fn main() {
 ## الخلاصة
 
 - `trait` يصف قدرة، و`impl Trait for Type` يطبقها.
-- التوابع الافتراضية في السمة تُعطى مجانًا ويمكن إعادة تعريفها.
+- الدوال الافتراضية في السمة تُعطى مجانًا ويمكن إعادة تعريفها.
 - `&impl Trait` و`<T: Trait>` لدوال تقبل أنواعًا كثيرة، و`Box<dyn Trait>` لقوائم مختلطة.
 - `Display` و`Debug` و`Clone` و`PartialEq` سمات جاهزة تستخدمها كل يوم.

@@ -59,6 +59,19 @@ def type_icon(type_: str, size: int = 18, color: str = "#FF3F51B5"):
     return iconfont.icon("Icons." + TYPE_ICONS.get(type_, "widgets"), size, color)
 
 
+def _component_icon(type_: str):
+    """The Toolbox icon of a component package widget (radide/components)."""
+    try:
+        from ..components import package_of
+        pkg = package_of(type_)
+        if pkg is not None and pkg.icon_path is not None:
+            from PyQt6.QtGui import QIcon
+            return QIcon(str(pkg.icon_path))
+    except Exception:  # noqa: BLE001
+        pass
+    return type_icon(type_)
+
+
 # ----------------------------------------------------------------------------- snippets
 def _t(type_, props=None, slots=None, children=None, ctor=None, **extra):
     return M.T(type_, props, slots, children, ctor, **extra)
@@ -184,6 +197,11 @@ class Palette(QWidget):
         self._fill()
 
     def _fill(self):
+        try:                                 # installed component packages with a flutter template
+            from ..components import dart as _comp_dart
+            _comp_dart.sync_catalog()
+        except Exception:  # noqa: BLE001
+            pass
         self.tree.clear()
         snip = QTreeWidgetItem([_tr("Snippets")])
         f = snip.font(0)
@@ -205,7 +223,7 @@ class Palette(QWidget):
             for t in types:
                 spec = M.CATALOG[t]
                 it = QTreeWidgetItem(g, [t])
-                it.setIcon(0, type_icon(t))
+                it.setIcon(0, _component_icon(t) if getattr(spec, "component", None) else type_icon(t))
                 it.setToolTip(0, f"{t} - {spec.help}")
                 it.setData(0, Qt.ItemDataRole.UserRole, {"type": t})
                 it.setData(0, Qt.ItemDataRole.UserRole + 1, (t + " " + spec.help).lower())

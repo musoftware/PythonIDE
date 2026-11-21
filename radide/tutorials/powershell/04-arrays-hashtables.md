@@ -80,7 +80,7 @@ $list -join ", "
 
 `[void]` تتجاهل القيمة التي يُرجعها `Remove` (وإلا ستُطبع `True`).
 
-## جدول التجزئة (Hashtable)
+## جدول التجزئة (`Hashtable`)
 
 ```powershell run
 $ages = @{ "علي" = 20; "منى" = 22 }

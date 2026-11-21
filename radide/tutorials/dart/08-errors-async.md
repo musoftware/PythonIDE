@@ -2,7 +2,7 @@
 
 في هذا الدرس موضوعان يحتاجهما كل تطبيق حقيقي: **ماذا نفعل عندما يفشل شيء؟** و**كيف ننتظر عملًا بطيئًا** (تحميل من الإنترنت، قراءة ملف) دون أن يتجمد البرنامج؟
 
-## معالجة الأخطاء: try و catch
+## معالجة الأخطاء: `try` و `catch`
 
 ```dart run
 void main() {
@@ -35,7 +35,7 @@ void main() {
 
 > **تشبيه:** `try / catch` مثل **شبكة الأمان تحت لاعب السيرك**: يحاول اللاعب الحركة الصعبة، فإذا سقط التقطته الشبكة، ويكمل العرض بدل أن ينتهي.
 
-## رمي الأخطاء بنفسك: throw
+## رمي الأخطاء بنفسك: `throw`
 
 ```dart run
 class InsufficientFunds implements Exception {
@@ -71,7 +71,7 @@ void main() {
 ```
 
 - `throw` ترمي خطأ يوقف الدالة فورًا ويصعد إلى أقرب `catch`.
-- يمكنك صنع نوع خطأ خاص بك بفئة تنفذ `Exception`.
+- يمكنك صنع نوع خطأ خاص بك بصنف ينفذ `Exception`.
 - ترتيب `on ... catch` مهم: الأكثر تحديدًا أولًا، ثم `catch (e)` العامة.
 
 ## لماذا البرمجة غير المتزامنة؟
@@ -80,7 +80,7 @@ void main() {
 
 > **تشبيه:** `Future` مثل **إيصال المطعم**: تطلب البيتزا فتأخذ إيصالًا (وعدًا بأن الطلب سيجهز)، وتجلس تتحدث مع أصدقائك. عندما ينادون رقمك تستلم البيتزا. و`await` تعني: «سأنتظر هنا حتى ينادوا رقمي».
 
-## Future و async و await
+## `Future` و `async` و `await`
 
 ```dart run
 Future<String> downloadName() async {
@@ -106,7 +106,7 @@ Future<void> main() async {
 - الدالة التي تستخدم `await` يجب أن تُعلم بـ `async`.
 - `await` تنتظر الـ Future حتى يكتمل وتُرجع قيمته، دون أن تجمّد البرنامج كله.
 
-## ماذا يحدث بدون await؟
+## ماذا يحدث بدون `await`؟
 
 ```dart run
 Future<void> task(String name, int ms) async {
@@ -308,7 +308,7 @@ Future<void> main() async {
 
 ## الخلاصة
 
-- `try / on / catch / finally` لمعالجة الأخطاء، و`throw` لرميها، وفئة تنفذ `Exception` لخطأ خاص.
+- `try / on / catch / finally` لمعالجة الأخطاء، و`throw` لرميها، وصنف ينفذ `Exception` لخطأ خاص.
 - `Future` و`async` و`await` لانتظار الأعمال البطيئة دون تجميد البرنامج، و`Future.wait` لتشغيلها معًا.
 - `Stream` و`async*` و`yield` و`await for` لسلسلة قيم.
 - `File` من `dart:io`: `writeAsString` و`readAsLines` و`delete`.

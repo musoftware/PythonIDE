@@ -179,6 +179,11 @@ class _FrmConverter:
 
     def _add(self, form: Form, o: FrmObject, parent: str) -> None:
         cls = o.cls.lower()
+        comp = _vb6map.import_type(cls) if "." in cls and not cls.startswith("vb.") else None
+        from ..components import is_component_type
+        if comp is not None and is_component_type(comp):          # an installed component package
+            self._add_component(form, o, parent, comp)
+            return
         if cls not in CLASS_MAP:
             self.report.warnings.append(f"{self.label}: ActiveX control '{o.name}' ({o.cls}) is not available - "
                                         "imported as a Panel placeholder")
@@ -263,6 +268,36 @@ class _FrmConverter:
             for ch in o.children:          # e.g. controls inside an SSTab placeholder
                 self._add(form, ch, parent)
 
+
+    def _add_component(self, form: Form, o: FrmObject, parent: str, ntype: str) -> None:
+        """A component package control (its package's VB6 class or a UserControl reference
+        ``<Project>.<Type>``): geometry and common properties, then the package's own property lines."""
+        p = o.props
+        ctype = CONTROL_TYPES[ntype]
+        index = p.get("index")
+        name = o.name if index is None else f"{o.name}_{index}"
+        props = ctype.default_props(name)
+        if not ctype.nonvisual:
+            props.update(Left=_px(p.get("left", 0)), Top=_px(p.get("top", 0)),
+                         Width=max(8, _px(p.get("width", 1200), 80)), Height=max(8, _px(p.get("height", 375), 25)),
+                         Enabled=_bool(p.get("enabled"), True), Visible=_bool(p.get("visible"), True),
+                         TabIndex=int(p.get("tabindex", 0) or 0), ToolTip=str(p.get("tooltiptext", "") or ""))
+            bg, fg = _color(p.get("backcolor")), _color(p.get("forecolor"))
+            if bg and "BackColor" in props:
+                props["BackColor"] = bg
+            if fg and "ForeColor" in props:
+                props["ForeColor"] = fg
+        if "Text" in props and isinstance(p.get("caption", p.get("text")), str):
+            props["Text"] = p.get("caption", p.get("text"))
+        props["Parent"] = parent
+        if index is not None:
+            props["ArrayName"] = o.name
+            props["ArrayIndex"] = int(index)
+        props.update(_vb6map.read_props(ntype, p))
+        form.controls.append(Control(ntype, props))
+        self.report.controls += 1
+        for ch in o.children:
+            self._add(form, ch, name if ctype.container else parent)
 
     def _sstab_children(self, form: Form, o: FrmObject, name: str) -> None:
         """SSTab children: each goes on the page that lists it (Tab(i).Control(j) = "Name"); VB6 parks the

@@ -182,6 +182,24 @@ Map<String, Object?> _body(FunctionBody b) {
       if (ret != null) 'return': _pos(ret),
       if (ret != null) 'last': identical(ret, stmts.last),
       if (e != null) 'expr': _expr(e),
+      // local variables (const items = [...]; final item = items[i];) and expression statements (runApp(...))
+      'decls': [
+        for (final s in stmts)
+          if (s is VariableDeclarationStatement)
+            for (final v in s.variables.variables)
+              {
+                'name': v.name.lexeme,
+                'const': s.variables.isConst,
+                'final': s.variables.isFinal,
+                if (v.initializer != null) 'init': _expr(v.initializer!),
+                ..._pos(s),
+              },
+      ],
+      'calls': [
+        for (final s in stmts)
+          if (s is ExpressionStatement) _expr(s.expression),
+      ],
+      'stmts': stmts.length,
     };
   }
   return {..._pos(b)};
@@ -302,6 +320,7 @@ Map<String, Object?> _expr(Expression e) {
       'params': e.parameters?.toSource(),
       if (b is ExpressionFunctionBody) 'expr': _expr(b.expression),
       'block': b is BlockFunctionBody,
+      if (b is BlockFunctionBody) 'body': _body(b),
       ...base,
     };
   }

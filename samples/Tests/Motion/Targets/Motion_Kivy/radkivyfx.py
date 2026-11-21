@@ -54,7 +54,20 @@ def look_of(widget):
 
 
 def reduced_motion():
-    return os.environ.get("RADIDE_REDUCED_MOTION", "") == "1"
+    """RADIDE_REDUCED_MOTION=1 / 0, else on Windows the "Show animations in Windows" setting
+    (SPI_GETCLIENTAREAANIMATION, read only)."""
+    v = os.environ.get("RADIDE_REDUCED_MOTION", "").strip().lower()
+    if v:
+        return v in ("1", "true", "yes", "on")
+    if os.name == "nt":
+        try:
+            import ctypes
+            on = ctypes.c_int(1)
+            if ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(on), 0):
+                return not on.value
+        except (AttributeError, OSError, ValueError):
+            pass
+    return False
 
 
 class RadFx:

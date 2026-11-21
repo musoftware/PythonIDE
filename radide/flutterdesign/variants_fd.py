@@ -67,23 +67,25 @@ def label(s: dict) -> str:
     return str(s.get("label") or s.get("id"))
 
 
-def describe_when(when: dict | None) -> str:
+def describe_when(when: dict | None, tr=None) -> str:
+    """"600-1023 wide, portrait"; *tr* translates the words (the IDE language) - without it plain English."""
+    t = tr or (lambda s: s)
     w = when or {}
     parts = []
     if "minWidth" in w and "maxWidth" in w:
-        parts.append(f"{w['minWidth']:g}-{w['maxWidth']:g} wide")
+        parts.append(t("{}-{} wide").format(f"{w['minWidth']:g}", f"{w['maxWidth']:g}"))
     elif "minWidth" in w:
-        parts.append(f">= {w['minWidth']:g} wide")
+        parts.append(t(">= {} wide").format(f"{w['minWidth']:g}"))
     elif "maxWidth" in w:
-        parts.append(f"<= {w['maxWidth']:g} wide")
+        parts.append(t("<= {} wide").format(f"{w['maxWidth']:g}"))
     if "minHeight" in w:
-        parts.append(f">= {w['minHeight']:g} high")
+        parts.append(t(">= {} high").format(f"{w['minHeight']:g}"))
     if "maxHeight" in w:
-        parts.append(f"<= {w['maxHeight']:g} high")
+        parts.append(t("<= {} high").format(f"{w['maxHeight']:g}"))
     for k in ("orientation", "posture", "span", "fold"):
         if k in w:
-            parts.append(str(w[k]))
-    return ", ".join(parts) or "always"
+            parts.append(t(str(w[k])))
+    return ", ".join(parts) or t("always")
 
 
 def _num(v):
@@ -329,11 +331,12 @@ def effective(screen, active: list[str]) -> dict:
 
 
 def needs_resolve(screen) -> bool:
-    """Does the screen use anything the previews cannot show as stored ($when / $timeline / vprops)?"""
-    from . import motion as MO
+    """Does the screen use anything the previews cannot show as stored ($when / $timeline / vprops /
+    ListView.builder item templates)?"""
+    from . import datawidgets as DW, motion as MO
     data = screen.data if isinstance(screen, M.Screen) else screen
     for n, *_ in M.walk_node(data.get("tree") or {}):
-        if n.get("vprops"):
+        if n.get("vprops") or DW.is_builder(n):
             return True
         for v in (n.get("props") or {}).values():
             if MO.is_when(v) or MO.is_timeline(v):
@@ -343,8 +346,9 @@ def needs_resolve(screen) -> bool:
 
 def preview_data(screen, active: list[str] | None = None, state: dict | None = None,
                  t_ms: dict | None = None) -> dict:
-    """What the previews render: the active sizes applied, $when / $timeline resolved, vprops removed."""
-    from . import motion as MO
+    """What the previews render: the active sizes applied, $when / $timeline resolved, vprops removed,
+    item templates of ListView.builder / GridView.builder expanded (datawidgets.expand_builders)."""
+    from . import datawidgets as DW, motion as MO
     scr = screen if isinstance(screen, M.Screen) else M.Screen(copy.deepcopy(screen))
     data = effective(scr, active or [])
     st = MO.state_values(scr)
@@ -357,7 +361,7 @@ def preview_data(screen, active: list[str] | None = None, state: dict | None = N
             if MO.is_when(v) or MO.is_timeline(v):
                 kind = spec.props[k].kind if spec and k in spec.props else ""
                 pr[k] = MO.resolve_value(v, kind, st, t_ms)
-    return data
+    return DW.expand_builders(data) if DW.needs_expand(data) else data
 
 
 # ============================================================================================ codegen

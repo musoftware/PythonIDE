@@ -59,7 +59,7 @@
 |---|---|---|
 | object | كائن | ما تُرجعه `Get-Process` |
 | property | خاصية | `$file.Length` |
-| method | دالة الكائن (طريقة) | `$s.ToUpper()` |
+| method | دالة الكائن (وتُسمّى أيضًا: طريقة، تابع) | `$s.ToUpper()` |
 | path | مسار | `C:\Users\...` |
 | encoding | الترميز | `-Encoding UTF8` |
 | CSV | ملف قيم مفصولة بفواصل | `Export-Csv` / `Import-Csv` |

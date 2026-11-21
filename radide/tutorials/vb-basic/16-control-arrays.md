@@ -77,7 +77,7 @@ End Sub
 
 `cmdDigit(Index).Caption` تعني: "نص الزر الذي رقمه `Index`"، أي الزر المضغوط نفسه.
 
-## Select Case مع Index
+## `Select Case` مع `Index`
 
 عندما تختلف وظيفة كل عنصر نستخدم `Select Case Index`. هذه آلة حاسبة بأزرار عمليات في مصفوفة واحدة:
 

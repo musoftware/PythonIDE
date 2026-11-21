@@ -87,7 +87,7 @@ class EditScreenCode extends EditScreenDesigner {
 - `FormArgs as String? ?? ''`: اعتبر القيمة المرسلة نصًّا (قد يكون `null`)، وإذا كانت `null` فاستخدم نصًّا فارغًا.
 - في الحدث `EditScreen_Load` نقرأ `FormArgs`، لأن الشاشة تكون جاهزة عندها.
 
-## القيم المشتركة: RadApp.data
+## القيم المشتركة: `RadApp.data`
 
 أحيانًا تحتاج قيمة تراها كل الشاشات، مثل اسم المستخدم بعد الدخول. `RadApp.data` قاموس (`Map`) مشترك، مثل متغير `Public` في وحدة فيجوال بيسك:
 
@@ -129,7 +129,7 @@ class HomeScreenCode extends HomeScreenDesigner {
 ## أخطاء شائعة
 
 - **اسم شاشة خطأ** في `ShowForm('Detail')`: يظهر خطأ `Could not find a generator for route`. الاسم يجب أن يطابق اسم النموذج تمامًا.
-- **قراءة `FormArgs` في متغير الفئة** (خارج الدوال): لا يكون السياق جاهزًا بعد. اقرأه في حدث `Load`.
+- **قراءة `FormArgs` في متغير الصنف** (خارج الدوال): لا يكون السياق جاهزًا بعد. اقرأه في حدث `Load`.
 - **استخدام `ShowForm` بعد الدخول**: يبقى زر الرجوع عائدًا إلى شاشة الدخول. استخدم `SwitchForm`.
 
 ## تمرين
@@ -209,7 +209,7 @@ class ColorScreenCode extends ColorScreenDesigner {
 ```
 
 ```quiz
-{"question": "أين تقرأ القيمة المرسلة إلى الشاشة (FormArgs)؟", "choices": ["في متغير الفئة", "في حدث Load للشاشة", "في main.dart", "في ملف _designer.dart"], "answer": 1, "explanation": "في Load تكون الشاشة جاهزة وتعرف من فتحها."}
+{"question": "أين تقرأ القيمة المرسلة إلى الشاشة (FormArgs)؟", "choices": ["في متغير الصنف", "في حدث Load للشاشة", "في main.dart", "في ملف _designer.dart"], "answer": 1, "explanation": "في Load تكون الشاشة جاهزة وتعرف من فتحها."}
 ```
 
 ## الخلاصة

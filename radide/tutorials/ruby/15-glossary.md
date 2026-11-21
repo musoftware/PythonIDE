@@ -43,7 +43,7 @@
 
 | English | العربية | مثال |
 |---|---|---|
-| method / function | دالة | `def greet(name)` |
+| method / function | دالة (وتُسمّى أيضًا: طريقة، تابع) | `def greet(name)` |
 | parameter / argument | معامل / وسيط (القيمة الممررة) | `greet("سارة")` |
 | return value | القيمة المرجعة | |
 | keyword argument | معامل مسمّى | `size: "كبير"` |
@@ -56,7 +56,7 @@
 
 | English | العربية | مثال |
 |---|---|---|
-| class | صنف | `class Book` |
+| class | صنف (ويُسمّى أيضًا: فئة) | `class Book` |
 | object / instance | كائن / نسخة | `Book.new` |
 | constructor | مُنشئ | `initialize` |
 | instance variable | متغير الكائن | `@title` |

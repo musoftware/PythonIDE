@@ -33,7 +33,7 @@ log_message('error', 'فشل الدفع للطلب {order}', ['order' => $orderI
 
 المستويات من الأخطر للأقل: `emergency` و`alert` و`critical` و`error` و`warning` و`notice` و`info` و`debug`. وأيها يُكتب فعلًا يحدده `$threshold` في `app/Config/Logger.php`.
 
-## d() و dd()
+## `d()` و `dd()`
 
 مع CodeIgniter أداة **Kint** لعرض القيم بشكل جميل:
 

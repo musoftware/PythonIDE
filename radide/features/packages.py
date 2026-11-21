@@ -884,6 +884,16 @@ def manage_packages(win, plugin=None):
     if not win.project:
         QMessageBox.information(win, "Manage Packages", "Open a project first.")
         return None
+    if plugin is None or getattr(plugin, "id", "") == "csharp-bridge" or hasattr(plugin, "vsproject"):
+        try:                                  # .NET: the Visual Studio 2022 NuGet document (radide/dotnet/nuget)
+            from ..dotnet.nuget.context import is_dotnet
+            if is_dotnet(win):
+                from ..dotnet.nuget.ui import open_manager
+                view = open_manager(win, getattr(plugin, "vsproject", None))
+                if view is not None:
+                    return view
+        except Exception as e:  # noqa: BLE001 - the generic dialog below still works
+            win.log(f"[NuGet] {e}")
     langs = project_languages(win)
     if not any(p.package_manager for p in langs):
         QMessageBox.information(win, "Manage Packages",

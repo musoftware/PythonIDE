@@ -1,5 +1,5 @@
 // RAD IDE - AnalyzerInfo: prints JSON describing the analyzers and source generators of each assembly given
-// on the command line: [{ "path", "error", "rules": [{id,title,category,severity,enabled,help}], "generators": [..] }]
+// on the command line (or, with --usings <request.json>, organizes the usings of a C# file - Usings.cs): [{ "path", "error", "rules": [{id,title,category,severity,enabled,help}], "generators": [..] }]
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text.Json;
@@ -30,6 +30,8 @@ static class Program
 
     static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--usings")
+            return Usings.Run(args[1]);
         var all = new List<object>();
         foreach (var path in args)
         {

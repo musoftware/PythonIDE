@@ -47,7 +47,7 @@ def run_steps(steps) -> tuple[int, str]:
 
 
 # ---------------------------------------------------------------- detection
-EXPECT = {"NasmLoose": "nasm", "MasmLoose": "masm", "FasmLoose": "fasm", "GasLoose": "gas", "Dos8086Loose": "8086",
+EXPECT = {"NasmLoose": "nasm", "Nasm32Loose": "nasm", "Gas32Loose": "gas", "MasmLoose": "masm", "FasmLoose": "fasm", "GasLoose": "gas", "Dos8086Loose": "8086",
           "SasmProgram": "nasm", "RadAsmProject": "nasm", "WinAsmProject": "masm"}
 for folder, dialect in EXPECT.items():
     det = PD.detect(HERE / folder)
@@ -96,14 +96,21 @@ check("entry points", AF.entry_point(SNIPPETS["masm"], "masm") == "main" and
 
 # ---------------------------------------------------------------- adapter: targets, build, run
 for folder, expect_out in (("NasmLoose", "NASM loose folder: 6 * 7 = 42"), ("GasLoose", "GNU as loose folder: 2026"),
-                           ("FasmLoose", "FASM loose folder"), ("MasmLoose", "MASM loose folder: 42")):
+                           ("FasmLoose", "FASM loose folder"), ("MasmLoose", "MASM loose folder: 42"),
+                           ("Nasm32Loose", "NASM 32-bit loose folder: 6 * 7 = 42"),      # ld -m i386pe, not gcc -m32
+                           ("Gas32Loose", "GNU as 32-bit loose folder: 2026")):
     a = AF.AsmFolderAdapter(HERE / folder)
     a.scan()
     t = a.targets[0] if a.targets else None
     if t is None:
         check(f"adapter {folder}: target", False)
         continue
-    tool = {"NasmLoose": "nasm", "GasLoose": "gcc", "FasmLoose": "fasm", "MasmLoose": "ml64"}[folder]
+    tool = {"NasmLoose": "nasm", "GasLoose": "gcc", "FasmLoose": "fasm", "MasmLoose": "ml64", "Nasm32Loose": "nasm",
+            "Gas32Loose": "ld"}[folder]
+    if folder.endswith("32Loose"):
+        check(f"adapter {folder}: links with ld -m i386pe",
+              any("i386pe" in [str(x) for x in s.argv] for s in a.build_steps(t, False)) and
+              not any("-m32" in [str(x) for x in s.argv] for s in a.build_steps(t, False)))
     if not (AF.find_masm(64)[0] if tool == "ml64" else AF.find_tool(tool)):
         print(f"skip {folder}: {tool} not installed")
         continue

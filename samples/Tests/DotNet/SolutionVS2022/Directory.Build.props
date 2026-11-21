@@ -1,0 +1,7 @@
+<Project>
+  <!-- Applies to every project below this folder (shown under "Solution Items" in RAD IDE and VS). -->
+  <PropertyGroup>
+    <Company>RAD IDE Samples</Company>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

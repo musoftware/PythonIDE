@@ -52,6 +52,7 @@ ENUMS: dict[str, list[str]] = {
     "CrossFadeState": ["showFirst", "showSecond"],
     "RadPaneMode": ["auto", "horizontal", "vertical"],
     "RadPane": ["start", "end"],
+    "AutovalidateMode": ["disabled", "always", "onUserInteraction", "onUnfocus"],
 }
 ANIM_TYPES = ["fadeIn", "fadeInUp", "fadeInDown", "fadeInLeft", "fadeInRight", "slideUp", "slideDown",
               "slideLeft", "slideRight", "scaleIn", "zoomIn", "bounceIn",
@@ -63,7 +64,10 @@ PROP_KINDS = {"string", "int", "double", "bool", "color", "enum", "edge_insets",
               "icon", "offset", "duration", "string_list", "image", "gradient", "box_shadows", "border",
               "box_decoration", "text_style", "shape", "button_style", "input_decoration", "nav_items",
               "constraints", "physics", "code",
-              "timeline", "timeline_offset"}    # Animation<double> / Animation<Offset> (explicit transitions)
+              "timeline", "timeline_offset",    # Animation<double> / Animation<Offset> (explicit transitions)
+              "text_spans", "validators"}       # Text.rich / RichText spans, TextFormField validator rules
+# validator rules of TextFormField.validators (lib/radform.dart RadRule.<rule>)
+VALIDATOR_RULES = ["required", "email", "minLength", "maxLength", "regex"]
 
 
 # ========================================================================================= catalog
@@ -118,6 +122,7 @@ class WidgetSpec:
     value_prop: str = ""              # prop holding the state value (Checkbox.value, Slider.value ...)
     value_type: str = ""              # Dart type of the state field ("bool", "TextEditingController" ...)
     required_events: tuple[str, ...] = ()   # emitted as () {} when not wired
+    event_returns: dict[str, str] = field(default_factory=dict)   # handler return types (default void)
     const_ctor: bool = True
     library: str = "material"
     template: dict = field(default_factory=dict)
@@ -228,8 +233,7 @@ _w("Container", "Layout", "Box with size, padding, margin, colour, gradient, bor
     "margin": P("edge_insets", group="Layout"), **_SIZE, "color": P("color", group="Style"),
     "decoration": P("box_decoration", group="Style"), "constraints": P("constraints", group="Layout"),
     "clipBehavior": P("enum:Clip", "Clip.none", group="Style")}, _CHILD, const_ctor=False,
-   template=T("Container", {"width": 120, "height": 120, "decoration": {"color": "#FFE3E7FF",
-                                                                        "borderRadius": 12}}))
+   template=T("Container", {"width": 120, "height": 120}))
 _w("Padding", "Layout", "Empty space around the child",
    {"padding": P("edge_insets", {"all": 8}, req=True, group="Layout")}, _CHILD,
    template=T("Padding", {"padding": {"all": 16}}))
@@ -292,8 +296,13 @@ _w("IntrinsicHeight", "Layout", "Sizes the child to its natural height (rows of 
 # ------------------------------------------------------------------------------------------ Scroll
 _w("SingleChildScrollView", "Scroll", "Scrolls one child (e.g. a long Column / a form)",
    {k: v for k, v in _SCROLL.items() if k != "shrinkWrap"}, _CHILD)
+_BUILDER_PROPS = {"itemCount": P("int", 5, req=True, group="Data", help="number of items"),
+                  "items": P("string_list", group="Data",
+                             help="sample data: the template reads `item` (and `index`) in Dart values")}
 _w("ListView", "Scroll", "Scrolling list of children",
-   {**_SCROLL, "itemExtent": P("double", group="Layout")}, children="children", const_ctor=False)
+   {**_SCROLL, "itemExtent": P("double", group="Layout")}, children="children", const_ctor=False,
+   ctors={"builder": CtorSpec(props=dict(_BUILDER_PROPS), slots={"itemBuilder": S(required=True)}, children=None,
+                              help="items built on demand from one template (variables index / item)")})
 _w("GridView", "Scroll", "Scrolling grid", {**_SCROLL, "mainAxisSpacing": P("double", 0, group="Layout"),
                                              "crossAxisSpacing": P("double", 0, group="Layout"),
                                              "childAspectRatio": P("double", 1.0, group="Layout")},
@@ -301,7 +310,10 @@ _w("GridView", "Scroll", "Scrolling grid", {**_SCROLL, "mainAxisSpacing": P("dou
    ctors={"count": CtorSpec(props={"crossAxisCount": P("int", 2, req=True, group="Layout")},
                             help="a fixed number of columns"),
           "extent": CtorSpec(props={"maxCrossAxisExtent": P("double", 150, req=True, group="Layout")},
-                             help="columns of a maximum width")},
+                             help="columns of a maximum width"),
+          "builder": CtorSpec(props={"crossAxisCount": P("int", 2, req=True, group="Layout"), **_BUILDER_PROPS},
+                              slots={"itemBuilder": S(required=True)}, children=None,
+                              help="cells built on demand from one template (variables index / item)")},
    template=T("GridView", {"crossAxisCount": 2, "mainAxisSpacing": 8, "crossAxisSpacing": 8}, ctor="count"))
 _w("PageView", "Scroll", "Swipeable pages",
    {"scrollDirection": P("enum:Axis", "Axis.horizontal"), "physics": P("physics"),
@@ -313,8 +325,22 @@ _TEXT_PROPS = {"data": P("string", "Text", pos=0, req=True, group="Text"),
                "style": P("text_style", group="Text"), "textAlign": P("enum:TextAlign", group="Text"),
                "maxLines": P("int", group="Text"), "overflow": P("enum:TextOverflow", group="Text"),
                "softWrap": P("bool", group="Text")}
+_SPANS_HELP = 'TextSpan list: [{"text": "Hello ", "style": {...}}, ...]'
 _w("Text", "Content", "A run of text with a style (font, size, weight, colour)", _TEXT_PROPS,
+   ctors={"rich": CtorSpec(props={"spans": P("text_spans", [{"text": "Rich "}, {"text": "text", "style": {
+       "fontWeight": "FontWeight.bold"}}], pos=0, req=True, group="Text", help=_SPANS_HELP)}, drop_props=("data",),
+       help="text made of spans with their own styles (TextSpan children)")},
    template=_txt("Text"))
+_w("RichText", "Content", "Text made of styled spans (no default theme style: give the spans a colour)",
+   {"spans": P("text_spans", [{"text": "Rich "}, {"text": "text", "style": {"fontWeight": "FontWeight.bold"}}],
+               req=True, group="Text", help=_SPANS_HELP),
+    "style": P("text_style", group="Text", help="style of the root TextSpan (inherited by the spans)"),
+    "textAlign": P("enum:TextAlign", group="Text"), "maxLines": P("int", group="Text"),
+    "overflow": P("enum:TextOverflow", group="Text"), "softWrap": P("bool", group="Text")},
+   const_ctor=False,
+   template=T("RichText", {"spans": [{"text": "Rich ", "style": {"color": "#FF1F1F1F", "fontSize": 16}},
+                                     {"text": "text", "style": {"color": "#FF6750A4", "fontSize": 16,
+                                                                "fontWeight": "FontWeight.bold"}}]}))
 _w("SelectableText", "Content", "Text the user can select and copy",
    {k: v for k, v in _TEXT_PROPS.items() if k not in ("overflow", "softWrap")})
 _w("Icon", "Content", "A Material / Cupertino icon",
@@ -355,8 +381,12 @@ _w("TextField", "Input", "Text input with a decoration (hint, label, icons, bord
    needs_name=True, name_prefix="txt", value_type="TextEditingController",
    template=T("TextField", {"decoration": {"hintText": "Enter text", "border": "outline"}}))
 _w("TextFormField", "Input", "Text input inside a Form (validation)",
-   {**_TEXTFIELD, "decoration": P("input_decoration", {"labelText": "Label"}, group="Style")},
-   events={"onChanged": "String value", "onFieldSubmitted": "String value", "onTap": ""},
+   {**_TEXTFIELD, "decoration": P("input_decoration", {"labelText": "Label"}, group="Style"),
+    "validators": P("validators", group="Validation",
+                    help='rules: [{"rule": "required" | "email" | "minLength" | "maxLength" | "regex", '
+                         '"value": n / pattern, "message": "..."}]; event validator = custom handler')},
+   events={"onChanged": "String value", "onFieldSubmitted": "String value", "onTap": "",
+           "validator": "String? value"}, event_returns={"validator": "String?"},
    needs_name=True, name_prefix="txt", value_type="TextEditingController", const_ctor=False,
    template=T("TextFormField", {"decoration": {"labelText": "Label", "border": "outline"}}))
 _w("Checkbox", "Input", "On / off box", {"value": P("bool", False), "activeColor": P("color"),
@@ -389,7 +419,24 @@ _w("SwitchListTile", "Input", "List row with a switch",
     "activeThumbColor": P("color")},
    _LISTTILE_SLOTS, events={"onChanged": "bool value"}, needs_name=True, name_prefix="swt", value_prop="value",
    value_type="bool", template=T("SwitchListTile", slots={"title": _txt("Setting")}))
-_w("Form", "Input", "Groups form fields (validation, save)", {}, _CHILD_REQ)
+_w("Form", "Input", "Groups form fields: name it to get a GlobalKey<FormState>; a button event validate:<name> "
+   "(or validate:<name>:<handler>) checks every field",
+   {"autovalidateMode": P("enum:AutovalidateMode", group="Behaviour")}, _CHILD_REQ, name_prefix="form",
+   value_type="GlobalKey<FormState>", template=T("Form", name="form1"))
+_w("RadioGroup", "Input", "Holds the selected value of the Radio / RadioListTile widgets inside it",
+   {"groupValue": P("string", group="Behaviour", help="initially selected value (null = none)")}, _CHILD_REQ,
+   events={"onChanged": "String? value"}, needs_name=True, name_prefix="rdo", value_prop="groupValue",
+   value_type="String?", const_ctor=False,
+   template=T("RadioGroup", slots={"child": T("Column", {"mainAxisSize": "MainAxisSize.min"}, children=[
+       T("RadioListTile", {"value": "One"}, {"title": _txt("One")}),
+       T("RadioListTile", {"value": "Two"}, {"title": _txt("Two")})])}))
+_w("Radio", "Input", "Round choice button (inside a RadioGroup)",
+   {"value": P("string", "One", req=True), "activeColor": P("color"), "toggleable": P("bool", False),
+    "enabled": P("bool")}, template=T("Radio", {"value": "One"}))
+_w("RadioListTile", "Input", "List row with a radio button (inside a RadioGroup)",
+   {"value": P("string", "One", req=True), "controlAffinity": P("enum:ListTileControlAffinity"),
+    "activeColor": P("color"), "toggleable": P("bool", False), "enabled": P("bool")},
+   _LISTTILE_SLOTS, template=T("RadioListTile", {"value": "One"}, {"title": _txt("Option")}))
 _w("InkWell", "Input", "Makes the child tappable with a ripple",
    {"borderRadius": P("border_radius"), "splashColor": P("color")}, _CHILD,
    events={"onTap": "", "onDoubleTap": "", "onLongPress": ""})
@@ -1144,8 +1191,8 @@ def validate(screen: Screen | dict) -> list[Issue]:
                 and parent.get("type") != "Code":
             issues.append(Issue("warning", nid, f"{t} should be inside {' / '.join(spec.parent)}"))
     try:                                   # motion (triggers, timelines, state) and per-size variants
-        from . import motion as _MO, variants_fd as _VF
-        issues += _MO.validate(scr) + _VF.validate(scr)
+        from . import datawidgets as _DW, motion as _MO, variants_fd as _VF
+        issues += _MO.validate(scr) + _VF.validate(scr) + _DW.validate(scr)
     except ImportError:
         pass
     return issues
@@ -1153,10 +1200,11 @@ def validate(screen: Screen | dict) -> list[Issue]:
 
 def _motion_handler(h: str) -> bool:
     try:
+        from .datawidgets import handler_ok as dw_ok
         from .motion import handler_ok
     except ImportError:
         return False
-    return handler_ok(h)
+    return handler_ok(h) or dw_ok(h)
 
 
 # ======================================================================================= patches

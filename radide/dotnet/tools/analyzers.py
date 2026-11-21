@@ -53,7 +53,7 @@ def helper_exe(build: bool = True, log=None) -> str:
     ver = sdk.sdk_version()
     if not ver:
         return ""
-    out = sdk.cache_dir("dotnet-tools", f"AnalyzerInfo-{ver}")
+    out = sdk.cache_dir("dotnet-tools", f"AnalyzerInfo-{ver}-h2")
     exe = out / "bin" / ("AnalyzerInfo.exe" if os.name == "nt" else "AnalyzerInfo")
     if exe.is_file():
         return str(exe)
@@ -65,7 +65,7 @@ def helper_exe(build: bool = True, log=None) -> str:
         return ""
     src = out / "src"
     src.mkdir(parents=True, exist_ok=True)
-    for f in ("AnalyzerInfo.csproj", "Program.cs"):
+    for f in ("AnalyzerInfo.csproj", "Program.cs", "Usings.cs"):
         shutil.copy2(HELPER_SRC / f, src / f)
     tfm = "net" + ".".join(ver.split(".")[:1]) + ".0"
     if log:
@@ -159,7 +159,7 @@ def emit_generated_argv(project: Path, configuration: str = "Debug") -> list[str
     """``dotnet build`` that writes the generated sources to obj/<cfg>/<tf>/generated (the project file is not
     changed; Visual Studio shows them from memory, RAD IDE reads them from there)."""
     return [sdk.dotnet() or "dotnet", "build", str(project), "-c", configuration, "-nologo", "-v:m",
-            "-p:EmitCompilerGeneratedFiles=true"]
+            "--no-incremental", "-p:EmitCompilerGeneratedFiles=true"]
 
 
 def project_analyzers(project: Path, log=None) -> dict:

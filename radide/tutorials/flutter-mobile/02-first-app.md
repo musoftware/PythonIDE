@@ -73,7 +73,7 @@ class MainScreenCode extends MainScreenDesigner {
 
 ### `class MainScreenCode extends MainScreenDesigner`
 
-هذه **فئة** (class) الشاشة. الجزء المولَّد `MainScreenDesigner` يحتوي الأدوات ورسم الشاشة، وفئتك `MainScreenCode` **ترث** منه وتضيف الأحداث. الفكرة نفسها في فيجوال بيسك: النموذج فيه الأدوات، وأنت تضيف الكود.
+هذا **صنف** (class) الشاشة. الجزء المولَّد `MainScreenDesigner` يحتوي الأدوات ورسم الشاشة، وصنفك `MainScreenCode` **يرث** منه وتضيف الأحداث. الفكرة نفسها في فيجوال بيسك: النموذج فيه الأدوات، وأنت تضيف الكود.
 
 ### دوال الأحداث
 

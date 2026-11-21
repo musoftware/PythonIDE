@@ -33,6 +33,8 @@ const hinge = DisplayFeature(
 );
 
 void main() {
+  setUp(RadVariant.resetFoldMemory); // the fold memory is static (foldable_posture_test.dart)
+
   test('RadVariant.compute matches like the designer (later sizes win)', () {
     const sizes = [
       RadSize('compact', maxWidth: 599),

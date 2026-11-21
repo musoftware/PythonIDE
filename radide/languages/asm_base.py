@@ -109,7 +109,8 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
     builtins = X86_REGISTERS
     has_forms = True
     project_name_base = "AsmApp"
-    supports_forms = False             # GUI Bridge forms (NASM x64 only)
+    supports_forms = False             # GUI Bridge forms (NASM x64 / x86, FASM x64, GNU as x64)
+    form_flavor = "nasm64"             # radide/asm/formgen.py flavor of a new form when nothing else says
     install_hint = ""
 
     # ------------------------------------------------------------ tools
@@ -141,9 +142,12 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
         folder.mkdir(parents=True, exist_ok=True)
         t = BY_ID.get(template) or for_plugin(self.id)[0]
         if t.forms:
+            from ..asm.formgen import flavor_for
             from ..workspace import create_project
+            flavor = flavor_for(t.settings) or self.form_flavor
+            self._flavor_hint = flavor
             project = create_project(folder, name, self.id)
-            self._form_template(project)
+            self._form_template(project, flavor)
         else:
             project = Project(folder, name, self.id)
             for fname, text in t.files:
@@ -158,7 +162,7 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
         project.save()
         return project
 
-    def _form_template(self, project: Project) -> None:
+    def _form_template(self, project: Project, flavor: str = "nasm64") -> None:
         """The Windows Forms template: Form1 with a label, a text box and two buttons."""
         from ..features.templates import _add
         name = project.forms[0]
@@ -173,13 +177,13 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
         _add(form, "Label", "lblClicks", 140, 110, 100, 20, Text="0")
         form.save(fp)
         from ..asm.templates import form_code
-        code = form_code(name)
+        code = form_code(name, flavor)
         (project.folder / self.code_file(name)).write_text(code, encoding="utf-8")
         (project.folder / self.designer_file(name)).write_text(self.generate_designer(form, code), encoding="utf-8")
-        self.copy_clients(project.folder)
+        self.copy_clients(project.folder, flavor)
 
-    def copy_clients(self, folder: Path) -> None:
-        for target, src in self.client_files().items():
+    def copy_clients(self, folder: Path, flavor: str | None = None) -> None:
+        for target, src in self.client_files_for(flavor or self.form_flavor).items():
             try:
                 shutil.copy2(src, Path(folder) / target)
             except OSError:
@@ -189,15 +193,27 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
     def designer_file(self, form_name: str) -> str:
         return f"{form_name}.inc"
 
+    def code_flavor(self, user_code: str) -> str:
+        """The flavor a form's code was written for (the runtime include it names), else the plugin's own."""
+        from ..asm.formgen import RUNTIME_INCLUDE
+        for flavor, inc in RUNTIME_INCLUDE.items():
+            if flavor != "nasm64" and inc in (user_code or ""):
+                return flavor
+        return "nasm64" if "radgui.inc" in (user_code or "") else self.form_flavor
+
+    def project_flavor(self, project: Project) -> str:
+        from ..asm.formgen import flavor_for
+        return flavor_for(self.settings(project), project.folder, project.forms) or self.form_flavor
+
     def generate_designer(self, form: Form, user_code: str) -> str:
-        from ..asm.formgen import designer_include
-        return designer_include(form)
+        from ..asm.formgen import designer_include_for
+        return designer_include_for(form, self.code_flavor(user_code))
 
     def new_code(self, form: Form, is_startup: bool) -> str:
-        """An empty form's code: the header of the template + a Load handler."""
-        from ..asm.templates import NASM_FORM
-        head = NASM_FORM.replace("{form}", form.name).split("section .data", 1)[0]
-        return head + f"section .text\n\nhandler {form.name}_Load\n    ; runs when the form is shown\nendhandler\n"
+        """An empty form's code: the header of the template + a Load handler (in the flavor of the project
+        last prepared / created with this plugin; prepare() rewrites an untouched one of another flavor)."""
+        from ..asm.templates import new_form_code
+        return new_form_code(form.name, getattr(self, "_flavor_hint", "") or self.form_flavor)
 
     def find_handler(self, code: str, name: str) -> int:
         import re
@@ -223,27 +239,55 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
         return out
 
     def client_files(self) -> dict[str, Path]:
+        return self.client_files_for(self.form_flavor)
+
+    def client_files_for(self, flavor: str) -> dict[str, Path]:
+        """GUI Bridge files copied into a form project of *flavor* (radide/asm/formgen.py)."""
         if not self.supports_forms:
             return {}
-        return {"radgui.h": CLIENTS / "c" / "radgui.h", "radgui.c": CLIENTS / "c" / "radgui.c",
-                "radasm.c": ASM_RUNTIME / "radasm.c", "radgui.inc": ASM_RUNTIME / "radgui.inc"}
+        from ..asm.formgen import RUNTIME_INCLUDE
+        files = {"radgui.h": CLIENTS / "c" / "radgui.h", "radgui.c": CLIENTS / "c" / "radgui.c",
+                 "radasm.c": ASM_RUNTIME / "radasm.c"}
+        inc = RUNTIME_INCLUDE.get(flavor, "radgui.inc")
+        files[inc] = ASM_RUNTIME / inc
+        if flavor == "nasm32":
+            files["radcrt32.c"] = ASM_RUNTIME / "radcrt32.c"
+        return files
 
     def main_source(self, project: Project):
         if not self.supports_forms or not project.forms:
             return None
-        from ..asm.formgen import main_program
-        return "_radmain.asm", main_program(self.handlers_in_project(project.folder, project))
+        from ..asm.formgen import main_name, main_program_for
+        flavor = self.project_flavor(project)
+        return main_name(flavor), main_program_for(self.handlers_in_project(project.folder, project), flavor)
 
     def prepare(self, folder: Path, project: Project) -> None:
         if not project.forms:                    # console program: no GUI Bridge files
             return
-        super().prepare(folder, project)
-        # Form1.inc may be older than the form (forms edited outside the IDE): rewrite it
+        from ..asm.templates import new_form_code
+        flavor = self.project_flavor(project)
+        self._flavor_hint = flavor
+        for target, src in self.client_files_for(flavor).items():
+            shutil.copy2(src, Path(folder) / target)
+        main = self.main_source(project)
+        if main is not None:
+            (Path(folder) / main[0]).write_text(main[1], encoding="utf-8")
         for f in project.forms:
+            if getattr(project, "form_language", lambda _f: project.language)(f) != self.id:
+                continue
             try:
                 form = Form.load(project.form_path(f))
+                code_path = Path(folder) / self.code_file(f)
+                code = code_path.read_text(encoding="utf-8", errors="replace") if code_path.exists() else ""
+                # a form added before the project's flavor was known: its untouched code is rewritten
+                if code and self.code_flavor(code) != flavor and any(
+                        code == new_form_code(f, other) for other in ("nasm64", "nasm32", "fasm64", "gas64", "gas64i")):
+                    code = new_form_code(f, flavor)
+                    code_path.write_text(code, encoding="utf-8")
+                # Form1.inc may be older than the form (forms edited outside the IDE): rewrite it
+                from ..asm.formgen import designer_include_for
                 target = Path(folder) / self.designer_file(f)
-                text = self.generate_designer(form, "")
+                text = designer_include_for(form, flavor)
                 if not target.exists() or target.read_text(encoding="utf-8", errors="replace") != text:
                     target.write_text(text, encoding="utf-8")
             except (OSError, ValueError, KeyError):
@@ -284,7 +328,9 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
     def debug_info(self, project: Project) -> dict:
         """For the native debugger: what the build produces (docs/ASSEMBLY.md, "Debug information")."""
         s = self.settings(project)
-        gdb_lines = s["assembler"] in ("nasm", "gas") and s.get("debug", True)
+        # NASM / GNU as always; FASM and MASM when the last build added the DWARF lines (radide/asm/linetable.py)
+        gdb_lines = s.get("debug", True) and (s["assembler"] in ("nasm", "gas") or
+                                              (Path(project.folder) / "_build" / "dwarf.ok").is_file())
         return {"exe": str(Path(project.folder) / "_radapp.exe"), "arch": s["arch"], "assembler": s["assembler"],
                 "linker": s["linker"], "line_info": "dwarf" if gdb_lines else
                 ("codeview" if s["assembler"] == "masm" else "none"),

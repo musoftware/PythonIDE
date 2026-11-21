@@ -162,10 +162,11 @@ def define_constants(ms, configuration: str = "Debug", platform: str = "AnyCPU",
         _cs_symbols(ms, configuration, platform, tfm)
 
 
-def _evaluate(ms, configuration: str, platform: str, tfm: str) -> dict:
+def _evaluate(ms, configuration: str, platform: str, tfm: str, seed: str = "") -> dict:
+    """The project's property groups evaluated in order; *seed*: DefineConstants before the project body."""
     platform = "AnyCPU" if platform in ("Any CPU", "") else platform
     props = {"Configuration": configuration, "Platform": platform, "TargetFramework": tfm,
-             "MSBuildProjectName": ms.name, "DefineConstants": ""}
+             "MSBuildProjectName": ms.name, "DefineConstants": seed}
     root = getattr(ms, "root", None)
     if root is None:
         return props
@@ -189,14 +190,19 @@ def _split_cs(value: str) -> list[str]:
 
 
 def _cs_symbols(ms, configuration, platform, tfm) -> list[str]:
-    props = _evaluate(ms, configuration, platform, tfm)
-    syms = _split_cs(props.get("DefineConstants", ""))
+    # SDK-style: Microsoft.NET.Sdk.CSharp.props sets DefineConstants=$(DefineConstants);TRACE (+DEBUG / RELEASE)
+    # before the project body, so a plain <DefineConstants>X</DefineConstants> replaces them; the framework symbols
+    # (NET8_0, NETFRAMEWORK, NET48 ...) are added by the SDK targets after it. Old-style (non-SDK) .NET Framework
+    # projects get neither: only their own DefineConstants - "#if NETFRAMEWORK" is false there, and MSBuild
+    # agrees (a shared file's #else branch is what an old-style net48 project compiles).
+    seed = ""
     if ms.is_sdk:
-        base = ["DEBUG", "TRACE"] if configuration.lower() == "debug" else \
-            (["RELEASE", "TRACE"] if configuration.lower() == "release" else ["TRACE"])
-        if props.get("DisableImplicitFrameworkDefines", "").lower() != "true":
-            base += implicit_symbols(tfm or (ms.target_frameworks[:1] or [""])[0])
-        syms = base + syms
+        c = configuration.lower()
+        seed = "TRACE;DEBUG" if c == "debug" else ("TRACE;RELEASE" if c == "release" else "TRACE")
+    props = _evaluate(ms, configuration, platform, tfm, seed)
+    syms = _split_cs(props.get("DefineConstants", ""))
+    if ms.is_sdk and props.get("DisableImplicitFrameworkDefines", "").lower() != "true":
+        syms += implicit_symbols(tfm or (ms.target_frameworks[:1] or [""])[0])
     return list(dict.fromkeys(syms))
 
 

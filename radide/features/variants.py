@@ -978,7 +978,7 @@ def edit_sizes_dialog(view) -> bool:
             grid.setItem(r, 6, QTableWidgetItem(str(pv.get("width") or "")))
             grid.setItem(r, 7, QTableWidgetItem(str(pv.get("height") or "")))
             grid.setCellWidget(r, 8, combo(dev_ids, pv.get("device") or "",
-                                           [tr("(none)")] + [d.name for d in devices.DEVICES.values()]))
+                                           [tr("(none)")] + [devices.display_name(d) for d in devices.DEVICES.values()]))
 
     def num(r, c):
         it = grid.item(r, c)

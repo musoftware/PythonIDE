@@ -209,9 +209,9 @@ def toc_name(title: str) -> str:
 
 
 def nav_html(prev, nxt) -> str:
-    p = (f'<a class="btn sec" href="{prev[0]}">&rarr; {TH.lrm_fix(html.escape(plain(prev[1])))}</a>'
+    p = (f'<a class="btn sec" href="{prev[0]}">&rarr; {TH.lrm_fix(TH.ltr_paths(html.escape(plain(prev[1]))))}</a>'
          if prev else "<span></span>")
-    n = (f'<a class="btn" href="{nxt[0]}">{TH.lrm_fix(html.escape(plain(nxt[1])))} &larr;</a>'
+    n = (f'<a class="btn" href="{nxt[0]}">{TH.lrm_fix(TH.ltr_paths(html.escape(plain(nxt[1]))))} &larr;</a>'
          if nxt else "<span></span>")
     return f'<div class="navfoot">{p}{n}</div>'
 
@@ -224,7 +224,7 @@ def build_course(key: str, enc: str, work: Path, log=print) -> Path | None:
         return None
     book = Book(f"radide_{key}", course.title_ar, enc, work / key)
     # cover page: description + list of lessons
-    rows = "".join(f'<li><a href="{les.id}.html">{TH.lrm_fix(html.escape(plain(les.title_ar)))}</a> '
+    rows = "".join(f'<li><a href="{les.id}.html">{TH.lrm_fix(TH.ltr_paths(html.escape(plain(les.title_ar))))}</a> '
                    f'<span class="meta">({les.minutes} دقيقة)</span></li>' for les in course.lessons)
     intro = (f"<h1>{TH.lrm_fix(html.escape(course.title_ar))}</h1><p class=\"meta\">{html.escape(course.title_en)}</p>"
              f"<p>{TH.lrm_fix(html.escape(course.description_ar or ''))}</p>"

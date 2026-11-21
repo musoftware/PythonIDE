@@ -279,6 +279,9 @@ class TestExplorer(QWidget):
         if p is None:
             return None
         folder = Path(p.folder)
+        sln = getattr(self.win, "sln", None)            # Visual Studio solution: every test project in it
+        if getattr(sln, "file", None) is not None and type(sln).__name__ == "VsSolution":
+            return Path(sln.file).parent
         if (folder / "Cargo.toml").is_file():     # a cargo workspace member: test the whole workspace
             try:
                 from ..rust_tools import workspace_root
@@ -386,11 +389,16 @@ class TestExplorer(QWidget):
         parent = None
         if len(self.adapters) > 1:
             parent = self._group_node(f"fw:{adapter.id}", adapter.name, None)
-        if it.file:
+        group_path = getattr(adapter, "group_path", None)      # adapter's own tree (.NET: project > namespace > class)
+        if callable(group_path):
+            for gkey, text in group_path(it):
+                parent = self._group_node(f"{adapter.id}:{gkey}", text, parent)
+        elif it.file:
             rel_ = testing.rel(self.root, it.file) if self.root else Path(it.file).name
             parent = self._group_node(f"file:{adapter.id}:{it.file}", rel_, parent, it.file,
                                       ("file", it.file))
-        if it.suite and (not it.file or it.suite not in (testing.rel(self.root, it.file), Path(it.file).name)):
+        if not callable(group_path) and it.suite and \
+                (not it.file or it.suite not in (testing.rel(self.root, it.file), Path(it.file).name)):
             parent = self._group_node(f"suite:{adapter.id}:{it.file}:{it.suite}", it.suite, parent)
         node = QTreeWidgetItem([it.name, _fmt_dur(it.duration)])
         node.setData(0, ROLE, ("test", key))
@@ -603,9 +611,30 @@ class TestExplorer(QWidget):
         self._run_log += text
         self._step_out += text
         visible = "\n".join(l for l in text.split("\n") if testing.MARK not in l)
+        live = getattr(self._run[0], "live_results", None) if self._run else None
+        if callable(live):                          # results printed while the run goes on (.NET console logger)
+            try:
+                self._apply_live(self._run[0], live(text))
+            except Exception:  # noqa: BLE001
+                pass
         if visible:
             self.log.moveCursor(self.log.textCursor().MoveOperation.End)
             self.log.insertPlainText(visible)
+
+    def _apply_live(self, a, results):
+        if not results:
+            return
+        mine = [it for k, it in self.items.items() if k.startswith(a.id + "|") and it.state == "running"]
+        pairs, _rest = testing.match_results(mine, results, a.root)
+        for it, r in pairs:
+            it.state = r.state
+            it.duration = r.duration
+            n = self.nodes.get(f"{a.id}|{it.id}")
+            if n is not None:
+                n.setIcon(0, state_icon(it.state))
+                n.setText(1, _fmt_dur(it.duration))
+        if pairs:
+            self._refresh_groups()
 
     def _step_error(self, proc, err):
         if err == QProcess.ProcessError.FailedToStart:
@@ -788,6 +817,8 @@ class TestExplorer(QWidget):
     # ---------------------------------------------------------------- debug
     def _can_debug(self) -> bool:
         keys = self._selected_keys()
+        if keys and all(k.startswith("dotnet|") for k in keys):
+            return any(a.id == "dotnet" and callable(getattr(a, "debug", None)) for a in self.adapters)
         return bool(keys) and all(k.startswith("python|") for k in keys)
 
     def debug_selected(self):
@@ -795,8 +826,11 @@ class TestExplorer(QWidget):
         if not keys:
             self.win.statusBar().showMessage("Select the test to debug", 4000)
             return
+        dn = next((x for x in self.adapters if x.id == "dotnet" and callable(getattr(x, "debug", None))), None)
+        if dn is not None and all(k.startswith("dotnet|") for k in keys):
+            return dn.debug(self, keys)             # .NET: VSTEST_HOST_DEBUG + netcoredbg (radide/dotnet/tools/ui.py)
         if not all(k.startswith("python|") for k in keys):
-            self.win.statusBar().showMessage("Debug Test works for Python tests (debugpy); run the others", 6000)
+            self.win.statusBar().showMessage("Debug Test works for Python and .NET tests; run the others", 6000)
             return
         a = next((x for x in self.adapters if x.id == "python"), None)
         if a is None:

@@ -54,6 +54,16 @@ def chm_files() -> list[tuple[str, str]]:
             out.append((f, f"{c.title_en} (Arabic, CHM)"))
             known.add(f)
     return out + list(CHM_FILES[2:])
+
+
+def course_label(c, done: int, en: bool) -> str:
+    """The course row of the Tutorials tree.  The tree is right-to-left: an English title is followed by a
+    left-to-right mark so that "(3/24)" stays after it ("Title (3/24)", not "(3/24) Title" or "Title (24/3)")."""
+    if en:
+        return f"{c.title_en}‎  ({done}/{len(c.lessons)})‎"
+    return f"{c.title_ar}  ({done}/{len(c.lessons)})"
+
+
 KEY = "tutorials/"
 SHORTCUT = "Ctrl+Shift+F1"
 ROLE_REF = int(Qt.ItemDataRole.UserRole) + 1
@@ -313,6 +323,12 @@ class TutorialsPanel(QWidget):
         self.tree.setColumnCount(1)
         self.tree.setProperty("i18n_skip_items", True)
         self.tree.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        # long course titles (English ones reach 60 characters) are elided inside the column instead of being
+        # cut at its edge or pushing a horizontal scroll bar; every item has its full text as a tooltip
+        self.tree.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.tree.header().setStretchLastSection(True)
+        self.tree.header().setSectionResizeMode(0, self.tree.header().ResizeMode.Stretch)
         self.tree.itemActivated.connect(self._on_item)
         self.tree.itemClicked.connect(self._on_item)
         lv.addWidget(self.tree, 1)
@@ -329,7 +345,9 @@ class TutorialsPanel(QWidget):
         self.split.addWidget(self.view)
         self.split.setStretchFactor(0, 0)
         self.split.setStretchFactor(1, 1)
-        self.split.setSizes([210, 760])
+        left.setMinimumWidth(150)
+        self.split.setSizes(self._split_sizes())
+        self.split.splitterMoved.connect(self._save_split)
         lay.addWidget(self.split, 1)
         PROGRESS.changed.connect(self.fill_tree)
         try:
@@ -345,6 +363,20 @@ class TutorialsPanel(QWidget):
             self.fill_tree()
 
     # ------------------------------------------------------------ list
+    LIST_WIDTH = 300            # default width of the course list (was 210: course titles were cut)
+
+    def _split_sizes(self) -> list[int]:
+        try:
+            w = int(QSettings().value(KEY + "list_width", self.LIST_WIDTH) or self.LIST_WIDTH)
+        except (TypeError, ValueError):
+            w = self.LIST_WIDTH
+        return [max(150, min(600, w)), 760]
+
+    def _save_split(self, *_a):
+        w = self.split.sizes()[0] if self.split.count() else 0
+        if w >= 150:
+            QSettings().setValue(KEY + "list_width", int(w))
+
     def _toggle_list(self):
         self.split.widget(0).setVisible(self.b_list.isChecked())
 
@@ -356,8 +388,9 @@ class TutorialsPanel(QWidget):
         en = self._tree_lang == "en"
         for c in self.courses:
             done = PROGRESS.count(c)
-            top = QTreeWidgetItem([f"{c.title_en if en else c.title_ar}   ({done}/{len(c.lessons)})"])
-            top.setToolTip(0, f"{c.title_ar}\n{c.title_en}\n{int(100 * done / max(1, len(c.lessons)))}%")
+            top = QTreeWidgetItem([course_label(c, done, en)])
+            top.setToolTip(0, f"{c.title_ar}\n{c.title_en}\n{done}/{len(c.lessons)} · "
+                              f"{int(100 * done / max(1, len(c.lessons)))}%")
             top.setData(0, ROLE_REF, ("course", c.id))
             f = top.font(0)
             f.setBold(True)
@@ -385,7 +418,7 @@ class TutorialsPanel(QWidget):
         self.tree.addTopLevelItem(top)
         for c, les, snippet in hits:
             it = QTreeWidgetItem([f"{les.title_ar}  ·  {c.title_ar.split(' ')[0]} {les.number}"])
-            it.setToolTip(0, snippet)
+            it.setToolTip(0, f"{les.title_ar}\n{c.title_ar}\n\n{snippet}")
             it.setData(0, ROLE_REF, ("lesson", c.id, les.id, q))
             top.addChild(it)
         top.setExpanded(True)

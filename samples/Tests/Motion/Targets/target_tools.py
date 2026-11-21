@@ -124,7 +124,9 @@ def kivy_run(folder: Path, exec_code: str, env=None, secs=6):
     if out.exists():
         out.unlink()
     e = {"RADKIVY_AUTOSTOP": str(secs), "KIVY_NO_ARGS": "1", "KIVY_NO_CONSOLELOG": "1",
-         "RADKIVY_EXEC": exec_code.replace("$OUT", str(out).replace("\\", "/"))}
+         "RADKIVY_EXEC": exec_code.replace("$OUT", str(out).replace("\\", "/")),
+         # animations play whatever the Windows "Show animations" setting is (the reduced case sets "1")
+         "RADIDE_REDUCED_MOTION": "0"}
     e.update(env or {})
     r = run([sys.executable, "Form1.py"], cwd=folder, env=e, timeout=90)
     try:

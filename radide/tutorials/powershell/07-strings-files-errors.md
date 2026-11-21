@@ -66,7 +66,7 @@ ali@mail.com | sara@site.org
 
 بعد `-match` الناجحة يحفظ PowerShell الأجزاء الملتقطة في `$Matches[1]` و`$Matches[2]`...
 
-## النص متعدد الأسطر: Here-String
+## النص متعدد الأسطر: `Here-String`
 
 ```powershell run
 $name = "منى"

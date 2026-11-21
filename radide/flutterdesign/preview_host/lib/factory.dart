@@ -3,6 +3,7 @@
 // Flexible, Spacer) stay direct children of their Stack / Flex and wrap their child instead.
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 import 'fx.dart';
 import 'nodebox.dart';
@@ -21,6 +22,7 @@ abstract class FactoryHost {
   void event(String id, String event, String? handler, [dynamic arg]);
   void nodeIssue(String id, String level, String message);
   GlobalKey<ScaffoldState> scaffoldKey(String id);
+  GlobalKey<FormState> formKey(String name);
   void drawerNodes(String scaffoldId, Set<String> ids);
 }
 
@@ -390,6 +392,23 @@ class WidgetFactory {
       case 'SingleChildScrollView':
         return SingleChildScrollView(scrollDirection: enumV(Axis.values, p['scrollDirection']) ?? Axis.vertical,
             padding: e('padding'), reverse: b('reverse') ?? false, physics: physicsV(p['physics']), child: child());
+      case 'ListView' when ctor == 'builder':
+        final tmpl = (n['slots'] as Map?)?['itemBuilder'];
+        return ListView.builder(scrollDirection: enumV(Axis.values, p['scrollDirection']) ?? Axis.vertical,
+            padding: e('padding'), reverse: b('reverse') ?? false, physics: physicsV(p['physics']),
+            shrinkWrap: b('shrinkWrap') ?? false, itemExtent: d('itemExtent'),
+            itemCount: (i('itemCount') ?? 5).clamp(0, 200),
+            itemBuilder: (ctx, index) => node(ctx, tmpl));
+      case 'GridView' when ctor == 'builder':
+        final tmpl = (n['slots'] as Map?)?['itemBuilder'];
+        return GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: (i('crossAxisCount') ?? 2).clamp(1, 100), mainAxisSpacing: d('mainAxisSpacing') ?? 0,
+                crossAxisSpacing: d('crossAxisSpacing') ?? 0, childAspectRatio: d('childAspectRatio') ?? 1),
+            scrollDirection: enumV(Axis.values, p['scrollDirection']) ?? Axis.vertical, padding: e('padding'),
+            reverse: b('reverse') ?? false, physics: physicsV(p['physics']), shrinkWrap: b('shrinkWrap') ?? false,
+            itemCount: (i('itemCount') ?? 5).clamp(0, 200),
+            itemBuilder: (ctx, index) => node(ctx, tmpl));
       case 'ListView':
         return ListView(scrollDirection: enumV(Axis.values, p['scrollDirection']) ?? Axis.vertical,
             padding: e('padding'), reverse: b('reverse') ?? false, physics: physicsV(p['physics']),
@@ -414,6 +433,15 @@ class WidgetFactory {
             onPageChanged: _vcb<int>(n, 'onPageChanged', store: false), children: _children(context, n, type));
 
       // ----------------------------------------------------------------------------------- content
+      case 'Text' when ctor == 'rich':
+        return Text.rich(_spans(p['spans'], null, c), style: ts('style'),
+            textAlign: enumV(TextAlign.values, p['textAlign']), maxLines: i('maxLines'),
+            overflow: enumV(TextOverflow.values, p['overflow']), softWrap: b('softWrap'));
+      case 'RichText':
+        return RichText(text: _spans(p['spans'], p['style'], c),
+            textAlign: enumV(TextAlign.values, p['textAlign']) ?? TextAlign.start, maxLines: i('maxLines'),
+            overflow: enumV(TextOverflow.values, p['overflow']) ?? TextOverflow.clip, softWrap: b('softWrap') ?? true,
+            textScaler: MediaQuery.textScalerOf(context));
       case 'Text':
         return Text(s('data') ?? '', style: ts('style'), textAlign: enumV(TextAlign.values, p['textAlign']),
             maxLines: i('maxLines'), overflow: enumV(TextOverflow.values, p['overflow']), softWrap: b('softWrap'));
@@ -486,7 +514,8 @@ class WidgetFactory {
               textAlign: enumV(TextAlign.values, p['textAlign']) ?? TextAlign.start, enabled: b('enabled'),
               autofocus: host.interactive && (b('autofocus') ?? false), readOnly: b('readOnly') ?? false,
               cursorColor: col('cursorColor'), onChanged: _vcb<String>(n, 'onChanged', store: false),
-              onFieldSubmitted: _vcb<String>(n, 'onFieldSubmitted', store: false), onTap: _cbOpt(n, 'onTap'));
+              onFieldSubmitted: _vcb<String>(n, 'onFieldSubmitted', store: false), onTap: _cbOpt(n, 'onTap'),
+              validator: _validator(p['validators'], (n['events'] as Map?)?['validator'] as String?));
         }
         return TextField(controller: common.controller, decoration: common.decoration, obscureText: obscure,
             keyboardType: common.kbd, textInputAction: common.action, maxLines: maxLines,
@@ -539,7 +568,22 @@ class WidgetFactory {
                 ListTileControlAffinity.platform,
             activeThumbColor: col('activeThumbColor'));
       case 'Form':
-        return Form(child: child() ?? const SizedBox());
+        final fname = n['name'] as String?;
+        return Form(key: fname != null ? host.formKey(fname) : null,
+            autovalidateMode: enumV(AutovalidateMode.values, p['autovalidateMode']),
+            child: child() ?? const SizedBox());
+      case 'RadioGroup':
+        return RadioGroup<String>(groupValue: host.value(id, s('groupValue')) as String?,
+            onChanged: _vcb<String?>(n, 'onChanged'), child: child() ?? const SizedBox());
+      case 'Radio':
+        return Radio<String>(value: s('value') ?? '', activeColor: col('activeColor'),
+            toggleable: b('toggleable') ?? false, enabled: b('enabled'));
+      case 'RadioListTile':
+        return RadioListTile<String>(value: s('value') ?? '', title: slot('title'), subtitle: slot('subtitle'),
+            secondary: slot('secondary'), activeColor: col('activeColor'), toggleable: b('toggleable') ?? false,
+            enabled: b('enabled'),
+            controlAffinity: enumV(ListTileControlAffinity.values, p['controlAffinity']) ??
+                ListTileControlAffinity.platform);
       case 'InkWell':
         return InkWell(borderRadius: radiusV(p['borderRadius'], c), splashColor: col('splashColor'),
             onTap: _cb(n, 'onTap'), onDoubleTap: _cbOpt(n, 'onDoubleTap'), onLongPress: _cbOpt(n, 'onLongPress'),
@@ -769,9 +813,15 @@ class WidgetFactory {
         final second = _tail(p['crossFadeState']) == 'showSecond';
         return slot(second ? 'secondChild' : 'firstChild') ?? const SizedBox.shrink();
       case 'Lottie':
+        final name = s('name') ?? '';
+        final placeholder = HostAssetPlaceholder(kind: 'Lottie', name: name, width: d('width'), height: d('height'));
+        if (name.isEmpty) return placeholder;
+        return Lottie.network(imageUrl(name, c), width: d('width'), height: d('height'),
+            fit: enumV(BoxFit.values, p['fit']) ?? BoxFit.contain, repeat: b('repeat') ?? true,
+            reverse: b('reverse') ?? false, animate: b('animate') ?? true,
+            errorBuilder: (ctx, err, st) => placeholder);
       case 'RiveAnimation':
-        return HostAssetPlaceholder(kind: type == 'Lottie' ? 'Lottie' : 'Rive', name: s('name') ?? '',
-            width: d('width'), height: d('height'));
+        return HostAssetPlaceholder(kind: 'Rive', name: s('name') ?? '', width: d('width'), height: d('height'));
       case 'RadTwoPane':
         return RadTwoPane(
           start: slot('start') ?? const SizedBox.shrink(),
@@ -835,6 +885,56 @@ class WidgetFactory {
     }
     c.warn('unknown widget type $type');
     return HostErrorBox(message: 'Unknown widget "$type"');
+  }
+
+  /// Text.rich / RichText spans (a $code span becomes a "[code]" text).
+  InlineSpan _spans(dynamic spans, dynamic rootStyle, VCtx c) {
+    final kids = <InlineSpan>[];
+    if (spans is List) {
+      for (final sp in spans) {
+        if (isCode(sp)) {
+          kids.add(const TextSpan(text: '[\u2026]'));
+        } else if (sp is Map) {
+          kids.add(TextSpan(text: strV(sp['text']) ?? '', style: textStyleV(sp['style'], c)));
+        }
+      }
+    }
+    return TextSpan(style: textStyleV(rootStyle, c), children: kids);
+  }
+
+  /// The designed validator rules of a TextFormField (same rules as lib/radform.dart); a custom handler is
+  /// shown as passing (its Dart code is not part of the preview).
+  FormFieldValidator<String>? _validator(dynamic rules, String? custom) {
+    if (rules is! List || rules.isEmpty) return null;
+    final email = RegExp(r"^[\w.!#$%&'*+/=?^`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
+        r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$");
+    return (value) {
+      final t = value ?? '';
+      for (final r in rules) {
+        if (r is! Map) continue;
+        final msg = strV(r['message']);
+        final n = intV(r['value']) ?? 0;
+        switch ('${r['rule']}') {
+          case 'required':
+            if (t.trim().isEmpty) return msg ?? 'This field is required';
+          case 'email':
+            if (t.isNotEmpty && !email.hasMatch(t.trim())) return msg ?? 'Enter a valid e-mail address';
+          case 'minLength':
+            if (t.isNotEmpty && t.length < n) return msg ?? 'Enter at least $n characters';
+          case 'maxLength':
+            if (t.length > n) return msg ?? 'Enter at most $n characters';
+          case 'regex':
+            if (t.isEmpty) break;
+            try {
+              final m = RegExp('${r['value'] ?? ''}').firstMatch(t);
+              if (m == null || m.start != 0 || m.end != t.length) return msg ?? 'Invalid format';
+            } catch (_) {
+              return 'bad pattern';
+            }
+        }
+      }
+      return null;
+    };
   }
 
   List<dynamic> _navItems(dynamic v, VCtx c, bool m3) {

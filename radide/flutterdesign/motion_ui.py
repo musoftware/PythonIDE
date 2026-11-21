@@ -26,6 +26,15 @@ from . import variants_fd as VF
 ORANGE = QColor("#FFF7630C")
 
 
+def _tr(text: str) -> str:
+    """The IDE language (combo items are not translated by radide.i18n)."""
+    try:
+        from ..i18n import tr
+        return tr(text)
+    except Exception:  # noqa: BLE001 - no catalog
+        return text
+
+
 def _devices():
     from .. import devices as D
     return D
@@ -97,6 +106,9 @@ def paint_size_frame(p: QPainter, screen: QRectF, text: str) -> None:
 
 
 # ============================================================================================ size bar
+POSTURE_ITEMS = (("Flat", "Flat"), ("HalfOpened", "Half-open"), ("Folded", "Folded"))
+
+
 class SizeBar(QWidget):
     """Second tool bar row: Edit mode, size, posture, Sizes..., Side-by-side."""
 
@@ -109,8 +121,8 @@ class SizeBar(QWidget):
         lay.setSpacing(4)
         lay.addWidget(QLabel("Edit:"))
         self.cbo_mode = QComboBox()
-        self.cbo_mode.addItem("All sizes", "all")
-        self.cbo_mode.addItem("This size only", "size")
+        self.cbo_mode.addItem(_tr("All sizes"), "all")
+        self.cbo_mode.addItem(_tr("This size only"), "size")
         self.cbo_mode.setToolTip("All sizes: edits change the screen everywhere.\n"
                                  "This size only: edits are stored for the chosen size and leave the others alone.")
         self.cbo_mode.activated.connect(lambda _i: self.d.set_edit_mode(self.cbo_mode.currentData()))
@@ -135,9 +147,8 @@ class SizeBar(QWidget):
         self.lbl_posture = QLabel("Posture:")
         lay.addWidget(self.lbl_posture)
         self.cbo_posture = QComboBox()
-        self.cbo_posture.addItem("Flat", "Flat")
-        self.cbo_posture.addItem("Half-open", "HalfOpened")
-        self.cbo_posture.addItem("Folded", "Folded")
+        for key, text in POSTURE_ITEMS:
+            self.cbo_posture.addItem(_tr(text), key)
         self.cbo_posture.setToolTip("Foldable posture of the preview device")
         self.cbo_posture.activated.connect(lambda _i: self.d.set_posture(self.cbo_posture.currentData()))
         lay.addWidget(self.cbo_posture)
@@ -152,9 +163,9 @@ class SizeBar(QWidget):
         self.cbo_size.blockSignals(True)
         self.cbo_size.clear()
         for s in sizes:
-            self.cbo_size.addItem(f"{VF.label(s)}  ({VF.describe_when(s.get('when'))})", s["id"])
+            self.cbo_size.addItem(f"{_tr(VF.label(s))}  ({VF.describe_when(s.get('when'), _tr)})", s["id"])
         if not sizes:
-            self.cbo_size.addItem("(no sizes - Sizes > Add)", None)
+            self.cbo_size.addItem(_tr("(no sizes - Sizes > Add)"), None)
         i = self.cbo_size.findData(d.edit_size)
         self.cbo_size.setCurrentIndex(max(0, i))
         self.cbo_size.blockSignals(False)
@@ -171,6 +182,17 @@ class SizeBar(QWidget):
         self.lbl_active.setText(("Active here: " + ", ".join(names)) if names else
                                 ("No size matches this device" if sizes else ""))
         self.btn_side.setEnabled(bool(sizes))
+
+    def changeEvent(self, ev):  # noqa: N802 - Qt API
+        """The IDE language changed: the combo boxes (not translated by radide.i18n) follow."""
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.LanguageChange:
+            for i, text in enumerate(("All sizes", "This size only")):
+                self.cbo_mode.setItemText(i, _tr(text))
+            for i, (_key, text) in enumerate(POSTURE_ITEMS):
+                self.cbo_posture.setItemText(i, _tr(text))
+            self.refresh()
+        super().changeEvent(ev)
 
     def _fill_menu(self):
         m = self.menu

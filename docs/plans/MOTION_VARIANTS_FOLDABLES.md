@@ -224,3 +224,17 @@ Arabic keys: Timelines=الخطوط الزمنية, Play timeline=تشغيل ا�
 8. WinForms extra doesn't survive `.Designer.cs` - sidecar; OnLoad/OnResize collisions - detect and warn.
 9. Foldable dp values approximate - verify; device_state numbers vary by image.
 10. Snapshot undo covers `extra` and `Control.variants` only via `to_dict`.
+
+## 6. Follow-up gaps (closed)
+- Preview per target: the Animations panel previews with `expand(form, preview_target(win, form))` (python-qt real
+  opacity, transform targets scale / rotate through `states.FxEffect`, python-tk / VB / bridges the fallbacks).
+  Test `samples/Tests/Motion/test_preview_targets_reorder.py`.
+- Reorder animations: Move Up / Move Down + drag in the list over `motion.model.move` (same test).
+- The Error List hinge warning refreshes on designer changes (`features/mobile.watch_hinge`); device labels
+  translated (`devices.display_name`). Test `samples/Tests/Mobile/Foldables/test_hinge_live.py`.
+- Flutter folded posture: fold memory + cover-screen shape heuristic in `RadVariant.compute`; `RadTwoPane`
+  converts the hinge to local coordinates (`localHinge`). Test
+  `samples/Tests/FlutterDesigner/ResponsiveScreens/test/foldable_posture_test.dart` (flutter test).
+- Reduced motion on Windows: mocked `SystemParametersInfoW` (Python runtime, Kivy runtime, a generated tk form),
+  one real read-only call; the user's setting is never changed. Test
+  `samples/Tests/Motion/check_reduced_motion_windows.py`.

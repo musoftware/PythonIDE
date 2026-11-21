@@ -199,6 +199,14 @@ def timeline_x(kind: str, v: dict):
     return CG.Raw(f"{fn}({', '.join(args + named)})")
 
 
+def timeline_value_x(kind: str, v: dict):
+    """A timeline on a plain number property (the widget is rebuilt by an AnimatedBuilder):
+    ``radDrive(name, from, to, ...).value`` (``.round()`` for an int)."""
+    from . import codegen as CG
+    x = timeline_x("timeline", v).render()
+    return CG.Raw(f"{x}.value" + (".round()" if kind == "int" else ""))
+
+
 def stopped_x(kind: str, v):
     """A plain value for a timeline property: const AlwaysStoppedAnimation(value)."""
     from . import codegen as CG
@@ -377,9 +385,12 @@ def validate(screen: M.Screen) -> list[M.Issue]:
             elif is_timeline(v):
                 if v["$timeline"] not in tls:
                     issues.append(M.Issue("error", nid, f"{k}: unknown timeline {v['$timeline']!r}"))
-                if ps is not None and ps.kind not in TIMELINE_KINDS:
-                    issues.append(M.Issue("warning", nid, f"{k}: only transition properties (FadeTransition."
-                                                          f"opacity ...) follow a timeline - the end value is used"))
+                if ps is not None and ps.kind not in TIMELINE_KINDS and (
+                        ps.kind not in ("double", "int") or n.get("type") in ("Positioned", "Expanded", "Flexible",
+                                                                              "AnimatedPositioned")):
+                    issues.append(M.Issue("warning", nid, f"{k}: only transition and number properties "
+                                                          f"(FadeTransition.opacity, Container.width ...) follow a "
+                                                          f"timeline - the end value is used"))
         for ev, h in (n.get("events") or {}).items():
             m = _EVENT_RX.match(h or "")
             if m:

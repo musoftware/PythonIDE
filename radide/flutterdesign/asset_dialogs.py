@@ -636,6 +636,11 @@ class ThemeEditorDialog(QDialog):
         except (OSError, ValueError) as e:
             QMessageBox.warning(self, "App Theme", str(e))
             return
+        try:                           # open designers show the new theme (canvas, swatches, live preview)
+            from .designer import refresh_project_theme
+            refresh_project_theme(self.folder)
+        except Exception:  # noqa: BLE001 - never block the save
+            pass
         self.accept()
 
 

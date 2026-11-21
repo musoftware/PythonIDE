@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- RAD IDE helper: lists the rules (DiagnosticDescriptors) and source generators of analyzer assemblies.
+  <!-- RAD IDE helper: lists the rules (DiagnosticDescriptors) and source generators of analyzer assemblies,
+       and sorts / removes the unnecessary using directives of a C# file (Usings.cs).
        Compiled against the Roslyn that ships inside the .NET SDK (no NuGet download). -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -14,6 +15,10 @@
   <ItemGroup>
     <Reference Include="Microsoft.CodeAnalysis">
       <HintPath>$(RadRoslyn)\Microsoft.CodeAnalysis.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp">
+      <HintPath>$(RadRoslyn)\Microsoft.CodeAnalysis.CSharp.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

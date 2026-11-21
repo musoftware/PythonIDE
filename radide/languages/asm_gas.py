@@ -1,7 +1,8 @@
 """Assembly (GNU as) - console programs for the GNU assembler of MinGW-w64 (AT&T or Intel syntax).
 
-``as --64 -g`` writes DWARF line information, so F5 debugging with gdb works by line. Linked with gcc.
-Details: docs/ASSEMBLY.md.
+``as --64 --gdwarf-3`` writes DWARF line information, so F5 debugging with gdb works by line. Linked with gcc.
+Windows Forms (GUI Bridge, x64, AT&T or Intel syntax: radgui_att.inc / radgui_intel.inc). Details:
+docs/ASSEMBLY.md.
 """
 from __future__ import annotations
 
@@ -16,7 +17,9 @@ class GasPlugin(AsmPluginBase):
     asm_dialect = "gas"
     tool_key = "as"
     downloadable = False
-    has_forms = False
+    has_forms = True
+    supports_forms = True               # GUI Bridge forms (AT&T: gas64, Intel: gas64i)
+    form_flavor = "gas64"
     line_comments = ["#"]
     block_comment = ("/*", "*/")
     string_quotes = ['"']

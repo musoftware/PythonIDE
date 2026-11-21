@@ -1,0 +1,7 @@
+{
+ "https://api.nuget.org/v3-flatcontainer/newtonsoft.json/index.json": "608f42bed4491df6dd99060e.bin",
+ "https://api.nuget.org/v3/index.json": "4daafda08608354e3d45428e.bin",
+ "https://api.nuget.org/v3/registration5-gz-semver2/newtonsoft.json/index.json": "61b773db84422f810463cad7.bin",
+ "https://azuresearch-usnc.nuget.org/autocomplete?q=Newtonso&take=20&prerelease=false&semVerLevel=2.0.0": "11cfce31baa36ed7c82674a1.bin",
+ "https://azuresearch-usnc.nuget.org/query?q=Newtonsoft.Json&skip=0&take=5&prerelease=false&semVerLevel=2.0.0": "7338ab86de4e1e826f5a322b.bin"
+}

@@ -230,6 +230,7 @@ class Env:
     pad_top: float = 0.0
     pad_bottom: float = 0.0
     in_flex: bool = False
+    radio: object = None              # groupValue of the enclosing RadioGroup
 
 
 class Ctx:
@@ -249,6 +250,7 @@ class Ctx:
         self.show_drawer: str | None = None     # "drawer" | "endDrawer" when the selection is inside one
         self.hinge: tuple | None = None         # foldable hinge / fold (x, y, w, h) in screen coordinates
         self.screen_size: tuple = (0.0, 0.0)    # device screen (w, h) in dp
+        self.app_theme: dict | None = None      # project theme (screen-theme form) when the screen has none
 
 
 # ============================================================================== values
@@ -749,6 +751,14 @@ def _error_box(node, c: C) -> Box:
 
 
 def _unknown(node, c, env, ctx) -> Box:
+    try:                                     # a component package widget: drawn by its designer.py
+        from ..components import dart as _comp_dart
+        size = _comp_dart.preview_size(node.get("type", ""))
+    except Exception:  # noqa: BLE001
+        size = None
+    if size:
+        return Box(*c.constrain(min(c.maxW, size[0]), min(c.maxH, size[1])),
+                   paint=lambda p, b, _ctx: _comp_dart.paint_preview(p, b.w, b.h, node))
     kid = first_child(node)
     if kid is not None:
         return layout_node(kid, c, env, ctx)
@@ -1399,9 +1409,79 @@ def _text_box(text: str, style: dict, c: C, ctx: Ctx, align_: str = "", max_line
     return box
 
 
+def _rich_box(spans, style: dict, c: C, ctx: Ctx, align_: str = "", max_lines=None, soft_wrap=True) -> Box:
+    """Text.rich / RichText: the spans laid out as one paragraph with per-span fonts and colours."""
+    from PyQt6.QtGui import QTextCharFormat
+    text, ranges = "", []
+    base_font = make_font(style, ctx)
+    for sp in spans if isinstance(spans, list) else []:
+        st = merge_style(style, sp.get("style")) if isinstance(sp, dict) and not M.is_code(sp) else style
+        piece = "[…]" if M.is_code(sp) else str((sp or {}).get("text") or "") if isinstance(sp, dict) else ""
+        if not piece:
+            continue
+        fr = QTextLayout.FormatRange()
+        fr.start, fr.length = len(text), len(piece)
+        cf = QTextCharFormat()
+        cf.setFont(make_font(st, ctx))
+        cf.setForeground(QBrush(color(st.get("color"), ctx, ctx.scheme["onSurface"])))
+        bg = color(st.get("backgroundColor"), ctx)
+        if bg is not None:
+            cf.setBackground(QBrush(bg))
+        deco = enum_val(st.get("decoration"))
+        cf.setFontUnderline(deco == "underline")
+        cf.setFontStrikeOut(deco == "lineThrough")
+        cf.setFontOverline(deco == "overline")
+        fr.format = cf
+        ranges.append(fr)
+        text += piece
+    tl = QTextLayout(text, base_font)
+    tl.setFormats(ranges)
+    opt = QTextOption()
+    opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere if soft_wrap is not False
+                    else QTextOption.WrapMode.NoWrap)
+    tl.setTextOption(opt)
+    maxw = c.maxW if c.maxW < INF else 1e6
+    tl.beginLayout()
+    lines, y, widest = [], 0.0, 0.0
+    while True:
+        line = tl.createLine()
+        if not line.isValid():
+            break
+        if max_lines and len(lines) >= max_lines:
+            break
+        line.setLineWidth(maxw)
+        line.setPosition(QPointF(0, y))
+        widest = max(widest, line.naturalTextWidth())
+        lines.append(line)
+        y += line.height()
+    tl.endLayout()
+    w, h = c.constrain(min(math.ceil(widest), maxw), y)
+    fac = {"center": .5, "right": 1.0, "end": 1.0}.get(enum_val(align_, "start"), 0.0)
+
+    def paint(p, b, ctx2, tl=tl, lines=lines):
+        p.save()
+        for ln in lines:
+            ln.draw(p, QPointF((b.w - ln.naturalTextWidth()) * fac, 0))
+        p.restore()
+    return Box(w, h, paint=paint)
+
+
+@reg("RichText")
+def _richtext(node, c, env, ctx):
+    pr = props(node)
+    ml = num(pr.get("maxLines"))
+    # RichText does not inherit DefaultTextStyle (only the root span style)
+    return _rich_box(pr.get("spans"), merge_style({}, pr.get("style")), c, ctx, pr.get("textAlign", ""),
+                     int(ml) if ml else None, pr.get("softWrap", True))
+
+
 @reg("Text", "SelectableText")
 def _text(node, c, env, ctx):
     pr = props(node)
+    if node.get("ctor") == "rich":
+        ml = num(pr.get("maxLines"))
+        return _rich_box(pr.get("spans"), merge_style(env.style, pr.get("style")), c, ctx, pr.get("textAlign", ""),
+                         int(ml) if ml else None, pr.get("softWrap", True))
     data = pr.get("data", "")
     text = data if isinstance(data, str) else ("${…}" if M.is_code(data) else str(data))
     style = merge_style(env.style, pr.get("style"))
@@ -1964,6 +2044,44 @@ def _icon_box(name: str, col: QColor, size=24.0, box=48.0) -> Box:
     def paint(p, b, ctx2):
         iconfont.draw(p, QRectF((b.w - size) / 2, (b.h - size) / 2, size, size), name, col)
     return Box(box, box, paint=paint)
+
+
+@reg("RadioGroup")
+def _radio_group(node, c, env, ctx):
+    gv = props(node).get("groupValue")
+    return passthrough(slot(node, "child"), c, replace(env, radio=gv if isinstance(gv, str) else None), ctx)
+
+
+def _radio_paint(on: bool, act: QColor):
+    def paint(p, b, ctx2):
+        r = QRectF((b.w - 20) / 2, (b.h - 20) / 2, 20, 20)
+        p.save()
+        p.setPen(QPen(act if on else ctx2.scheme["onSurfaceVariant"], 2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(r.adjusted(1, 1, -1, -1))
+        if on:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(act)
+            p.drawEllipse(r.adjusted(5, 5, -5, -5))
+        p.restore()
+    return paint
+
+
+@reg("Radio")
+def _radio(node, c, env, ctx):
+    pr = props(node)
+    on = env.radio is not None and pr.get("value") == env.radio
+    return Box(*c.constrain(48, 48), paint=_radio_paint(on, color(pr.get("activeColor"), ctx, ctx.scheme["primary"])))
+
+
+@reg("RadioListTile")
+def _radio_tile(node, c, env, ctx):
+    pr = props(node)
+    on = env.radio is not None and pr.get("value") == env.radio
+    ctrl = Box(48, 48, paint=_radio_paint(on, color(pr.get("activeColor"), ctx, ctx.scheme["primary"])))
+    if enum_val(pr.get("controlAffinity"), "platform") == "trailing":
+        return _list_tile(node, c, env, ctx, trailing_control=ctrl)
+    return _list_tile(node, c, env, ctx, leading_control=ctrl)
 
 
 @reg("CheckboxListTile", "SwitchListTile")
@@ -2761,6 +2879,32 @@ def _anim_asset(node, c, env, ctx):
     w, h = c.constrain(w, h)
     lottie = node.get("type") == "Lottie"
     name = str(pr.get("name") or "").replace("\\", "/").split("/")[-1]
+    src = str(pr.get("name") or "")
+    if lottie and ctx.folder is not None and node.get("ctor", "asset") == "asset" and src \
+            and not src.startswith(("http:", "https:")):
+        from . import lottie_thumb as LT
+        f = Path(ctx.folder) / src
+        meta = LT.info(f) if f.is_file() else None
+        if meta is not None:
+            def paint_frame(p, b, ctx2, f=f, meta=meta):
+                dpr = 2
+                img = LT.first_frame(f, max(1, int(b.w * dpr)), max(1, int(b.h * dpr)))
+                if img is None:
+                    return
+                p.save()
+                p.drawImage(QRectF(0, 0, b.w, b.h), img)
+                fnt = QFont(ctx2.font_family)
+                fnt.setPixelSize(9)
+                p.setFont(fnt)
+                tag = f"Lottie {meta['seconds']:.1f}s"
+                tw = QFontMetricsF(fnt).horizontalAdvance(tag) + 6
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(0, 137, 123, 170))
+                p.drawRoundedRect(QRectF(b.w - tw - 2, 2, tw, 13), 3, 3)
+                p.setPen(QColor("#FFFFFFFF"))
+                p.drawText(QRectF(b.w - tw - 2, 2, tw, 13), int(Qt.AlignmentFlag.AlignCenter), tag)
+                p.restore()
+            return Box(w, h, paint=paint_frame)
 
     def paint(p, b, ctx2):
         r = QRectF(.5, .5, b.w - 1, b.h - 1)
@@ -3061,7 +3205,7 @@ def render_tree(screen: M.Screen, width: float, height: float, ctx: Ctx, pad_top
                 pad_bottom: float = 0.0) -> Box:
     """Lay out the screen's tree for a device of width x height dp."""
     ctx.screen = screen
-    theme = screen.data.get("theme") or {}
+    theme = screen.data.get("theme") or getattr(ctx, "app_theme", None) or {}
     base = {"fontSize": 14, "color": "#%08X" % ctx.scheme["onSurface"].rgba(), "letterSpacing": 0.25}
     if theme.get("fontFamily"):
         base["googleFont"] = theme["fontFamily"]
@@ -3070,11 +3214,15 @@ def render_tree(screen: M.Screen, width: float, height: float, ctx: Ctx, pad_top
     return root
 
 
-def make_ctx(screen: M.Screen, dark: bool = False, text_scale: float = 1.0, folder=None, images=None) -> Ctx:
-    theme = screen.data.get("theme") or {}
+def make_ctx(screen: M.Screen, dark: bool = False, text_scale: float = 1.0, folder=None, images=None,
+             app_theme: dict | None = None) -> Ctx:
+    """*app_theme*: the project theme as a screen theme (themes.screen_theme), used when the screen has none."""
+    theme = screen.data.get("theme") or app_theme or {}
     dark = dark or theme.get("brightness") == "dark"
     sch = color_scheme(theme.get("seedColor"), dark)
-    return Ctx(sch, dark, text_scale, Path(folder) if folder else None, images)
+    ctx = Ctx(sch, dark, text_scale, Path(folder) if folder else None, images)
+    ctx.app_theme = None if screen.data.get("theme") else app_theme
+    return ctx
 
 
 def render_image(screen: M.Screen, width: int = 412, height: int = 915, dark: bool = False, scale: float = 1.0,

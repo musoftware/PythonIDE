@@ -638,7 +638,78 @@ def _rename_in_solution(sln_model, old_shproj: Path, shared: SharedProject) -> N
     sln_model.save()
 
 
+# ---------------------------------------------------------------- GlobalSection(SharedMSBuildProjectFiles)
+SHARED_ITEMS_IMPORTS_SELF = 13      # the .shproj's own line
+SHARED_ITEMS_IMPORTS_LEGACY = 4     # a consuming old-style (non-SDK) C#/VB project
+SHARED_ITEMS_IMPORTS_SDK = 5        # a consuming SDK-style project
+
+
+def _sln_entry_guid(sln_model, project_file: Path) -> str:
+    n = _norm(project_file)
+    e = next((e for e in getattr(sln_model, "entries", []) if _norm(sln_model.folder / e.path) == n), None)
+    return e.guid if e is not None else ""
+
+
+def record_sln_shared_reference(sln_model, project_file, shared: SharedProject) -> bool:
+    """Write the ``<projitems>*{guid}*SharedItemsImports = N`` lines VS adds to a .sln when a project references
+    a shared project (optional bookkeeping: MSBuild ignores it, VS loads faster). .slnx has no such section."""
+    if sln_model is None or not hasattr(sln_model, "file") or sln_model.path.suffix.lower() != ".sln":
+        return False
+    project_file = Path(project_file)
+    pg = _sln_entry_guid(sln_model, project_file)
+    se = solution_entry_for(sln_model, shared)
+    if not pg:
+        return False
+    try:
+        sdk = MSBuildProject.load(project_file).is_sdk
+    except (OSError, ValueError):
+        sdk = True
+    rel = ms_path(os.path.relpath(shared.projitems_path, sln_model.folder))
+    want = [(se.guid, SHARED_ITEMS_IMPORTS_SELF)] if se is not None else []
+    want.append((pg, SHARED_ITEMS_IMPORTS_SDK if sdk else SHARED_ITEMS_IMPORTS_LEGACY))
+    text, nl = sln_model.file.text, sln_model.file.newline
+    sec = re.search(r"^[ \t]*GlobalSection\(SharedMSBuildProjectFiles\)[^\n]*\n(.*?)^[ \t]*EndGlobalSection",
+                    text, re.M | re.S)
+    lines = [f"\t\t{rel}*{g.lower()}*SharedItemsImports = {n}" for g, n in want
+             if sec is None or f"{rel.lower()}*{g.lower()}*" not in sec.group(1).lower()]
+    if not lines:
+        return False
+    if sec is not None:
+        text = text[:sec.end(1)] + nl.join(lines) + nl + text[sec.end(1):]
+    else:
+        g = re.search(r"^Global[ \t]*\r?\n", text, re.M)
+        if g is None:
+            return False
+        text = (text[:g.end()] + f"\tGlobalSection(SharedMSBuildProjectFiles) = preSolution{nl}" + nl.join(lines)
+                + f"{nl}\tEndGlobalSection{nl}" + text[g.end():])
+    sln_model.file.text = text
+    sln_model.parse()
+    sln_model.save()
+    return True
+
+
+def drop_sln_shared_reference(sln_model, project_file, shared: SharedProject) -> bool:
+    """Remove the project's SharedItemsImports line (and an emptied section) from a .sln."""
+    if sln_model is None or not hasattr(sln_model, "file") or sln_model.path.suffix.lower() != ".sln":
+        return False
+    pg = _sln_entry_guid(sln_model, Path(project_file))
+    if not pg:
+        return False
+    rel = re.escape(ms_path(os.path.relpath(shared.projitems_path, sln_model.folder)))
+    text = re.sub(r"^[ \t]*" + rel + r"\*" + re.escape(pg.lower()) + r"\*SharedItemsImports[^\n]*\n", "",
+                  sln_model.file.text, flags=re.M | re.I)
+    text = re.sub(r"^[ \t]*GlobalSection\(SharedMSBuildProjectFiles\)[^\n]*\n[ \t]*EndGlobalSection[^\n]*\n", "",
+                  text, flags=re.M)
+    if text == sln_model.file.text:
+        return False
+    sln_model.file.text = text
+    sln_model.parse()
+    sln_model.save()
+    return True
+
+
 __all__ = ["SHPROJ_TYPE_GUID", "SharedProject", "SharedItem", "ITEM_TEMPLATES", "create_shared_project",
            "shared_imports", "references_shared", "can_reference", "add_shared_reference",
            "remove_shared_reference", "consumers", "solution_shared_projects", "solution_entry_for",
-           "add_to_solution", "remove_from_solution", "new_item_files"]
+           "add_to_solution", "remove_from_solution", "new_item_files", "record_sln_shared_reference",
+           "drop_sln_shared_reference"]

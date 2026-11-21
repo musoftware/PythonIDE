@@ -41,7 +41,7 @@
     "python-qt": {"file": "runtime/ratingbar_qt.py", "class": "RatingBar"},
     "ring-qt": {"file": "runtime/ratingbar.ring", "class": "RatingBar"},
     "flutter": {"files": ["runtime/rating_bar.dart"],
-                "template": {"widget": "RatingBar(value: {Value}, maxStars: {MaxStars}, readOnly: {ReadOnly}, starColor: {StarColor}, emptyColor: {EmptyColor}, onChanged: () {{{on_ValueChanged} }})"}},
+                "template": {"widget": "RatingBar(value: {Value_live}, maxStars: {MaxStars_live}, readOnly: {ReadOnly_live}, starColor: {StarColor_live}, emptyColor: {EmptyColor_live}, onChanged: (v) {{ {state}['Value'] = v;{on_ValueChanged} }})"}},
     "web": {"template": {
       "html": "<span id=\"{name}\" class=\"rad-rating\" data-value=\"{Value_raw}\" data-max=\"{MaxStars_raw}\" data-readonly=\"{ReadOnly_raw}\" style=\"--on:{StarColor_raw};--off:{EmptyColor_raw}\"></span>",
       "css": ".rad-rating span{cursor:pointer;font-size:20px;color:var(--off)} .rad-rating span.on{color:var(--on)}",

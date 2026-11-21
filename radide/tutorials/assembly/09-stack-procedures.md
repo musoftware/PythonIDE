@@ -57,7 +57,7 @@ popped: 3 2 1
 
 في الوضع 64 بت تعمل `push` و`pop` على 8 بايتات (يمكن `push` لرقم ثابت أو مسجل 64 بت أو ذاكرة qword؛ أما `push eax` فخطأ: `instruction not valid with 32-bit operand size`).
 
-## call وret من الداخل
+## `call` و`ret` من الداخل
 
 - `call f` = `push` لعنوان التعليمة التالية (**عنوان الرجوع**) ثم القفز إلى `f`.
 - `ret` = `pop` لعنوان الرجوع إلى `rip`.

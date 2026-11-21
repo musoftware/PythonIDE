@@ -110,7 +110,7 @@ def get(url: str, ttl: float = 600.0, timeout: float = 30.0) -> bytes:
     if _fixture_mode() == "replay":
         return fetch(url, timeout)
     path = cache_root() / "http" / (_key(url) + ".bin")
-    if ttl > 0 and path.is_file() and time.time() - path.stat().st_mtime < ttl:
+    if ttl > 0 and _fixture_mode() != "record" and path.is_file() and time.time() - path.stat().st_mtime < ttl:
         try:
             return path.read_bytes()
         except OSError:

@@ -40,7 +40,7 @@ true
 - `$name` داخل النص تضع قيمة المتغير، و`${...}` لتعبير كامل مثل `${age + 1}`.
 - أسماء المتغيرات تبدأ بحرف صغير، وكل كلمة بعدها بحرف كبير: `isStudent`، `totalPrice`. هذا يسمى **camelCase**.
 
-## var و final و const
+## `var` و `final` و `const`
 
 ```dart run
 void main() {

@@ -563,29 +563,34 @@ class SolutionDoc:
         names = [n for n in self.folder_path(e)] + [e.name]
         return "/" + "/".join(names) + "/"
 
+    def _slnx_axes(self) -> tuple[list[str], list[str]]:
+        """Build types and platforms in the order Visual Studio writes them (sorted)."""
+        return (sorted(self._build_types(), key=str.lower), sorted(self._platforms(), key=str.lower))
+
     def _slnx_rules(self, e: SEntry) -> list[str]:
         if not e.rules_dirty:
             return [_xml_el(r) for r in e.raw_rules]
-        rules = {"BuildType": [], "Platform": [], "Build": [], "Deploy": []}
-        for b in self._build_types():
-            for p in self._platforms():
-                sc = f"{b}|{p}"
-                pc = self.mapping.get((e.guid, sc))
+        bts, pls = self._slnx_axes()
+        actual: dict[str, dict] = {"BuildType": {}, "Platform": {}, "Build": {}, "Deploy": {}}
+        default: dict[str, dict] = {"BuildType": {}, "Platform": {}, "Build": {}, "Deploy": {}}
+        for b in bts:
+            for p in pls:
+                c = (b, p)
                 dplat = default_project_platform(e.ext, p)
+                default["BuildType"][c], default["Platform"][c] = b, _norm_plat(dplat)
+                default["Build"][c], default["Deploy"][c] = "true", "false"
+                pc = self.mapping.get((e.guid, f"{b}|{p}"))
                 if pc is None:
-                    rules["BuildType"].append(f'<BuildType Solution="{_x(sc)}" Project="?" />')
-                    rules["Platform"].append(f'<Platform Solution="{_x(sc)}" Project="?" />')
-                    rules["Build"].append(f'<Build Solution="{_x(sc)}" Project="false" />')
+                    actual["BuildType"][c], actual["Platform"][c] = "?", "?"
+                    actual["Build"][c], actual["Deploy"][c] = "false", "false"
                     continue
-                if pc.cfg != b:
-                    rules["BuildType"].append(f'<BuildType Solution="{_x(sc)}" Project="{_x(pc.cfg)}" />')
-                if _norm_plat(pc.plat) != _norm_plat(dplat):
-                    rules["Platform"].append(f'<Platform Solution="{_x(sc)}" Project="{_x(pc.plat)}" />')
-                if not pc.build:
-                    rules["Build"].append(f'<Build Solution="{_x(sc)}" Project="false" />')
-                if pc.deploy:
-                    rules["Deploy"].append(f'<Deploy Solution="{_x(sc)}" />')
-        return rules["BuildType"] + rules["Platform"] + rules["Build"] + rules["Deploy"]
+                actual["BuildType"][c], actual["Platform"][c] = pc.cfg, _norm_plat(pc.plat)
+                actual["Build"][c] = "true" if pc.build else "false"
+                actual["Deploy"][c] = "true" if pc.deploy else "false"
+        out = []
+        for kind in ("BuildType", "Platform", "Build", "Deploy"):
+            out += [_rule(kind, sol, val) for sol, val in _condense(actual[kind], default[kind], bts, pls)]
+        return out
 
     def _slnx_project(self, e: SEntry, indent: str) -> list[str]:
         attrs = f' Path="{_x(e.path)}"' + "".join(f' {k}="{_x(v)}"' for k, v in e.attrs.items())
@@ -604,7 +609,7 @@ class SolutionDoc:
     def _slnx_text(self) -> str:
         nl = self.newline
         out = ["<Solution>"]
-        bts, pls = self._build_types(), self._platforms()
+        bts, pls = self._slnx_axes()
         if bts != ["Debug", "Release"] or pls != ["Any CPU"]:
             out.append("  <Configurations>")
             if bts != ["Debug", "Release"]:
@@ -1038,6 +1043,41 @@ def _project_configs_of(project_file: Path) -> list[str]:
     found = re.findall(r"'\$\(Configuration\)\|\$\(Platform\)'\s*==\s*'([^|']+)\|", text)
     found += re.findall(r'<ProjectConfiguration Include="([^|"]+)\|', text)
     return list(dict.fromkeys(found))
+
+
+def _condense(actual: dict, default: dict, bts: list[str], pls: list[str]) -> list[tuple[str | None, str]]:
+    """Per-configuration values -> the fewest rules, like Visual Studio: one rule without Solution when
+    every configuration has the same value, "Debug|*" for a whole build type, "*|x64" for a whole platform,
+    single "Debug|x64" rules for the rest. Configurations with the default value need no rule."""
+    allc = [(b, p) for b in bts for p in pls]
+    odd = {c for c in allc if actual[c] != default[c]}
+    if not odd:
+        return []
+    if len({actual[c] for c in allc}) == 1:
+        return [(None, actual[allc[0]])]
+    covered: set = set()
+    rows, cols, single = [], [], []
+    for b in bts:
+        row = [(b, p) for p in pls]
+        if len({actual[c] for c in row}) == 1 and odd & set(row):
+            rows.append((f"{b}|*", actual[row[0]]))
+            covered |= set(row)
+    for p in pls:
+        col = [(b, p) for b in bts]
+        if len({actual[c] for c in col}) == 1 and (odd & set(col)) - covered and not covered & set(col):
+            cols.append((f"*|{p}", actual[col[0]]))
+            covered |= set(col)
+    for c in allc:
+        if c in odd and c not in covered:
+            single.append((f"{c[0]}|{c[1]}", actual[c]))
+    return cols + rows + single
+
+
+def _rule(kind: str, solution: str | None, value: str) -> str:
+    sol = f' Solution="{_x(solution)}"' if solution else ""
+    if kind == "Deploy":
+        return f"<Deploy{sol} />" if value == "true" else f'<Deploy{sol} Project="false" />'
+    return f'<{kind}{sol} Project="{_x(value)}" />'
 
 
 def _norm_plat(p: str) -> str:

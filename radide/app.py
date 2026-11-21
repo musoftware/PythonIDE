@@ -330,6 +330,8 @@ class MainWindow(QMainWindow):
         self.session: Session | None = None
         self.stopped_at: tuple[str, int] | None = None
 
+        from . import screenfit          # every window and dialog stays on small screens / high scaling
+        screenfit.install()
         self.resize(1280, 800)
         self.setStyleSheet(STYLE)
         self.tabs = QTabWidget()
@@ -435,6 +437,8 @@ class MainWindow(QMainWindow):
             self.resizeDocks([self.dock_solution], [right], H)
         if not self.dock_output.isFloating():
             self.resizeDocks([self.dock_output], [out], V)
+        from .screenfit import apply_small_screen_layout
+        apply_small_screen_layout(self)         # small screens only: tab group / lower Output
 
         def split():
             sol, props = self.dock_solution, self.dock_props

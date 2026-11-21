@@ -108,7 +108,7 @@ end
 
 الدوال المساعدة `show` و`numbers` **محلية** (`local`) لأنها ليست أحداثًا، أما دوال الأحداث فعامة.
 
-## القوائم (ListBox)
+## القوائم (`ListBox`)
 
 ارسم `txtItem` و`btnAdd` و`btnRemove` و`lstItems` و`lblCount`:
 

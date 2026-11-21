@@ -179,7 +179,7 @@ except ValueError as e:
 |---|---|
 | Solution | حل |
 | Project | مشروع |
-| Class Library | مكتبة أصناف (فئات) |
+| Class Library | مكتبة أصناف |
 | StartUp Project | مشروع البدء |
 | Reference | مرجع |
 | Proxy | وكيل |

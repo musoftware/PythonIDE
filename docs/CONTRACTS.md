@@ -588,7 +588,23 @@ any language may use: `MonacoEditor.plugin_overlays`, `plugin.monaco_language(pa
   generators** (python-tk / python-qt / vbrun / bridges = slice C; Flutter, Kivy, Expo, Ring = slice D) must use
   the same rule: desktop toolkits = two placed frames, hinge from `devices.env_state()["hinge"]` (RADIDE_HINGE
   in window coords) else Ratio; Flutter = `RadTwoPane` (DisplayFeatureSubScreen, Ratio fallback); targets
-  without display features use the Ratio / single rule.
+  without display features use the Ratio / single rule. The hinge is always converted to the TwoPane's own
+  coordinates first (it need not fill the window): Flutter `RadTwoPane.localHinge(hinge, fold, origin, w, h)`
+  with the origin measured after layout (`localToGlobal`, one extra frame), Kivy `to_window`, the designer
+  `frame.two_pane_split`; a hinge that does not cross the box from side to side -> rule 2 / 3.
+- **Folded posture at runtime (Flutter)**: Flutter reports no "folded" display feature (Android reports a fold
+  only on the inner screen). `RadVariant.compute` says `folded` when no fold / hinge is reported and either a
+  fold was seen before in this run (`RadVariant.foldableSeen`: the app moved to the cover screen) or the window
+  looks like a cover screen (`looksLikeCoverScreen`: shortest side < 400 dp and >= 2.3 times as long;
+  `RadVariant.coverScreenHeuristic = false` turns the guess off). A half-opened fold = halfOpened, a flat fold /
+  hinge = flat; `debugPosture` overrides; `resetFoldMemory()` for tests. Limits: an app started folded on a
+  cover screen wider than 2.3:1 (Pixel Fold 411 x 797) is flat until it has been unfolded once; a window of a
+  split screen that does not cross the fold reads as folded.
+- **Error List**: the "Controls cross the hinge" rows of an open form are refreshed 250 ms after each designer
+  change (move / resize / Device / Orientation / Posture / undo) and when the designer opens
+  (`features/mobile.watch_hinge`), not only by the checks run on save / build.
+- **Labels**: device names in combo boxes go through `devices.display_name(dev)` / `short_name(dev)` (ar.json;
+  combo items are not translated by radide.i18n), relabelled on a language change.
 - **Emulator**: `features/mobile.py` `foldable_avd(name="RADIDE_Fold")` creates (never modifies / deletes other
   AVDs) an AVD from the first available profile of `devices.FOLDABLE_AVD_PROFILES` (pixel_9_pro_fold,
   pixel_fold, 7.6in Foldable ...) and the newest installed system image for this CPU (Build > Mobile App >
@@ -634,7 +650,16 @@ Plan: docs/plans/MOTION_VARIANTS_FOLDABLES.md (contracts 1.1-1.4, 1.7; slice A).
   `StopAnimation(id)`, `SetVisible(control, on)` (plays On show / On hide). `_RadIO` gained `bind(name,
   "click"|"enter"|"leave", fn)`, `parent_bg(name)` and the `vis_hook` / `quiet` protocol (Visible changes go
   through the On show / On hide animations). Reduced motion: `RADIDE_REDUCED_MOTION=1|0`, else Windows
-  `SPI_GETCLIENTAREAANIMATION`. `ensure_fx(ui, toolkit)` creates the runtime on demand (vbrun).
+  `SPI_GETCLIENTAREAANIMATION` (read only; tested with a mocked SystemParametersInfoW in
+  `samples/Tests/Motion/check_reduced_motion_windows.py`). `ensure_fx(ui, toolkit)` creates the runtime on
+  demand (vbrun).
+- **Animations panel** (features/animations_panel.py): the list order is the form's order (start / generation
+  order): Move Up / Move Down and drag in the list (`move_among`, `reorder` over `motion.model.move`; with one
+  control's list shown the others keep their places). Preview and Convert to Storyboard use
+  `preview_target(win, form)` = the motion target of the form's language (python-qt "qt", PLUGIN_TARGETS of
+  10.11, else "py"): frames come from `expand(form, target)` and `BlendPreview` draws Opacity / ScaleX /
+  ScaleY / Rotation with `states.FxEffect` (a QGraphicsEffect: the control's pixmap scaled / rotated around its
+  centre with opacity; the form's own fade on the form frame); the model never changes.
 - **VB6 / GUI Bridge**: `Command1.Animate "slideIn", 500, "from=right"` (preset, optional duration, `name=value`
   options), `Form1.Animate "fadeIn"`, `Me.Animate "Command1", "shake"`, `Form1.BeginAnimation "fx1"` /
   `StopAnimation`, storyboards and animations as objects (`Storyboard1.Begin`, `fx1.Stop`, `.Pause`, `.Resume`,
@@ -679,7 +704,8 @@ kivy / expo).
 - **Kivy**: `radkivyfx.py` (only when needed): `kivy.animation.Animation` sequences per channel; offsets / rotate /
   scale are canvas instructions (PushMatrix / Translate / Rotate / Scale / PopMatrix inserted first in
   canvas.before); colours animate `color` / `background_color` / `card_color`; click = touch up on the
-  source, hover = `Window.mouse_pos`; RADIDE_REDUCED_MOTION=1 (Kivy has no system setting). Sizes: the
+  source, hover = `Window.mouse_pos`; RADIDE_REDUCED_MOTION=1|0, else Windows SPI_GETCLIENTAREAANIMATION
+  (Kivy has no system setting of its own). Sizes: the
   screen's `radsizes` ListProperty (MATCH_RT of radide/variants) recomputed on resize; KV positions are
   conditional expressions on `root.radsizes`, other properties set from Python. TwoPane -> `RadTwoPane`
   (FloatLayout; RADIDE_HINGE else Ratio; one pane below 600 dp). No foldable API: documented fallback.

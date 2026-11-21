@@ -9,6 +9,8 @@ For a screen ``Login``:
   lib/radfx.dart                  the animation helper (RadFx) when a screen uses ``anim`` / page transitions
   lib/radlayout.dart              the responsive helper (RadVariant, RadShow, RadTwoPane) when a screen has
                                   per-size overrides (variants_fd.py) or a RadTwoPane
+  lib/radform.dart                the validator rules helper (radValidate, RadRule) when a TextFormField has
+                                  designed validators (datawidgets.py)
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import datawidgets as DW
 from . import model as M
 from . import motion as MO
 from . import variants_fd as VF
@@ -479,6 +482,7 @@ VALUE_EMITTERS = {
     "gradient": x_gradient, "box_shadows": x_shadows, "border": x_border, "box_decoration": x_decoration,
     "text_style": x_text_style, "shape": x_shape, "input_decoration": x_input_decoration,
     "constraints": x_constraints, "physics": x_physics, "code": lambda v: None if v is None else Raw(str(v)),
+    "text_spans": lambda v: None if v is None else DW.text_spans_x(v),
 }
 
 
@@ -517,6 +521,9 @@ class GenContext:
     uses_layout: bool = False                        # lib/radlayout.dart (RadVariant, RadTwoPane)
     libs: set = field(default_factory=set)           # lottie / rive
     screen: object = None                            # the model.Screen being generated
+    uses_form: bool = False                          # lib/radform.dart (radValidate, RadRule)
+    handler_returns: dict = field(default_factory=dict)   # handler -> return type (default void)
+    components: dict = field(default_factory=dict)   # component package widgets used: type -> package
 
 
 def _field_name(node: dict, spec: M.WidgetSpec) -> str:
@@ -530,7 +537,7 @@ def _value_assign(spec: M.WidgetSpec, event_sig: str, fname: str) -> str:
 
 
 def _nav_action(h: str) -> str | None:
-    m = MO.event_action(h)          # toggle: / play: / reverse: / push:Screen?transition=...
+    m = MO.event_action(h) or DW.event_action(h)   # toggle: / play: / reverse: / push:Screen?... / validate:
     if m:
         return m
     if h == "back":
@@ -548,6 +555,7 @@ def _nav_action(h: str) -> str | None:
 class TreeGen:
     def __init__(self, ctx: GenContext):
         self.ctx = ctx
+        self._tl: list[list[str]] = []     # timelines read by numeric props of the node being generated
 
     def node(self, n: dict) -> X:
         a = n.get("anim")
@@ -559,7 +567,17 @@ class TreeGen:
                 inner["anim"] = a
                 n = dict(n, slots=dict(n["slots"], child=inner))
                 n.pop("anim")
-        x = self._node(n)
+        self._tl.append([])
+        try:
+            x = self._node(n)
+        finally:
+            tls = self._tl.pop()
+        if tls:
+            # timeline values on plain numeric properties: rebuild the widget on every animation tick
+            anim = tls[0] if len(tls) == 1 else f"Listenable.merge([{', '.join(tls)}])"
+            x = Call("AnimatedBuilder", named=[("animation", Raw(anim)),
+                                               ("builder", Raw(f"(context, child) => {x.render()}"))],
+                     const_ctor=False, multiline=True)
         if n.get("anim") and (n.get("type") in PARENT_DATA or n.get("type") == "Spacer"):
             self.ctx.warnings.append(f"{n.get('id')}: a {n.get('type')} cannot be animated (animate its child)")
         else:
@@ -583,7 +601,12 @@ class TreeGen:
         if MO.is_timeline(v):
             if ps.kind in MO.TIMELINE_KINDS:
                 return MO.timeline_x(ps.kind, v)
-            self.ctx.warnings.append(f"{owner}: only transition properties follow a timeline - end value used")
+            if ps.kind in ("double", "int") and owner not in PARENT_DATA and self._tl:
+                if v["$timeline"] not in self._tl[-1]:
+                    self._tl[-1].append(v["$timeline"])
+                return MO.timeline_value_x(ps.kind, v)
+            self.ctx.warnings.append(f"{owner}: only transition and number properties follow a timeline - "
+                                     f"end value used")
             return emit_value(ps.kind, v.get("to"), owner)
         if ps.kind in MO.TIMELINE_KINDS and v is not None and not M.is_code(v):
             return MO.stopped_x(ps.kind, v)
@@ -600,9 +623,17 @@ class TreeGen:
         if t == "Code":
             return self._code_node(n)
         spec0 = M.CATALOG.get(t)
+        if spec0 is None and t:           # a component package widget not in the catalog yet
+            from ..components import dart as _comp_dart
+            if _comp_dart.has_flutter(t):
+                _comp_dart.sync_catalog()
+                spec0 = M.CATALOG.get(t)
         if spec0 is None:
             self.ctx.warnings.append(f"{n.get('id')}: unknown widget {t!r} generated as a placeholder")
             return Raw(f"const Placeholder() /* unknown widget {t} */")
+        if getattr(spec0, "component", None):     # component package (radide/components/dart.py)
+            from ..components import dart as _comp_dart
+            return _comp_dart.component_x(self, n, spec0)
         ctor = n.get("ctor") or (None if spec0.unnamed_ctor else spec0.default_ctor)
         spec = spec0.resolved(ctor)
         if spec.library == "cupertino":
@@ -651,6 +682,36 @@ class TreeGen:
                     cb = f"(value) => setState(() => {assign})"
                 named.append((ev, Raw(cb)))
             nonconst = True
+            if t == "RadioGroup":
+                name = "RadioGroup<String>"
+        elif t == "Form" and n.get("name"):
+            fname = n["name"]
+            self.ctx.fields[fname] = Field(fname, "GlobalKey<FormState>", "GlobalKey<FormState>()")
+            named.append(("key", Raw(fname)))
+            nonconst = True
+        builder = DW.is_builder(n)
+        skip = set()
+        if builder:
+            skip |= {"items"} | (set(DW.GRID_DELEGATE_KEYS) if t == "GridView" else set())
+        if t == "TextFormField":
+            skip.add("validators")
+            rules, custom = props.get("validators"), events.pop("validator", None)
+            if custom and not M._IDENT.match(custom):
+                named.append(("validator", Raw(custom)))
+            else:
+                if custom:
+                    self._handler(custom, spec.events.get("validator", ""), spec.event_returns.get("validator", ""))
+                vx = DW.validator_x(rules, custom)
+                if vx is not None:
+                    if rules and not M.is_code(rules):
+                        self.ctx.uses_form = True
+                    named.append(("validator", vx))
+        if t == "RichText":
+            skip |= {"spans", "style"}
+            named.append(("text", DW.text_spans_x(props.get("spans") or [], props.get("style"))))
+            if DW.spans_use_google_fonts(props.get("spans")) or (isinstance(props.get("style"), dict)
+                                                                 and props["style"].get("googleFont")):
+                self.ctx.uses_google_fonts = True
 
         # ---- properties (+ keys only overridden on some sizes)
         vkeys = {k for vid in VF.size_ids_in_order(self.ctx.screen, n) for k in VF.overrides(n, vid)
@@ -660,7 +721,7 @@ class TreeGen:
                 props[k] = spec.props[k].default
         for k, v in props.items():
             ps = spec.props.get(k)
-            if t == "DropdownButton" and k in ("items", "hint"):
+            if t == "DropdownButton" and k in ("items", "hint") or k in skip:
                 continue
             if ps is None:
                 if M.is_code(v):
@@ -677,6 +738,8 @@ class TreeGen:
             if x is None:
                 continue
             if ps.kind == "text_style" and isinstance(v, dict) and v.get("googleFont"):
+                self.ctx.uses_google_fonts = True
+            if ps.kind == "text_spans" and isinstance(v, list) and DW.spans_use_google_fonts(v):
                 self.ctx.uses_google_fonts = True
             if ps.kind in ("input_decoration", "button_style") and isinstance(v, dict):
                 for sub in ("hintStyle", "labelStyle", "textStyle"):
@@ -702,13 +765,16 @@ class TreeGen:
             sig = spec.events.get(ev, "")
             nav = _nav_action(h)
             if nav:
+                then = (DW.validate_event(h) or (None, None))[1]
+                if then:
+                    self._handler(then, "")
                 if h.startswith("push:"):
                     self.ctx.screens_used.add(MO.push_target(h) or h[5:])
                 if "RadRoute(" in nav:
                     self.ctx.uses_anim = True
                 named.append((ev, Raw(nav)))
             else:
-                self._handler(h, sig)
+                self._handler(h, sig, spec.event_returns.get(ev, ""))
                 named.append((ev, Raw(h)))
             nonconst = True
         for ev in spec.required_events:
@@ -719,7 +785,7 @@ class TreeGen:
         # ---- slots (child last)
         for s, ss in spec.slots.items():
             v = slots.get(s)
-            if v is None or (isinstance(v, list) and not v):
+            if v is None or (isinstance(v, list) and not v) or (builder and s == "itemBuilder"):
                 continue
             x = Lst(self.nodes(v)) if ss.multi else self.node(v)
             (tail if s == "child" else named).append((s, x))
@@ -731,6 +797,14 @@ class TreeGen:
             tail.append((spec.children, Lst(self.nodes(kids))))
         if t == "DefaultTabController" and "length" not in props:
             named.insert(0, ("length", Lit(str(self._count_tabs(n)))))
+        if builder:
+            if t == "GridView":
+                named.insert(0, ("gridDelegate", DW.grid_delegate_x(
+                    props, lambda k, v: self.value(spec.props[k], v, t) or Lit("null"))))
+            if "itemCount" not in props:
+                items = props.get("items")
+                named.append(("itemCount", Lit(str(len(items) if isinstance(items, list) and items else 5))))
+            tail.append(("itemBuilder", DW.builder_closure(self, n)))
 
         pos.sort(key=lambda p: p[0])
         multiline = bool(tail) or len(named) > 2
@@ -745,12 +819,14 @@ class TreeGen:
                 return max(1, len(c.get("children") or []))
         return 2
 
-    def _handler(self, h: str, sig: str) -> None:
+    def _handler(self, h: str, sig: str, ret: str = "") -> None:
         old = self.ctx.handlers.get(h)
-        if old is not None and old != sig:
+        if old is not None and (old != sig or self.ctx.handler_returns.get(h, "") != ret):
             self.ctx.warnings.append(f"handler {h} is used with different parameters ({old!r} / {sig!r})")
             return
         self.ctx.handlers[h] = sig
+        if ret:
+            self.ctx.handler_returns[h] = ret
 
     def _code_node(self, n: dict) -> X:
         code = str((n.get("props") or {}).get("code") or "const SizedBox()")
@@ -779,6 +855,8 @@ class GeneratedScreen:
     warnings: list
     uses_layout: bool = False
     deps: list = field(default_factory=list)          # pub dependencies (lottie / rive)
+    uses_form: bool = False                           # lib/radform.dart
+    components: dict = field(default_factory=dict)    # component packages used (their Dart files go to lib/)
 
 
 def screen_files(screen: M.Screen) -> tuple[str, str]:
@@ -815,17 +893,24 @@ def _import_line(spec: str) -> str:
     return f"import '{uri.strip()}' as {prefix.strip()};" if prefix.strip() else f"import '{uri.strip()}';"
 
 
-def _handler_decl(name: str, sig: str) -> str:
-    return f"  void {name}({sig});"
+def _handler_decl(name: str, sig: str, ret: str = "") -> str:
+    return f"  {ret or 'void'} {name}({sig});"
 
 
-_USER_OVERRIDE_RX = re.compile(r"@override\s+(?:void|Future<void>|FutureOr<void>)\s+(\w+)\s*\(([^)]*)\)")
+_RET = r"(void|Future<void>|FutureOr<void>|String\?)"
+_USER_OVERRIDE_RX = re.compile(r"@override\s+" + _RET + r"\s+(\w+)\s*\(([^)]*)\)")
 
 
 def user_overrides(user_code: str) -> dict[str, str]:
     """@override handler methods of the user file: name -> parameter list."""
-    return {m.group(1): " ".join(m.group(2).split()) for m in _USER_OVERRIDE_RX.finditer(user_code or "")
-            if m.group(1) not in STATE_METHODS}
+    return {m.group(2): " ".join(m.group(3).split()) for m in _USER_OVERRIDE_RX.finditer(user_code or "")
+            if m.group(2) not in STATE_METHODS}
+
+
+def user_override_returns(user_code: str) -> dict[str, str]:
+    """Return types of the @override handler methods that are not void (validators: String?)."""
+    return {m.group(2): m.group(1) for m in _USER_OVERRIDE_RX.finditer(user_code or "")
+            if m.group(2) not in STATE_METHODS and m.group(1) == "String?"}
 
 
 def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_name: str = "",
@@ -840,8 +925,12 @@ def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_n
     code = scr.data.get("code") or {}
     # ---- handlers: used ones + @override methods of the user file (keeps it compiling after a removal)
     handlers = dict(ctx.handlers)
+    returns = dict(ctx.handler_returns)
     for h, params in user_overrides(user_code or "").items():
-        handlers.setdefault(h, params)
+        if h not in handlers:
+            handlers[h] = params
+            if h in user_override_returns(user_code or ""):
+                returns[h] = "String?"
     # ---- imports
     imports = ["package:flutter/material.dart"]
     if ctx.uses_cupertino:
@@ -858,7 +947,12 @@ def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_n
         imports.append("../radfx.dart")
     if ctx.uses_layout:
         imports.append("../radlayout.dart")
+    if ctx.uses_form:
+        imports.append("../radform.dart")
     imports += [f"{M.snake(c)}.dart" for c in sorted(ctx.screens_used) if c != cls]
+    if ctx.components:                       # component packages: their Dart files are copied to lib/
+        from ..components import dart as _comp_dart
+        imports += [i for i in _comp_dart.designer_imports(ctx.components) if i not in imports]
     extra = [i for i in (scr.data.get("imports") or []) if i not in imports]
     pkg = sorted(i for i in imports + extra if i.startswith(("dart:", "package:")))
     rel = [i for i in imports + extra if not i.startswith(("dart:", "package:"))]
@@ -885,7 +979,7 @@ def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_n
           f"abstract class {cls}Designer extends State<{cls}>{motion['mixin']} {{"]
     fields = list(ctx.fields.values())
     for f in fields:
-        if f.type in ("TextEditingController", "RadFxController"):
+        if f.type in ("TextEditingController", "RadFxController", "GlobalKey<FormState>"):
             L.append(f"  final {f.name} = {f.type}();")
         elif f.init == "null":
             L.append(f"  {f.type} {f.name};")
@@ -898,7 +992,7 @@ def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_n
     if ctx.uses_rv:
         L += VF.sizes_member(scr)
     for h, params in handlers.items():
-        L.append(_handler_decl(h, params))
+        L.append(_handler_decl(h, params, returns.get(h, "")))
     if handlers:
         L.append("")
     L += MO.init_state_block(motion["init"])
@@ -919,12 +1013,16 @@ def generate_screen(screen: M.Screen | dict, user_code: str | None = None, src_n
         L.append("")
         L += ["  " + ln if ln.strip() else "" for ln in members.splitlines()]
     L += ["}", ""]
+    if ctx.components:                       # the state classes of the component widgets (rate1.value)
+        from ..components import dart as _comp_dart
+        L += _comp_dart.designer_classes(ctx.components)
     designer = "\n".join(L)
     if format_code:
         designer = format_dart(designer)
-    events_code = add_missing_handlers(user_code, scr, ctx.handlers, cls, dfile)
+    events_code = add_missing_handlers(user_code, scr, ctx.handlers, cls, dfile, ctx.handler_returns)
     return GeneratedScreen(cls, dpath, designer, epath, events_code, ctx.uses_anim, ctx.uses_google_fonts,
-                           ctx.warnings, ctx.uses_layout, [LIB_DEPS[lib][0] for lib in sorted(ctx.libs)])
+                           ctx.warnings, ctx.uses_layout, [LIB_DEPS[lib][0] for lib in sorted(ctx.libs)],
+                           ctx.uses_form, dict(ctx.components))
 
 
 # ================================================================================ user file
@@ -975,16 +1073,20 @@ def _class_body_end(code: str, cls_rx: str) -> int:
 
 
 def add_missing_handlers(user_code: str | None, screen: M.Screen, handlers: dict[str, str], cls: str,
-                         designer_file: str) -> str:
+                         designer_file: str, returns: dict[str, str] | None = None) -> str:
     code = user_code if user_code and user_code.strip() else new_events_code(cls, designer_file)
-    have = set(re.findall(r"\b(?:void|Future<void>|FutureOr<void>)\s+(\w+)\s*\(", code))
+    have = set(re.findall(r"\b(?:void|Future<void>|FutureOr<void>|String\?)\s+(\w+)\s*\(", code))
     missing = [(h, sig) for h, sig in handlers.items() if h not in have]
     if not missing:
         return code
     end = _class_body_end(code, rf"^\s*class\s+{re.escape(cls)}Events\b")
     stubs = []
     for h, sig in missing:
-        stubs += ["", "  @override", f"  void {h}({sig}) {{", "    // TODO", "  }"]
+        ret = (returns or {}).get(h, "")
+        if ret == "String?":       # a validator: null = valid, else the error message
+            stubs += ["", "  @override", f"  String? {h}({sig}) {{", "    return null;", "  }"]
+        else:
+            stubs += ["", "  @override", f"  void {h}({sig}) {{", "    // TODO", "  }"]
     block = "\n".join(stubs) + "\n"
     if end < 0:   # the class was renamed / removed: append a new one
         return code.rstrip("\n") + "\n\n" + f"class {cls}Events extends {cls}Designer {{" + block + "}\n"
@@ -1026,6 +1128,7 @@ def format_dart(code: str, language_version: str = "latest") -> str:
 # ================================================================================ project files
 RADFX = MO.radfx_source()          # lib/radfx.dart (flutterdesign/dart/radfx.dart)
 RADLAYOUT = MO.radlayout_source()  # lib/radlayout.dart (flutterdesign/dart/radlayout.dart)
+RADFORM = DW.radform_source()      # lib/radform.dart (flutterdesign/dart/radform.dart)
 
 
 def generate_routes(screens: list[M.Screen]) -> str:
@@ -1196,11 +1299,16 @@ def write_screen(project_folder, screen: M.Screen | str | os.PathLike, all_scree
     _write(folder / dpath, g.designer_code, written, dpath)
     if user != g.events_code:
         _write(ep, g.events_code, written, epath)
+    if g.components:                         # component packages: their Dart runtime files into lib/
+        from ..components import dart as _comp_dart
+        written += [f"lib/{n}" for n in _comp_dart.copy_files(folder / "lib", g.components.values())]
     screens = all_screens if all_screens is not None else [screen]
     if g.uses_anim or any(MO.transition_of(s) for s in screens):
         _write(folder / "lib" / "radfx.dart", RADFX, written, "lib/radfx.dart")
     if g.uses_layout:
         _write(folder / "lib" / "radlayout.dart", RADLAYOUT, written, "lib/radlayout.dart")
+    if g.uses_form:
+        _write(folder / "lib" / "radform.dart", RADFORM, written, "lib/radform.dart")
     _write(folder / "lib" / "screens" / "routes.dart", generate_routes(screens), written, "lib/screens/routes.dart")
     pp = folder / "pubspec.yaml"
     if pp.exists():

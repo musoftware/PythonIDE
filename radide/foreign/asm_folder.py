@@ -113,6 +113,15 @@ def guess_bits(text: str, dialect: str = "") -> int:
     return 64
 
 
+def entry_symbol_32(entry: str, text: str = "") -> str:
+    """The symbol given to ``ld -m i386pe -e`` for the entry label of a 32-bit program: the label as written
+    (``_main``, ``start``); a ``main`` / ``WinMain`` the C runtime would call is used directly too (no CRT)."""
+    entry = (entry or "").lstrip(".") or "start"
+    if not entry.startswith("_") and re.search(rf"^\s*_{re.escape(entry)}\s*:", _strip_comments(text), re.M):
+        return "_" + entry
+    return entry
+
+
 def entry_point(text: str, dialect: str) -> str:
     """The program's entry label ('' = a module without one)."""
     body = _strip_comments(text or "")
@@ -445,10 +454,16 @@ class AsmFolderAdapter(ForeignAdapter):
                 inc.append(f"-I{sasm_include()}{os.sep}")
             dbg = ["-g", "-F", "cv8"] if debug and fmt == "win64" else []
             steps = [Step([nasm, "-f", fmt, *dbg, *inc, "-o", str(obj), str(src)], self.root, {}, f"nasm -f {fmt}")]
-            m = ["-m32"] if bits == 32 else []
-            return steps + [Step([gcc, *m, "-g", *link_entry, "-o", str(exe), str(obj), *libs], self.root, env,
+            if bits == 32:            # the MinGW-w64 gcc has no 32-bit libraries: link like the x86 templates
+                return steps + [self._ld32_step(obj, exe, entry, src, env, debug)]
+            return steps + [Step([gcc, "-g", *link_entry, "-o", str(exe), str(obj), *libs], self.root, env,
                                  "gcc (link)")]
         if d == "gas":
+            if bits == 32:
+                gas = find_tool("as") or "as"
+                return [Step([gas, "--32", *(["--gdwarf-3"] if debug else []), "-I", str(src.parent), "-o", str(obj),
+                              str(src)], self.root, env, "as --32"),
+                        self._ld32_step(obj, exe, entry, src, env, debug)]
             return [Step([gcc, "-g", *link_entry, "-o", str(exe), str(src), *libs], self.root, env, "gcc (GNU as)")]
         if d == "fasm":
             fasm = find_tool("fasm") or "fasm"
@@ -473,6 +488,22 @@ class AsmFolderAdapter(ForeignAdapter):
             # cwd = the state folder: ml writes its response file (mllink$.lnk) into the current folder
             return [Step(["cmd", "/c", str(script)], exe.parent, {}, "ml64" if bits == 64 else "ml")]
         return []
+
+    def _ld32_step(self, obj: Path, exe: Path, entry: str, src: Path, env: dict, debug: bool):
+        """Link a 32-bit object with GNU ld (i386pe) straight against the system DLLs of SysWOW64 (msvcrt,
+        kernel32, user32, gdi32) - the same as the x86 templates (radide/asm/build.py ``_link_ld``)."""
+        ld = find_tool("ld") or "ld"
+        ent = entry_symbol_32(entry, _read(src))
+        sub = "windows" if ent.lstrip("_").lower().startswith(("winmain", "wwinmain")) else "console"
+        try:
+            from ..asm.build import system_dll_dir
+            dll_dir = system_dll_dir("x86")
+        except Exception:  # noqa: BLE001
+            dll_dir = str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "SysWOW64")
+        argv = [ld, "-m", "i386pe", "--subsystem", sub, "-e", ent, "--enable-stdcall-fixup"] + \
+            ([] if debug else ["-s"]) + ["-o", str(exe), str(obj), "-L", dll_dir, "-lmsvcrt", "-lkernel32",
+                                         "-luser32", "-lgdi32"]
+        return Step(argv, self.root, env, "ld -m i386pe")
 
     def run_step(self, target, debug):
         if target is None:

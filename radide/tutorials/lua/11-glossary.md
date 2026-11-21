@@ -50,7 +50,7 @@
 | reference | مرجع | `b = a` (نفس الجدول) |
 | metatable | جدول وصفي | `setmetatable(obj, Class)` |
 | metamethod | دالة وصفية | `__index` / `__add` |
-| method / self | دالة كائن / الكائن نفسه | `obj:move()` |
+| method / self | دالة كائن (وتُسمّى أيضًا: طريقة، تابع) / الكائن نفسه | `obj:move()` |
 | inheritance | وراثة | |
 | module | وحدة | `require("geometry")` |
 

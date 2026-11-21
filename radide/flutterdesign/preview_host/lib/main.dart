@@ -114,12 +114,29 @@ class HostState extends ChangeNotifier implements FactoryHost {
   @override
   TextEditingController controller(String id) => _controllers.putIfAbsent(id, TextEditingController.new);
 
+  final Map<String, GlobalKey<FormState>> _forms = {};
+
+  @override
+  GlobalKey<FormState> formKey(String name) => _forms.putIfAbsent(name, GlobalKey<FormState>.new);
+
   @override
   void event(String id, String event, String? handler, [dynamic arg]) {
     if (!interactive) return;
     final v = (arg is num || arg is bool || arg is String || arg == null) ? arg : '$arg';
     Bridge.send({'type': 'event', 'id': id, 'event': event, 'handler': handler, 'value': v});
     if (handler == null || handler.isEmpty) return;
+    final vm = RegExp(r'^validate:(\w+)(?::(\w+))?$').firstMatch(handler);
+    if (vm != null) {
+      // validate:<form>[:<handler>] runs the designed validator rules of the form's fields
+      final ok = _forms[vm.group(1)!]?.currentState?.validate() ?? false;
+      final then = vm.group(2);
+      messengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+            content: Text(ok ? (then != null ? 'valid -> $then()' : 'form valid') : 'form has errors'),
+            duration: const Duration(milliseconds: 1400)));
+      return;
+    }
     final text = handler == 'back'
         ? 'Navigator.pop()'
         : handler.contains(':')

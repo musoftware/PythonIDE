@@ -19,6 +19,7 @@ import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import datawidgets as DW
 from . import model as M
 from . import motion as MO
 
@@ -150,6 +151,8 @@ class _Ctx:
         self.state_used: set[str] = set()              # $when / toggle: / trigger state: fields
         self.timelines_used: set[str] = set()          # radDrive / play: / reverse: controllers
         self.generated: set[str] = set()               # fields the generator writes again (state, timelines)
+        self.forms_used: set[str] = set()              # validate:<form> events
+        self.notes: list[str] = []                     # informational report lines
 
         # the Dart CLI reports UTF-16 offsets: slice in UTF-16 when the text has non-BMP characters
         self.u16 = source.encode("utf-16-le") if any(ord(c) > 0xFFFF for c in source) else None
@@ -207,8 +210,46 @@ def _hex(v: int) -> str:
     return "#%08X" % (v & 0xFFFFFFFF)
 
 
+def _named_hex(name: str) -> str | None:
+    """'#AARRGGBB' of Colors.x / Colors.x.shade300 / Colors.x[300] (Flutter SDK colors.dart)."""
+    try:
+        from .qtpreview import flutter_colors
+        plain, sw = flutter_colors()
+    except Exception:  # noqa: BLE001
+        return None
+    m = re.match(r"^Colors\.(\w+?)(?:\.shade(\d+))?$", name)
+    if not m:
+        return None
+    if m.group(2):
+        return (sw.get(m.group(1)) or {}).get(int(m.group(2)))
+    return plain.get(m.group(1))
+
+
+def _with_alpha(e: dict, ctx: _Ctx):
+    """Colors.blue.withValues(alpha: .5) / Color(0xFF..).withOpacity(.5) / .withAlpha(128) -> '#80RRGGBB'."""
+    base = _color(e["tgt"], ctx)
+    if not base.startswith("#"):
+        base = _named_hex(base) or ""
+    if not re.match(r"^#[0-9A-F]{8}$", base or ""):
+        raise Unsupported
+    m, a, p = e.get("m"), _named(e), e.get("p") or []
+    if m == "withValues" and set(a) == {"alpha"} and not p:
+        alpha = int(round(float(_num(a["alpha"], ctx)) * 255))
+    elif m == "withOpacity" and len(p) == 1 and not a:
+        alpha = int(round(float(_num(p[0], ctx)) * 255))
+    elif m == "withAlpha" and len(p) == 1 and not a:
+        alpha = int(_num(p[0], ctx))
+    else:
+        raise Unsupported
+    if not 0 <= alpha <= 255:
+        raise Unsupported
+    return "#%02X%s" % (alpha, base[3:])
+
+
 def _color(e: dict, ctx: _Ctx):
     k = e.get("k")
+    if k == "call" and e.get("m") in ("withValues", "withOpacity", "withAlpha") and e.get("tgt"):
+        return _with_alpha(e, ctx)
     if k == "call" and e.get("callee") in ("Color", "ui.Color") and len(e["p"]) == 1 and e["p"][0]["k"] == "int":
         return _hex(e["p"][0]["v"])
     if k == "call" and e.get("callee") in ("Color.fromRGBO", "Color.fromARGB") and len(e["p"]) == 4:
@@ -492,11 +533,29 @@ def _google_name(method: str) -> str:
     return " ".join(p[:1].upper() + p[1:] for p in parts)
 
 
+def _text_shadows(e: dict, ctx: _Ctx):
+    """[Shadow(color:, blurRadius:, offset:)] -> [{"color", "blur", "offset"}] (TextStyle.shadows)."""
+    if e.get("k") != "list":
+        raise Unsupported
+    out = []
+    keys = {"color": ("color", _color), "blurRadius": ("blur", _num), "offset": ("offset", _offset)}
+    for it in e["items"]:
+        if not _call(it, "Shadow") or it["p"]:
+            raise Unsupported
+        sh = {}
+        for k, v in _named(it).items():
+            if k not in keys:
+                raise Unsupported
+            sh[keys[k][0]] = keys[k][1](v, ctx)
+        out.append(sh)
+    return out
+
+
 _TEXT_FIELDS = {"color": _color, "backgroundColor": _color, "fontSize": _num,
                 "fontWeight": _enum_parser("FontWeight"), "fontStyle": _enum_parser("FontStyle"),
                 "letterSpacing": _num, "wordSpacing": _num, "height": _num,
                 "decoration": _enum_parser("TextDecoration"), "decorationColor": _color,
-                "decorationThickness": _num, "fontFamily": _str}
+                "decorationThickness": _num, "fontFamily": _str, "shadows": _text_shadows}
 
 
 def _text_style(e: dict, ctx: _Ctx):
@@ -647,12 +706,66 @@ def _physics(e: dict, ctx: _Ctx):
     raise Unsupported
 
 
+def _span(e: dict, ctx: _Ctx):
+    if not _call(e, "TextSpan") or e["p"]:
+        raise Unsupported
+    a = _named(e)
+    if set(a) - {"text", "style"}:
+        raise Unsupported
+    out = {}
+    if "text" in a:
+        out["text"] = _str(a["text"], ctx)
+    if "style" in a:
+        out["style"] = _soft(_text_style, a["style"], ctx, "TextSpan.style")
+    return out
+
+
+def _text_spans_with_style(e: dict, ctx: _Ctx) -> tuple[list, object]:
+    """TextSpan(style: ..., children: [TextSpan(text:, style:), ...]) -> (spans, root style or None)."""
+    if not _call(e, "TextSpan") or e["p"]:
+        raise Unsupported
+    a = _named(e)
+    if set(a) - {"style", "children"} or "children" not in a or a["children"].get("k") != "list":
+        raise Unsupported
+    spans = [_soft(_span, it, ctx, "TextSpan") for it in a["children"]["items"]]
+    style = _text_style(a["style"], ctx) if "style" in a else None
+    return spans, style
+
+
+def _text_spans(e: dict, ctx: _Ctx):
+    spans, style = _text_spans_with_style(e, ctx)
+    if style is not None:
+        raise Unsupported
+    return spans
+
+
+def _rule(e: dict, ctx: _Ctx) -> dict:
+    c = e.get("callee") if e.get("k") == "call" else ""
+    rule = (c or "").split(".", 1)[1] if (c or "").startswith("RadRule.") else ""
+    if rule not in M.VALIDATOR_RULES or _named(e):
+        raise Unsupported
+    p = list(e["p"])
+    out = {"rule": rule}
+    if rule in ("minLength", "maxLength", "regex"):
+        if not p:
+            raise Unsupported
+        v = p.pop(0)
+        out["value"] = _str(v, ctx) if rule == "regex" else _num(v, ctx)
+        if rule != "regex" and not isinstance(out["value"], int):
+            raise Unsupported
+    if len(p) > 1:
+        raise Unsupported
+    if p:
+        out["message"] = _str(p[0], ctx)
+    return out
+
+
 PARSERS = {"string": _str, "int": _num, "double": _num, "bool": _bool, "color": _color, "edge_insets": _edge,
            "border_radius": _radius, "alignment": _alignment, "icon": _icon, "offset": _offset,
            "duration": _duration, "string_list": _string_list, "image": _image, "gradient": _gradient,
            "box_shadows": _shadows, "border": _border, "box_decoration": _decoration, "text_style": _text_style,
            "shape": _shape, "button_style": _button_style, "input_decoration": _input_decoration,
-           "nav_items": _nav_items, "constraints": _constraints, "physics": _physics}
+           "nav_items": _nav_items, "constraints": _constraints, "physics": _physics, "text_spans": _text_spans}
 
 
 def parse_value(ps: M.PropSpec, e: dict, ctx: _Ctx, owner: str = "", key: str = ""):
@@ -690,6 +803,10 @@ _MOTION_EV = [
     (re.compile(r"^\(\)\s*=>\s*(\w+)\.forward\(from:\s*0\)$"), "play:"),
     (re.compile(r"^\(\)\s*=>\s*(\w+)\.reverse\(\)$"), "reverse:"),
 ]
+_VALIDATE_EV = [
+    (re.compile(r"^\(\)\s*=>\s*(\w+)\.currentState!\.validate\(\)$"), None),
+    (re.compile(r"^\(\)\s*\{\s*if\s*\((\w+)\.currentState!\.validate\(\)\)\s*\{\s*(\w+)\(\);\s*\}\s*\}$"), True),
+]
 _RADROUTE_RX = re.compile(r"^\(\)\s*=>\s*Navigator\.push\(context,\s*RadRoute\(builder:\s*\(\w*\)\s*=>\s*(?:const\s+)?"
                           r"(\w+)\(\),\s*transition:\s*RadTransition\.(\w+)(?:,\s*durationMs:\s*(\d+))?\)\)$")
 
@@ -703,6 +820,14 @@ def _motion_event(src: str, ctx: _Ctx) -> str | None:
     m = _RADROUTE_RX.match(src)
     if m:
         return f"push:{m.group(1)}?transition={m.group(2)}" + (f"&ms={m.group(3)}" if m.group(3) else "")
+    for rx, then in _VALIDATE_EV:
+        m = rx.match(src)
+        if m:
+            ctx.forms_used.add(m.group(1))
+            if then:
+                ctx.handlers.add(m.group(2))
+                return f"validate:{m.group(1)}:{m.group(2)}"
+            return f"validate:{m.group(1)}"
     return None
 
 
@@ -733,7 +858,7 @@ def _widget_like(e: dict) -> bool:
         any(k in ("child", "children", "body") for k in _named(e))
 
 
-_VALUE_CLASSES = {"EdgeInsets", "BorderRadius", "Radius", "BoxDecoration", "TextStyle", "Color", "Colors",
+_VALUE_CLASSES = {"EdgeInsets", "BorderRadius", "Radius", "BoxDecoration", "TextStyle", "Color", "Colors", "TextSpan",
                   "LinearGradient", "RadialGradient", "BoxShadow", "Offset", "Duration", "Alignment", "Size",
                   "InputDecoration", "ThemeData", "GoogleFonts", "Border", "BorderSide"}
 
@@ -804,6 +929,8 @@ class TreeImporter:
         anim = self._anim(e, callee)
         if anim is not None:
             return anim
+        if callee == "AnimatedBuilder":
+            return self._animated_builder(e)
         spec0 = M.CATALOG.get(head)
         if spec0 is None or head == "Code" or len(parts) > 2:
             return None
@@ -819,6 +946,7 @@ class TreeImporter:
         if ctor:
             node["ctor"] = ctor
         props, slots, events = {}, {}, {}
+        builder = DW.is_builder(node)
         positional = sorted(((p.positional, k, p) for k, p in spec.props.items() if p.positional is not None))
         if len(e["p"]) > len(positional):
             raise Unsupported
@@ -836,6 +964,8 @@ class TreeImporter:
             if spec.value_prop and k == spec.value_prop and node.get("_bound"):
                 continue
             if k in events or (node.get("_bound") and k == next(iter(spec.events))):
+                continue
+            if self._data_arg(node, head, builder, k, a, props, slots, events):
                 continue
             if k in spec.slots:
                 ss = spec.slots[k]
@@ -887,6 +1017,124 @@ class TreeImporter:
                 c.pop("_lift", None)
         return node
 
+    # ---- data widgets (datawidgets.py)
+    def _data_arg(self, node, head, builder, k, a, props, slots, events) -> bool:
+        """ListView/GridView.builder itemBuilder + gridDelegate, RichText.text, TextFormField.validator and
+        Form.key; True when the argument was taken."""
+        ctx = self.ctx
+        if builder and k == "itemBuilder":
+            tmpl, items = self._item_builder(a)
+            slots["itemBuilder"] = tmpl
+            if items is not None:
+                props["items"] = items
+            return True
+        if builder and head == "GridView" and k == "gridDelegate":
+            if not _call(a, "SliverGridDelegateWithFixedCrossAxisCount") or a["p"]:
+                raise Unsupported
+            for k2, v in _named(a).items():
+                if k2 not in DW.GRID_DELEGATE_KEYS:
+                    raise Unsupported
+                props[k2] = parse_value(M.CATALOG["GridView"].resolved("builder").props[k2], v, ctx, head, k2)
+            return True
+        if head == "RichText" and k == "text":
+            try:
+                spans, style = _text_spans_with_style(a, ctx)
+            except (Unsupported, KeyError, TypeError, ValueError):
+                props["spans"] = {"$code": ctx.s(a)}
+                ctx.code_props.append(f"RichText.text: {_ws(ctx.s(a))[:80]}")
+                return True
+            props["spans"] = spans
+            if style is not None:
+                props["style"] = style
+            return True
+        if head == "TextFormField" and k == "validator" and _call(a, "radValidate"):
+            p, na = a["p"], _named(a)
+            if len(p) != 1 or p[0].get("k") != "list" or set(na) - {"custom"}:
+                raise Unsupported
+            props["validators"] = [_soft(_rule, it, ctx, "validator rule") for it in p[0]["items"]]
+            if "custom" in na:
+                c = na["custom"]
+                if c.get("k") != "id" or not re.match(r"^[A-Za-z_]\w*$", c["s"]):
+                    raise Unsupported
+                events["validator"] = c["s"]
+                ctx.handlers.add(c["s"])
+            return True
+        if head == "Form" and k == "key" and a.get("k") == "id":
+            f = ctx.fields.get(a["s"]) or {}
+            init = f.get("init") or {}
+            if _call(init, "GlobalKey") and (init.get("ta") or "").replace(" ", "") == "<FormState>":
+                node["name"] = a["s"]
+                ctx.bound.add(a["s"])
+                return True
+        return False
+
+    def _item_builder(self, a: dict) -> tuple[dict, object]:
+        """(context, index) => template  /  { const items = [...]; final item = items[index % items.length];
+        return template; } -> (template node, items or None)."""
+        if a.get("k") != "fn" or not re.match(r"^\(\s*\w+\s*,\s*index\s*\)$", a.get("params") or ""):
+            raise Unsupported
+        if a.get("expr"):
+            return self.widget(a["expr"]), None
+        body = a.get("body") or {}
+        decls = body.get("decls") or []
+        if not body.get("expr") or body.get("stmts") != 3 or len(decls) != 2 or not body.get("last"):
+            raise Unsupported
+        d_items, d_item = decls
+        if d_items["name"] != "items" or d_item["name"] != "item" or not d_item.get("final") or \
+                _tight(self.ctx.s(d_item.get("init"))) != "items[index % items.length]":
+            raise Unsupported
+        init = d_items.get("init") or {}
+        if d_items.get("const") and init.get("k") == "list":
+            items = _string_list(init, self.ctx)
+        elif d_items.get("final"):
+            items = {"$code": self.ctx.s(init)}
+        else:
+            raise Unsupported
+        return self.widget(body["expr"]), items
+
+    def _animated_builder(self, e: dict) -> dict:
+        """AnimatedBuilder(animation: t, builder: (context, child) => widget) generated for timeline values on
+        number properties -> the widget with {"$timeline": ...} props."""
+        a = _named(e)
+        if e["p"] or set(a) != {"animation", "builder"}:
+            raise Unsupported
+        b = a["builder"]
+        if b.get("k") != "fn" or not b.get("expr") or \
+                not re.match(r"^\(\s*context\s*,\s*child\s*\)$", b.get("params") or ""):
+            raise Unsupported
+        anim = _tight(self.ctx.s(a["animation"]))
+        names = re.findall(r"\w+", anim[len("Listenable.merge("):]) if anim.startswith("Listenable.merge(") \
+            else [anim]
+        node = self.widget(b["expr"])
+        used = [v["$timeline"] for v in (node.get("props") or {}).values() if MO.is_timeline(v)]
+        if node.get("type") == "Code" or not used or sorted(set(used)) != sorted(set(names)):
+            raise Unsupported
+        return node
+
+    @staticmethod
+    def _drive(a: dict, ctx: _Ctx) -> dict | None:
+        """radDrive(t, from, to, begin:, end:, curve:) / radDriveOffset(...) -> {"$timeline": ...}."""
+        if not (a.get("k") == "call" and a.get("callee") in ("radDrive", "radDriveOffset") and len(a["p"]) == 3
+                and a["p"][0].get("k") == "id"):
+            return None
+        try:
+            conv = _offset if a["callee"] == "radDriveOffset" else _num
+            v = {"$timeline": a["p"][0]["s"], "from": conv(a["p"][1], ctx), "to": conv(a["p"][2], ctx)}
+            na = _named(a)
+            if "begin" in na or "end" in na:
+                v["interval"] = [_num(na["begin"], ctx) if "begin" in na else 0,
+                                 _num(na["end"], ctx) if "end" in na else 1]
+            if "curve" in na:
+                if na["curve"].get("k") != "id":
+                    raise Unsupported
+                v["curve"] = na["curve"]["s"]
+            if set(na) - {"begin", "end", "curve"}:
+                raise Unsupported
+        except Unsupported:
+            return None
+        ctx.timelines_used.add(v["$timeline"])
+        return v
+
     # ---- motion / variants values
     def _value(self, ps: M.PropSpec, a: dict, owner: str, key: str, node: dict):
         """A property value: rv.pick(base, [RadV(id, v)]) -> base + node vprops, `state ? on : off` -> $when,
@@ -907,25 +1155,20 @@ class TreeImporter:
             ctx.state_used.add(a["test"]["s"])
             return {"$when": {"state": a["test"]["s"], "on": self._value(ps, a["then"], owner, key, node),
                               "off": self._value(ps, a["else"], owner, key, node)}}
-        if a.get("k") == "call" and a.get("callee") in ("radDrive", "radDriveOffset") and len(a["p"]) == 3 \
-                and a["p"][0].get("k") == "id":
-            try:
-                conv = _offset if a["callee"] == "radDriveOffset" else _num
-                v = {"$timeline": a["p"][0]["s"], "from": conv(a["p"][1], ctx), "to": conv(a["p"][2], ctx)}
-                na = _named(a)
-                if "begin" in na or "end" in na:
-                    v["interval"] = [_num(na["begin"], ctx) if "begin" in na else 0,
-                                     _num(na["end"], ctx) if "end" in na else 1]
-                if "curve" in na:
-                    if na["curve"].get("k") != "id":
-                        raise Unsupported
-                    v["curve"] = na["curve"]["s"]
-                if set(na) - {"begin", "end", "curve"}:
-                    raise Unsupported
-                ctx.timelines_used.add(v["$timeline"])
+        v = self._drive(a, ctx)
+        if v is not None:
+            return v
+        # radDrive(...).value (double) / radDrive(...).value.round() (int) inside a generated AnimatedBuilder
+        inner = None
+        if ps.kind == "double" and a.get("k") == "prop" and a.get("n") == "value":
+            inner = a["tgt"]
+        elif ps.kind == "int" and a.get("k") == "call" and a.get("m") == "round" and not a["p"] and \
+                not _named(a) and (a.get("tgt") or {}).get("k") == "prop" and a["tgt"].get("n") == "value":
+            inner = a["tgt"]["tgt"]
+        if inner is not None and (inner.get("callee") == "radDrive"):
+            v = self._drive(inner, ctx)
+            if v is not None:
                 return v
-            except Unsupported:
-                pass
         if ps.kind in MO.TIMELINE_KINDS and _call(a, "AlwaysStoppedAnimation") and len(a["p"]) == 1:
             try:
                 return _offset(a["p"][0], ctx) if ps.kind == "timeline_offset" else _num(a["p"][0], ctx)
@@ -1174,7 +1417,7 @@ def _strip_internal(node):
 _GENERATED_IMPORTS = {"package:flutter/material.dart", "package:flutter/cupertino.dart",
                       "package:google_fonts/google_fonts.dart", "../radfx.dart", "radfx.dart",
                       "package:flutter/widgets.dart", "../radlayout.dart", "radlayout.dart",
-                      "package:lottie/lottie.dart", "package:rive/rive.dart"}
+                      "package:lottie/lottie.dart", "package:rive/rive.dart", "../radform.dart", "radform.dart"}
 M_HIDDEN = "$hidden"
 _TIMELINE_FIELD = re.compile(r"^AnimationController\(vsync:\s*this,\s*duration:\s*(?:const\s+)?Duration\("
                              r"milliseconds:\s*(\d+)\)\)$")
@@ -1247,6 +1490,78 @@ def _theme_unwrap(e: dict, ctx: _Ctx) -> tuple[dict, dict] | None:
     return theme, b["expr"]
 
 
+def _app_theme(e: dict, ctx: _Ctx) -> dict | None:
+    """MaterialApp(theme: ThemeData(colorSchemeSeed / colorScheme: ColorScheme.fromSeed / brightness /
+    scaffoldBackgroundColor / useMaterial3: true)) -> a screen theme (None when it cannot be modelled)."""
+    if not _call(e, "ThemeData") or e["p"]:
+        return None
+    theme = {}
+    try:
+        for k, v in _named(e).items():
+            if k == "colorSchemeSeed":
+                theme["seedColor"] = _color(v, ctx)
+            elif k == "colorScheme" and _call(v, "ColorScheme.fromSeed") and not v["p"]:
+                for k2, v2 in _named(v).items():
+                    if k2 == "seedColor":
+                        theme["seedColor"] = _color(v2, ctx)
+                    elif k2 == "brightness" and v2.get("k") == "id" and v2["s"].startswith("Brightness."):
+                        theme["brightness"] = v2["s"].split(".")[-1]
+                    else:
+                        return None
+            elif k == "brightness" and v.get("k") == "id" and v["s"].startswith("Brightness."):
+                theme["brightness"] = v["s"].split(".")[-1]
+            elif k == "scaffoldBackgroundColor":
+                theme["background"] = _color(v, ctx)
+            elif k == "useMaterial3" and v.get("k") == "bool" and v["v"]:
+                pass
+            else:
+                return None
+    except Unsupported:
+        return None
+    return theme
+
+
+def _material_home(e: dict, ctx: _Ctx, local_classes: set) -> tuple[dict, dict, list] | None:
+    """MaterialApp(home: <widget tree>, theme: ..., title: ...) -> (home expr, theme, notes); None when it is
+    not a MaterialApp with an inline home (``home: const HomePage()`` of a class of the file stays as it is)."""
+    if not _call(e, "MaterialApp") or e["p"]:
+        return None
+    a = _named(e)
+    home = a.get("home")
+    if not home or home.get("k") != "call" or (home.get("callee") or "").split(".")[0] in local_classes:
+        return None
+    if not _widget_like(home):
+        return None
+    theme, notes = {}, []
+    for k, v in a.items():
+        if k == "home":
+            continue
+        if k == "theme":
+            t = _app_theme(v, ctx)
+            if t is None:
+                notes.append(f"MaterialApp.theme kept out: {_ws(ctx.s(v))[:80]}")
+            else:
+                theme = t
+        elif k not in ("title", "debugShowCheckedModeBanner"):
+            notes.append(f"MaterialApp.{k} dropped: {_ws(ctx.s(v))[:80]}")
+    return home, theme, notes
+
+
+def _main_apps(info: dict) -> list[tuple[dict, str | None]]:
+    """(MaterialApp call, title) of ``runApp(MaterialApp(...))`` in main()."""
+    out = []
+    for f in info.get("functions", []):
+        if f.get("name") != "main":
+            continue
+        body = f.get("body") or {}
+        calls = list(body.get("calls") or []) + ([body["expr"]] if body.get("expr") else [])
+        for c in calls:
+            if _call(c, "runApp") and len(c["p"]) == 1 and _call(c["p"][0], "MaterialApp"):
+                t = _named(c["p"][0]).get("title") or {}
+                out.append((c["p"][0], t.get("v") if t.get("k") == "str" else None))
+    return out
+
+
 def _dedent(s: str) -> str:
     s = s.strip("\n")
     lines = s.splitlines()
@@ -1271,6 +1586,10 @@ def _screen_from_class(info: dict, cls: dict, widget_name: str, source: str, pre
                 ctx.fields[v["name"]] = {"type": m.get("type"), "init": v.get("init")}
     expr = body["expr"]
     theme = {}
+    app = _material_home(expr, ctx, {c["name"] for c in info.get("classes", [])})
+    if app:
+        expr, theme, notes = app
+        ctx.notes += ["MaterialApp(home: ...) imported as the screen"] + notes
     tu = _theme_unwrap(expr, ctx)
     if tu:
         theme, expr = tu
@@ -1433,6 +1752,9 @@ def keep_ids(tree: dict, old: dict) -> None:
     oa, na = old.get("anim") or {}, tree.get("anim")
     if na and oa.get("from") and "from" not in na:        # informational, not in the generated code
         na["from"] = oa["from"]
+    spec = M.CATALOG.get(tree.get("type", ""))
+    if old.get("name") and not tree.get("name") and spec is not None and not spec.needs_name             and tree.get("type") != "Form":
+        tree["name"] = old["name"]          # the designer name of a plain widget is not in the Dart code
     for slot, v in (tree.get("slots") or {}).items():
         ov = (old.get("slots") or {}).get(slot)
         if isinstance(v, list) and isinstance(ov, list):
@@ -1470,6 +1792,18 @@ def import_dart(source: str, class_name: str | None = None, previous: dict | Non
         wn = _widget_name_of(c, classes)
         if wn:
             found.append((wn[0], wn[1], c))
+    # void main() => runApp(MaterialApp(home: <widget tree>)) -> a screen (route "/")
+    names = {M.class_name(f[0]) for f in found}
+    for app, title in _main_apps(info):
+        if _material_home(app, _Ctx(source), set(classes)) is None:
+            continue
+        sname = M.class_name(title) if title else "Home"
+        while sname in names:
+            sname += "Screen"
+        names.add(sname)
+        fake = {"name": sname, "members": [{"kind": "method", "name": "build", "body": {"expr": app}}],
+                "_main": True}
+        found.append((sname, False, fake))
     if class_name:
         found = [f for f in found if f[0] == class_name or f[2]["name"] == class_name]
     if not found:
@@ -1482,7 +1816,11 @@ def import_dart(source: str, class_name: str | None = None, previous: dict | Non
         except (ValueError, KeyError) as ex:
             res.report.append(("error", f"{cls['name']}: {ex}"))
             continue
+        if cls.get("_main"):
+            data["route"] = "/"
         res.screens.append(data)
+        for n_ in ctx.notes:
+            res.report.append(("info", f"{data['name']}: {n_}"))
         res.stats[data["name"]] = {"exact": ctx.exact, "code_nodes": list(ctx.code_nodes),
                                    "code_props": list(ctx.code_props),
                                    "anim_helpers": sorted(ctx.anim_helpers)}

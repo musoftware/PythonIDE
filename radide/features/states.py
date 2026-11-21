@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 
 from PyQt6.QtCore import QObject, Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QTransform
 from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QColorDialog, QComboBox, QDockWidget,
-                             QGraphicsOpacityEffect, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
+                             QGraphicsEffect, QGraphicsOpacityEffect, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
                              QListWidget, QListWidgetItem, QMessageBox, QTableWidget,
                              QTableWidgetItem, QToolButton, QVBoxLayout, QWidget)
 
@@ -1009,6 +1009,76 @@ DESIGN = _design_ns()
 
 
 # ====================================================================== design-time preview
+def _num(v, default: float) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+class FxEffect(QGraphicsEffect):
+    """Design-time drawing of what a transform target does (Flutter / Kivy / React Native / the web: scale,
+    rotation and opacity of the whole control) and of python-qt's QGraphicsOpacityEffect: the control's
+    pixmap is drawn scaled / rotated around its centre with the given opacity. The control's geometry and
+    the model are not changed."""
+
+    def __init__(self, parent=None, opacity: float = 1.0, sx: float = 1.0, sy: float = 1.0, rot: float = 0.0):
+        super().__init__(parent)
+        self.set_values(opacity, sx, sy, rot)
+
+    def set_values(self, opacity: float = 1.0, sx: float = 1.0, sy: float = 1.0, rot: float = 0.0) -> None:
+        self.fx_opacity = max(0.0, min(1.0, float(opacity)))
+        self.fx_sx, self.fx_sy, self.fx_rot = float(sx), float(sy), float(rot)
+        self.updateBoundingRect()
+        self.update()
+
+    @staticmethod
+    def wanted(props: dict) -> tuple[float, float, float, float] | None:
+        """(opacity, scale x, scale y, rotation in degrees) of *props*, or None when they change nothing."""
+        op = max(0.0, min(1.0, _num(props.get("Opacity"), 1.0)))
+        sx, sy = _num(props.get("ScaleX"), 1.0), _num(props.get("ScaleY"), 1.0)
+        rot = _num(props.get("Rotation"), 0.0)
+        if op >= 0.999 and abs(sx - 1) < 1e-6 and abs(sy - 1) < 1e-6 and abs(rot) < 1e-6:
+            return None
+        return op, sx, sy, rot
+
+    def transform(self, rect) -> QTransform:
+        c = rect.center()
+        return (QTransform().translate(c.x(), c.y()).rotate(self.fx_rot).scale(self.fx_sx, self.fx_sy)
+                .translate(-c.x(), -c.y()))
+
+    def boundingRectFor(self, rect):  # noqa: N802 - Qt API
+        return self.transform(rect).mapRect(rect).united(rect)
+
+    def draw(self, painter) -> None:
+        if self.fx_opacity <= 0.0 or abs(self.fx_sx) < 1e-4 or abs(self.fx_sy) < 1e-4:
+            return
+        pix, offset = self.sourcePixmap(Qt.CoordinateSystem.LogicalCoordinates)
+        if pix.isNull():
+            return
+        painter.save()
+        painter.setRenderHint(painter.RenderHint.SmoothPixmapTransform, True)
+        painter.setOpacity(painter.opacity() * self.fx_opacity)
+        painter.setTransform(self.transform(self.sourceBoundingRect()), True)
+        painter.drawPixmap(offset, pix)
+        painter.restore()
+
+
+def set_fx_effect(w, props: dict, keep_faded: bool = True) -> bool:
+    """Show *props*' Opacity / ScaleX / ScaleY / Rotation on preview widget *w* (FxEffect). A preview
+    faded by its designer (invisible / disabled control: an opacity effect) keeps that fade multiplied in.
+    True when an effect was installed."""
+    vals = FxEffect.wanted(props)
+    if vals is None:
+        return False
+    op, sx, sy, rot = vals
+    old = w.graphicsEffect()
+    if keep_faded and isinstance(old, QGraphicsOpacityEffect):
+        op *= old.opacity()
+    w.setGraphicsEffect(FxEffect(w, op, sx, sy, rot))
+    return True
+
+
 class BlendPreview(QObject):
     """Blend features on one DesignerView, without changing the model: the selected visual state,
     the timeline position and the sample data are drawn over the designer's own previews."""
@@ -1107,11 +1177,7 @@ class BlendPreview(QObject):
         except (TypeError, ValueError, KeyError):
             apply_props(w, ctrl)
             return
-        op = eff.get("Opacity")
-        if op is not None and float(op) < 1:
-            e = QGraphicsOpacityEffect(w)
-            e.setOpacity(max(0.0, float(op)))
-            w.setGraphicsEffect(e)
+        set_fx_effect(w, eff)               # Opacity (python-qt, transform targets), ScaleX / ScaleY / Rotation
 
     def refresh(self, *_a) -> None:
         if self.recording:
@@ -1121,11 +1187,33 @@ class BlendPreview(QObject):
         self._dirty &= live
         for c in self.doc.form.visual():
             self.apply(c)
+        self._apply_form_fx()
         # the form's own previewed values (Text / BackColor / size) and the selection outline
         if hasattr(self.view, "layout_form"):
             self.view.layout_form()
             self.view.frame.update()
             self.view.overlay.update()
+
+    def _apply_form_fx(self) -> None:
+        """A previewed Opacity (fade of the window) / scale of the form itself: drawn on the form frame."""
+        frame = getattr(self.view, "frame", None)
+        if frame is None:
+            return
+        vals = None
+        if self.timeline is not None or self.state:
+            try:
+                vals = FxEffect.wanted(self.design_props(None))
+            except (TypeError, ValueError, KeyError, AttributeError):
+                vals = None
+        cur = frame.graphicsEffect()
+        if vals is None:
+            if isinstance(cur, FxEffect):
+                frame.setGraphicsEffect(None)
+            return
+        if isinstance(cur, FxEffect):
+            cur.set_values(*vals)
+        elif cur is None:
+            frame.setGraphicsEffect(FxEffect(frame, *vals))
 
     # ------------------------------------------------------------ state recording
     def set_state(self, state: str) -> None:

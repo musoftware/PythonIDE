@@ -55,7 +55,7 @@
 
 **3. الناتج:** في `Publish` داخل المشروع: `<اسم الملف>-<النسخة>-setup.exe`. ولفتح المجلد: **Build > Open Publish Folder** (بناء > فتح مجلد النشر).
 
-## ملف publish.json
+## ملف `publish.json`
 
 الإعدادات تُحفظ في ملف `publish.json` **داخل المشروع**، فتنتقل معه إلى أي جهاز. مثال مختصر (من مشروع المثال `samples\Tests\Installer\HelloSetup`):
 

@@ -22,7 +22,7 @@ import time
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor
-from PyQt6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFormLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QAbstractItemView, QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFormLayout, QHBoxLayout,
                              QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QPushButton, QSpinBox,
                              QToolButton, QVBoxLayout, QWidget)
 
@@ -52,6 +52,8 @@ CHOICE_LABELS = {"left": "Left side", "right": "Right side", "top": "Top side", 
                  "x": "Horizontal", "y": "Vertical"}
 _COLOR_PROPS = ("BackColor", "ForeColor")
 _INT_PROPS = ("Left", "Top", "Width", "Height", "FontSize", "Value")
+# start value of a property a control does not store (transform targets / python-qt opacity)
+_UNIT_PROPS = {"Opacity": 1.0, "ScaleX": 1.0, "ScaleY": 1.0, "Rotation": 0.0}
 
 
 def _tr(text: str) -> str:
@@ -207,6 +209,52 @@ def describe(anim: dict) -> str:
     return (f"{_tr(preset_label(anim.get('preset', '')))} - {anim.get('durationMs', 500)} ms, {t}{extra}{off}")
 
 
+def move(form, fx_id: str, delta: int) -> None:
+    """Move an animation *delta* places in the form's list (motion.model.move, else the same here)."""
+    m = _motion()
+    if m is not None and callable(getattr(m[1], "move", None)):
+        m[1].move(form, fx_id, delta)
+        return
+    lst = animations(form)
+    a = find(form, fx_id)
+    if a is None:
+        return
+    i = lst.index(a)
+    lst.insert(max(0, min(len(lst) - 1, i + delta)), lst.pop(i))
+
+
+def move_among(form, fx_id: str, shown: list[str], step: int) -> bool:
+    """Move *fx_id* one place up (step -1) / down (+1) among the *shown* ids (the list of one control can
+    be a subset of the form's list: it swaps places with its shown neighbour). True when it moved."""
+    if fx_id not in shown:
+        return False
+    j = shown.index(fx_id) + step
+    if not 0 <= j < len(shown):
+        return False
+    ids = [a.get("id") for a in animations(form)]
+    if shown[j] not in ids:
+        return False
+    move(form, fx_id, ids.index(shown[j]) - ids.index(fx_id))
+    return True
+
+
+def reorder(form, new_ids: list[str]) -> bool:
+    """The shown animations were dragged into the order *new_ids*: they take that order on the places they
+    had in the form's list (the other animations keep theirs). True when the order changed."""
+    ids = [a.get("id") for a in animations(form)]
+    new_ids = [i for i in new_ids if i in ids]
+    target = list(ids)
+    for pos, fid in zip(sorted(ids.index(i) for i in new_ids), new_ids):
+        target[pos] = fid
+    changed = False
+    for k, fid in enumerate(target):            # each move brings a later item forward: places < k are final
+        cur = [a.get("id") for a in animations(form)].index(fid)
+        if cur != k:
+            move(form, fid, k - cur)
+            changed = True
+    return changed
+
+
 def rename_references(form, old: str, new: str) -> None:
     m = _motion()
     if m is not None and callable(getattr(m[1], "rename_references", None)):
@@ -223,8 +271,9 @@ def rename_references(form, old: str, new: str) -> None:
             trig["source"] = new
 
 
-def issues(form) -> list[tuple[str, str]]:
-    """[(severity, message)] from motion.model.validate and the fallbacks of motion.expand(form, "py")."""
+def issues(form, target: str = "py") -> list[tuple[str, str]]:
+    """[(severity, message)] from motion.model.validate and the fallbacks of motion.expand(form, target)
+    (the other targets' fallbacks are Error List lines of features/motion_targets.py)."""
     m = _motion()
     out: list[tuple[str, str]] = []
     if m is None or not form.extra.get("animations"):
@@ -235,8 +284,8 @@ def issues(form) -> list[tuple[str, str]]:
     except Exception as e:  # noqa: BLE001
         out.append(("Warning", f"Animations: {e}"))
     try:
-        plan = m[2].expand(form, "py") or {}
-        for fb in plan.get("fallbacks") or []:
+        plan = m[2].expand(form, target) if target in PYTHON_TARGETS else {}
+        for fb in (plan or {}).get("fallbacks") or []:
             if isinstance(fb, (list, tuple)) and len(fb) >= 3:
                 out.append(("Warning", f"{fb[0]} ({fb[1] or form.name}): {fb[2]}"))
             else:
@@ -269,8 +318,8 @@ def _issue(it) -> tuple[str, str]:
 # ====================================================================== design-time evaluation
 def _default_of(prop: str, props: dict):
     v = props.get(prop)
-    if prop == "Opacity" and v in (None, ""):
-        return 1.0
+    if prop in _UNIT_PROPS and v in (None, ""):
+        return _UNIT_PROPS[prop]
     if prop in _COLOR_PROPS and not v:
         return "#f0f0f0" if prop == "BackColor" else "#000000"
     if prop == "Visible" and v is None:
@@ -297,7 +346,7 @@ def resolve(prop: str, value, start, other=None, parent_bg: str = "#f0f0f0"):
     if prop in _COLOR_PROPS or isinstance(start, str) and str(start).startswith("#"):
         return start                                   # {"d": 0} on a colour = keep it
     try:
-        x = float(start if start not in (None, "") else (1.0 if prop == "Opacity" else 0))
+        x = float(start if start not in (None, "") else _UNIT_PROPS.get(prop, 0))
     except (TypeError, ValueError):
         return start
     try:
@@ -441,11 +490,43 @@ class FxPreview:
                            for (t, p), v in self._values(ms).items() if v is not None]}
 
 
-def plan(form) -> dict:
+# plugin id -> motion target for the design-time preview (python-tk, vbrun and the GUI-Bridge languages = "py")
+PREVIEW_TARGETS = {"python-qt": "qt"}
+# targets whose preview draws Opacity / ScaleX / ScaleY / Rotation like the generated code
+PYTHON_TARGETS = ("py", "tk", "qt")
+
+
+def preview_target(win, form) -> str:
+    """The motion target (motion.presets.TARGET_CAPS) of the language that generates *form*'s code, so the
+    design-time preview shows what that code does: "qt" fades controls with QGraphicsOpacityEffect, the
+    transform targets (Flutter, Kivy, React Native) scale / rotate, python-tk / VB / bridges use the
+    fallbacks (colour fades, size changes, wobbles)."""
+    if win is None or form is None:
+        return "py"
+    try:
+        pid = str(getattr(win.plugin_for_form(form.name), "id", "") or "")
+    except Exception:  # noqa: BLE001 - no project / unknown form: the python-tk preview
+        return "py"
+    if pid in PREVIEW_TARGETS:
+        return PREVIEW_TARGETS[pid]
+    try:
+        from .. import fxtargets
+        return fxtargets.PLUGIN_TARGETS.get(pid, "py")
+    except Exception:  # noqa: BLE001
+        return "py"
+
+
+def target_name(target: str) -> str:
+    m = _motion()
+    names = getattr(m[0], "TARGET_NAMES", {}) if m is not None else {}
+    return str(names.get(target, target))
+
+
+def plan(form, target: str = "py") -> dict:
     m = _motion()
     if m is None:
         return {}
-    return m[2].expand(form, "py") or {}
+    return m[2].expand(form, target) or {}
 
 
 def _sb_for(pl: dict, fx_id: str) -> dict | None:
@@ -463,10 +544,10 @@ def _with_delay(form, fx_id: str, sb: dict) -> float:
     return 0.0
 
 
-def segments_for(form, fx_ids: list[str] | None = None) -> list[tuple[float, dict]]:
+def segments_for(form, fx_ids: list[str] | None = None, target: str = "py") -> list[tuple[float, dict]]:
     """fx_ids None = 'Preview all on load': load-triggered animations at their start, then the
-    animations chained after them ('after' trigger), in order."""
-    pl = plan(form)
+    animations chained after them ('after' trigger), in order. *target*: see preview_target()."""
+    pl = plan(form, target)
     if not pl:
         return []
     if fx_ids is not None:
@@ -497,10 +578,11 @@ def segments_for(form, fx_ids: list[str] | None = None) -> list[tuple[float, dic
     return [(starts[f], sbs[f]) for f in starts]
 
 
-def bake(form, fx_id: str) -> dict | None:
+def bake(form, fx_id: str, target: str = "py") -> dict | None:
     """Storyboard dict with absolute keys (relative values resolved against the designed values,
-    repeat counts unrolled) for "Convert to Storyboard"."""
-    pl = plan(form)
+    repeat counts unrolled) for "Convert to Storyboard". Storyboards are played by the Python runtimes:
+    *target* "qt" keeps real opacity fades, every other target bakes the python-tk version."""
+    pl = plan(form, target if target in PYTHON_TARGETS else "py")
     sb = _sb_for(pl, fx_id) if pl else None
     if sb is None:
         return None
@@ -578,6 +660,10 @@ class AnimationsPanel(QWidget):
         self.list.setMaximumHeight(150)
         self.list.currentItemChanged.connect(self._on_current)
         self.list.itemChanged.connect(self._on_item_checked)
+        # drag an animation to change the order (the order in which they start / are generated)
+        self.list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.list.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.list.model().rowsMoved.connect(self._on_rows_moved)
         lay.addWidget(self.list)
         row = QHBoxLayout()
         self.btn_add = QToolButton(text="Add Animation")
@@ -587,8 +673,18 @@ class AnimationsPanel(QWidget):
         self.btn_add.setMenu(self.add_menu)
         self.btn_del = QToolButton(text="Delete")
         self.btn_del.clicked.connect(self.delete_current)
+        self.btn_up = QToolButton(text="Move Up")
+        self.btn_up.setArrowType(Qt.ArrowType.UpArrow)
+        self.btn_up.setToolTip("Move the animation up (drag in the list works too)")
+        self.btn_up.clicked.connect(lambda: self.move_current(-1))
+        self.btn_down = QToolButton(text="Move Down")
+        self.btn_down.setArrowType(Qt.ArrowType.DownArrow)
+        self.btn_down.setToolTip("Move the animation down (drag in the list works too)")
+        self.btn_down.clicked.connect(lambda: self.move_current(1))
         row.addWidget(self.btn_add)
         row.addWidget(self.btn_del)
+        row.addWidget(self.btn_up)
+        row.addWidget(self.btn_down)
         row.addStretch(1)
         lay.addLayout(row)
 
@@ -673,6 +769,9 @@ class AnimationsPanel(QWidget):
         r3.addWidget(self.btn_stop)
         r3.addStretch(1)
         lay.addLayout(r3)
+        self.lab_target = QLabel("")
+        self.lab_target.setProperty("radRole", "note")
+        lay.addWidget(self.lab_target)
         self.btn_all = QPushButton("Preview all on load")
         self.btn_all.setToolTip("Play what happens when the form loads: load animations and the ones "
                                 "chained after them")
@@ -726,6 +825,23 @@ class AnimationsPanel(QWidget):
     def form(self):
         return self.view.doc.form if self.view is not None else None
 
+    @property
+    def target(self) -> str:
+        """Motion target of the form's language (preview_target): what Preview shows."""
+        return preview_target(self.win, self.form)
+
+    def _show_target(self) -> None:
+        if self.form is None:
+            self.lab_target.setText("")
+            return
+        t = self.target
+        self.lab_target.setText(_tr("Preview as {}").format(target_name(t)))
+        tips = {"qt": "Controls fade with real opacity (QGraphicsOpacityEffect); rotations show a wobble",
+                "py": "python-tk, VB and the GUI-Bridge languages cannot fade or rotate a control: the preview "
+                      "shows the fallback the generated code uses (colour fade, size change, wobble)"}
+        self.lab_target.setToolTip(_tr(tips.get(t, "Scale, rotation and opacity are drawn like the generated "
+                                                   "code draws them")))
+
     def _alive(self) -> bool:
         if self.view is None:
             return False
@@ -773,6 +889,8 @@ class AnimationsPanel(QWidget):
                 set_note(self.note, "Open a form designer to add animations to its controls.")
                 self.caption.setText("Animations")
                 self._fill_editor(None)
+                self._update_move_buttons()
+                self._show_target()
                 return
             if _motion() is None:
                 set_note(self.note, "The animation engine (radide.motion) is not available: "
@@ -802,6 +920,8 @@ class AnimationsPanel(QWidget):
         finally:
             self._filling = False
         self._fill_editor(find(self.form, self.current_id()) if self.form is not None else None)
+        self._update_move_buttons()
+        self._show_target()
 
     def current_id(self) -> str | None:
         it = self.list.currentItem()
@@ -820,6 +940,7 @@ class AnimationsPanel(QWidget):
     def _on_current(self, *_a) -> None:
         if not self._filling:
             self._fill_editor(self.current())
+            self._update_move_buttons()
 
     def _on_item_checked(self, it) -> None:
         if self._filling or self.form is None:
@@ -834,6 +955,46 @@ class AnimationsPanel(QWidget):
                 self._filling = True
                 self.enabled.setChecked(on)
                 self._filling = False
+
+    # ------------------------------------------------------------ order
+    def _shown_ids(self) -> list[str]:
+        return [self.list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.list.count())]
+
+    def _update_move_buttons(self) -> None:
+        row, n = self.list.currentRow(), self.list.count()
+        busy = self._pv is not None
+        self.btn_up.setEnabled(not busy and self.form is not None and row > 0)
+        self.btn_down.setEnabled(not busy and self.form is not None and 0 <= row < n - 1)
+
+    def move_current(self, step: int) -> bool:
+        """Move the selected animation one place up (-1) / down (+1) in the list shown (Move Up / Down)."""
+        fid = self.current_id()
+        if fid is None or self.form is None or self._pv is not None:
+            return False
+        shown = [a.get("id") for a in self._shown()]
+        j = shown.index(fid) + step if fid in shown else -1
+        if not 0 <= j < len(shown):
+            return False
+        self._edit(lambda: move_among(self.form, fid, shown, step), refresh=False)
+        self.refresh_list(select=fid)
+        return True
+
+    def _on_rows_moved(self, *_a) -> None:
+        """An animation was dragged to another row: the form's list follows (after the drop finished)."""
+        if self._filling or self.form is None:
+            return
+        QTimer.singleShot(0, self._apply_drag_order)
+
+    def _apply_drag_order(self) -> None:
+        if self.form is None:
+            return
+        fid = self.current_id()
+        new_ids = self._shown_ids()
+        old = [a.get("id") for a in self.form.extra.get("animations") or []]
+        probe = [i for i in old if i in new_ids]
+        if probe != new_ids:
+            self._edit(lambda: reorder(self.form, new_ids), refresh=False)
+        self.refresh_list(select=fid)
 
     # ------------------------------------------------------------ editor
     def _fill_editor(self, a: dict | None) -> None:
@@ -1116,7 +1277,7 @@ class AnimationsPanel(QWidget):
                 fname = self.view.doc.path.name
             except AttributeError:
                 pass
-            for sev, msg in issues(self.form):
+            for sev, msg in issues(self.form, self.target):
                 it = QTreeWidgetItem([sev, f"{_tr('Animations')}: {msg}", fname, "1"])
                 it.setData(0, Qt.ItemDataRole.UserRole, ERR_TAG)
                 it.setForeground(0, Qt.GlobalColor.darkRed if sev == "Error" else Qt.GlobalColor.darkYellow)
@@ -1129,12 +1290,12 @@ class AnimationsPanel(QWidget):
         a = self.current()
         if a is None:
             return
-        self._start(segments_for(self.form, [a["id"]]), describe(a))
+        self._start(segments_for(self.form, [a["id"]], self.target), describe(a))
 
     def preview_all(self) -> None:
         if self.form is None:
             return
-        self._start(segments_for(self.form, None), _tr("all on load"))
+        self._start(segments_for(self.form, None, self.target), _tr("all on load"))
 
     def _start(self, segs: list, name: str) -> None:
         self.stop_preview()
@@ -1229,6 +1390,8 @@ class AnimationsPanel(QWidget):
         if dock is not None and dock.widget() is not None:
             dock.widget().setEnabled(not on)
         self.editor.setEnabled(not on and self.current() is not None)
+        self.list.setDragEnabled(not on)
+        self._update_move_buttons()
 
     # ------------------------------------------------------------ bake
     def convert_current(self) -> None:
@@ -1238,7 +1401,7 @@ class AnimationsPanel(QWidget):
         if _motion() is None:
             set_note(self.note, "The animation engine (radide.motion) is not available.")
             return
-        sb = bake(self.form, a["id"])
+        sb = bake(self.form, a["id"], self.target)
         if sb is None or not sb["tracks"]:
             set_note(self.note, "This animation has nothing to convert (disabled or no animated property).")
             return

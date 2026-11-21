@@ -1,0 +1,9 @@
+{
+  "name": "RatingBar_Flutter",
+  "language": "flutter",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

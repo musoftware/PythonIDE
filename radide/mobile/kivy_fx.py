@@ -7,7 +7,8 @@
   PopMatrix) around the widget, opacity is the widget's own, colours animate ``color`` /
   ``background_color`` / ``card_color``, typewriter reveals the text.  Triggers: load, click (touch up on
   the source), hover (``Window.mouse_pos``), timer, after, show / hide (``SetVisible``), manual.
-  RADIDE_REDUCED_MOTION=1 shows the end at once (Kivy has no system setting for it).
+  RADIDE_REDUCED_MOTION=1 (or Windows' "Show animations" off) shows the end at once (Kivy has no
+  system setting of its own for it).
 * layout sizes: the screen's ``radsizes`` list (matching ids, MATCH_RT of radide/variants) is recomputed on
   every resize; positions of the KV rule use it (``x: ... if 'compact' in root.radsizes else ...``), the
   other properties are set from Python.  Posture / span / fold come from RADIDE_POSTURE / RADIDE_SPAN /
@@ -78,7 +79,20 @@ def look_of(widget):
 
 
 def reduced_motion():
-    return os.environ.get("RADIDE_REDUCED_MOTION", "") == "1"
+    """RADIDE_REDUCED_MOTION=1 / 0, else on Windows the "Show animations in Windows" setting
+    (SPI_GETCLIENTAREAANIMATION, read only)."""
+    v = os.environ.get("RADIDE_REDUCED_MOTION", "").strip().lower()
+    if v:
+        return v in ("1", "true", "yes", "on")
+    if os.name == "nt":
+        try:
+            import ctypes
+            on = ctypes.c_int(1)
+            if ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(on), 0):
+                return not on.value
+        except (AttributeError, OSError, ValueError):
+            pass
+    return False
 
 
 class RadFx:

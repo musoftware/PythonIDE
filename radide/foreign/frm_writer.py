@@ -679,8 +679,47 @@ class _Editor:
         return f'"{self.frx_name}":{off:04X}'
 
 
-def _vb_class(ctrl: Control) -> str:
-    return NEW_CLASS.get(ctrl.type, "VB.PictureBox")
+def _vb_class(ctrl: Control, ed: "_Editor | None" = None) -> str:
+    """VB6 class of a new control: the built-in table, an installed package's ``vb6.class``, else - for a
+    component package - a UserControl reference ``<Project>.<Type>`` (its .ctl stand-in is added to the
+    .vbp, radide/components/vb6map.py), else a PictureBox."""
+    cls = NEW_CLASS.get(ctrl.type) or _vb6map.new_class(ctrl.type)
+    if cls:
+        return cls
+    from ..components import is_component_type
+    if is_component_type(ctrl.type):
+        return f"{_project_name(ed.frm_path if ed is not None else None)}.{ctrl.type}"
+    return "VB.PictureBox"
+
+
+def _project_name(frm_path) -> str:
+    """Name= of the .vbp that lists the form (VB6 names user controls <Project>.<Control>), else Project1."""
+    if frm_path is None:
+        return "Project1"
+    folder = Path(frm_path).parent
+    try:
+        vbps = sorted(folder.glob("*.vbp"))
+    except OSError:
+        vbps = []
+    fname = Path(frm_path).name.lower()
+    best = None
+    for v in vbps:
+        try:
+            text = v.read_text(encoding="cp1252", errors="replace")
+        except OSError:
+            continue
+        name = re.search(r'(?im)^Name="?([^"\r\n]+)"?\s*$', text)
+        lists = re.search(r"(?im)^Form=(?:.*[\\/;=\s])?" + re.escape(fname) + r"\s*$", text)
+        if name and (lists or best is None):
+            best = name.group(1).strip()
+            if lists:
+                break
+    return best or "Project1"
+
+
+def object_of(lib: str) -> tuple[str, str] | None:
+    """(GUID, OCX) of an 'Object =' library: the VB6 OCXs, or a third-party OCX a package declares."""
+    return OCX.get(lib) or _vb6map.object_line(lib)
 
 
 def _text_key(cls: str) -> str:
@@ -712,6 +751,9 @@ def _prop_edits(ed: _Editor, b_cls: str, ctrl: Control, key: str, value) -> list
         if CONTROL_TYPES[t].nonvisual:
             return []
         return [(key, ed.pos(value))]
+    comp = _vb6map.prop_edits(t, key, value)      # a component package property: a PropertyBag line
+    if comp is not None:
+        return comp
     if key == "Text":
         if t in ("ListBox",):
             return []
@@ -840,11 +882,16 @@ def _apply_props(ed: _Editor, name: str, base_props: dict, ctrl: Control):
 
 
 def _block_lines_for(ed: _Editor, ctrl: Control, indent: str, form: Form) -> list[str]:
-    cls = _vb_class(ctrl)
+    cls = _vb_class(ctrl, ed)
     lib = cls.split(".")[0]
-    if lib in OCX:
+    from ..components import is_component_type
+    if object_of(lib) is not None:
         ed.objects_needed.add(lib)
-    if ctrl.type not in NEW_CLASS:
+    elif is_component_type(ctrl.type) and not _vb6map.new_class(ctrl.type):
+        ed.objects_needed.add("ctl:" + ctrl.type)        # the UserControl stand-in (vb6_project writes it)
+        ed.notes.append(f"{ctrl.name}: component {ctrl.type} written as the UserControl {cls} "
+                        f"({ctrl.type}.ctl)")
+    elif ctrl.type not in NEW_CLASS and not _vb6map.new_class(ctrl.type):
         ed.notes.append(f"{ctrl.name}: {ctrl.type} has no VB6 equivalent - written as {cls}")
     arr = ctrl.props.get("ArrayName")
     name = arr or ctrl.name
@@ -1154,7 +1201,10 @@ def apply_form_changes(text: str, base: Form, new: Form, frm_path: Path,
     _apply_form_props(ed, base, new)
     # 7. OCX header lines for new controls
     for lib in sorted(ed.objects_needed):
-        guid, ocx = OCX[lib]
+        obj = object_of(lib)
+        if obj is None:                    # "ctl:<Type>": a UserControl of the project, no Object line
+            continue
+        guid, ocx = obj
         if not any(guid.lower() in ln.lower() for ln in ed.lines[:ed.doc.root.start]):
             at = 1 if ed.lines and ed.lines[0].upper().startswith("VERSION") else 0
             ed.insert(at, [f'Object = "{guid}"; "{ocx}"'])

@@ -106,7 +106,7 @@ function btnDiv_Click($e) {
 - لماذا `RadToNumber`؟ لأن `$txtA.Text` **نص**، و`"9" + "4"` في PowerShell تعطي `"94"`! والتحويل يجعل النص الفارغ صفرًا بدل أن يتوقف البرنامج.
 - `MsgBox` تُرجع رقم الزر الذي ضُغط، لذلك نرسله إلى `Out-Null` لكي لا يظهر الرقم في Output.
 
-## القوائم (ListBox)
+## القوائم (`ListBox`)
 
 ارسم `txtItem` و`btnAdd` و`btnRemove` و`lstItems` و`lblCount`:
 

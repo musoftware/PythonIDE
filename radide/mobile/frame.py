@@ -24,6 +24,7 @@ from .controls import (DEVICES, LAYOUT_TYPES, ORIENTATIONS, POSTURES, device, ef
                        ensure_mobile_props, form_posture, hinge_conflicts, hinge_rect, hinge_screen_rect,
                        is_foldable, is_mobile_form, landscape, safe_area_size, safe_insets, screen_size,
                        supported_controls, two_pane)
+from ..devices import display_name
 
 POSTURE_LABELS = {"Flat": "Flat", "HalfOpened": "Half-open", "Folded": "Folded"}
 
@@ -235,7 +236,7 @@ class DeviceBar(QWidget):
         lay.addWidget(QLabel("Device:"))
         self.combo = QComboBox()
         for d in DEVICES.values():
-            self.combo.addItem(d.name, d.id)
+            self.combo.addItem(display_name(d), d.id)       # (combo items are not translated by radide.i18n)
         self.combo.setToolTip("Phone / tablet the form is designed for (form property Device)")
         self.combo.activated.connect(lambda i: chrome.set_device(self.combo.itemData(i)))
         lay.addWidget(self.combo)
@@ -272,6 +273,17 @@ class DeviceBar(QWidget):
             theme.role(self.size_label, "muted")
         except Exception:  # noqa: BLE001 - theme roles are cosmetic
             pass
+
+    def changeEvent(self, ev):  # noqa: N802 - Qt API
+        """The IDE language changed: the device names of the combo box follow."""
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.LanguageChange:
+            self.relabel()
+        super().changeEvent(ev)
+
+    def relabel(self) -> None:
+        for i in range(self.combo.count()):
+            self.combo.setItemText(i, display_name(self.combo.itemData(i)))
 
     def sync(self, props: dict, preview: bool = False) -> None:
         self.combo.blockSignals(True)

@@ -2,7 +2,10 @@
 
 FASM is downloaded from flatassembler.net on the first build when it is not installed; RAD IDE points the
 INCLUDE environment variable at FASM's INCLUDE folder (win32a.inc / win64a.inc). A source with
-``format MS64 COFF`` / ``format MS COFF`` is linked with gcc / ld instead. Details: docs/ASSEMBLY.md.
+``format MS64 COFF`` / ``format MS COFF`` is linked with gcc / ld instead. Windows Forms (GUI Bridge, x64):
+every form file is a ``format MS64 COFF`` object (radgui_fasm.inc) linked by gcc with the C client. F5 debugs
+by source line: the build turns FASM's symbolic information (``-s``, .fas) into DWARF lines
+(radide/asm/linetable.py). Details: docs/ASSEMBLY.md.
 """
 from __future__ import annotations
 
@@ -16,7 +19,9 @@ class FasmPlugin(AsmPluginBase):
     assembler = "fasm"
     asm_dialect = "fasm"
     tool_key = "fasm"
-    has_forms = False
+    has_forms = True
+    supports_forms = True               # GUI Bridge forms: format MS64 COFF objects + gcc
+    form_flavor = "fasm64"
     install_hint = "FASM is downloaded automatically from https://flatassembler.net on the first build."
     keywords = AsmPluginBase.keywords + """format entry include section data code readable writeable executable
         import library invoke cinvoke stdcall ccall proc endp local locals endl macro struc virtual end if else

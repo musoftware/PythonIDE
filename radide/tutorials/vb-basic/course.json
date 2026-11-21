@@ -26,7 +26,7 @@
     {"id": "19-files", "file": "19-files.md", "title_ar": "الملفات", "minutes": 35},
     {"id": "20-types", "file": "20-types.md", "title_ar": "الأنواع المعرّفة: Type ... End Type", "minutes": 25},
     {"id": "21-collections", "file": "21-collections.md", "title_ar": "المجموعات: Collection", "minutes": 30},
-    {"id": "22-classes", "file": "22-classes.md", "title_ar": "الفئات: Class Modules", "minutes": 40},
+    {"id": "22-classes", "file": "22-classes.md", "title_ar": "الأصناف: Class Modules", "minutes": 40},
     {"id": "23-final-project", "file": "23-final-project.md", "title_ar": "المشروع النهائي: دفتر العناوين", "minutes": 60},
     {"id": "24-glossary", "file": "24-glossary.md", "title_ar": "قاموس المصطلحات", "minutes": 15}
   ]

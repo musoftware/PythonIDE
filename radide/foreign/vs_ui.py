@@ -209,6 +209,11 @@ def _fill_deps(win, project: VsProject, pi, key) -> None:
             _dep_item(win, deps, it, "project", key)
         for it in pkgs:
             _dep_item(win, deps, it, "package", key)
+    try:                                          # COM, FrameworkReference, Shared Projects (radide/dotnet/refs)
+        from ..dotnet.refs.ui import fill_extra_deps
+        fill_extra_deps(win, project, deps, key)
+    except ImportError:
+        pass
 
 
 def _dep_item(win, parent, it, kind, key):
@@ -257,6 +262,9 @@ def _fill_files(win, project: VsProject, pi, key) -> None:
 
     # folders first (VS order: Properties / My Project first, then alphabetical)
     def place(f):
+        link = f.metadata.get("Link", "").replace("\\", "/")
+        if link:                                  # Add As Link: shown where the Link metadata says
+            return str(Path(link).parent.as_posix()).strip(".").strip("/")
         if filters:
             return filters.get(f.rel.lower(), "")
         return str(Path(f.rel).parent.as_posix()).strip(".").strip("/")
@@ -281,6 +289,11 @@ def _fill_files(win, project: VsProject, pi, key) -> None:
         else:
             it = _set(QTreeWidgetItem(parent, [label]), "foreign_file", str(project.folder / rel), key,
                       "SP_FileIcon", win, rel)
+        link = f.metadata.get("Link", "")
+        if link:                                  # a linked file (outside the project folder)
+            it.setText(0, Path(link.replace("\\", "/")).name)
+            it.setIcon(0, _icon(win, "SP_FileLinkIcon"))
+            it.setToolTip(0, f"{(project.folder / rel).resolve()}\n(linked file)")
         if not (project.folder / rel).exists():
             it.setForeground(0, Qt.GlobalColor.gray)
             it.setToolTip(0, f"{rel} (file not found)")
@@ -454,6 +467,9 @@ def solution_menu(win, sln: VsSolution, item):
         add.addAction("New Project...", lambda: new_project_dialog(win, sln))
         add.addAction("Existing Project...", lambda: add_existing_project_dialog(win, sln))
     m.addSeparator()
+    m.addAction("Manage NuGet Packages for Solution...", lambda: _nuget(win, "manage_solution"))   # radide/dotnet/nuget
+    m.addAction("Restore NuGet Packages", lambda: _nuget(win, "restore_solution"))
+    m.addSeparator()
     m.addAction(win.a_run)
     m.addAction(win.a_run_nodebug)
     m.addSeparator()
@@ -507,8 +523,10 @@ def project_menu(win, project: VsProject, item, kind, name):
             return None
         if dkind == "project":
             m.addAction("Open", lambda: activate(win, project, item, kind, name))
-        mk = {"package": "PackageReference", "project": "ProjectReference", "assembly": "Reference"}[dkind]
-        m.addAction("Remove", lambda: _remove_ref(win, project, mk, inc))
+        mk = {"package": "PackageReference", "project": "ProjectReference", "assembly": "Reference",
+              "com": "COMReference", "frameworkref": "FrameworkReference"}.get(dkind)
+        if mk:                                    # (shared project imports: radide/dotnet/refs/ui.py)
+            m.addAction("Remove", lambda: _remove_ref(win, project, mk, inc))
         return m
     if kind == "foreign_folder":
         _add_menu(win, m, project, "" if MB.read_filters(project.ms) else name)
@@ -717,7 +735,13 @@ FRAMEWORK_ASSEMBLIES = ["System", "System.Core", "System.Data", "System.Drawing"
 
 
 def add_reference_dialog(win, project: VsProject, tab: int = 0, exec_: bool = True):
-    """Reference Manager: Projects (of the solution) / Assemblies / Browse (.dll)."""
+    """Reference Manager: the VS2022 one (radide/dotnet/refs/manager.py: Assemblies / Projects / Shared Projects
+    / COM / Browse); the basic Projects / Assemblies / Browse dialog below is the fallback."""
+    try:
+        from ..dotnet.refs.ui import add_reference_dialog as reference_manager
+        return reference_manager(win, project, tab, exec_)
+    except ImportError:
+        pass
     sln = win.sln if isinstance(win.sln, VsSolution) else None
     dlg = QDialog(win)
     dlg.setWindowTitle(f"Reference Manager - {project.name}")
@@ -813,8 +837,17 @@ def add_reference_dialog(win, project: VsProject, tab: int = 0, exec_: bool = Tr
     return None
 
 
+def _nuget(win, name: str, *args):
+    from ..features import nuget_ide
+    return getattr(nuget_ide, name)(win, *args)
+
+
 def manage_packages(win, project: VsProject):
     win.activate_project(project)
+    try:                                      # the VS 2022 NuGet document (radide/dotnet/nuget/ui.py)
+        return _nuget(win, "manage_project", project)
+    except Exception as e:  # noqa: BLE001 - fall back to the generic package dialog
+        _log(win, f"*** NuGet: {e}")
     try:
         from ..features.packages import manage_packages as mp
         dlg = mp(win, project.plugin)
@@ -1284,6 +1317,21 @@ def install(win) -> None:
     except Exception:  # noqa: BLE001
         pass
     QTimer.singleShot(0, lambda: _extend_build_menu(win))
+    try:                                          # Shared Projects, project context, VS2022 templates
+        from ..dotnet.shared import ui as shared_ui
+        shared_ui.install(win)
+    except Exception as e:  # noqa: BLE001
+        _log(win, f"[dotnet shared] {e}")
+    try:                                          # Reference Manager, reference properties, Object Browser
+        from ..dotnet.refs.ui import install as install_references
+        install_references(win)
+    except Exception as e:  # noqa: BLE001
+        _log(win, f"[references] {e}")
+    try:                                          # solutions: folders, dependencies, startup, config manager
+        from ..dotnet.sln import install as install_solutions
+        install_solutions(win)
+    except Exception as e:  # noqa: BLE001
+        _log(win, f"[solutions] {e}")
 
 
 def _extend_build_menu(win) -> None:

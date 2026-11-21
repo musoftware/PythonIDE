@@ -1,0 +1,28 @@
+{
+  "$schema": "../../../../../../docs/component.schema.json",
+  "schemaVersion": 1,
+  "name": "LedLight",
+  "displayName": "LED Light",
+  "version": "1.0.0",
+  "publisher": "RAD IDE Samples",
+  "description": "A round LED that is on or off - test package that declares its VB6 equivalent (an OCX class).",
+  "category": "Rating & Input",
+  "prefix": "led",
+  "defaultSize": [24, 24],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {"name": "On", "type": "bool", "default": false, "category": "Behavior", "description": "The LED is lit."},
+    {"name": "Color", "type": "color", "default": "#FF0000", "category": "Appearance",
+     "description": "Colour of the lit LED."}
+  ],
+  "events": [],
+  "methods": [],
+  "targets": {
+    "python-tk": {"file": "runtime/led_tk.py", "class": "LedLight"}
+  },
+  "vb6": {"class": "LedLib.Led", "library": "LedLib",
+          "object": "{6C0F7E10-3B7E-4C1E-9A65-2B5E7C1D0A11}#1.0#0; LEDLIB.OCX",
+          "imports": ["ledlib.led"], "properties": {"On": "LightOn"}}
+}

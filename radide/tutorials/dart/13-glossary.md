@@ -64,14 +64,14 @@
 | null assertion | تأكيد عدم الفراغ | `value!` |
 | late | سيُعطى قيمة لاحقًا | `late String msg;` |
 
-## الفئات والكائنات
+## الأصناف والكائنات
 
 | English | العربية | مثال |
 |---|---|---|
-| class | فئة | `class Student { }` |
+| class | صنف (ويُسمّى أيضًا: فئة) | `class Student { }` |
 | object / instance | كائن / نسخة | `Student('مريم', 11)` |
 | field / property | خاصية | `name` |
-| method | دالة الكائن (طريقة) | `introduce()` |
+| method | دالة الكائن (وتُسمّى أيضًا: طريقة، تابع) | `introduce()` |
 | constructor | باني | `Student(this.name, this.grade);` |
 | factory constructor | باني مصنع | `factory Task.fromJson(...)` |
 | getter / setter | دالة قراءة / دالة كتابة | `double get area => w * h;` |
@@ -79,7 +79,7 @@
 | encapsulation | التغليف | حماية البيانات بدوال |
 | inheritance | الوراثة | `class Cat extends Animal` |
 | override | إعادة تعريف | `@override void speak()` |
-| abstract class | فئة مجردة | `abstract class Shape` |
+| abstract class | صنف مجرد | `abstract class Shape` |
 | polymorphism | تعدد الأشكال | قائمة `Animal` فيها قطط وكلاب |
 | enum | قائمة قيم محددة | `enum Level { easy, hard }` |
 

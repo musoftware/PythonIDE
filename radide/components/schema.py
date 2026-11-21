@@ -52,6 +52,9 @@ _VB6 = {
         "class": {"type": "string", "description": "VB6 class written for a new control, e.g. VB.CommandButton."},
         "library": {"type": "string", "description": "OCX library of 'class' (frm 'Object =' line), e.g. "
                                                      "MSComctlLib."},
+        "object": {"type": "string", "pattern": r"^\{[0-9A-Fa-f-]{36}\}#[0-9.]+#\d+;\s*\S.*$",
+                   "description": "'Object =' line of a third-party OCX 'library' that VB6 does not ship: "
+                                  "'{GUID}#1.0#0; STARS.OCX'."},
         "imports": {"type": "array", "items": _STR, "description": "VB6 / ActiveX classes (ProgIDs, any case) "
                                                                     "imported as this control."},
         "approx": {"type": "array", "items": _STR, "description": "The imports that are approximations (the "

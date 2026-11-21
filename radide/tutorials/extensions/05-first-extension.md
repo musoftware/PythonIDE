@@ -17,7 +17,7 @@ ocean-theme/
   themes/ocean.json          <- ملف السمة
 ```
 
-## ملف الوصف radide-extension.json
+## ملف الوصف `radide-extension.json`
 
 ```text
 {
@@ -79,7 +79,7 @@ for p in problems(bad):
 الثاني: نسخة غير صحيحة: 'v1'
 ```
 
-## ملف السمة themes/ocean.json
+## ملف السمة `themes/ocean.json`
 
 سمة RAD IDE لا تحتاج أن تحدد كل الألوان: تختار **سمة أساس** (`base`) وتغيّر ما تريد فقط:
 

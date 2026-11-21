@@ -364,7 +364,7 @@ def props_at(sb: dict, target: str, ms: float, base: dict, parent_bg: str | None
 
     def start(p):
         if p not in start_of:
-            v = base.get(p, 1.0 if p == "Opacity" else None)
+            v = base.get(p, {"Opacity": 1.0, "ScaleX": 1.0, "ScaleY": 1.0, "Rotation": 0.0}.get(p))
             if p in ("BackColor", "ForeColor") and not v:
                 v = "#f0f0f0" if p == "BackColor" else "#000000"
             start_of[p] = v

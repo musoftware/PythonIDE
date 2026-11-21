@@ -61,7 +61,7 @@
 
 | الإنجليزية | العربية | مثال |
 |---|---|---|
-| Method | دالة | `static int square(int x)` |
+| Method | دالة (وتُسمّى أيضًا: طريقة، تابع) | `static int square(int x)` |
 | Parameter | معامل | `x` في التعريف |
 | Argument | وسيط | `5` في `square(5)` |
 | Return value | القيمة المُرجعة | `return x * x;` |
@@ -92,7 +92,7 @@
 | الإنجليزية | العربية | مثال |
 |---|---|---|
 | Object-Oriented Programming (OOP) | البرمجة كائنية التوجه | أصناف وكائنات |
-| Class | صنف | `class Car { }` |
+| Class | صنف (ويُسمّى أيضًا: فئة) | `class Car { }` |
 | Object / Instance | كائن / نسخة | `new Car()` |
 | Field | حقل | `String brand;` |
 | Constructor | مُنشئ | `Car(String brand)` |

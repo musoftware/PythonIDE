@@ -190,6 +190,7 @@ class TypeIndex:
 
     def __init__(self):
         self.by_name: dict[str, list[tuple[str, str]]] = {}
+        self.raw: dict[tuple[str, str], list[str]] = {}       # (namespace, simple name) -> metadata names
         self.assemblies: list[str] = []
 
     def add_assembly(self, path) -> int:
@@ -200,6 +201,9 @@ class TypeIndex:
                 continue
             simple = name.split("`")[0]
             self.by_name.setdefault(simple, []).append((ns, path))
+            raws = self.raw.setdefault((ns, simple), [])
+            if name not in raws:
+                raws.append(name)
         self.assemblies.append(path)
         return len(names)
 
@@ -211,6 +215,13 @@ class TypeIndex:
                 seen.add(ns)
                 out.append((ns, asm))
         return out
+
+    def raw_name(self, ns: str, simple: str, generic: bool = False) -> str:
+        """Metadata name ('List`1') of a simple name; *generic* prefers the generic definition."""
+        raws = self.raw.get((ns, simple.split("`")[0])) or [simple]
+        gen = [r for r in raws if "`" in r]
+        plain = [r for r in raws if "`" not in r]
+        return (gen or plain)[0] if generic else (plain or gen)[0]
 
     def find_type(self, full_name: str) -> str | None:
         """Assembly that defines *full_name* (Namespace.Type, generic arity optional)."""

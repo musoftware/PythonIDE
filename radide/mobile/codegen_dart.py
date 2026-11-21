@@ -143,6 +143,12 @@ def _state_init(c) -> str:
         args.append(f"url: {dstr(p.get('Url', ''))}")
     if t == "MTextField" or t == "TextBox":
         pass
+    if cls == "RadControl":           # a component package control: its own state class (radide/components/dart.py)
+        from ..components import dart as _comp_dart
+        comp = _comp_dart.phone_state(c)
+        if comp is not None:          # the common properties are set with cascades (..visible = false)
+            return f"{comp[0]}({args[0]}, {comp[1]})" + "".join(
+                f"..{a.split(': ', 1)[0]} = {a.split(': ', 1)[1]}" for a in args[1:])
     return f"{cls}({', '.join(args)})"
 
 
@@ -682,6 +688,8 @@ class DartFormGen:
               f"child: Stack(clipBehavior: Clip.none, children: [{', '.join(children)}])));",
               "      })))," if fx.plan and "" in fx.wrapped else "      })),",
               "    );", "  }", "}", ""]
+        from ..components import dart as _comp_dart      # state classes of the component packages used
+        L += _comp_dart.phone_classes(all_ctrls)
         return format_dart("\n".join(L))
 
 

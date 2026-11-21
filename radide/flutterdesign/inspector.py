@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (QButtonGroup, QCheckBox, QColorDialog, QComboBox, Q
                              QHBoxLayout, QLabel, QLineEdit, QListView, QMenu, QPlainTextEdit, QPushButton,
                              QScrollArea, QSizePolicy, QSpinBox, QToolButton, QVBoxLayout, QWidget)
 
+from . import datawidgets as DW
 from . import iconfont
 from . import model as M
 from . import motion as MO
@@ -1310,6 +1311,97 @@ class NavItemsEd(_ListEd):
         return w
 
 
+class TextSpansEd(_ListEd):
+    """Text.rich / RichText spans: text + its own TextStyle per row (a $code span is shown read-only)."""
+
+    def __init__(self, ctx, parent=None):
+        super().__init__(ctx, parent, "Add span")
+
+    def new_item(self):
+        return {"text": f"span {len(self.items) + 1} "}
+
+    def make_row(self, i, item):
+        w = QFrame()
+        w.setFrameShape(QFrame.Shape.StyledPanel)
+        g = QGridLayout(w)
+        g.setContentsMargins(3, 3, 3, 3)
+        g.setSpacing(2)
+        if M.is_code(item):
+            lab = QLabel(item["$code"])
+            lab.setProperty("i18n_skip", True)
+            g.addWidget(lab, 0, 0)
+            g.addWidget(self._del_btn(i), 0, 1)
+            return w
+        te = StringEd(self.ctx, placeholder="text", empty_is_none=False)
+        te.set_value(item.get("text"))
+        te.committed.connect(lambda v, i=i: self._update(i, "text", v))
+        g.addWidget(te, 0, 0)
+        g.addWidget(self._del_btn(i), 0, 1)
+        se = CompositeEd(self.ctx, "text_style", title="style")
+        se.set_value(item.get("style"))
+        se.committed.connect(lambda v, i=i: self._update(i, "style", v))
+        g.addWidget(se, 1, 0, 1, 2)
+        return w
+
+
+class ValidatorsEd(_ListEd):
+    """TextFormField validator rules (lib/radform.dart): rule, value (length / pattern), message."""
+
+    def __init__(self, ctx, parent=None):
+        super().__init__(ctx, parent, "Add rule")
+
+    def new_item(self):
+        return {"rule": "required"}
+
+    def make_row(self, i, item):
+        w = QFrame()
+        w.setFrameShape(QFrame.Shape.StyledPanel)
+        g = QGridLayout(w)
+        g.setContentsMargins(3, 3, 3, 3)
+        g.setSpacing(2)
+        if M.is_code(item):
+            g.addWidget(QLabel(item["$code"]), 0, 0)
+            g.addWidget(self._del_btn(i), 0, 1)
+            return w
+        rule = QComboBox()
+        for r in M.VALIDATOR_RULES:
+            rule.addItem(r, r)
+        rule.setCurrentIndex(max(0, rule.findData(item.get("rule"))))
+        rule.activated.connect(lambda k, i=i, cb=rule: self._set_rule(i, cb.itemData(k)))
+        g.addWidget(rule, 0, 0)
+        g.addWidget(self._del_btn(i), 0, 2)
+        r = item.get("rule")
+        if r in ("minLength", "maxLength"):
+            ve = NumberEd(self.ctx, as_int=True, placeholder="length")
+            ve.set_value(item.get("value"))
+            ve.committed.connect(lambda v, i=i: self._update(i, "value", v))
+            g.addWidget(ve, 0, 1)
+        elif r == "regex":
+            ve = StringEd(self.ctx, placeholder="pattern (whole text)")
+            ve.set_value(item.get("value"))
+            ve.committed.connect(lambda v, i=i: self._update(i, "value", v))
+            g.addWidget(ve, 0, 1)
+        me = StringEd(self.ctx, placeholder="message (default: " +
+                      DW.RULE_DEFAULTS.get(r or "required", "").replace("{n}", "n") + ")")
+        me.set_value(item.get("message"))
+        me.committed.connect(lambda v, i=i: self._update(i, "message", v))
+        g.addWidget(me, 1, 0, 1, 3)
+        return w
+
+    def _set_rule(self, i, rule):
+        if 0 <= i < len(self.items) and isinstance(self.items[i], dict) and self.items[i].get("rule") != rule:
+            it = {"rule": rule}
+            if self.items[i].get("message"):
+                it["message"] = self.items[i]["message"]
+            if rule in ("minLength", "maxLength"):
+                it["value"] = 8
+            elif rule == "regex":
+                it["value"] = "^[0-9]+$"
+            self.items[i] = it
+            self._rebuild()
+            self._emit()
+
+
 class StringListEd(Ed):
     def __init__(self, ctx, parent=None):
         super().__init__(ctx, parent)
@@ -1480,6 +1572,10 @@ def make_editor(kind: str, ctx: EdCtx, spec: M.PropSpec | None = None, vertical:
         return BorderEd(ctx)
     if kind == "nav_items":
         return NavItemsEd(ctx)
+    if kind == "text_spans":
+        return TextSpansEd(ctx)
+    if kind == "validators":
+        return ValidatorsEd(ctx)
     if kind == "image_src":
         return ImageSrcEd(ctx)
     if kind == "google_font":
@@ -1802,6 +1898,15 @@ class Inspector(QScrollArea):
             pl.addAction(f"play:{c}", lambda c=c: self.designer.set_event(self.node_id, ev, f"play:{c}"))
             pl.addAction(f"reverse:{c}", lambda c=c: self.designer.set_event(self.node_id, ev, f"reverse:{c}"))
         pl.setEnabled(bool(ctrls))
+        va = m.addMenu("Validate form")
+        for n, *_ in scr.walk():
+            if n.get("type") == "Form" and n.get("name"):
+                f = n["name"]
+                then = "on" + f[:1].upper() + f[1:] + "Valid"
+                va.addAction(f"validate:{f}", lambda f=f: self.designer.set_event(self.node_id, ev, f"validate:{f}"))
+                va.addAction(f"validate:{f}:{then}  (then call {then})",
+                             lambda f=f, t=then: self.designer.set_event(self.node_id, ev, f"validate:{f}:{t}"))
+        va.setEnabled(bool(va.actions()))
         m.addSeparator()
         m.addAction("Clear", lambda: self.designer.set_event(self.node_id, ev, None))
 

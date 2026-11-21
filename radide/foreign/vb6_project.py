@@ -569,10 +569,29 @@ def sync_mirror(mdir: Path) -> list[str]:
 
 
 def _ensure_object(vbp: VbpFile, lib: str) -> None:
-    from .frm_writer import OCX
-    guid, ocx = OCX[lib]
+    if lib.startswith("ctl:"):          # a component package written as a UserControl: its .ctl stand-in
+        _ensure_usercontrol(vbp, lib[4:])
+        return
+    from .frm_writer import object_of
+    obj = object_of(lib)
+    if obj is None:
+        return
+    guid, ocx = obj
     if not any(guid.lower() in v.lower() for _i, v in vbp.values("Object")):
         vbp.add_file("Object", f"{guid}; {ocx}")
+
+
+def _ensure_usercontrol(vbp: VbpFile, type_name: str) -> None:
+    """<Type>.ctl next to the .vbp (written once; radide.components.vb6map.usercontrol_source) and its
+    ``UserControl=`` line, so VB6 loads a form whose component control is ``Begin <Project>.<Type>``."""
+    from ..components.vb6map import usercontrol_source
+    folder = Path(vbp.path).parent
+    ctl = folder / f"{type_name}.ctl"
+    if not any(Path(vbp_file_entry("UserControl", v)[1].replace("\\", "/")).stem.lower() == type_name.lower()
+               for _i, v in vbp.values("UserControl")):
+        if not ctl.exists():
+            ctl.write_bytes(encode_vb(usercontrol_source(type_name, vbp.nl), "cp1252"))
+        vbp.add_file("UserControl", ctl.name)
 
 
 def set_project_properties(mdir: Path, **props) -> list[str]:

@@ -321,7 +321,15 @@ class VisualStudio(Provider):
                 Action("properties", "Project Properties...", self._properties, opens="none",
                        enabled=lambda c: getattr(c.project, "ms", None) is not None),
                 Separator(),
-                Action("open-vs", "Open in Visual Studio", self._open_vs, opens="none")]
+                Action("open-vs", "Open in Visual Studio", self._open_vs, opens="none")] + self._cli(ctx)
+
+    def _cli(self, ctx) -> list:
+        """The "dotnet CLI" submenu (radide/dotnet/tools/cli.py)."""
+        try:
+            from ..dotnet.tools.cli import cli_submenu
+            return [Separator(), cli_submenu(self, ctx)]
+        except Exception:  # noqa: BLE001 - the rest of the menu must still work
+            return []
 
     def _publish(self, ctx):
         proj = self._project_file(ctx)

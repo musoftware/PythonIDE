@@ -55,7 +55,7 @@
 
 | الإنجليزية | العربية | مثال |
 |---|---|---|
-| Method / Function | دالة | `static int Square(int x)` |
+| Method / Function | دالة (وتُسمّى أيضًا: طريقة، تابع) | `static int Square(int x)` |
 | Parameter | معامل | `x` في التعريف |
 | Argument | وسيط | `5` في `Square(5)` |
 | Return value | القيمة المرجعة | `return x * x;` |
@@ -82,7 +82,7 @@
 
 | الإنجليزية | العربية | مثال |
 |---|---|---|
-| Class | صنف | `class Car` |
+| Class | صنف (ويُسمّى أيضًا: فئة) | `class Car` |
 | Object / Instance | كائن / نسخة | `new Car()` |
 | Field | حقل | `public string Brand;` |
 | Property | خاصية | `public int Age { get; set; }` |

@@ -57,7 +57,50 @@ def md_to_html(text: str) -> str:
     else:
         out = "\n".join("<p>" + html.escape(para).replace("\n", "<br>") + "</p>"     # minimal fallback
                         for para in re.split(r"\n\s*\n", text.strip()))
-    return lrm_fix(out)
+    return lrm_fix(ltr_paths(out))
+
+
+# English menu paths in Arabic sentences ("File > New Project..." / "Project > Add Module..."): in a right-to-left
+# paragraph the trailing "..." and the ">" between the items are neutral and drift to the wrong side ("...New
+# Project"), so each path becomes a left-to-right isolate.  The viewer (Chromium) isolates the span with
+# unicode-bidi: isolate; the CHM's Internet Explorer engine does not know isolate, so there the span is an
+# inline-block (CHM_CSS), which IE also lays out as one left-to-right unit.
+_PATH_WORD = (r"(?:&amp;|/|-|[A-Za-z0-9][A-Za-z0-9_.+#()'/-]*(?:\.\.\.|…)?"
+              r"|\([A-Za-z0-9][A-Za-z0-9 .+#'/-]*\)(?:\.\.\.|…)?)")      # "Help Files (CHM)", "(Arabic lessons)..."
+_PATH_ITEM = rf"{_PATH_WORD}(?:[  ]{_PATH_WORD})*"
+MENU_PATH = re.compile(rf"(?<![\w&;]){_PATH_ITEM}(?:\s*(?:&gt;|›|→)\s*{_PATH_ITEM})+")
+_NO_PATHS = ("code", "pre", "script", "style", "textarea", "kbd")
+
+
+def ltr_span(text: str) -> str:
+    return f'<span class="ltr" dir="ltr">{text}</span>'
+
+
+def ltr_paths(html_text: str) -> str:
+    """Wrap the English menu paths of HTML text (not inside code / pre / an ltr span) in a left-to-right span."""
+    out, stack = [], []
+    for part in re.split(r"(<[^>]+>)", html_text):
+        if part.startswith("<"):
+            m = re.match(r"<(/?)([A-Za-z][\w-]*)", part)
+            if m:
+                name, closing = m.group(2).lower(), bool(m.group(1))
+                if closing:
+                    if stack and stack[-1][0] == name:
+                        stack.pop()
+                elif not part.endswith("/>") and name not in ("br", "img", "hr", "input", "meta", "link"):
+                    stack.append((name, name in _NO_PATHS or (name == "span" and 'class="ltr"' in part)))
+            out.append(part)
+        elif any(skip for _n, skip in stack) or not re.search(r"&gt;|›|→", part):
+            out.append(part)
+        else:
+            out.append(MENU_PATH.sub(_wrap_path, part))
+    return "".join(out)
+
+
+def _wrap_path(m: re.Match) -> str:
+    s = m.group(0)
+    tail = re.search(r"(?:[  ]+[-/])+$", s)          # "Debug > Start Without Debugging - <Arabic>"
+    return ltr_span(s[:tail.start()]) + s[tail.start():] if tail else ltr_span(s)
 
 
 def lrm_fix(html_text: str) -> str:
@@ -138,6 +181,7 @@ pre { margin: 0; padding: 10px 14px; overflow-x: auto; direction: ltr; text-alig
   font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 13.5px; line-height: 1.5; }
 pre.hl { background: var(--code); }
 pre.hl span { unicode-bidi: embed; unicode-bidi: isolate; }
+.ltr { direction: ltr; unicode-bidi: embed; unicode-bidi: isolate; }
 pre.out { background: var(--out); unicode-bidi: plaintext; white-space: pre-wrap; }
 .ex textarea { box-sizing: border-box; width: 100%%; min-height: 160px; border: 0; resize: vertical; direction: ltr;
   text-align: left; padding: 10px 14px; background: var(--code); color: var(--fg); outline: none;
@@ -174,6 +218,7 @@ mark.find { background: #ffe066; color: #000; }
 CHM_CSS = """
 code { display: inline-block; unicode-bidi: embed; max-width: 100%; vertical-align: baseline; line-height: 1.5; }
 pre code { display: inline; }
+.ltr { display: inline-block; unicode-bidi: embed; max-width: 100%; text-align: left; text-indent: 0; }
 """
 
 JS = r"""
@@ -220,7 +265,7 @@ def _inline(text: str) -> str:
     """Quiz text: escaped, `code` spans as <code> (left-to-right inside Arabic sentences), **bold** as <b>."""
     parts = re.split(r"(`[^`]+`)", text)
     return "".join(f"<code>{html.escape(p[1:-1])}</code>" if p.startswith("`") and p.endswith("`") and len(p) > 1
-                   else re.sub(r"\*\*(\S(?:.*?\S)?)\*\*", r"<b>\1</b>", html.escape(p)) for p in parts)
+                   else ltr_paths(re.sub(r"\*\*(\S(?:.*?\S)?)\*\*", r"<b>\1</b>", html.escape(p))) for p in parts)
 
 
 def _dir(text: str) -> str:
@@ -352,4 +397,4 @@ def quiz_json(b: Block) -> str:
 
 
 __all__ = ["ACT", "FONT_FILE", "block_html", "highlight", "lesson_body", "lesson_page", "md_to_html", "page",
-           "pygments_css", "tryable"]
+           "pygments_css", "tryable", "ltr_paths", "MENU_PATH"]

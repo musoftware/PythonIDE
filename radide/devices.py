@@ -104,6 +104,27 @@ def device(device_id) -> Device:
     return DEVICES.get(str(device_id or ""), DEVICES[DEFAULT_DEVICE])
 
 
+def _tr(text: str) -> str:
+    try:
+        from .i18n import tr
+        return tr(text)
+    except Exception:  # noqa: BLE001 - no catalog (pure tests)
+        return text
+
+
+def display_name(dev) -> str:
+    """The device's name in the IDE language ("Small phone (360 x 640)" -> "هاتف صغير (360 x 640)"), for
+    combo boxes (their items are not translated by radide.i18n). *dev*: a Device or a device id."""
+    d = dev if isinstance(dev, Device) else device(dev)
+    return _tr(d.name)
+
+
+def short_name(dev) -> str:
+    """display_name() without the size in brackets ("Galaxy Z Fold6", "هاتف صغير")."""
+    d = dev if isinstance(dev, Device) else device(dev)
+    return _tr(d.name.split(" (")[0])
+
+
 def landscape(orientation) -> bool:
     return str(orientation or "").lower().startswith("land")
 
@@ -324,7 +345,7 @@ def device_rows(include_foldables: bool = True) -> list[tuple]:
 
 
 __all__ = ["Device", "DEVICES", "DEFAULT_DEVICE", "ORIENTATIONS", "POSTURES", "DEFAULT_POSTURE", "FOLD_KINDS",
-           "FOLDABLE_IDS", "FOLDABLE_AVD_PROFILES", "MIN_DUAL_WIDTH", "device", "landscape", "is_foldable",
+           "FOLDABLE_IDS", "FOLDABLE_AVD_PROFILES", "MIN_DUAL_WIDTH", "device", "display_name", "short_name", "landscape", "is_foldable",
            "posture_name", "posture_key", "postures", "effective_posture", "screen_size", "safe_insets",
            "safe_area_size", "fold_axis", "hinge_screen_rect", "hinge_rect", "is_separating", "span",
            "segments", "display_features", "rect_crosses", "two_pane", "env_state", "device_rows"]

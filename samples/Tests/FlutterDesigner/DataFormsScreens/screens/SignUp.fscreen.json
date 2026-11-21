@@ -1,0 +1,281 @@
+{
+ "version": 1,
+ "name": "SignUp",
+ "route": "/sign_up",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Create account"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "Form",
+    "name": "form1",
+    "props": {
+     "autovalidateMode": "AutovalidateMode.onUserInteraction"
+    },
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "SingleChildScrollView",
+      "props": {
+       "padding": {
+        "all": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w6",
+        "type": "Column",
+        "props": {
+         "spacing": 12
+        },
+        "children": [
+         {
+          "id": "w7",
+          "type": "TextFormField",
+          "name": "txtName",
+          "props": {
+           "decoration": {
+            "labelText": "Name",
+            "border": "outline"
+           },
+           "validators": [
+            {
+             "rule": "required",
+             "message": "Please enter your name"
+            }
+           ]
+          }
+         },
+         {
+          "id": "w8",
+          "type": "TextFormField",
+          "name": "txtEmail",
+          "props": {
+           "decoration": {
+            "labelText": "E-mail",
+            "border": "outline",
+            "prefixIcon": "Icons.email_outlined"
+           },
+           "keyboardType": "TextInputType.emailAddress",
+           "validators": [
+            {
+             "rule": "required"
+            },
+            {
+             "rule": "email"
+            }
+           ]
+          }
+         },
+         {
+          "id": "w9",
+          "type": "TextFormField",
+          "name": "txtPassword",
+          "props": {
+           "decoration": {
+            "labelText": "Password",
+            "border": "outline"
+           },
+           "obscureText": true,
+           "validators": [
+            {
+             "rule": "required"
+            },
+            {
+             "rule": "minLength",
+             "value": 8,
+             "message": "At least 8 characters"
+            }
+           ]
+          }
+         },
+         {
+          "id": "w10",
+          "type": "TextFormField",
+          "name": "txtPhone",
+          "props": {
+           "decoration": {
+            "labelText": "Phone (digits)",
+            "border": "outline"
+           },
+           "keyboardType": "TextInputType.phone",
+           "validators": [
+            {
+             "rule": "regex",
+             "value": "^[0-9]{7,15}$",
+             "message": "7 to 15 digits"
+            },
+            {
+             "rule": "maxLength",
+             "value": 15
+            }
+           ]
+          },
+          "events": {
+           "validator": "checkPhone"
+          }
+         },
+         {
+          "id": "w11",
+          "type": "TextFormField",
+          "name": "txtPromo",
+          "props": {
+           "decoration": {
+            "labelText": "Promo code",
+            "border": "outline"
+           }
+          },
+          "events": {
+           "validator": "checkPromo"
+          }
+         },
+         {
+          "id": "w12",
+          "type": "Text",
+          "props": {
+           "data": "Plan",
+           "style": {
+            "fontWeight": "FontWeight.bold"
+           }
+          }
+         },
+         {
+          "id": "w13",
+          "type": "RadioGroup",
+          "name": "rdoPlan",
+          "props": {
+           "groupValue": "free"
+          },
+          "slots": {
+           "child": {
+            "id": "w14",
+            "type": "Column",
+            "props": {
+             "mainAxisSize": "MainAxisSize.min"
+            },
+            "children": [
+             {
+              "id": "w15",
+              "type": "RadioListTile",
+              "props": {
+               "value": "free"
+              },
+              "slots": {
+               "title": {
+                "id": "w16",
+                "type": "Text",
+                "props": {
+                 "data": "Free"
+                }
+               }
+              }
+             },
+             {
+              "id": "w17",
+              "type": "RadioListTile",
+              "props": {
+               "value": "pro"
+              },
+              "slots": {
+               "title": {
+                "id": "w18",
+                "type": "Text",
+                "props": {
+                 "data": "Pro"
+                }
+               },
+               "subtitle": {
+                "id": "w19",
+                "type": "Text",
+                "props": {
+                 "data": "5 USD / month"
+                }
+               }
+              }
+             },
+             {
+              "id": "w20",
+              "type": "Row",
+              "children": [
+               {
+                "id": "w21",
+                "type": "Radio",
+                "props": {
+                 "value": "team"
+                }
+               },
+               {
+                "id": "w22",
+                "type": "Text",
+                "props": {
+                 "data": "Team"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          },
+          "events": {
+           "onChanged": "planChanged"
+          }
+         },
+         {
+          "id": "w23",
+          "type": "FilledButton",
+          "name": "btnSignUp",
+          "slots": {
+           "child": {
+            "id": "w24",
+            "type": "Text",
+            "props": {
+             "data": "Sign up"
+            }
+           }
+          },
+          "events": {
+           "onPressed": "validate:form1:onSubmit"
+          }
+         },
+         {
+          "id": "w25",
+          "type": "OutlinedButton",
+          "slots": {
+           "child": {
+            "id": "w26",
+            "type": "Text",
+            "props": {
+             "data": "Check"
+            }
+           }
+          },
+          "events": {
+           "onPressed": "validate:form1"
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

@@ -30,7 +30,7 @@ def list_profiles(project_folder: Path, language: str = "C#") -> list[Path]:
 def read(path: Path) -> dict:
     text = Path(path).read_text(encoding="utf-8-sig")
     out = {}
-    for m in re.finditer(r"<(\w+)>(.*?)</\1>", text, re.S):
+    for m in re.finditer(r"<(\w+)>([^<]*)</\1>", text):
         if m.group(1) not in ("Project", "PropertyGroup"):
             out[m.group(1)] = xml_unescape(m.group(2).strip())
     return out

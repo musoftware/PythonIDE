@@ -89,7 +89,7 @@ class AddressBox(AddressBoxDesigner):
 
 ## ما الذي تولّده البيئة؟
 
-عند الحفظ تكتب البيئة لعنصرك **فئة** (Class) كاملة في `AddressBox_designer.py`: إطار Tkinter (أو `QWidget` في Qt) فيه الأدوات الداخلية والخصائص المربوطة.
+عند الحفظ تكتب البيئة لعنصرك **صنفًا** (Class) كاملًا في `AddressBox_designer.py`: إطار Tkinter (أو `QWidget` في Qt) فيه الأدوات الداخلية والخصائص المربوطة.
 والنموذج يُنشئ نسخة منه بسطر مثل:
 
 ```python

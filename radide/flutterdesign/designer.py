@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog
 from . import iconfont
 from . import model as M
 from . import motion_ui as MU
+from . import datawidgets as DW
 from . import qtpreview as Q
 from . import variants_fd as VF
 from .. import devices as D
@@ -36,10 +37,34 @@ from .palette import MIME, Palette, type_icon
 DEVICES = [(d.name.split(" (")[0], d.width, d.height, d.platform, d.insets[1], d.insets[3], d.radius)
            for d in D.DEVICES.values()] + [("Desktop 1280x800", 1280, 800, "android", 0, 0, 0)]
 DEVICE_IDS = list(D.DEVICES) + ["desktop"]
+
+
+def _device_label(name: str) -> str:
+    """A device name of DEVICES in the IDE language ("Small phone" -> "هاتف صغير")."""
+    try:
+        from ..i18n import tr
+        return tr(name)
+    except Exception:  # noqa: BLE001 - no catalog
+        return name
 ZOOMS = [("Fit", 0.0), ("50%", .5), ("75%", .75), ("100%", 1.0), ("125%", 1.25), ("150%", 1.5), ("200%", 2.0)]
 SEL = QColor("#FF1E88E5")
 HOVER = QColor("#C01E88E5")
 MARGIN = 28
+
+
+def refresh_project_theme(project_folder=None) -> int:
+    """Refresh every open Flutter designer (of *project_folder*, None = all) after the project theme changed.
+    Returns how many designers were refreshed."""
+    from PyQt6.QtWidgets import QApplication
+    want = Path(project_folder).resolve() if project_folder else None
+    n = 0
+    for w in QApplication.allWidgets():
+        if isinstance(w, FlutterDesigner):
+            folder = w.project_folder()
+            if want is None or (folder is not None and Path(folder).resolve() == want):
+                w.refresh_theme()
+                n += 1
+    return n
 
 
 def find_project_folder(path: Path | None) -> Path | None:
@@ -298,7 +323,7 @@ class QtCanvas(QWidget):
         dev = d.device()
         top, bottom = (dev[4], dev[5]) if not d.landscape else (0 if dev[3] == "android" else 0, dev[5] // 2)
         scr = d.preview_screen()
-        ctx = Q.make_ctx(scr, d.dark, d.text_scale, d.project_folder(), self.images)
+        ctx = Q.make_ctx(scr, d.dark, d.text_scale, d.project_folder(), self.images, app_theme=d.app_screen_theme())
         ctx.show_drawer = d.drawer_shown()
         ctx.hinge = d.hinge_rect()
         ctx.screen_size = (float(w), float(h))
@@ -683,8 +708,8 @@ class FlutterDesigner(QWidget):
         tb.addAction(self.a_redo)
         tb.addSeparator()
         self.cbo_device = QComboBox()
-        for d in DEVICES:
-            self.cbo_device.addItem(f"{d[0]}  {d[1]}x{d[2]}")
+        for d in DEVICES:                                   # (combo items are not translated by radide.i18n)
+            self.cbo_device.addItem(f"{_device_label(d[0])}  {d[1]}x{d[2]}")
         self.size_bar = MU.SizeBar(self)
         lay.addWidget(self.size_bar)
         self.cbo_device.setToolTip("Device")
@@ -917,8 +942,43 @@ class FlutterDesigner(QWidget):
         return self._project
 
     def scheme(self) -> dict:
-        th = self.screen.data.get("theme") or {}
+        th = self.screen.data.get("theme") or self.app_screen_theme() or {}
         return Q.color_scheme(th.get("seedColor"), self.dark or th.get("brightness") == "dark")
+
+    # ------------------------------------------------------------------ project theme (screens/app.ftheme.json)
+    def app_theme(self) -> dict | None:
+        """The project theme (themes.py), read once; ``refresh_theme()`` reads it again."""
+        if not hasattr(self, "_app_theme"):
+            self._app_theme = None
+            folder = self.project_folder()
+            if folder is not None:
+                try:
+                    from . import themes as TH
+                    self._app_theme = TH.load(folder)
+                except (OSError, ValueError):
+                    self._app_theme = None
+        return self._app_theme
+
+    def app_screen_theme(self) -> dict | None:
+        """The project theme as a per-screen theme (what the Qt canvas shows when the screen has none)."""
+        spec = self.app_theme()
+        if not spec:
+            return None
+        try:
+            from . import themes as TH
+            return TH.screen_theme(spec, "dark" if self.dark or spec.get("mode") == "dark" else "light")
+        except (ValueError, KeyError):
+            return None
+
+    def refresh_theme(self) -> None:
+        """Public: re-read the project theme and redraw the canvas, the inspector swatches and the live preview
+        (called after the App Theme editor saved, see refresh_project_theme)."""
+        self.__dict__.pop("_app_theme", None)
+        spec = self.app_theme()
+        self.canvas.relayout()
+        if self.live is not None:
+            self.live.set_app_theme(spec)
+        self.inspector.inspect(self.selected, force=True)
 
     def screens_list(self) -> list[tuple[str, str]]:
         out = []
@@ -1011,6 +1071,7 @@ class FlutterDesigner(QWidget):
         lv.log.connect(lambda lvl, t: lvl == "error" and self.status(f"Preview: {t[:160]}"))
         lv.rendered.connect(lambda _s, ms: self.lbl_status.setToolTip(f"last frame {ms:.0f} ms after the edit"))
         lv.set_screen(self.preview_screen())
+        lv.set_app_theme(self.app_theme())
         self._push_device()
         lv.start(self.project_folder())
 
@@ -1072,6 +1133,7 @@ class FlutterDesigner(QWidget):
 
     # ------------------------------------------------------------------ selection
     def select(self, nid: str | None, source: str = ""):
+        nid = DW.base_id(nid)              # a preview copy of an item template selects the template
         if nid is not None and self.screen.find(nid) is None:
             nid = None
         changed = nid != self.selected
@@ -1225,7 +1287,46 @@ class FlutterDesigner(QWidget):
                     tmpl = M.new_node("Icon" if s == "icon" else "Text", self.screen,
                                       props={"icon": "Icons.send"} if s == "icon" else {"data": "Label"})
                     patches.append(M.insert(self.screen, nid, tmpl, M.Where(s)))
+            patches += self._ctor_data_patches(node, spec)
         return self.apply_many(patches, "Constructor")
+
+    def _ctor_data_patches(self, node: dict, spec) -> list:
+        """ListView / GridView <-> .builder (children <-> item template) and Text <-> Text.rich (data <-> spans);
+        properties the new constructor does not have are removed."""
+        nid, out = node["id"], []
+        pr = dict(node.get("props") or {})
+        if DW.is_builder(node):
+            kids = list(node.get("children") or [])
+            if kids and not (node.get("slots") or {}).get("itemBuilder"):
+                out.append(M.move(self.screen, kids[0]["id"], nid, M.Where("itemBuilder")))
+                for k in kids[1:]:
+                    out.append(M.delete(self.screen, k["id"]))
+            elif not (node.get("slots") or {}).get("itemBuilder"):
+                tmpl = M.new_node("ListTile", self.screen) if node["type"] == "ListView" else \
+                    M.new_node("Card", self.screen)
+                for n, *_ in M.walk_node(tmpl):
+                    if n.get("type") == "Text":
+                        n["props"] = {"data": {"$code": "'Item ${index + 1}'"}}
+                        break
+                out.append(M.insert(self.screen, nid, tmpl, M.Where("itemBuilder")))
+            if "itemCount" not in pr:
+                out.append(M.set_prop(self.screen, nid, "itemCount", 5))
+        else:
+            tmpl = (node.get("slots") or {}).get("itemBuilder")
+            if isinstance(tmpl, dict) and spec.children:
+                out.append(M.move(self.screen, tmpl["id"], nid, M.Where(index=0)))
+        if node["type"] == "Text":
+            if node.get("ctor") == "rich" and "spans" not in pr:
+                out.append(M.set_prop(self.screen, nid, "spans", [{"text": str(pr.get("data") or "Text")}]
+                                      if isinstance(pr.get("data"), str) else spec.props["spans"].default))
+            elif not node.get("ctor") and "data" not in pr and isinstance(pr.get("spans"), list):
+                text = "".join(str(s.get("text") or "") for s in pr["spans"] if isinstance(s, dict))
+                out.append(M.set_prop(self.screen, nid, "data", text or "Text"))
+        for k, v in pr.items():
+            forced = k in ("items", "itemCount", "spans", "data") and k not in spec.props
+            if k not in spec.props and not M.is_code(v) or forced:
+                out.append(M.set_prop(self.screen, nid, k, None))
+        return out
 
     def set_screen(self, key, value):
         return self.apply(M.set_screen, key, value, text=f"Screen {key}")
@@ -1617,6 +1718,7 @@ class FlutterDesigner(QWidget):
 
     # ------------------------------------------------------------------ inline text edit
     def inline_edit(self, nid: str):
+        nid = DW.base_id(nid)
         node = self.screen.find(nid)
         if node is None:
             return
@@ -1755,7 +1857,7 @@ class FlutterDesigner(QWidget):
         line = 1
         try:
             for i, ln in enumerate(ep.read_text(encoding="utf-8").splitlines(), 1):
-                if re.search(rf"\bvoid\s+{re.escape(name)}\s*\(", ln):
+                if re.search(rf"\b(?:void|String\?)\s+{re.escape(name)}\s*\(", ln):
                     line = i + 1
                     break
         except OSError:

@@ -88,6 +88,27 @@ class RadVariant {
   /// Posture used when the platform cannot tell (tests, previews of a folded cover screen).
   static RadPosture? debugPosture;
 
+  /// Set once a fold / hinge display feature was reported: the device is a foldable (or dual screen), so a
+  /// window without one is shown on its cover screen (or on one screen only) - the folded posture.
+  /// Flutter has no "folded" display feature: Android reports a fold only on the inner screen.
+  static bool foldableSeen = false;
+
+  /// When no fold was seen yet (the app started folded) guess the cover screen from its shape: a very
+  /// narrow, tall window (see [looksLikeCoverScreen]). Set false when the app runs on tall phones only.
+  static bool coverScreenHeuristic = true;
+
+  /// The cover screen of a book foldable (Galaxy Z Fold ~ 23:9): shortest side below 400 dp and the
+  /// longest at least 2.3 times as long. Ordinary phones (19.5:9 - 21:9, 360 - 430 dp wide) do not match.
+  static bool looksLikeCoverScreen(Size s) {
+    final short = s.shortestSide, long = s.longestSide;
+    return short > 0 && short < 400 && long / short >= 2.3;
+  }
+
+  /// Forget what [compute] learnt about the device (tests).
+  static void resetFoldMemory() {
+    foldableSeen = false;
+  }
+
   /// The sizes of [sizes] that match the window of [context] (MediaQuery size + display features).
   static RadVariant of(BuildContext context, List<RadSize> sizes) =>
       compute(MediaQuery.sizeOf(context), MediaQuery.displayFeaturesOf(context), sizes);
@@ -98,8 +119,10 @@ class RadVariant {
     var span = RadSpan.single;
     Axis? fold;
     Rect? hinge;
+    var folds = false;
     for (final f in features) {
       if (f.type != DisplayFeatureType.hinge && f.type != DisplayFeatureType.fold) continue;
+      folds = true;
       final b = f.bounds;
       fold = b.height >= b.width ? Axis.vertical : Axis.horizontal;
       if (f.type == DisplayFeatureType.hinge) {
@@ -112,6 +135,11 @@ class RadVariant {
         }
         if (!b.isEmpty) hinge = b;
       }
+    }
+    if (folds) {
+      foldableSeen = true;
+    } else if (foldableSeen || (coverScreenHeuristic && looksLikeCoverScreen(size))) {
+      posture = RadPosture.folded; // no fold reported: the cover screen of a foldable
     }
     posture = debugPosture ?? posture;
     final o = size.width > size.height ? Orientation.landscape : Orientation.portrait;
@@ -161,10 +189,11 @@ enum RadPaneMode { auto, horizontal, vertical }
 
 enum RadPane { start, end }
 
-/// Two panes: side by side / stacked, split at the hinge or fold of the device when [hingeAware] (the
-/// widget is assumed to fill the window then), else at [ratio]. On a narrow single screen only
-/// [singlePane] is shown.
-class RadTwoPane extends StatelessWidget {
+/// Two panes: side by side / stacked, split at the hinge or fold of the device when [hingeAware] and the
+/// hinge crosses the widget (its window rectangle is converted to the widget's own coordinates, so the
+/// widget does not have to fill the window), else at [ratio]. On a narrow single screen only [singlePane]
+/// is shown.
+class RadTwoPane extends StatefulWidget {
   const RadTwoPane({
     super.key,
     required this.start,
@@ -186,26 +215,68 @@ class RadTwoPane extends StatelessWidget {
   /// Width from which Auto shows both panes on a single screen.
   final double minDualWidth;
 
+  /// The part of [hinge] (window coordinates) that splits a box of [w] x [h] at [origin] (its top-left
+  /// corner in the window): (local hinge, fold direction), or null when the hinge does not cross the box
+  /// from one side to the other with room for a pane on each side. Pure (tests).
+  static (Rect, Axis)? localHinge(Rect hinge, Axis fold, Offset origin, double w, double h) {
+    final r = hinge.shift(-origin);
+    if (fold == Axis.vertical) {
+      final inside = r.left > 0 && r.right < w, crosses = r.top < h && r.bottom > 0;
+      return inside && crosses ? (Rect.fromLTWH(r.left, 0, r.width, h), fold) : null;
+    }
+    final inside = r.top > 0 && r.bottom < h, crosses = r.left < w && r.right > 0;
+    return inside && crosses ? (Rect.fromLTWH(0, r.top, w, r.height), fold) : null;
+  }
+
+  @override
+  State<RadTwoPane> createState() => _RadTwoPaneState();
+}
+
+class _RadTwoPaneState extends State<RadTwoPane> {
+  /// Where the widget is in the window (its top-left corner), measured after each layout.
+  Offset _origin = Offset.zero;
+  bool _measured = false;
+
+  void _measure(Duration _) {
+    if (!mounted) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return;
+    final o = box.localToGlobal(Offset.zero);
+    if (!_measured || (o - _origin).distanceSquared > 0.25) {
+      setState(() {
+        _origin = o;
+        _measured = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final start = widget.start, end = widget.end;
     final features = MediaQuery.displayFeaturesOf(context);
+    Rect? windowHinge;
+    Axis? windowFold;
+    if (widget.hingeAware) {
+      for (final f in features) {
+        final separating = f.type == DisplayFeatureType.hinge ||
+            (f.type == DisplayFeatureType.fold && f.state == DisplayFeatureState.postureHalfOpened);
+        if (separating) {
+          windowHinge = f.bounds;
+          windowFold = f.bounds.height >= f.bounds.width ? Axis.vertical : Axis.horizontal;
+        }
+      }
+      // the hinge is in window coordinates: measure where this widget is after the frame
+      if (windowHinge != null) WidgetsBinding.instance.addPostFrameCallback(_measure);
+    }
     return LayoutBuilder(
       builder: (context, box) {
-        Rect? hinge;
-        Axis? fold;
-        if (hingeAware) {
-          for (final f in features) {
-            final separating = f.type == DisplayFeatureType.hinge ||
-                (f.type == DisplayFeatureType.fold && f.state == DisplayFeatureState.postureHalfOpened);
-            if (separating) {
-              hinge = f.bounds;
-              fold = f.bounds.height >= f.bounds.width ? Axis.vertical : Axis.horizontal;
-            }
-          }
-        }
         final w = box.maxWidth.isFinite ? box.maxWidth : MediaQuery.sizeOf(context).width;
         final h = box.maxHeight.isFinite ? box.maxHeight : MediaQuery.sizeOf(context).height;
-        if (hinge != null && fold != null) {
+        final local = windowHinge != null && windowFold != null
+            ? RadTwoPane.localHinge(windowHinge, windowFold, _origin, w, h)
+            : null;
+        if (local != null) {
+          final (hinge, fold) = local;
           if (fold == Axis.vertical) {
             final a = hinge.left.clamp(0.0, w), gap = hinge.width.clamp(0.0, w - a);
             return Row(
@@ -225,12 +296,12 @@ class RadTwoPane extends StatelessWidget {
             ],
           );
         }
-        var mode = paneMode;
+        var mode = widget.paneMode;
         if (mode == RadPaneMode.auto) {
-          if (w < minDualWidth) return singlePane == RadPane.start ? start : end;
+          if (w < widget.minDualWidth) return widget.singlePane == RadPane.start ? start : end;
           mode = RadPaneMode.horizontal;
         }
-        final r = ratio.clamp(0.05, 0.95);
+        final r = widget.ratio.clamp(0.05, 0.95);
         final a = (r * 1000).round(), b = 1000 - a;
         final kids = <Widget>[Expanded(flex: a, child: start), Expanded(flex: b, child: end)];
         return mode == RadPaneMode.horizontal ? Row(children: kids) : Column(children: kids);

@@ -120,7 +120,7 @@ def Scene_Update(dt):
 - `Destroy(other)` يزيل الكائن من اللعبة.
 - `AddScore(10)` يزيد `game.score`.
 
-## المؤقتات: AddTimer
+## المؤقتات: `AddTimer`
 
 `AddTimer("SpawnTimer", 500)` ينشئ مؤقتًا يستدعي `SpawnTimer_Tick()` كل 500 ملّي ثانية. أوقفه بـ `SpawnTimer.stop()` وشغّله بـ `SpawnTimer.start()`. (يمكنك أيضًا إضافة مؤقت من المصمم.)
 

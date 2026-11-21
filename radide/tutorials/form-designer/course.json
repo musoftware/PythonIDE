@@ -5,7 +5,7 @@
   "title_en": "RAD IDE Guide: The Form Designer",
   "language": "vb-basic",
   "level": "beginner",
-  "description_ar": "دليل عربي خطوة بخطوة لمصمم النماذج: وضع الأدوات وترتيبها، ونافذة الخصائص، والأحداث، والأدوات الشائعة، والقوائم والنماذج المتعددة، و Anchor و Dock، والتكبير، وعناصر التحكم من تصميمك، والترجمة والاتجاه من اليمين إلى اليسار، وحالات Blend والخط الزمني وربط البيانات، ومشروع نهائي.",
+  "description_ar": "دليل عربي خطوة بخطوة لمصمم النماذج: وضع الأدوات وترتيبها، ونافذة الخصائص، والأحداث، والأدوات الشائعة، والقوائم والنماذج المتعددة، و Anchor و Dock، والتكبير، وعناصر التحكم من تصميمك، والترجمة والاتجاه من اليمين إلى اليسار، وحالات Blend والخط الزمني وربط البيانات، ومشروع نهائي، ثم الحركات الجاهزة ومقاسات النافذة (هذا المقاس فقط) وحزم المكونات.",
   "lessons": [
     {"id": "01-designer-surface", "file": "01-designer-surface.md", "title_ar": "سطح التصميم وصندوق الأدوات", "minutes": 25},
     {"id": "02-properties", "file": "02-properties.md", "title_ar": "نافذة الخصائص", "minutes": 25},
@@ -17,6 +17,8 @@
     {"id": "08-user-controls", "file": "08-user-controls.md", "title_ar": "عناصر التحكم من تصميمك (User Controls)", "minutes": 30},
     {"id": "09-localization-rtl", "file": "09-localization-rtl.md", "title_ar": "ترجمة النماذج والاتجاه من اليمين إلى اليسار", "minutes": 30},
     {"id": "10-blend", "file": "10-blend.md", "title_ar": "Blend: الحالات المرئية والخط الزمني وربط البيانات", "minutes": 40},
-    {"id": "11-final-project", "file": "11-final-project.md", "title_ar": "المشروع النهائي: قائمة المهام", "minutes": 45}
+    {"id": "11-final-project", "file": "11-final-project.md", "title_ar": "المشروع النهائي: قائمة المهام", "minutes": 45},
+    {"id": "12-animations-sizes", "file": "12-animations-sizes.md", "title_ar": "الحركات الجاهزة ومقاسات النافذة", "minutes": 40},
+    {"id": "13-component-packages", "file": "13-component-packages.md", "title_ar": "حزم المكونات: أدوات جديدة في صندوق الأدوات", "minutes": 30}
   ]
 }

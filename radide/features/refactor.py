@@ -391,6 +391,31 @@ def run_code_action(win, ed, action: dict, after=None):
         _status(win, f"{action.get('title', 'Action')}: nothing to apply")
 
 
+# Extra light-bulb entries next to the language server's code actions: callables (win, ed, line, col) ->
+# [(title, callback)] (e.g. radide/dotnet/tools/ui.py: "using System.Text;", "Install package ...").
+EXTRA_QUICK_ACTIONS: list = []
+
+
+def _extra_actions(win, ed, line, col) -> list:
+    out = []
+    for fn in list(EXTRA_QUICK_ACTIONS):
+        try:
+            out += list(fn(win, ed, line, col) or [])
+        except Exception:  # noqa: BLE001 - a broken provider must not break the menu
+            continue
+    return out
+
+
+def _add_extra(menu, extras) -> bool:
+    if not extras:
+        return False
+    for title, cb in extras:
+        act = menu.addAction("    " + title)
+        act.triggered.connect(lambda _=False, cb=cb: cb())
+    menu.addSeparator()
+    return True
+
+
 def quick_actions(win, ed, line=None, col=None):
     if ed is None:
         return
@@ -398,14 +423,18 @@ def quick_actions(win, ed, line=None, col=None):
         line, col = ed.getCursorPosition()
     if _client(ed) is None:
         menu = QMenu(win)
+        win._refactor_menu = menu
+        _add_extra(menu, _extra_actions(win, ed, line, col))
         menu.addAction("Rename...", lambda: rename_symbol(win, ed, line, col))
         menu.addAction("Find All References", lambda: find_references(win, ed, line, col))
-        _caret_global(ed, lambda p: menu.exec(p))
+        _caret_global(ed, lambda p: menu.exec(p) if not getattr(win, "_refactor_no_exec", False) else None)
         return
 
     def got(actions, err):
         menu = QMenu(win)
         win._refactor_menu = menu
+        extras = _extra_actions(win, ed, line, col)
+        _add_extra(menu, extras)
         groups = {"quickfix": [], "refactor": [], "source": [], "": []}
         for a in actions:
             kind = a.get("kind", "") if isinstance(a, dict) else ""
@@ -431,7 +460,7 @@ def quick_actions(win, ed, line=None, col=None):
             menu.addSeparator()
         menu.addAction("Rename Symbol...\tF2", lambda: rename_symbol(win, ed, line, col))
         menu.addAction("Find All References\tShift+F12", lambda: find_references(win, ed, line, col))
-        if not actions:
+        if not actions and not extras:
             _status(win, err or "No quick fixes or refactorings here (select code to extract it)")
         _caret_global(ed, lambda p: menu.exec(p) if not getattr(win, "_refactor_no_exec", False) else None)
     request_code_actions(win, ed, line, col, got)

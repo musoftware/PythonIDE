@@ -22,11 +22,16 @@ Pipelines (x64 / x86):
 
     nasm   nasm -f win64|win32 -P anchor -l listing -> .obj  (+ DWARF lines: dwarf.py + as)  -> gcc | ld i386pe
     gas    as --64|--32 -g -> .o                                                              -> gcc | ld i386pe
-    fasm   fasm main.asm _radapp.exe (format PE / PE64)   or   format MS COFF / MS64 COFF -> .obj -> gcc | ld
-    masm   vcvars + ml64 /c /Zi | ml /c /coff /Zi -> .obj -> link /DEBUG (C runtime: msvcrt + legacy_stdio)
+    fasm   fasm -s main.fas main.asm _radapp.exe (format PE / PE64)  (+ DWARF lines added to the exe: linetable.py)
+           or  format MS COFF / MS64 COFF -> .obj (+ DWARF object from the .fas) -> gcc | ld
+    masm   vcvars + ml64 /c /Zi /Fl | ml /c /coff /Zi /Fl -> .obj -> link /DEBUG /MAP (C runtime: msvcrt +
+           legacy_stdio)  (+ DWARF lines from the listing + map added to the exe: linetable.py)
 
-GUI Bridge form projects (NASM x64 only): the form files + modules + _radmain.asm, and the C client radgui.c +
-radasm.c compiled by gcc in the same command.
+GUI Bridge form projects (radide/asm/formgen.py flavors): the form files + modules + _radmain.asm / _radmain.s
+and the C client radgui.c + radasm.c -
+    NASM x64, FASM x64 (MS64 COFF objects), GNU as x64: compiled and linked by gcc in one command;
+    NASM x86: radgui.c / radasm.c / radcrt32.c compiled with gcc -m32 -c, linked by GNU ld -m i386pe against
+              ucrtbase.dll, ws2_32 (an import library made by dlltool) and kernel32 of SysWOW64.
 """
 from __future__ import annotations
 
@@ -37,7 +42,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import dwarf, errors
+from . import dwarf, errors, linetable
 from . import toolchain as tc
 
 BUILD_DIR = "_build"
@@ -52,6 +57,9 @@ DEFAULTS = {
     "asm-gas": {"assembler": "gas", "arch": "x64", "linker": "gcc", "entry": "main"},
 }
 CODE_EXT = {"nasm": (".asm", ".nasm"), "fasm": (".asm", ".fasm"), "masm": (".asm",), "gas": (".s", ".S", ".asm")}
+DWARF_OK = "dwarf.ok"          # _build marker: the last build gave the program DWARF lines (FASM / MASM)
+WS2_32_X86 = ("WSAStartup@8", "socket@12", "connect@12", "closesocket@4", "send@16", "recv@16", "getaddrinfo@16",
+              "freeaddrinfo@4")
 
 
 def settings_for(project, plugin_id: str | None = None) -> dict:
@@ -116,17 +124,28 @@ class Builder:
     def form_sources(self) -> list[str]:
         forms = [f for f in self.project.forms
                  if getattr(self.project, "form_language", lambda _f: self.project.language)(f).startswith("asm-")]
-        return [f"{f}.asm" for f in forms]
+        ext = ".s" if self.assembler == "gas" else ".asm"
+        return [f"{f}{ext}" for f in forms]
 
     def is_forms(self) -> bool:
         return bool(self.form_sources())
+
+    @property
+    def flavor(self) -> str:
+        from .formgen import flavor_for
+        return flavor_for(self.s, self.folder, self.project.forms)
+
+    @property
+    def main_file(self) -> str:
+        from .formgen import main_name
+        return main_name(self.flavor)
 
     def sources(self) -> list[str]:
         exts = CODE_EXT.get(self.assembler, (".asm",))
         files = self.form_sources()
         files += [m for m in self.project.modules if m.endswith(exts) and m not in files]
         if self.is_forms():
-            files.append("_radmain.asm")
+            files.append(self.main_file)
         return [f for f in files if (self.folder / f).is_file()]
 
     def env(self) -> dict:
@@ -178,7 +197,7 @@ class Builder:
             raise BuildError(f"nasm failed on {src}")
         self.listings[src] = lst
         objs = [str(obj)]
-        if self.debug and src != "_radmain.asm":
+        if self.debug and src != self.main_file:
             dbg = self._dwarf_object(src, lst)
             if dbg:
                 objs.append(dbg)
@@ -229,16 +248,82 @@ class Builder:
                 continue
         return srcs[0] if srcs else ""
 
-    def _fasm(self, src: str, out: Path) -> None:
+    def _fasm(self, src: str, out: Path) -> Path | None:
+        """Assemble *src* into *out*; returns the symbolic information file (.fas) of a debug build."""
         fasm = self.need("fasm")
         if not tc.fasm_include():
             self.log("(FASM's INCLUDE folder was not found: win32a.inc / win64a.inc will be missing)")
-        if self.run([fasm, src, str(out)]) != 0:
+        fas = self.bdir / f"{Path(src).stem}.fas" if self.debug else None
+        argv = [fasm] + (["-s", str(fas)] if fas else []) + [src, str(out)]
+        if self.run(argv) != 0:
             raise BuildError(f"fasm failed on {src}")
+        return fas if fas and fas.is_file() else None
+
+    def _fasm_lines_exe(self, fas: Path | None, exe: Path) -> None:
+        """DWARF lines of a FASM format PE / PE64 program, added to the exe (radide/asm/linetable.py)."""
+        if fas is None:
+            return
+        info = linetable.parse_fas(fas)
+        units = linetable.fasm_pe_units(info, exe, self.folder) if info else []
+        if units and linetable.inject(exe, units, self.log):
+            self._mark_dwarf()
+        elif self.debug:
+            self.log("(no line debug information for the FASM program: debugging by instruction)")
+
+    def _fasm_lines_obj(self, fas: Path | None, src: str) -> str:
+        """DWARF lines of a FASM MS64 COFF / MS COFF object as an object linked next to it ("" = none)."""
+        gas = tc.mingw("as")
+        info = linetable.parse_fas(fas) if fas else None
+        units = linetable.fasm_coff_units(info, self.folder) if info else []
+        if not gas or not units:
+            return ""
+        stem = Path(src).stem
+        s_file, o_file = self.bdir / f"{stem}.dbg.s", self.bdir / f"{stem}.dbg.o"
+        s_file.write_text(linetable.gas_source(units, 64 if self.arch == "x64" else 32, src), encoding="utf-8")
+        r = subprocess.run([gas, "--64" if self.arch == "x64" else "--32", "-o", str(o_file), str(s_file)],
+                           cwd=str(self.folder), capture_output=True, text=True, creationflags=NO_WINDOW)
+        if r.returncode != 0:
+            self.log(f"(no line debug information for {src}: {(r.stdout + r.stderr).strip()[:300]})")
+            return ""
+        return str(o_file)
+
+    def _mark_dwarf(self) -> None:
+        try:
+            (self.bdir / DWARF_OK).write_text("1", encoding="utf-8")
+        except OSError:
+            pass
 
     # ------------------------------------------------------------ link
     def _libs(self) -> list[str]:
         return [str(x) for x in (self.s.get("libs") or []) if str(x).strip()]
+
+    def _link_forms32(self, objs: list[str], exe: Path) -> None:
+        """A 32-bit GUI Bridge program: the C client compiled with gcc -m32 -c (the MinGW-w64 toolchain has no
+        32-bit libraries), linked by GNU ld against ucrtbase.dll / ws2_32 / kernel32 of SysWOW64."""
+        gcc, ld = self.need("gcc"), self.need("ld")
+        flags = ["-m32", "-O2", "-fno-asynchronous-unwind-tables", "-fno-stack-protector",
+                 "-mincoming-stack-boundary=2"] + (["-g"] if self.debug else [])
+        cobjs = []
+        for c in ("radgui.c", "radasm.c", "radcrt32.c"):
+            o = self.bdir / f"{Path(c).stem}32.o"
+            if self.run([gcc] + flags + ["-I", str(self.folder), "-c", c, "-o", str(o)]) != 0:
+                raise BuildError(f"gcc -m32 failed on {c}")
+            cobjs.append(str(o))
+        lib = self.bdir / "libws2_32_x86.a"
+        if not lib.is_file():
+            dlltool = tc.mingw("dlltool")
+            if not dlltool:
+                raise BuildError("dlltool (MinGW-w64) was not found: it makes the 32-bit ws2_32 import library")
+            deff = self.bdir / "ws2_32_x86.def"
+            deff.write_text("LIBRARY ws2_32.dll\nEXPORTS\n" + "\n".join(WS2_32_X86) + "\n", encoding="utf-8")
+            if self.run([dlltool, "--as-flags=--32", "-m", "i386", "-k", "-d", str(deff), "-l", str(lib)]) != 0:
+                raise BuildError("dlltool failed (32-bit ws2_32 import library)")
+        argv = [ld, "-m", "i386pe", "--subsystem", "console", "-e", self.s.get("entry") or "_main",
+                "--enable-stdcall-fixup"] + (["-s"] if not self.debug else []) + ["-o", str(exe)] + objs + cobjs + \
+            ["-L", str(self.bdir), "-lws2_32_x86", "-L", system_dll_dir("x86"), "-lucrtbase", "-lkernel32",
+             "-luser32"] + [f"-l{lib}" for lib in self._libs()]
+        if self.run(argv) != 0:
+            raise BuildError("link failed (ld, 32-bit GUI Bridge program)")
 
     def _link_gcc(self, objs: list[str], exe: Path) -> None:
         gcc = self.need("gcc")
@@ -289,16 +374,25 @@ class Builder:
             obj = f"{BUILD_DIR}\\{Path(s).stem}.obj"
             objs.append(obj)
             flags = "/nologo /c" + (" /coff" if self.arch == "x86" else "") + (" /Zi" if self.debug else "")
+            if self.debug:                                  # listing: the source lines' offsets (linetable.py)
+                flags += f' /Fl"{BUILD_DIR}\\{Path(s).stem}.lst"'
             steps.append(f'{mlname} {flags} /Fo"{obj}" "{s}"')
         entry = self.s.get("entry") or "main"
         libs = " ".join(f"{lib}.lib" for lib in self._libs())
         sub = "WINDOWS" if self.s.get("subsystem") == "windows" else "CONSOLE"
-        steps.append(f'link /nologo{" /DEBUG" if self.debug else ""} /SUBSYSTEM:{sub} /OUT:"{exe.name}" ' +
+        dbg = f' /DEBUG /INCREMENTAL:NO /MAP:"{BUILD_DIR}\\_radapp.map"' if self.debug else ""
+        steps.append(f'link /nologo{dbg} /SUBSYSTEM:{sub} /OUT:"{exe.name}" ' +
                      " ".join(f'"{o}"' for o in objs) +
                      (f" /ENTRY:{entry}" if entry not in ("main", "_main") else "") +
                      f" msvcrt.lib legacy_stdio_definitions.lib ucrt.lib vcruntime.lib kernel32.lib user32.lib {libs}")
         if self.run(" && ".join(steps), shell=True) != 0:
             raise BuildError("MASM build failed")
+        if self.debug:                       # CodeView / PDB is for Visual Studio; gdb gets DWARF lines too
+            units = linetable.masm_units(srcs, self.bdir, self.folder, self.bdir / "_radapp.map")
+            if units and linetable.inject(exe, units, self.log):
+                self._mark_dwarf()
+            else:
+                self.log("(no line debug information for gdb: the MASM listing / map could not be read)")
 
     # ------------------------------------------------------------ build
     def line_for_offset(self, file: str, section: str, offset: int) -> int:
@@ -324,9 +418,13 @@ class Builder:
         ok = False
         message = ""
         try:
-            if self.is_forms() and (self.assembler != "nasm" or self.arch != "x64"):
-                raise BuildError("Assembly forms (GUI Bridge) need NASM x64: set \"assembler\": \"nasm\", "
-                                 "\"arch\": \"x64\" in project.radproj")
+            if self.is_forms() and not self.flavor:
+                raise BuildError("Assembly forms (GUI Bridge) need NASM (x64 / x86), FASM x64 or GNU as x64: "
+                                 "check \"assembler\" / \"arch\" in project.radproj")
+            try:
+                (self.bdir / DWARF_OK).unlink(missing_ok=True)
+            except OSError:
+                pass
             self._prepare_forms()
             srcs = self.sources()
             if not srcs:
@@ -340,20 +438,42 @@ class Builder:
                     raise BuildError(f"{EXE_NAME} is in use (is the program still running?)")
             if self.assembler == "masm":
                 self._masm(srcs, exe)
+            elif self.assembler == "fasm" and self.is_forms():
+                objs = []                     # every form file / module with a format line is its own object
+                for s in srcs:
+                    if s not in self.form_sources() and s != self.main_file and not self._fasm_is_coff(s):
+                        continue
+                    obj = self.bdir / f"{Path(s).stem}.obj"
+                    fas = self._fasm(s, obj)
+                    objs.append(str(obj))
+                    if self.debug and s != self.main_file:
+                        dbg = self._fasm_lines_obj(fas, s)
+                        if dbg:
+                            objs.append(dbg)
+                            self._mark_dwarf()
+                self._link_gcc(objs, exe)
             elif self.assembler == "fasm":
                 main = self._fasm_main()
-                text = (self.folder / main).read_text(encoding="utf-8", errors="replace")
-                if re.search(r"^\s*format\s+(MS64\s+COFF|MS\s+COFF|COFF)\b", text, re.M | re.I):
+                if self._fasm_is_coff(main):
                     obj = self.bdir / f"{Path(main).stem}.obj"
-                    self._fasm(main, obj)
-                    self._link([str(obj)], exe)
+                    fas = self._fasm(main, obj)
+                    objs = [str(obj)]
+                    dbg = self._fasm_lines_obj(fas, main) if self.debug else ""
+                    if dbg:
+                        objs.append(dbg)
+                        self._mark_dwarf()
+                    self._link(objs, exe)
                 else:
-                    self._fasm(main, exe)
+                    fas = self._fasm(main, exe)
+                    self._fasm_lines_exe(fas, exe)
             else:
                 objs: list[str] = []
                 for s in srcs:
                     objs += self._nasm(s) if self.assembler == "nasm" else self._gas(s)
-                self._link(objs, exe)
+                if self.is_forms() and self.flavor == "nasm32":
+                    self._link_forms32(objs, exe)
+                else:
+                    self._link(objs, exe)
             ok = exe.is_file()
             if not ok:
                 raise BuildError(f"{EXE_NAME} was not produced")
@@ -363,7 +483,7 @@ class Builder:
             self.log(f"Build failed: {message}")
         diags = errors.parse("\n".join(self.output), self.folder, self.line_for_offset)
         try:
-            errors.locate_unresolved(diags, self.folder, [s for s in self.sources() if s != "_radmain.asm"])
+            errors.locate_unresolved(diags, self.folder, [s for s in self.sources() if s != self.main_file])
         except OSError:
             pass
         if not ok and not any(d.severity == "Error" for d in diags):
@@ -375,6 +495,15 @@ class Builder:
         except OSError:
             pass
         return ok
+
+    def _fasm_is_coff(self, src: str) -> bool:
+        try:
+            text = (self.folder / src).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return False
+        if re.search(r"^\s*include\s+['\"]radgui_fasm\.inc['\"]", text, re.M | re.I):
+            return True                       # radgui_fasm.inc starts with format MS64 COFF
+        return bool(re.search(r"^\s*format\s+(MS64\s+COFF|MS\s+COFF|COFF)\b", text, re.M | re.I))
 
     def _link(self, objs: list[str], exe: Path) -> None:
         linker = self.s.get("linker") or "gcc"
@@ -394,7 +523,8 @@ class Builder:
             return
         try:
             from ..languages import get_plugin
-            get_plugin("asm-nasm").prepare(self.folder, self.project)
+            get_plugin(self.plugin_id if self.plugin_id.startswith("asm-") else "asm-nasm").prepare(
+                self.folder, self.project)
         except Exception as e:  # noqa: BLE001 - reported as a build error
             raise BuildError(f"cannot generate the GUI Bridge files: {e}")
 
@@ -410,8 +540,8 @@ class Builder:
         exe = tc.find(tool)
         if not exe:
             return out
-        srcs = [s for s in self.sources() if s != "_radmain.asm"]
-        if self.assembler == "fasm":
+        srcs = [s for s in self.sources() if s != self.main_file]
+        if self.assembler == "fasm" and not self.is_forms():
             srcs = [self._fasm_main()] if srcs else []
         for src in srcs:
             path = self.folder / src

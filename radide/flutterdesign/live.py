@@ -51,6 +51,15 @@ DEVICES = [
 ]
 
 
+def _tr_name(name: str) -> str:
+    """A device name of DEVICES in the IDE language."""
+    try:
+        from ..i18n import tr
+        return tr(name)
+    except Exception:  # noqa: BLE001 - no catalog
+        return name
+
+
 # ======================================================================================== host build
 _FLUTTER_HINTS = [str(Path(p) / "bin" / "flutter.bat") for p in (r"C:\flutter", r"C:\src\flutter", r"C:\tools\flutter")]
 _FLUTTER_HINTS.insert(2, str(Path.home() / "flutter" / "bin" / "flutter.bat"))
@@ -855,8 +864,8 @@ class PreviewPane(QWidget):
         bar.setSpacing(4)
         self.cbo_device = QComboBox()
         self.cbo_device.setToolTip("Device size")
-        for name, w, h, pf in DEVICES:
-            self.cbo_device.addItem(f"{name}  {w}x{h}", (w, h, pf))
+        for name, w, h, pf in DEVICES:                      # (combo items are not translated by radide.i18n)
+            self.cbo_device.addItem(f"{_tr_name(name)}  {w}x{h}", (w, h, pf))
         self.btn_rotate = QToolButton(text="Rotate")
         self.btn_rotate.setToolTip("Portrait / landscape")
         self.chk_dark = QCheckBox("Dark")

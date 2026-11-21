@@ -1,7 +1,9 @@
 // RatingBar - Flutter runtime of the RatingBar component package.
-// Copied into lib/ and exported from lib/radapp.dart by RAD IDE; the generated screen creates
-//   RatingBar(value: 3, maxStars: 5, readOnly: false, starColor: '#FFB400', emptyColor: '#C8CDD5',
-//             onChanged: () { _code.rate1_ValueChanged(); })
+// Copied into lib/ and exported from lib/radapp.dart (phone forms) or imported by the screen (Flutter designer)
+// by RAD IDE; the generated screen creates
+//   RatingBar(value: rate1.value, maxStars: rate1.maxStars, readOnly: rate1.readOnly, starColor: rate1.starColor,
+//             emptyColor: rate1.emptyColor, onChanged: (v) { rate1['Value'] = v; _code.rate1_ValueChanged(); })
+// where rate1 is the control's state object: user code reads rate1.value and sets rate1.value = 4.
 import 'package:flutter/material.dart';
 
 Color _radColor(String hex, Color fallback) {
@@ -20,7 +22,9 @@ class RatingBar extends StatefulWidget {
   final bool readOnly;
   final String starColor;
   final String emptyColor;
-  final VoidCallback? onChanged;
+
+  /// Called with the new value when the user taps a star (or code calls setValue / reset).
+  final ValueChanged<int>? onChanged;
 
   @override
   State<RatingBar> createState() => RatingBarState();
@@ -29,11 +33,17 @@ class RatingBar extends StatefulWidget {
 class RatingBarState extends State<RatingBar> {
   late int value = widget.value;
 
+  @override
+  void didUpdateWidget(RatingBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) value = widget.value;     // set from code (rate1.value = 4)
+  }
+
   void setValue(int v) {
     v = v.clamp(0, widget.maxStars);
     if (v == value) return;
     setState(() => value = v);
-    widget.onChanged?.call();
+    widget.onChanged?.call(v);
   }
 
   void reset() => setValue(0);
@@ -47,6 +57,7 @@ class RatingBarState extends State<RatingBar> {
       return Row(mainAxisSize: MainAxisSize.min, children: [
         for (var i = 1; i <= widget.maxStars; i++)
           GestureDetector(
+            key: ValueKey('star$i'),
             onTap: widget.readOnly ? null : () => setValue(i == value && i == 1 ? 0 : i),
             child: Icon(Icons.star, size: size, color: i <= value ? on : off),
           ),
