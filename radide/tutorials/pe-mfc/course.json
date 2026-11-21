@@ -1,0 +1,14 @@
+{
+  "id": "pe-mfc",
+  "title_ar": "تعديل موارد برامج ويندوز (EXE) وأحداث MFC",
+  "title_en": "Editing Windows Program Resources (EXE) and MFC Events",
+  "language": "cpp-pe",
+  "level": "intermediate",
+  "description_ar": "دورة عربية قصيرة عن منضدة موارد PE / MFC في RAD IDE: ماذا يوجد داخل ملف .exe أو .dll، وتعديل النوافذ الحوارية بالمصمم المرئي، والقوائم وجداول النصوص ومعلومات الإصدار والأيقونات، والتصدير إلى ملف .rc، ثم قراءة كود C / C++ المفكك وجداول رسائل MFC التي تربط الأزرار والقوائم بمعالجاتها، وإعادة توجيه معالج حدث، والحفظ الآمن في ملف جديد. للأغراض التعليمية ولبرامجك أنت فقط.",
+  "lessons": [
+    {"id": "01-inside-exe", "file": "01-inside-exe.md", "title_ar": "ماذا يوجد داخل ملف EXE؟ الرأس والأقسام والموارد", "minutes": 30},
+    {"id": "02-dialog-designer", "file": "02-dialog-designer.md", "title_ar": "تعديل النوافذ الحوارية بالمصمم المرئي", "minutes": 40},
+    {"id": "03-menus-strings-rc", "file": "03-menus-strings-rc.md", "title_ar": "القوائم وجداول النصوص والإصدار وملف .rc", "minutes": 40},
+    {"id": "04-mfc-events-code", "file": "04-mfc-events-code.md", "title_ar": "أحداث MFC والكود المفكك والحفظ الآمن", "minutes": 50}
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "workbench-api",
+  "publisher": "radide-test",
+  "displayName": "RAD IDE Test: Workbench API",
+  "description": "Test extension for the RAD IDE extension host: FileSystemProvider + workspace.fs, vscode.diff with editor/title accept / reject (like Claude Code), tabGroups, URI handler, file decorations, process / pseudo terminals with shell integration, tasks, authentication, notebooks, custom editors, visible ranges.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "engines": { "vscode": "^1.80.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "wbTest.report", "title": "Workbench Test: Report" },
+      { "command": "wbTest.run", "title": "Workbench Test: Run Step" },
+      { "command": "wbTest.acceptDiff", "title": "Accept Proposed Changes", "icon": "$(check)" },
+      { "command": "wbTest.rejectDiff", "title": "Reject Proposed Changes", "icon": "$(close)" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "wbTest.acceptDiff", "when": "wbTest.viewingDiff && resourceScheme == wbmem", "group": "navigation@-20" },
+        { "command": "wbTest.rejectDiff", "when": "wbTest.viewingDiff && resourceScheme == wbmem", "group": "navigation@-19" }
+      ],
+      "commandPalette": [
+        { "command": "wbTest.acceptDiff", "when": "wbTest.viewingDiff" },
+        { "command": "wbTest.rejectDiff", "when": "wbTest.viewingDiff" }
+      ]
+    },
+    "customEditors": [
+      { "viewType": "wbTest.custom", "displayName": "WB Custom", "selector": [{ "filenamePattern": "*.wbc" }], "priority": "default" }
+    ],
+    "notebooks": [
+      { "type": "wbnb", "displayName": "WB Notebook", "selector": [{ "filenamePattern": "*.wbnb" }] }
+    ],
+    "terminal": {
+      "profiles": [{ "id": "wbTest.profile", "title": "WB Profile Terminal" }]
+    }
+  }
+}

@@ -219,7 +219,7 @@ r = call(lambda cb: svc.execute("helloCommands.insertDate", [], cb), 15)
 check(wait(lambda: ed.text().startswith("2026-01-01"), 5), "text editor command (TextEditorEdit -> applyEdit)", ed.text()[:40])
 state = call(lambda cb: svc.execute("helloCommands.state", [], cb), 15)
 check(isinstance(state, dict) and state.get("changes", 0) >= 1, "onDidChangeTextDocument fed from the IDE", state)
-check(any(a == "window.createWebviewPanel" for _e, a in svc.unsupported), "unsupported API fails softly + logged",
+check(any(a == "window.createWebviewTextEditorInset" for _e, a in svc.unsupported), "unsupported API fails softly + logged",
       svc.unsupported)
 menu_items = []
 from PyQt6.QtWidgets import QMenu  # noqa: E402

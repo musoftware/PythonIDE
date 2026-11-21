@@ -1,0 +1,124 @@
+// MiniMfc test program resources (compiled with rc.exe by build.py)
+#include <windows.h>
+#include "resource.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+IDI_APP     ICON    "app.ico"
+IDB_LOGO    BITMAP  "logo.bmp"
+IDR_MAINFRAME BITMAP "toolbar.bmp"
+1 24 "minimfc.manifest"
+IDR_NOTES   RCDATA  { "RAD IDE test data\0", 0x1234, 0x5678 }
+
+IDR_MAINFRAME TOOLBAR 16, 15
+BEGIN
+    BUTTON      ID_FILE_HELLO
+    SEPARATOR
+    BUTTON      ID_EDIT_CLEAR
+    BUTTON      ID_HELP_ABOUT
+END
+
+IDR_MAINMENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Hello\tCtrl+H",          ID_FILE_HELLO
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                   ID_FILE_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "&Clear",                  ID_EDIT_CLEAR
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&About MiniMfc...",       ID_HELP_ABOUT
+    END
+END
+
+IDR_ACCEL ACCELERATORS
+BEGIN
+    "H",            ID_FILE_HELLO,          VIRTKEY, CONTROL
+    VK_F1,          ID_HELP_ABOUT,          VIRTKEY
+    VK_DELETE,      ID_EDIT_CLEAR,          VIRTKEY, SHIFT
+END
+
+IDD_MAIN DIALOGEX 0, 0, 260, 170
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX
+CAPTION "MiniMfc Test Dialog"
+MENU IDR_MAINMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Name:", IDC_STATIC, 10, 12, 30, 8
+    EDITTEXT        IDC_EDIT1, 45, 10, 120, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "Button &1", IDC_BUTTON1, 175, 9, 75, 16
+    PUSHBUTTON      "Button &2", IDC_BUTTON2, 175, 29, 75, 16
+    PUSHBUTTON      "&Info", IDC_INFO, 175, 49, 75, 16
+    COMBOBOX        IDC_COMBO1, 45, 30, 120, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Remember me", IDC_CHECK1, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 45, 50, 80, 10
+    GROUPBOX        "Size", IDC_STATIC, 10, 66, 155, 28
+    CONTROL         "Small", IDC_RADIO1, "Button", BS_AUTORADIOBUTTON | WS_GROUP, 18, 78, 40, 10
+    CONTROL         "Medium", IDC_RADIO2, "Button", BS_AUTORADIOBUTTON, 62, 78, 45, 10
+    CONTROL         "Large", IDC_RADIO3, "Button", BS_AUTORADIOBUTTON, 112, 78, 45, 10
+    LISTBOX         IDC_LIST1, 10, 100, 155, 40, LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Ready", IDC_STATUS, 10, 148, 240, 10, SS_SUNKEN
+    DEFPUSHBUTTON   "OK", IDOK, 175, 100, 75, 16
+    PUSHBUTTON      "Cancel", IDCANCEL, 175, 120, 75, 16
+END
+
+IDD_ABOUT DIALOG 0, 0, 180, 70
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About MiniMfc"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    ICON            IDI_APP, IDC_STATIC, 10, 10, 20, 20
+    LTEXT           "MiniMfc 1.0 - a test program for RAD IDE", IDC_STATIC, 40, 12, 130, 18
+    DEFPUSHBUTTON   "OK", IDOK, 65, 45, 50, 14
+END
+
+IDD_MAIN DLGINIT
+BEGIN
+    IDC_COMBO1, 0x403, 4, 0
+0x6552, 0x0064,
+    IDC_COMBO1, 0x403, 6, 0
+0x7247, 0x6565, 0x006e,
+    IDC_COMBO1, 0x403, 5, 0
+0x6c42, 0x6575, "\000"
+    0
+END
+
+STRINGTABLE
+BEGIN
+    IDS_HELLO       "Hello from button 1"
+    IDS_BYE         "Button 2 says bye"
+    IDS_APPNAME     "MiniMfc"
+    IDS_RADIO       "Radio clicked"
+END
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,2,3,4
+ PRODUCTVERSION 1,2,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "RAD IDE Tests"
+            VALUE "FileDescription", "MiniMfc test program"
+            VALUE "FileVersion", "1.2.3.4"
+            VALUE "InternalName", "MiniMfc"
+            VALUE "OriginalFilename", "MiniMfc.exe"
+            VALUE "ProductName", "MiniMfc"
+            VALUE "ProductVersion", "1.2.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

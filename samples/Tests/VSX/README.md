@@ -93,7 +93,7 @@ These test extensions are written for RAD IDE (MIT) and packed into .vsix files 
 
 | Folder | What it exercises |
 |---|---|
-| `hello-commands` | commands, status bar, messages, quick pick, input box, output channel, configuration, globalState, document events, completion / hover / definition / formatting / code action providers, a diagnostic collection, `setLanguageConfiguration`, a tree view, editor/context + commandPalette menus with `when`, an unsupported API (webview) |
+| `hello-commands` | commands, status bar, messages, quick pick, input box, output channel, configuration, globalState, document events, completion / hover / definition / formatting / code action providers, a diagnostic collection, `setLanguageConfiguration`, a tree view, editor/context + commandPalette menus with `when`, an unsupported (proposed) API, `createWebviewTextEditorInset` |
 | `mini-lsp` | the standard `vscode-languageclient/node` client (`TransportKind.ipc`) + a `vscode-languageserver` server (`server.js`): completion, hover, push diagnostics, formatting; language `minilang` (`.mini`) |
 | `mini-debug` | `contributes.debuggers` with `program` + `runtime: node` (`adapter.js`, a tiny DAP adapter), a configuration provider filling an empty configuration from the active editor, a `${command:PickProgram}` variable, an inline adapter (`DebugAdapterInlineImplementation`, setting `miniDebug.inline`), custom DAP events |
 
@@ -122,3 +122,19 @@ QSettings: organisation `RADIDE-TEST`, application `RADIDE-TEST-VSXQA` (own regi
 clears `RADIDE-TEST\RADIDE-TEST` at the same time cannot wipe the theme setting mid-run); cleared at the end.
 Use `--onscreen` for screenshots of Monaco (offscreen `widget.grab()` of web views is blank).
 Checks: 61.
+
+## Workbench APIs (the former no-op mocks) - `test_vsx_workbench.py`
+
+    python samples\Tests\VSX\test_vsx_workbench.py <out_dir> [Claude Code extension folder or .vsix]
+
+Code under test: `radide/vsx/host/workbench.js` (FileSystemProvider registry + `workspace.fs` routing, `window.tabGroups`,
+`vscode.diff`, process / Pseudoterminal terminals with shell integration), `radide/vsx/host/services.js` (URI handlers,
+file decorations, authentication, tasks, custom editors, notebooks, comments / tests / scm / chat objects) and
+`radide/vsx/workbench_ui.py` (Diff tabs with the extensions' `editor/title` buttons, editable temp copies of virtual
+documents, the "Extension Terminals" dock, Extensions > Open Extension URI..., decorations on editor tabs, Monaco
+visible ranges). Test extension `workbench-api/` (MIT, written for this test). With a Claude Code extension (an
+unpacked folder is packed without its 370 MB CLI binary) the test also plays the CLI: `claude_open_diff.js` reads the
+extension's lock file (`CLAUDE_CONFIG_DIR` is a scratch folder), calls the MCP tool `openDiff`, clicks
+"Accept Proposed Changes" on the Diff tab, expects `FILE_SAVED` + the contents, then calls `close_tab`.
+Scratch `RADIDE_VSX_ROOT`, `RADIDE-TEST` QSettings (cleared at the end), `RADIDE_NO_BROWSER=1`, `widget.grab()` only.
+Checks: 74 (86 with Claude Code).

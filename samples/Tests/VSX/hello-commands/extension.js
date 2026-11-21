@@ -124,7 +124,7 @@ function activate(context) {
   }));
 
   // an unsupported API must not break activation
-  try { vscode.window.createWebviewPanel('x', 'x', vscode.ViewColumn.One, {}); } catch (e) { out.appendLine('webview threw: ' + e); }
+  try { vscode.window.createWebviewTextEditorInset(undefined, 0, 1, {}); } catch (e) { out.appendLine('inset threw: ' + e); }   // a proposed API RAD IDE does not have
   return { hello: (who) => `${vscode.workspace.getConfiguration('helloCommands').get('greeting')} ${who}` };
 }
 

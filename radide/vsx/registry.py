@@ -214,9 +214,10 @@ def _platform_ok(e: dict, plat: str) -> bool:
 
 
 def pick_version(ext_id: str, level: str | None = None, *, allow_prerelease: bool = False,
-                 refresh: bool = False, version: str | None = None) -> dict | None:
+                 refresh: bool = False, version: str | None = None,
+                 ignore_engines: bool = False) -> dict | None:
     """The newest stable entry for this machine whose engines.vscode accepts the emulated API level
-    (or exactly ``version`` when given). None when nothing is compatible."""
+    (or exactly ``version`` when given; any engines when ignore_engines). None when nothing fits."""
     level = level or api_level()
     plat = target_platform()
     entries = [e for e in all_versions(ext_id, refresh=refresh) if _platform_ok(e, plat)]
@@ -229,14 +230,15 @@ def pick_version(ext_id: str, level: str | None = None, *, allow_prerelease: boo
     for e in entries:
         if not allow_prerelease and (e.get("preRelease") or is_prerelease(e.get("version", ""))):
             continue
-        if engine_compatible((e.get("engines") or {}).get("vscode", ""), level):
+        if ignore_engines or engine_compatible((e.get("engines") or {}).get("vscode", ""), level):
             return e
     return None
 
 
 def latest_entry(ext_id: str, *, refresh: bool = False) -> dict | None:
     """The newest stable entry for this machine regardless of engines (for 'install anyway')."""
-    return pick_version(ext_id, "999.0.0", refresh=refresh)
+    # not a huge level: '^1.94.0' means <2.0.0, so "999.0.0" rejected every version
+    return pick_version(ext_id, refresh=refresh, ignore_engines=True)
 
 
 def download_url(entry: dict) -> str:

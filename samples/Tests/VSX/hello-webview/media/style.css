@@ -1,0 +1,2 @@
+body { background: var(--vscode-editor-background); color: var(--vscode-foreground); }
+#out { font-family: var(--vscode-editor-font-family); padding: 8px; border: 1px solid var(--vscode-widget-border); }

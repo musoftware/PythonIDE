@@ -6,7 +6,7 @@
   * mirrors every Monaco editor into the host (document/open|change|save|close, active editor, selection);
   * shows the UI the extensions ask for: messages (with buttons), quick picks, input boxes, open / save
     dialogs, output channels (an "Extension Output" dock), status bar items, progress, terminals
-    (the IDE terminal), snippets, decorations;
+    (the "Extension Terminals" dock), snippets, decorations, diff tabs, tab groups, URI handlers (workbench_ui.py);
   * applies workspace edits, saves documents, keeps VS Code settings (contrib_configuration) in sync;
   * routes language features: editors whose language has extension providers get a CompositeClient in
     ``editor.lsp`` (lsp_client.py) - completion, hover, definition, signature help, formatting, code actions,
@@ -236,11 +236,15 @@ class VsxService(QObject):
         self._fallback_done: set[str] = set()
         self.output = OutputPanel()
         self.dock = None
+        from .webview_ui import WebviewManager
+        self.webviews = WebviewManager(self)
         self.host.notification.connect(self._on_notification)
         self.host.stderr.connect(lambda t: self.output.append(self.HOST_CHANNEL, t))
         self.host.stopped.connect(self._on_stopped)
         self.host.started.connect(self._on_started)
         self._register_handlers()
+        from .workbench_ui import WorkbenchUI
+        self.workbench = WorkbenchUI(self)          # diffs, tabs, extension terminals, URIs, file decorations
 
     # ------------------------------------------------------------ logging / UI helpers
     def log(self, text: str):
@@ -348,7 +352,8 @@ class VsxService(QObject):
         params = {"extensions": [{"id": e.id, "path": str(e.path), "packageJSON": e.package_json} for e in self.extensions],
                   "workspaceFolders": self.folders(), "settings": self.settings(), "storageRoot": self._storage_root(),
                   "appRoot": str(Path(__file__).resolve().parents[1]), "language": lang, "apiVersion": API_LEVEL,
-                  "themeKind": kind, "languages": languages}
+                  "themeKind": kind, "languages": languages,
+                  "webviewBase": self.webviews.server.base, "webviewOrigin": self.webviews.server.origin}
         self._synced.clear()
         self._active_sent = None                 # a new host knows nothing: send the active editor again
         ok = self.host.start(params, node)
@@ -392,6 +397,14 @@ class VsxService(QObject):
         self.log(f"extension host running (pid {res.get('pid')}, node {res.get('node')})")
 
     def _on_stopped(self, code):
+        try:
+            self.webviews.reset()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            self.workbench.reset()
+        except Exception:  # noqa: BLE001
+            pass
         if not self.host._stopping:
             self.log(f"extension host exited ({code})")
 
@@ -418,6 +431,10 @@ class VsxService(QObject):
         self._apply_lang_config(ed)
         self._render_diags(_key(ed.path))
         self._wrap(ed)
+        try:
+            self.workbench.hook_editor(ed)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _alive(self, ed) -> bool:
         try:
@@ -492,7 +509,9 @@ class VsxService(QObject):
         w = QApplication.focusWidget()
         while w is not None:
             if w in self._editors:
-                return w
+                if w.isVisible():                   # (a hidden tab keeps the focus widget sometimes)
+                    return w
+                break
             w = w.parentWidget()
         tabs = getattr(self.win, "tabs", None)
         cur = tabs.currentWidget() if tabs is not None else None
@@ -813,6 +832,18 @@ class VsxService(QObject):
 
         def show_doc(p):
             path = p.get("path")
+            if not path and p.get("tempPath"):                      # virtual document: an editable temp copy
+                tmp = Path(p["tempPath"])                            # (edits / Ctrl+S go back to the extension)
+                tmp.parent.mkdir(parents=True, exist_ok=True)
+                ed = self.editor_for(tmp)
+                if ed is None or not tmp.exists():
+                    tmp.write_text(p.get("content") or "", "utf-8")
+                elif ed.text() != (p.get("content") or ""):
+                    ed.setText(p.get("content") or "")
+                ed = self.open_path(str(tmp), p.get("selection"))
+                if ed is not None and p.get("readOnly") and hasattr(ed, "setReadOnly"):
+                    ed.setReadOnly(True)
+                return True
             if not path and p.get("content") is not None:          # virtual document: a read-only temp copy
                 name = re.sub(r"[^\w.\-]+", "_", (p.get("uri") or "document").split("/")[-1]) or "document"
                 tmp = Path(self._storage_root()) / "virtual" / name
@@ -896,6 +927,12 @@ class VsxService(QObject):
                 self.show_output()
                 return True
             try:
+                r = self.workbench.exec_command(cmd, args)
+                if r is not None:
+                    return r
+            except Exception as e:  # noqa: BLE001
+                self.log(f"command {cmd}: {e}")
+            try:
                 from . import contrib_keybindings as KB
                 if KB.is_monaco_command(cmd):
                     ed = self.active_editor()
@@ -938,6 +975,10 @@ class VsxService(QObject):
     # ------------------------------------------------------------ host notifications
     def _on_notification(self, method: str, p: dict):
         try:
+            if method.startswith("webview") and self.webviews.handle(method, p):
+                return
+            if self.workbench.handle(method, p):
+                return
             fn = getattr(self, "_n_" + method.replace("/", "_"), None)
             if fn is not None:
                 fn(p)
@@ -1012,6 +1053,12 @@ class VsxService(QObject):
 
     def _n_context_set(self, p):
         self.context[str(p.get("key"))] = p.get("value")
+        if not getattr(self, "_ctx_timer", None):
+            self._ctx_timer = QTimer(self)
+            self._ctx_timer.setSingleShot(True)
+            self._ctx_timer.setInterval(50)
+            self._ctx_timer.timeout.connect(lambda: self.workbench.context_changed())
+        self._ctx_timer.start()
 
     def _n_languages_setConfiguration(self, p):
         self.lang_configs[p["language"]] = p.get("config") or {}
@@ -1038,56 +1085,17 @@ class VsxService(QObject):
         else:
             self.win.statusBar().clearMessage()
 
-    def _n_terminal_create(self, p):
-        self.terminals[p["id"]] = dict(p)
-        if p.get("pty"):
-            self.output.ensure(f"Terminal: {p.get('name')}")
-
-    def _terminal_widget(self):
-        t = getattr(self.win, "terminal", None)
-        if t is None:
-            return None
-        try:
-            from ..features.terminal import show_terminal
-            show_terminal(self.win)
-        except Exception:  # noqa: BLE001
-            pass
-        return t
-
-    def _n_terminal_sendText(self, p):
-        info = self.terminals.get(p["id"], {})
-        t = self._terminal_widget()
-        if t is None:
-            self.log(f"terminal: {p.get('text')}")
-            return
-        if info.get("cwd") and not info.get("_cd"):
-            info["_cd"] = True
-            t.run_command(f'cd /d "{info["cwd"]}"' if os.name == "nt" else f'cd "{info["cwd"]}"')
-        for line in (p.get("text") or "").splitlines() or [""]:
-            t.run_command(line)
-
-    def _n_terminal_show(self, p):
-        info = self.terminals.get(p["id"], {})
-        if info.get("pty"):
-            self.show_output(f"Terminal: {info.get('name')}")
-        else:
-            self._terminal_widget()
-
-    def _n_terminal_write(self, p):
-        info = self.terminals.get(p["id"], {})
-        self.output.append(f"Terminal: {info.get('name', p['id'])}",
-                           re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", (p.get("data") or "").replace("\r\n", "\n")))
-
-    def _n_terminal_dispose(self, p):
-        self.terminals.pop(p["id"], None)
-
     def _n_editor_setSelection(self, p):
+        if not p.get("path"):
+            return
         ed = self.editor_for(p.get("path") or "")
         if ed is not None:
             l1, c1, l2, c2 = p["selection"]
             ed.setSelection(l1, c1, l2, c2)
 
     def _n_editor_reveal(self, p):
+        if not p.get("path"):
+            return
         ed = self.editor_for(p.get("path") or "")
         if ed is not None:
             ed._js(f"radReveal({int(p.get('line') or 0)});")
@@ -1117,9 +1125,39 @@ class VsxService(QObject):
                         out[v["id"]] = str(v.get("name") or v["id"])
         return out
 
+    def contributed_webview_views(self) -> dict:
+        """view id -> title of the webview views (type "webview") the enabled extensions contribute;
+        a view whose `when` is false right now is left out when another view of the extension is shown."""
+        out = {}
+        for ext in self.extensions:
+            mine = {}
+            for container, views in (ext.contributes.get("views") or {}).items():
+                for v in views if isinstance(views, list) else []:
+                    if isinstance(v, dict) and v.get("id") and v.get("type") == "webview":
+                        ok = True
+                        if v.get("when"):
+                            try:
+                                ok = bool(W.evaluate(v["when"], self.context))
+                            except Exception:  # noqa: BLE001
+                                ok = True
+                        name = str(v.get("name") or "") or self._container_title(ext, container) or v["id"]
+                        mine[v["id"]] = (name, ok)
+            shown = {k: n for k, (n, ok) in mine.items() if ok} or {k: n for k, (n, _ok) in mine.items()}
+            out.update(shown)
+        return out
+
+    @staticmethod
+    def _container_title(ext, container: str) -> str:
+        for lst in (ext.contributes.get("viewsContainers") or {}).values():
+            for c in lst if isinstance(lst, list) else []:
+                if isinstance(c, dict) and c.get("id") == container:
+                    return str(c.get("title") or "")
+        return ""
+
     def _setup_views(self):
         views = self.contributed_views()
-        if not views:
+        wviews = self.contributed_webview_views()
+        if not views and not wviews:
             return
         try:
             from ..i18n import tr
@@ -1136,6 +1174,8 @@ class VsxService(QObject):
         menu.clear()
         for vid, title in views.items():
             menu.addAction(title, lambda vid=vid: self.show_view(vid))
+        for vid, title in wviews.items():
+            menu.addAction(title, lambda vid=vid: self.webviews.show_view(vid))
 
     def show_view(self, view_id: str):
         dock = self._view_dock(view_id)

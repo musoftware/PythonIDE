@@ -9,6 +9,8 @@ const path = require('path');
 const T = require('./types');
 const C = require('./convert');
 const { matchGlob } = require('./glob');
+const W = require('./workbench');
+const S = require('./services');
 
 // ============================================================================ soft stubs
 function softStub(host, ext, name) {
@@ -142,34 +144,52 @@ function createApi(host, ext) {
     onDidChangeActiveTextEditor: host.events.activeEditor.event,
     onDidChangeVisibleTextEditors: host.events.visibleEditors.event,
     onDidChangeTextEditorSelection: host.events.selection.event,
-    onDidChangeTextEditorVisibleRanges: noopEvent,
-    onDidChangeTextEditorOptions: noopEvent,
-    onDidChangeTextEditorViewColumn: noopEvent,
+    onDidChangeTextEditorVisibleRanges: host.events.visibleRanges.event,
+    onDidChangeTextEditorOptions: host.events.editorOptions.event,
+    onDidChangeTextEditorViewColumn: noopEvent,          // one editor group: the view column never changes
     onDidChangeWindowState: host.events.windowState.event,
-    state: { focused: true, active: true },
+    get state() { return host.windowState; },
     showTextDocument: (docOrUri, columnOrOptions, preserveFocus) => host.showTextDocument(docOrUri, columnOrOptions, preserveFocus),
     createTextEditorDecorationType: (options) => host.createDecorationType(ext, options),
     createTerminal: (a, b, c) => host.createTerminal(ext, a, b, c),
     get terminals() { return host.terminals(); },
-    get activeTerminal() { return host.terminals()[0]; },
-    onDidOpenTerminal: host.events.terminalOpen.event,
-    onDidCloseTerminal: host.events.terminalClose.event,
-    onDidChangeActiveTerminal: noopEvent,
-    onDidChangeTerminalState: noopEvent,
-    onDidChangeTerminalShellIntegration: noopEvent,
-    onDidStartTerminalShellExecution: noopEvent,
-    onDidEndTerminalShellExecution: noopEvent,
-    registerTerminalProfileProvider: () => new T.Disposable(() => {}),
-    registerTerminalLinkProvider: () => new T.Disposable(() => {}),
+    get activeTerminal() { return host.terminalsSvc.active; },
+    onDidOpenTerminal: host.terminalsSvc.em.open.event,
+    onDidCloseTerminal: host.terminalsSvc.em.close.event,
+    onDidChangeActiveTerminal: host.terminalsSvc.em.active.event,
+    onDidChangeTerminalState: host.terminalsSvc.em.state.event,
+    onDidChangeTerminalShellIntegration: host.terminalsSvc.em.shellIntegration.event,
+    onDidStartTerminalShellExecution: host.terminalsSvc.em.startExec.event,
+    onDidEndTerminalShellExecution: host.terminalsSvc.em.endExec.event,
+    registerTerminalProfileProvider: (id, provider) => host.terminalsSvc.registerProfileProvider(ext, id, provider),
+    registerTerminalLinkProvider: (provider) => host.terminalsSvc.registerLinkProvider(ext, provider),
     get activeColorTheme() { return { kind: host.themeKind }; },
     onDidChangeActiveColorTheme: host.events.theme.event,
     createQuickPick: () => host.createQuickPick(ext),
     createInputBox: () => host.createInputBox(ext),
     registerTreeDataProvider: (viewId, provider) => host.registerTreeDataProvider(ext, viewId, provider),
     createTreeView: (viewId, options) => host.createTreeView(ext, viewId, options),
-    registerUriHandler: () => new T.Disposable(() => {}),
-    registerFileDecorationProvider: () => new T.Disposable(() => {}),
+    registerWebviewViewProvider: (viewId, provider, options) => host.webviews.registerProvider(ext, viewId, provider, options),
+    createWebviewPanel: (viewType, title, showOptions, options) => {
+      const panel = host.webviews.createPanel(ext, viewType, title, showOptions, options);
+      // window.tabGroups: the new panel is the active tab until another tab becomes active
+      try {
+        if (!(showOptions && typeof showOptions === 'object' && showOptions.preserveFocus)) host.tabs.setActive('webview:' + panel._handle);
+        host.tabs.changed();
+        panel.onDidDispose(() => { if (host.tabs.activeKey === 'webview:' + panel._handle) host.tabs.activeKey = null; host.tabs.changed(); });
+        panel.onDidChangeViewState(() => { if (panel.active) host.tabs.setActive('webview:' + panel._handle); host.tabs.changed(); });
+      } catch (_) { /* */ }
+      return panel;
+    },
+    registerWebviewPanelSerializer: (viewType, serializer) => host.webviews.registerSerializer(ext, viewType, serializer),
+    registerUriHandler: (handler) => host.uriHandlers.register(ext, handler),
+    registerFileDecorationProvider: (provider) => host.fileDecorations.register(ext, provider),
+    registerCustomEditorProvider: (viewType, provider, options) => host.customEditors.register(ext, viewType, provider, options),
     get tabGroups() { return host.tabGroups(); },
+    showNotebookDocument: async (doc) => {
+      host.log(ext, 'showNotebookDocument: RAD IDE has no notebook editor (the notebook stays open as a document)');
+      return { notebook: doc, selections: [new T.NotebookRange(0, 0)], selection: new T.NotebookRange(0, 0), visibleRanges: [], viewColumn: T.ViewColumn.One, revealRange() {}, setDecorations() {} };
+    },
     get visibleNotebookEditors() { return []; },
     get activeNotebookEditor() { return undefined; },
     onDidChangeVisibleNotebookEditors: noopEvent,
@@ -188,7 +208,7 @@ function createApi(host, ext) {
     getWorkspaceFolder: (uri) => host.workspaceFolderOf(uri),
     asRelativePath: (pathOrUri, includeWorkspaceFolder) => host.asRelativePath(pathOrUri, includeWorkspaceFolder),
     onDidChangeWorkspaceFolders: host.events.workspaceFolders.event,
-    updateWorkspaceFolders: () => false,
+    updateWorkspaceFolders: (start, deleteCount, ...add) => host.updateWorkspaceFolders(start, deleteCount, ...add),
     get textDocuments() { return host.docs.all(); },
     openTextDocument: (arg) => host.openTextDocument(arg),
     onDidOpenTextDocument: host.docs.onDidOpen.event,
@@ -199,9 +219,9 @@ function createApi(host, ext) {
     onDidCreateFiles: host.events.createFiles.event,
     onDidDeleteFiles: host.events.deleteFiles.event,
     onDidRenameFiles: host.events.renameFiles.event,
-    onWillCreateFiles: noopEvent,
-    onWillDeleteFiles: noopEvent,
-    onWillRenameFiles: noopEvent,
+    onWillCreateFiles: host.events.willCreateFiles.event,
+    onWillDeleteFiles: host.events.willDeleteFiles.event,
+    onWillRenameFiles: host.events.willRenameFiles.event,
     getConfiguration: (section, scope) => host.getConfiguration(section, scope),
     onDidChangeConfiguration: host.events.configuration.event,
     createFileSystemWatcher: (glob, ic, ich, idl) => host.createFileSystemWatcher(glob, ic, ich, idl),
@@ -210,19 +230,23 @@ function createApi(host, ext) {
     saveAll: (includeUntitled) => host.rpc.request('workspace/saveAll', { includeUntitled: !!includeUntitled }).then((r) => !!r),
     save: (uri) => host.rpc.request('workspace/save', { path: uri.fsPath }).then((r) => (r ? uri : undefined)),
     registerTextDocumentContentProvider: (scheme, provider) => host.registerContentProvider(scheme, provider),
-    registerTaskProvider: () => new T.Disposable(() => {}),
-    registerFileSystemProvider: (scheme) => { host.unsupported(ext, 'workspace.registerFileSystemProvider(' + scheme + ')'); return new T.Disposable(() => {}); },
+    registerTaskProvider: (type, provider) => host.tasksSvc.register(ext, type, provider),
+    registerFileSystemProvider: (scheme, provider, options) => host.fsx.register(ext, scheme, provider, options),
+    encode: (text) => Promise.resolve(W.encode(text)),
+    decode: (bytes) => Promise.resolve(W.decode(bytes)),
+    registerPortAttributesProvider: () => new T.Disposable(() => {}),   // no port forwarding in a local IDE
     get fs() { return host.fsApi; },
     get isTrusted() { return true; },
     requestWorkspaceTrust: () => Promise.resolve(true),
     onDidGrantWorkspaceTrust: noopEvent,
-    get notebookDocuments() { return []; },
-    onDidOpenNotebookDocument: noopEvent,
-    onDidCloseNotebookDocument: noopEvent,
-    onDidChangeNotebookDocument: noopEvent,
-    onDidSaveNotebookDocument: noopEvent,
+    get notebookDocuments() { return [...host.notebooks.docs.values()]; },
+    openNotebookDocument: (a, b) => host.notebooks.open(a, b),
+    onDidOpenNotebookDocument: host.notebooks.em.open.event,
+    onDidCloseNotebookDocument: host.notebooks.em.close.event,
+    onDidChangeNotebookDocument: host.notebooks.em.change.event,
+    onDidSaveNotebookDocument: host.notebooks.em.save.event,
     onWillSaveNotebookDocument: noopEvent,
-    registerNotebookSerializer: () => new T.Disposable(() => {}),
+    registerNotebookSerializer: (type, serializer, options) => host.notebooks.registerSerializer(ext, type, serializer, options),
     get textDocumentsCount() { return host.docs.all().length; },
   };
   api.workspace = N(ws, 'workspace');
@@ -282,7 +306,7 @@ function createApi(host, ext) {
     get language() { return host.uiLanguage; },
     machineId: host.machineId,
     sessionId: host.sessionId,
-    uriScheme: 'radide',
+    get uriScheme() { return host.uriScheme; },
     uiKind: T.UIKind.Desktop,
     remoteName: undefined,
     shell: process.env.ComSpec || '/bin/sh',
@@ -296,8 +320,13 @@ function createApi(host, ext) {
       readText: () => host.rpc.request('env/clipboardRead', {}).then((t) => t || ''),
       writeText: (text) => host.rpc.request('env/clipboardWrite', { text: String(text) }).then(() => undefined),
     },
-    openExternal: (uri) => host.rpc.request('env/openExternal', { uri: uri.toString(true) }).then((r) => !!r),
-    asExternalUri: (uri) => Promise.resolve(uri),
+    openExternal: (uri) => {
+      const u = T.Uri.isUri(uri) ? uri : T.Uri.parse(String(uri));
+      if (u.scheme === host.uriScheme) return host.uriHandlers.handle({ uri: u.toString() }).then((r) => !!(r && r.ok));
+      if (u.scheme === 'command') return host.executeCommand(u.path, u.query ? [].concat(JSON.parse(decodeURIComponent(u.query))) : [], ext).then(() => true, () => false);
+      return host.rpc.request('env/openExternal', { uri: u.toString(true) }).then((r) => !!r);
+    },
+    asExternalUri: (uri) => Promise.resolve(uri),     // local desktop IDE: http(s)://localhost and radide:// URIs are reachable as they are
     createTelemetryLogger: () => ({ logUsage() {}, logError() {}, dispose() {}, isUsageEnabled: false, isErrorsEnabled: false, onDidChangeEnableStates: noopEvent }),
   };
   api.env = N(env, 'env');
@@ -319,26 +348,27 @@ function createApi(host, ext) {
     stopDebugging: (session) => host.rpc.request('debug/stop', { id: session && session.id }).then(() => undefined),
     get activeDebugSession() { return host.debug.activeSession; },
     get activeDebugConsole() { return host.debug.console(ext); },
-    get breakpoints() { return []; },
+    get breakpoints() { return [...host.breakpoints]; },
     get activeStackItem() { return undefined; },
-    addBreakpoints: () => {},
-    removeBreakpoints: () => {},
+    addBreakpoints: (bps) => { const added = (bps || []).filter((b) => !host.breakpoints.includes(b)); host.breakpoints.push(...added); if (added.length) host.events.breakpoints.fire({ added, removed: [], changed: [] }); },
+    removeBreakpoints: (bps) => { const removed = (bps || []).filter((b) => host.breakpoints.includes(b)); host.breakpoints = host.breakpoints.filter((b) => !removed.includes(b)); if (removed.length) host.events.breakpoints.fire({ added: [], removed, changed: [] }); },
     asDebugSourceUri: (source) => T.Uri.file(source.path || ''),
     onDidStartDebugSession: host.debug.events.start.event,
     onDidTerminateDebugSession: host.debug.events.terminate.event,
     onDidChangeActiveDebugSession: host.debug.events.active.event,
     onDidReceiveDebugSessionCustomEvent: host.debug.events.custom.event,
-    onDidChangeBreakpoints: noopEvent,
+    onDidChangeBreakpoints: host.events.breakpoints.event,
     onDidChangeActiveStackItem: noopEvent,
   }, 'debug');
 
   // -------------------------------------------------------------------------- tasks / scm / misc
   api.tasks = N({
-    registerTaskProvider: () => new T.Disposable(() => {}),
-    fetchTasks: () => Promise.resolve([]),
+    registerTaskProvider: (type, provider) => host.tasksSvc.register(ext, type, provider),
+    fetchTasks: (filter) => host.tasksSvc.fetch(filter),
     executeTask: (task) => host.executeTask(ext, task),
-    get taskExecutions() { return []; },
-    onDidStartTask: noopEvent, onDidEndTask: noopEvent, onDidStartTaskProcess: noopEvent, onDidEndTaskProcess: noopEvent,
+    get taskExecutions() { return [...host.tasksSvc.executions]; },
+    onDidStartTask: host.tasksSvc.em.start.event, onDidEndTask: host.tasksSvc.em.end.event,
+    onDidStartTaskProcess: host.tasksSvc.em.startProcess.event, onDidEndTaskProcess: host.tasksSvc.em.endProcess.event,
   }, 'tasks');
   api.l10n = N({
     t: (...args) => {
@@ -356,17 +386,28 @@ function createApi(host, ext) {
     get uri() { return undefined; },
   }, 'l10n');
   api.authentication = N({
-    getSession: () => Promise.resolve(undefined),
-    getAccounts: () => Promise.resolve([]),
-    onDidChangeSessions: noopEvent,
-    registerAuthenticationProvider: () => new T.Disposable(() => {}),
+    getSession: (providerId, scopes, options) => host.auth.getSession(ext, providerId, scopes, options),
+    getAccounts: (providerId) => host.auth.getAccounts(providerId),
+    onDidChangeSessions: host.auth.em.event,
+    registerAuthenticationProvider: (id, label, provider, options) => host.auth.register(ext, id, label, provider, options),
   }, 'authentication');
-  api.scm = N({ get inputBox() { return undefined; } }, 'scm');
-  api.comments = N({}, 'comments');
-  api.notebooks = N({}, 'notebooks');
-  api.tests = N({}, 'tests');
-  api.chat = N({}, 'chat');
-  api.lm = N({ selectChatModels: () => Promise.resolve([]), onDidChangeChatModels: noopEvent, get tools() { return []; } }, 'lm');
+  // no UI for these in RAD IDE: the objects have VS Code's shapes so extensions run normally
+  api.scm = N({ get inputBox() { return undefined; }, createSourceControl: (id, label, rootUri) => S.sourceControl(id, label, rootUri) }, 'scm');
+  api.comments = N({ createCommentController: (id, label) => S.commentController(id, label) }, 'comments');
+  api.notebooks = N({
+    createNotebookController: (id, notebookType, label, handler) => host.notebooks.controller(ext, id, notebookType, label, handler),
+    registerNotebookCellStatusBarItemProvider: () => new T.Disposable(() => {}),
+    createRendererMessaging: () => ({ onDidReceiveMessage: noopEvent, postMessage: () => Promise.resolve(false) }),
+  }, 'notebooks');
+  api.tests = N({ createTestController: (id, label) => S.testController(id, label), createTestObserver: () => ({ tests: [], onDidChangeTest: noopEvent, dispose() {} }) }, 'tests');
+  api.chat = N({ createChatParticipant: (id, handler) => S.chatParticipant(id, handler), registerChatVariableResolver: () => new T.Disposable(() => {}) }, 'chat');
+  api.lm = N({
+    selectChatModels: () => Promise.resolve([]), onDidChangeChatModels: noopEvent, get tools() { return []; },
+    registerTool: () => new T.Disposable(() => {}),
+    invokeTool: (name) => Promise.reject(new Error(`No language model tool named '${name}' is registered in RAD IDE`)),
+    registerMcpServerDefinitionProvider: () => new T.Disposable(() => {}),
+    registerChatModelProvider: () => new T.Disposable(() => {}),
+  }, 'lm');
   api.interactive = N({}, 'interactive');
   return new Proxy(api, {
     get(t, p, recv) {
@@ -420,10 +461,6 @@ function createContext(host, ext) {
   const globalState = new Memento(path.join(gs, 'state.json'));
   const workspaceState = new Memento(path.join(wsDir, 'state.json'));
   host.mementos.push(globalState, workspaceState);
-  const envColl = () => {
-    const m = new Map();
-    return { persistent: true, description: undefined, replace: (k, v) => m.set(k, { value: v, type: 1 }), append: (k, v) => m.set(k, { value: v, type: 2 }), prepend: (k, v) => m.set(k, { value: v, type: 3 }), get: (k) => m.get(k), forEach: (cb) => m.forEach((v, k) => cb(k, v, this)), delete: (k) => m.delete(k), clear: () => m.clear(), getScoped: () => envColl(), [Symbol.iterator]: () => m.entries() };
-  };
   const ctx = {
     subscriptions: [],
     workspaceState,
@@ -431,7 +468,7 @@ function createContext(host, ext) {
     secrets: new SecretStorage(path.join(gs, 'secrets.json')),
     extensionUri: T.Uri.file(ext.path),
     extensionPath: ext.path,
-    environmentVariableCollection: envColl(),
+    environmentVariableCollection: W.envCollection(true),
     asAbsolutePath: (rel) => path.join(ext.path, rel),
     storageUri: T.Uri.file(wsDir),
     storagePath: wsDir,

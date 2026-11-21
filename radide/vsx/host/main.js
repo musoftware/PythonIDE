@@ -29,8 +29,35 @@ const { DocumentStore } = require('./documents');
 const { createApi, createContext, selectorScore, serializeSelector } = require('./api');
 const { matchGlob, globToRegExp } = require('./glob');
 const { Debug } = require('./debug');
+const { Webviews } = require('./webview');
+const { FileSystems, Tabs, Terminals, decode, encode } = require('./workbench');
+const S = require('./services');
 
 const PROVIDER_TIMEOUT = 5000;
+
+// built-in command ids the host (or the IDE) implements - returned by commands.getCommands()
+const BUILTIN_COMMANDS = ['setContext', 'vscode.open', 'vscode.openWith', 'vscode.diff', 'vscode.changes', 'vscode.openFolder',
+  'vscode.newWindow', 'vscode.removeFromRecentlyOpened', 'workbench.action.files.save', 'workbench.action.files.saveAll',
+  'workbench.action.files.saveAs', 'workbench.action.files.revert', 'workbench.action.openEditorAtIndex', 'workbench.action.nextEditor',
+  'workbench.action.previousEditor', 'workbench.action.closeActiveEditor', 'workbench.action.closeAllEditors',
+  'workbench.action.closeOtherEditors', 'workbench.action.pinEditor', 'workbench.action.unpinEditor', 'workbench.action.keepEditor',
+  'workbench.action.lockEditorGroup', 'workbench.action.moveEditorToNewWindow', 'workbench.action.focusFirstEditorGroup',
+  'workbench.action.focusActiveEditorGroup', 'workbench.action.openWalkthrough', 'workbench.action.openSettings',
+  'workbench.action.openGlobalSettings', 'workbench.action.openSettingsJson', 'workbench.action.reloadWindow',
+  'workbench.action.showCommands', 'workbench.action.quickOpen', 'workbench.action.reopenClosedEditor',
+  'workbench.action.terminal.new', 'workbench.action.terminal.focus', 'workbench.action.terminal.kill',
+  'workbench.action.terminal.sendSequence', 'workbench.action.terminal.selectAll', 'workbench.action.terminal.copySelection',
+  'workbench.action.terminal.clearSelection', 'workbench.action.terminal.clear', 'workbench.view.explorer', 'workbench.view.scm',
+  'workbench.view.extensions', 'workbench.extensions.search', 'workbench.extensions.installExtension', 'revealInExplorer',
+  'revealFileInOS', 'default:type', 'editor.action.formatDocument', 'markdown.showPreview',
+  'vscode.executeCompletionItemProvider', 'vscode.executeHoverProvider', 'vscode.executeDefinitionProvider',
+  'vscode.executeDeclarationProvider', 'vscode.executeTypeDefinitionProvider', 'vscode.executeImplementationProvider',
+  'vscode.executeReferenceProvider', 'vscode.executeDocumentHighlights', 'vscode.executeSignatureHelpProvider',
+  'vscode.executeFormatDocumentProvider', 'vscode.executeFormatRangeProvider', 'vscode.executeDocumentSymbolProvider',
+  'vscode.executeWorkspaceSymbolProvider', 'vscode.executeCodeActionProvider', 'vscode.executeCodeLensProvider',
+  'vscode.executeLinkProvider', 'vscode.executeFoldingRangeProvider', 'vscode.executeInlayHintProvider',
+  'vscode.executeDocumentRenameProvider', 'vscode.prepareRename', 'vscode.executeSelectionRangeProvider',
+  'vscode.executeDocumentColorProvider'];
 
 function withTimeout(promise, ms, dflt) {
   return new Promise((resolve) => {
@@ -71,7 +98,7 @@ class Host {
   constructor() {
     this.rpc = new Rpc(process.stdin, realStdoutWrite);
     this.docs = new DocumentStore();
-    this.docs.saveHandler = (doc) => this.rpc.request('workspace/save', { path: doc.uri.fsPath }).then((r) => !!r);
+    this.docs.saveHandler = (doc) => this.saveDocument(doc);
     this.apiVersion = '1.90.0';
     this.extensions = new Map();          // id (lower) -> ext record
     this.commands = new Map();            // id -> {ext, callback, thisArg}
@@ -84,8 +111,23 @@ class Host {
     this.cmdCache = new C.CommandCache();
     this.events = {};
     for (const k of ['activeEditor', 'visibleEditors', 'selection', 'windowState', 'terminalOpen', 'terminalClose', 'theme',
-      'workspaceFolders', 'createFiles', 'deleteFiles', 'renameFiles', 'configuration', 'diagnostics', 'extensions']) this.events[k] = new T.EventEmitter();
+      'workspaceFolders', 'createFiles', 'deleteFiles', 'renameFiles', 'configuration', 'diagnostics', 'extensions',
+      'willCreateFiles', 'willDeleteFiles', 'willRenameFiles', 'visibleRanges', 'editorOptions', 'breakpoints']) this.events[k] = new T.EventEmitter();
     this.debug = new Debug(this);
+    this.webviews = new Webviews(this);
+    this.fsx = new FileSystems(this);
+    this.tabs = new Tabs(this);
+    this.terminalsSvc = new Terminals(this);
+    this.uriHandlers = new S.UriHandlers(this);
+    this.fileDecorations = new S.FileDecorations(this);
+    this.auth = new S.Authentication(this);
+    this.tasksSvc = new S.Tasks(this);
+    this.customEditors = new S.CustomEditors(this);
+    this.notebooks = new S.Notebooks(this);
+    this.windowState = { focused: true, active: true };
+    this.uriScheme = 'radide';
+    this.breakpoints = [];
+    this._diffEditors = null;             // [left, right] TextEditors of the active diff tab
     this._folders = [];
     this._settings = {};
     this._configDefaults = {};
@@ -94,7 +136,6 @@ class Host {
     this._unsupported = new Set();
     this._outputs = new Map();
     this._status = new Map();
-    this._terminals = new Map();
     this._n = 0;
     this._providersTimer = null;
     this.storageRoot = path.join(os.homedir(), '.radide-vsx');
@@ -275,52 +316,246 @@ class Host {
   }
 
   async _builtinCommand(id, args) {
+    const asUri = (u) => (u === undefined || u === null ? undefined : T.Uri.isUri(u) ? u : C.uriFromIde(typeof u === 'object' && u.$uri ? u.$uri : String(u)));
+    const docOf = async (u) => this.openTextDocument(asUri(u));
+    const ide = (command, a) => this.rpc.request('commands/executeIde', { command, args: C.plain(a || []) });
     switch (id) {
       case 'setContext':
         this.rpc.notify('context/set', { key: args[0], value: C.plain(args[1]) });
         return null;
       case 'vscode.open': {
-        const uri = T.Uri.isUri(args[0]) ? args[0] : C.uriFromIde(String(args[0]));
-        if (uri.scheme === 'http' || uri.scheme === 'https' || uri.scheme === 'mailto') {
-          await this.rpc.request('env/openExternal', { uri: uri.toString(true) });
-        } else await this.showTextDocument(uri, args[1]);
+        const uri = asUri(args[0]);
+        if (!uri) return null;
+        if (['http', 'https', 'mailto'].includes(uri.scheme) || (uri.scheme === this.uriScheme)) {
+          if (uri.scheme === this.uriScheme) await this.uriHandlers.handle({ uri: uri.toString() });
+          else await this.rpc.request('env/openExternal', { uri: uri.toString(true) });
+        } else {
+          const vt = uri.scheme === 'file' ? this.customEditors.viewTypeFor(uri) : undefined;
+          if (vt && this.customEditors.providers.has(vt)) await this.customEditors.open(uri, vt, args[1]);
+          else await this.showTextDocument(uri, args[1]);
+        }
         return null;
       }
-      case 'vscode.openWith': await this.showTextDocument(args[0]); return null;
+      case 'vscode.openWith': {
+        const uri = asUri(args[0]);
+        const vt = args[1];
+        if (vt && vt !== 'default' && (this.customEditors.providers.has(vt) || this.customEditors.viewTypeFor(uri) === vt || [...this.extensions.values()].some((e) => ((e.packageJSON.contributes || {}).customEditors || []).some((c) => c && c.viewType === vt)))) {
+          if (await this.customEditors.open(uri, vt, args[2])) return null;
+        }
+        await this.showTextDocument(uri, args[2]);
+        return null;
+      }
+      case 'vscode.diff':
+        await this.tabs.openDiff(asUri(args[0]), asUri(args[1]), args[2], args[3]);
+        return null;
+      case 'vscode.changes': {
+        const title = args[0] ? String(args[0]) : 'Changes';
+        for (const [resource, original, modified] of args[1] || []) {
+          const r = asUri(resource);
+          await this.tabs.openDiff(asUri(original) || r.with({ scheme: 'untitled' }), asUri(modified) || r, `${title}: ${path.basename(r.fsPath || r.path)}`, { preview: false });
+        }
+        return null;
+      }
+      case 'vscode.openFolder': case 'vscode.newWindow':
+        if (id === 'vscode.openFolder' && args[0]) await ide('vscode.openFolder', [asUri(args[0]).fsPath]);
+        return null;
+      case 'vscode.removeFromRecentlyOpened': return null;
       case 'workbench.action.files.save': {
         const ed = this.activeEditor();
-        if (ed) await this.rpc.request('workspace/save', { path: ed.document.uri.fsPath });
+        if (ed) await ed.document.save();
         return null;
       }
+      case 'workbench.action.files.revert': {
+        const ed = this.activeEditor();
+        if (ed && ed.document.uri.scheme !== 'file') {
+          const text = await this.fsx.read(ed.document.uri);
+          if (text !== undefined) { this.docs.change(ed.document.uri, undefined, text, false); this.tabs.docUpdated(ed.document); }
+          return null;
+        }
+        return undefined;
+      }
+      case 'workbench.action.openEditorAtIndex': {
+        const tabs = this.tabs.group.tabs;
+        const t = tabs[Number(args[0]) || 0];
+        if (t) await this.tabs.activate(t);
+        return null;
+      }
+      case 'workbench.action.nextEditor': case 'workbench.action.previousEditor': {
+        const tabs = this.tabs.group.tabs;
+        if (!tabs.length) return null;
+        const i = Math.max(0, tabs.findIndex((t) => t.isActive));
+        await this.tabs.activate(tabs[(i + (id.endsWith('nextEditor') ? 1 : tabs.length - 1)) % tabs.length]);
+        return null;
+      }
+      case 'workbench.action.closeActiveEditor': case 'workbench.action.revertAndCloseActiveEditor': {
+        const t = this.tabs.group.activeTab;
+        if (t && !t._key.startsWith('text:file')) { await this.tabs.close(t); return null; }
+        return undefined;           // a text editor: the IDE's File > Close
+      }
+      case 'workbench.action.closeAllEditors': case 'workbench.action.closeAllGroups':
+        await this.tabs.close(this.tabs.group.tabs);
+        return null;
+      case 'workbench.action.closeOtherEditors': {
+        const t = this.tabs.group.activeTab;
+        await this.tabs.close(this.tabs.group.tabs.filter((x) => x !== t));
+        return null;
+      }
+      case 'workbench.action.pinEditor': case 'workbench.action.unpinEditor': case 'workbench.action.keepEditor': {
+        const t = this.tabs.group.activeTab;
+        if (t) { if (id.endsWith('unpinEditor')) this.tabs.pinned.delete(t._key); else if (id.endsWith('pinEditor')) this.tabs.pinned.add(t._key); this.tabs.changed(); }
+        return null;
+      }
+      // one editor group, one window: these have nothing to do (VS Code also does nothing when it cannot)
+      case 'workbench.action.lockEditorGroup': case 'workbench.action.unlockEditorGroup': case 'workbench.action.moveEditorToNewWindow':
+      case 'workbench.action.copyEditorToNewWindow': case 'workbench.action.focusFirstEditorGroup': case 'workbench.action.focusActiveEditorGroup':
+      case 'workbench.action.splitEditor': case 'workbench.action.splitEditorRight': case 'workbench.action.moveEditorToNextGroup':
+      case 'workbench.action.moveEditorToPreviousGroup': case 'workbench.action.newGroupRight': case 'workbench.action.focusSecondEditorGroup':
+      case 'workbench.action.joinAllGroups': case 'workbench.action.evenEditorWidths': case 'workbench.action.toggleMaximizeEditorGroup':
+        await ide(id, args);
+        return null;
+      case 'workbench.action.openWalkthrough': {
+        const [extId, wid] = String(args[0] || '').split('#');
+        const ext = this.extensions.get(extId.toLowerCase());
+        const w = ext && (((ext.packageJSON.contributes || {}).walkthroughs) || []).find((x) => x && (!wid || x.id === wid));
+        if (!w) return null;
+        const lines = [`# ${w.title || w.id}`, '', w.description || '', ''];
+        for (const st of w.steps || []) {
+          lines.push(`## ${st.title || st.id}`, '', String(st.description || '').replace(/\[([^\]]+)\]\(command:[^)]+\)/g, '**$1**'), '');
+          const md = st.media && st.media.markdown;
+          if (md) { try { lines.push(fs.readFileSync(path.join(ext.path, md), 'utf8'), ''); } catch (_) { /* */ } }
+        }
+        const doc = await this.openTextDocument({ language: 'markdown', content: lines.join('\n') });
+        await this.showTextDocument(doc);
+        return null;
+      }
+      case 'workbench.action.terminal.new': case 'workbench.action.createTerminalEditor': {
+        const t = this.terminalsSvc.create(null, {});
+        t.show();
+        return null;
+      }
+      case 'workbench.action.terminal.focus': case 'workbench.action.terminal.toggleTerminal': {
+        const t = this.terminalsSvc.active;
+        if (t) { t.show(); return null; }
+        return undefined;
+      }
+      case 'workbench.action.terminal.kill': { const t = this.terminalsSvc.active; if (t) t.dispose(); return null; }
+      case 'workbench.action.terminal.sendSequence': {
+        const t = this.terminalsSvc.active;
+        if (t && args[0] && args[0].text !== undefined) t.sendText(String(args[0].text), false);
+        return null;
+      }
+      case 'workbench.action.terminal.selectAll': case 'workbench.action.terminal.copySelection':
+      case 'workbench.action.terminal.clearSelection': case 'workbench.action.terminal.clear': {
+        const t = this.terminalsSvc.active;
+        const r = await ide(id, [t ? t._id : null]);
+        return r === null ? null : r;
+      }
+      case 'workbench.action.webview.openDeveloperTools': return null;
+      case 'default:type': {
+        const ed = this.activeEditor();
+        const text = args[0] && args[0].text !== undefined ? String(args[0].text) : '';
+        if (!ed || !text) return null;
+        const we = new T.WorkspaceEdit();
+        for (const s of ed.selections) we.replace(ed.document.uri, s, text);
+        await this.applyEdit(we);
+        return null;
+      }
+      case 'cursorMove': case 'revealLine': case 'editorScroll': return undefined;      // Monaco commands (the IDE side)
+      case 'notebook.cell.execute': case 'notebook.execute': return null;               // no notebook UI
       case 'vscode.executeCompletionItemProvider': {
-        const doc = await this.openTextDocument(args[0]);
+        const doc = await docOf(args[0]);
         const r = await this._lspCompletion(doc, args[1]);
         return new T.CompletionList((r.items || []).map((i) => new T.CompletionItem(i.label, (i.kind || 1) - 1)), r.isIncomplete);
       }
       case 'vscode.executeHoverProvider': {
-        const doc = await this.openTextDocument(args[0]);
+        const doc = await docOf(args[0]);
         return this._collect('hover', doc, (p, tok) => p.provideHover(doc, args[1], tok));
       }
-      case 'vscode.executeDefinitionProvider': {
-        const doc = await this.openTextDocument(args[0]);
-        return (await this._collect('definition', doc, (p, tok) => p.provideDefinition(doc, args[1], tok))).flat();
+      case 'vscode.executeDefinitionProvider': case 'vscode.executeDeclarationProvider': case 'vscode.executeTypeDefinitionProvider': case 'vscode.executeImplementationProvider': {
+        const kind = { executeDefinitionProvider: 'definition', executeDeclarationProvider: 'declaration', executeTypeDefinitionProvider: 'typeDefinition', executeImplementationProvider: 'implementation' }[id.substring(7)];
+        const fn = { definition: 'provideDefinition', declaration: 'provideDeclaration', typeDefinition: 'provideTypeDefinition', implementation: 'provideImplementation' }[kind];
+        const doc = await docOf(args[0]);
+        return (await this._collect(kind, doc, (p, tok) => p[fn](doc, args[1], tok))).flat();
+      }
+      case 'vscode.executeReferenceProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('references', doc, (p, tok) => p.provideReferences(doc, args[1], { includeDeclaration: true }, tok))).flat();
+      }
+      case 'vscode.executeDocumentHighlights': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('documentHighlight', doc, (p, tok) => p.provideDocumentHighlights(doc, args[1], tok))).flat();
+      }
+      case 'vscode.executeSignatureHelpProvider': {
+        const doc = await docOf(args[0]);
+        return this._first('signatureHelp', doc, (p, tok) => p.provideSignatureHelp(doc, args[1], tok, { triggerKind: T.SignatureHelpTriggerKind.Invoke, triggerCharacter: args[2], isRetrigger: false }));
       }
       case 'vscode.executeFormatDocumentProvider': {
-        const doc = await this.openTextDocument(args[0]);
+        const doc = await docOf(args[0]);
         const p = this._providersFor('formatting', doc)[0];
         return p ? p.provider.provideDocumentFormattingEdits(doc, args[1] || { tabSize: 4, insertSpaces: true }, T.CancellationTokenNone) : [];
       }
+      case 'vscode.executeFormatRangeProvider': {
+        const doc = await docOf(args[0]);
+        const p = this._providersFor('rangeFormatting', doc)[0];
+        return p ? p.provider.provideDocumentRangeFormattingEdits(doc, args[1], args[2] || { tabSize: 4, insertSpaces: true }, T.CancellationTokenNone) : [];
+      }
       case 'vscode.executeDocumentSymbolProvider': {
-        const doc = await this.openTextDocument(args[0]);
+        const doc = await docOf(args[0]);
         return (await this._collect('documentSymbol', doc, (p, tok) => p.provideDocumentSymbols(doc, tok))).flat();
+      }
+      case 'vscode.executeWorkspaceSymbolProvider': {
+        const out = [];
+        for (const p of this.providers.filter((x) => x.kind === 'workspaceSymbol')) {
+          try { const r = await withTimeout(p.provider.provideWorkspaceSymbols(String(args[0] || ''), T.CancellationTokenNone), PROVIDER_TIMEOUT, []); if (r) out.push(...r); } catch (_) { /* */ }
+        }
+        return out;
+      }
+      case 'vscode.executeCodeActionProvider': {
+        const doc = await docOf(args[0]);
+        const range = args[1] instanceof T.Range ? args[1] : new T.Range(args[1].start || args[1], args[1].end || args[1]);
+        const ctx = { diagnostics: this.getDiagnostics(doc.uri).filter((d) => d.range.intersection(range)), only: args[2] ? new T.CodeActionKind(args[2]) : undefined, triggerKind: T.CodeActionTriggerKind.Invoke };
+        return (await this._collect('codeAction', doc, (p, tok) => p.provideCodeActions(doc, range, ctx, tok))).flat();
+      }
+      case 'vscode.executeCodeLensProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('codeLens', doc, (p, tok) => p.provideCodeLenses(doc, tok))).flat();
+      }
+      case 'vscode.executeLinkProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('documentLink', doc, (p, tok) => p.provideDocumentLinks(doc, tok))).flat();
+      }
+      case 'vscode.executeFoldingRangeProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('foldingRange', doc, (p, tok) => p.provideFoldingRanges(doc, {}, tok))).flat();
+      }
+      case 'vscode.executeInlayHintProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('inlayHint', doc, (p, tok) => p.provideInlayHints(doc, args[1], tok))).flat();
+      }
+      case 'vscode.executeDocumentRenameProvider': {
+        const doc = await docOf(args[0]);
+        return this._first('rename', doc, (p, tok) => p.provideRenameEdits(doc, args[1], String(args[2]), tok));
+      }
+      case 'vscode.prepareRename': {
+        const doc = await docOf(args[0]);
+        const p = this._providersFor('rename', doc)[0];
+        return p && typeof p.provider.prepareRename === 'function' ? p.provider.prepareRename(doc, args[1], T.CancellationTokenNone) : undefined;
+      }
+      case 'vscode.executeSelectionRangeProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('selectionRange', doc, (p, tok) => p.provideSelectionRanges(doc, args[1] || [], tok))).flat();
+      }
+      case 'vscode.executeDocumentColorProvider': {
+        const doc = await docOf(args[0]);
+        return (await this._collect('color', doc, (p, tok) => p.provideDocumentColors(doc, tok))).flat();
       }
       default: return undefined;
     }
   }
 
   getCommands(filterInternal) {
-    const ids = [...this.commands.keys()];
-    return Promise.resolve(filterInternal ? ids.filter((i) => !i.startsWith('_')) : ids.concat(['setContext', 'vscode.open']));
+    const ids = [...this.commands.keys()].concat(BUILTIN_COMMANDS.filter((c) => !this.commands.has(c)));
+    return Promise.resolve(filterInternal ? ids.filter((i) => !i.startsWith('_')) : ids);
   }
 
   // -------------------------------------------------------------------------- window: messages / pickers
@@ -495,7 +730,40 @@ class Host {
   }
 
   activeEditor() { return this._active && !this._active.document.isClosed ? this._active : undefined; }
-  visibleEditors() { const a = this.activeEditor(); return a ? [a] : []; }
+  visibleEditors() {
+    if (this._diffEditors && this.tabs.activeKey && this.tabs.activeKey.startsWith('diff:')) return this._diffEditors.filter((e) => !e.document.isClosed);
+    const a = this.activeEditor();
+    return a ? [a] : [];
+  }
+
+  /** the IDE path that shows a document (the temp copy of a virtual document) */
+  idePath(doc) {
+    const v = this.tabs.virtual.get(doc.uri.toString());
+    if (v) return v.path;
+    return doc.uri.scheme === 'file' ? doc.uri.fsPath : null;
+  }
+
+  _setActiveEditor(ed, visible) {
+    const changed = ed !== this._active;
+    this._active = ed;
+    this._diffEditors = visible || null;
+    if (changed) this.events.activeEditor.fire(ed || undefined);
+    this.events.visibleEditors.fire(this.visibleEditors());
+  }
+
+  diffActivated(entry) {
+    const l = this.docs.get(entry.original);
+    const r = this.docs.get(entry.modified);
+    const eds = [l, r].filter(Boolean).map((d) => this._editorFor(d));
+    for (const e of eds) e.viewColumn = T.ViewColumn.One;
+    this._setActiveEditor(r ? this._editorFor(r) : null, eds);
+  }
+
+  diffDeactivated(entry) {
+    if (this._diffEditors && this._diffEditors.some((e) => e.document.uri.toString() === entry.modified.toString())) {
+      this._setActiveEditor(null, null);
+    }
+  }
 
   editBuilder(ed) {
     const we = new T.WorkspaceEdit();
@@ -515,9 +783,21 @@ class Host {
     if (T.Uri.isUri(doc)) doc = await this.openTextDocument(doc);
     const opts = columnOrOptions && typeof columnOrOptions === 'object' ? columnOrOptions : { preserveFocus };
     const sel = opts.selection ? [opts.selection.start.line, opts.selection.start.character, opts.selection.end.line, opts.selection.end.character] : null;
-    await this.rpc.request('window/showTextDocument', { path: doc.uri.scheme === 'file' ? doc.uri.fsPath : null, uri: doc.uri.toString(), languageId: doc.languageId, content: doc.uri.scheme === 'file' ? undefined : doc.getText(), selection: sel, preserveFocus: !!opts.preserveFocus, preview: opts.preview !== false });
+    const isFile = doc.uri.scheme === 'file';
+    let tempPath;
+    if (!isFile) {                       // a virtual document: the IDE edits a temp copy, changes come back here
+      tempPath = this.tabs.tempPathFor(doc.uri);
+      this.tabs.addVirtual(doc.uri, tempPath);
+    }
+    await this.rpc.request('window/showTextDocument', { path: isFile ? doc.uri.fsPath : null, tempPath, uri: doc.uri.toString(), languageId: doc.languageId, content: isFile ? undefined : doc.getText(), readOnly: !isFile && !doc.isUntitled && this.fsx.isWritable(doc.uri.scheme) !== true, selection: sel, preserveFocus: !!opts.preserveFocus, preview: opts.preview !== false });
     const ed = this._editorFor(this.docs.get(doc.uri) || doc);
-    if (!opts.preserveFocus) { this._active = ed; }
+    if (sel) ed._setSelection(sel);
+    ed.viewColumn = T.ViewColumn.One;
+    if (!opts.preserveFocus || !this.activeEditor()) {
+      this.tabs.activeKey = 'text:' + doc.uri.toString();
+      this._setActiveEditor(ed, null);
+    }
+    this.tabs.changed();
     return ed;
   }
 
@@ -539,60 +819,12 @@ class Host {
     return { key, dispose: () => this.rpc.notify('decorations/disposeType', { key }) };
   }
 
-  tabGroups() {
-    const docs = this.docs.all().filter((d) => d.uri.scheme === 'file');
-    const active = this.activeEditor();
-    const tabs = docs.map((d) => ({ label: path.basename(d.fileName), input: new T.TabInputText(d.uri), isActive: !!active && active.document === d, isDirty: d.isDirty, isPinned: false, isPreview: false, group: null }));
-    const group = { isActive: true, viewColumn: 1, activeTab: tabs.find((t) => t.isActive), tabs };
-    tabs.forEach((t) => { t.group = group; });
-    this._tabEvents = this._tabEvents || { tabs: new T.EventEmitter(), groups: new T.EventEmitter() };
-    return { all: [group], activeTabGroup: group, onDidChangeTabs: this._tabEvents.tabs.event, onDidChangeTabGroups: this._tabEvents.groups.event, close: () => Promise.resolve(false) };
-  }
+  tabGroups() { return this.tabs.api; }
 
-  // -------------------------------------------------------------------------- terminals
-  createTerminal(ext, a, b, c) {
-    const id = 'term' + (++this._n);
-    let options = {};
-    if (typeof a === 'string' || a === undefined) options = { name: a, shellPath: b, shellArgs: c }; else options = a;
-    const host = this;
-    const term = {
-      name: options.name || 'Terminal', processId: Promise.resolve(undefined), creationOptions: options, exitStatus: undefined,
-      state: { isInteractedWith: false, shell: undefined }, shellIntegration: undefined,
-      sendText(text, addNewLine) {
-        if (options.pty && typeof options.pty.handleInput === 'function') { options.pty.handleInput(String(text) + (addNewLine === false ? '' : '\r')); return; }
-        host.rpc.notify('terminal/sendText', { id, text: String(text), addNewLine: addNewLine !== false });
-      },
-      show(preserveFocus) { host.rpc.notify('terminal/show', { id, preserveFocus: !!preserveFocus }); },
-      hide() {},
-      dispose() { host._terminals.delete(id); host.rpc.notify('terminal/dispose', { id }); if (options.pty && options.pty.close) { try { options.pty.close(); } catch (_) { /* */ } } host.events.terminalClose.fire(term); },
-    };
-    this._terminals.set(id, term);
-    const env = options.env ? Object.fromEntries(Object.entries(options.env).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])) : undefined;
-    this.rpc.notify('terminal/create', { id, name: term.name, cwd: options.cwd ? (T.Uri.isUri(options.cwd) ? options.cwd.fsPath : String(options.cwd)) : undefined, env, shellPath: options.shellPath, shellArgs: options.shellArgs, pty: !!options.pty, ext: ext ? ext.id : '' });
-    if (options.pty) {
-      const pty = options.pty;
-      if (pty.onDidWrite) pty.onDidWrite((d) => this.rpc.notify('terminal/write', { id, data: String(d) }));
-      if (pty.onDidClose) pty.onDidClose(() => term.dispose());
-      setImmediate(() => { try { pty.open && pty.open({ columns: 120, rows: 30 }); } catch (e) { this.log(ext, 'pseudoterminal open failed: ' + e); } });
-    }
-    this.events.terminalOpen.fire(term);
-    return term;
-  }
-
-  terminals() { return [...this._terminals.values()]; }
-
-  async executeTask(ext, task) {
-    const ex = task && task.execution;
-    if (ex && (ex.commandLine || ex.command || ex.process)) {
-      const line = ex.commandLine || [ex.command || ex.process, ...(ex.args || [])].map((a) => (typeof a === 'object' ? a.value : a)).join(' ');
-      const t = this.createTerminal(ext, { name: task.name || 'Task', cwd: ex.options && ex.options.cwd, env: ex.options && ex.options.env });
-      t.sendText(line);
-      t.show();
-      return { task, terminate: () => t.dispose() };
-    }
-    this.unsupported(ext, 'tasks.executeTask (custom execution)');
-    return { task, terminate: () => {} };
-  }
+  // -------------------------------------------------------------------------- terminals (workbench.js)
+  createTerminal(ext, a, b, c) { return this.terminalsSvc.create(ext, a, b, c); }
+  terminals() { return this.terminalsSvc.list(); }
+  async executeTask(ext, task) { return this.tasksSvc.execute(ext, task); }
 
   // -------------------------------------------------------------------------- tree views
   registerTreeDataProvider(ext, viewId, provider) {
@@ -688,30 +920,117 @@ class Host {
     const open = this.docs.get(uri);
     if (open) return open;
     if (uri.scheme === 'file') {
-      const text = await fs.promises.readFile(uri.fsPath, 'utf8');
+      let text;
+      try { text = await fs.promises.readFile(uri.fsPath, 'utf8'); } catch (e) {
+        if (e && e.code === 'ENOENT') throw new Error(`cannot open ${uri.toString()}. Detail: Unable to read file '${uri.fsPath}' (Error: Unable to resolve nonexistent file '${uri.fsPath}')`);
+        throw e;
+      }
       return this.docs.open(uri, this.languageForPath(uri.fsPath), 1, text);
     }
-    if (uri.scheme === 'untitled') return this.docs.open(uri, 'plaintext', 1, '');
-    const cp = this.contentProviders.get(uri.scheme);
-    if (!cp) { await this.activateByEvent('onFileSystem:' + uri.scheme); }
+    if (uri.scheme === 'untitled') return this.docs.open(uri, this.languageForPath(uri.path), 1, '');
+    if (!this.contentProviders.has(uri.scheme) && !this.fsx.has(uri.scheme)) await this.activateByEvent('onFileSystem:' + uri.scheme);
+    if (this.fsx.has(uri.scheme)) {
+      const text = await this.fsx.read(uri);
+      const again = this.docs.get(uri);
+      if (again) return again;
+      return this.docs.open(uri, this.languageForPath(uri.path), 1, text || '');
+    }
     const prov = this.contentProviders.get(uri.scheme);
     if (prov) {
       const text = await prov.provideTextDocumentContent(uri, T.CancellationTokenNone);
+      const again = this.docs.get(uri);
+      if (again) return again;
       return this.docs.open(uri, this.languageForPath(uri.path), 1, text || '');
     }
-    throw new Error('cannot open ' + uri.toString());
+    throw new Error(`cannot open ${uri.toString()}. Detail: Unable to resolve resource ${uri.toString()}`);
   }
 
   registerContentProvider(scheme, provider) {
     this.contentProviders.set(scheme, provider);
-    return new T.Disposable(() => { if (this.contentProviders.get(scheme) === provider) this.contentProviders.delete(scheme); });
+    let sub;
+    if (provider && typeof provider.onDidChange === 'function') {
+      sub = provider.onDidChange((uri) => {
+        const doc = uri && this.docs.get(uri);
+        if (!doc) return;
+        Promise.resolve(provider.provideTextDocumentContent(uri, T.CancellationTokenNone)).then((text) => {
+          if (typeof text === 'string' && text !== doc.getText()) { this.docs.change(uri, undefined, text, false); this.tabs.docUpdated(doc); }
+        }).catch(() => {});
+      });
+    }
+    return new T.Disposable(() => {
+      if (this.contentProviders.get(scheme) === provider) this.contentProviders.delete(scheme);
+      try { sub && sub.dispose && sub.dispose(); } catch (_) { /* */ }
+    });
+  }
+
+  /** TextDocument.save(): files through the IDE, provider documents through their FileSystemProvider */
+  async saveDocument(doc) {
+    const uri = doc.uri;
+    if (uri.scheme === 'file') return !!(await this.rpc.request('workspace/save', { path: uri.fsPath }));
+    if (this.fsx.has(uri.scheme)) {
+      const waits = [];
+      try { this.docs.onWillSave.fire({ document: doc, reason: T.TextDocumentSaveReason.Manual, waitUntil: (p) => waits.push(p) }); } catch (_) { /* */ }
+      await Promise.all(waits).catch(() => {});
+      await this.fsx.op('writeFile', uri, encode(doc.getText()));
+      this.docs.saved(uri);
+      this.tabs.changed();
+      const v = this.tabs.virtual.get(uri.toString());
+      if (v) this.rpc.notify('editor/saved', { path: v.path });
+      return true;
+    }
+    if (uri.scheme === 'untitled') return !!(await this.rpc.request('workspace/save', { path: uri.fsPath }));
+    return false;
   }
 
   async applyEdit(we) {
     if (!we) return false;
-    const payload = C.ideWorkspaceEdit(we);
-    const ok = await this.rpc.request('workspace/applyEdit', payload);
-    return !!ok;
+    const fileOps = (we._edits || []).filter((e) => e._type === 1);
+    const local = new Map();                // non-file documents: edited here (their views get the new text)
+    const rest = new T.WorkspaceEdit();
+    for (const e of we._edits || []) {
+      if (e._type === 2 && e.uri.scheme !== 'file') { const k = e.uri.toString(); if (!local.has(k)) local.set(k, [e.uri, []]); local.get(k)[1].push(e.edit); } else if (e._type === 2) rest._edits.push(e);
+      else if ((e.from && e.from.scheme !== 'file') || (e.to && e.to.scheme !== 'file')) { /* provider file op: below */ } else rest._edits.push(e);
+    }
+    // onWill* file events (participants may add edits with waitUntil)
+    const fire = async (em, files) => {
+      if (!files.length) return;
+      const waits = [];
+      try { em.fire({ files, waitUntil: (p) => waits.push(p), token: T.CancellationTokenNone }); } catch (_) { /* */ }
+      for (const r of await Promise.all(waits).catch(() => [])) if (r && r._edits) rest._edits.push(...r._edits);
+    };
+    const creates = fileOps.filter((e) => !e.from && e.to).map((e) => e.to);
+    const deletes = fileOps.filter((e) => e.from && !e.to).map((e) => e.from);
+    const renames = fileOps.filter((e) => e.from && e.to).map((e) => ({ oldUri: e.from, newUri: e.to }));
+    await fire(this.events.willCreateFiles, creates);
+    await fire(this.events.willDeleteFiles, deletes);
+    await fire(this.events.willRenameFiles, renames);
+    let ok = true;
+    for (const e of fileOps) {
+      if (!((e.from && e.from.scheme !== 'file') || (e.to && e.to.scheme !== 'file'))) continue;
+      const o = e.options || {};
+      try {
+        if (e.from && e.to) await this.fsx.move('rename', e.from, e.to, o, this.fsApi);
+        else if (e.to) await this.fsApi.writeFile(e.to, o.contents || new Uint8Array());
+        else await this.fsApi.delete(e.from, o);
+      } catch (err) { if (!o.ignoreIfExists && !o.ignoreIfNotExists) ok = false; }
+    }
+    for (const [uri, edits] of local.values()) {
+      let doc = this.docs.get(uri);
+      if (!doc) { try { doc = await this.openTextDocument(uri); } catch (_) { ok = false; continue; } }
+      const sorted = edits.map((x) => ({ s: doc.offsetAt(x.range.start), e: doc.offsetAt(x.range.end), t: x.newText })).sort((a, b) => b.s - a.s || b.e - a.e);
+      let text = doc.getText();
+      for (const x of sorted) text = text.substring(0, x.s) + x.t + text.substring(x.e);
+      this.docs.change(uri, undefined, text, true);
+      this.tabs.docUpdated(doc);
+    }
+    if (rest._edits.length) {
+      const payload = C.ideWorkspaceEdit(rest);
+      ok = !!(await this.rpc.request('workspace/applyEdit', payload)) && ok;
+    }
+    if (creates.length) this.events.createFiles.fire({ files: creates });
+    if (deletes.length) this.events.deleteFiles.fire({ files: deletes });
+    if (renames.length) this.events.renameFiles.fire({ files: renames });
+    return ok;
   }
 
   // -------------------------------------------------------------------------- configuration
@@ -793,24 +1112,56 @@ class Host {
     };
     const host = this;
     const P = (u) => (T.Uri.isUri(u) ? u.fsPath : String(u));
-    return {
+    const other = (u) => T.Uri.isUri(u) && u.scheme !== 'file';
+    // a scheme with only a TextDocumentContentProvider (read-only, VS Code serves it the same way)
+    const viaDoc = async (u) => { if (host.fsx.has(u.scheme)) return null; await host.fsx.entry(u.scheme); if (host.fsx.has(u.scheme)) return null; return host.openTextDocument(u); };
+    const api = {
       stat: wrap(async (u) => {
-        if (T.Uri.isUri(u) && u.scheme !== 'file') { const d = await host.openTextDocument(u); return { type: T.FileType.File, ctime: 0, mtime: 0, size: d.getText().length }; }
+        if (other(u)) {
+          const d = await viaDoc(u);
+          if (d) return { type: T.FileType.File, ctime: 0, mtime: 0, size: Buffer.byteLength(d.getText()), permissions: T.FilePermission.Readonly };
+          return host.fsx.op('stat', u);
+        }
         const s = await fsp.stat(P(u));
         return { type: s.isDirectory() ? T.FileType.Directory : s.isFile() ? T.FileType.File : T.FileType.Unknown, ctime: s.ctimeMs, mtime: s.mtimeMs, size: s.size };
       }),
-      readDirectory: wrap(async (u) => (await fsp.readdir(P(u), { withFileTypes: true })).map((d) => [d.name, d.isDirectory() ? T.FileType.Directory : d.isFile() ? T.FileType.File : d.isSymbolicLink() ? T.FileType.SymbolicLink : T.FileType.Unknown])),
-      createDirectory: wrap(async (u) => { await fsp.mkdir(P(u), { recursive: true }); }),
+      readDirectory: wrap(async (u) => {
+        if (other(u)) return host.fsx.op('readDirectory', u);
+        return (await fsp.readdir(P(u), { withFileTypes: true })).map((d) => [d.name, d.isDirectory() ? T.FileType.Directory : d.isFile() ? T.FileType.File : d.isSymbolicLink() ? T.FileType.SymbolicLink : T.FileType.Unknown]);
+      }),
+      createDirectory: wrap(async (u) => { if (other(u)) return host.fsx.op('createDirectory', u); await fsp.mkdir(P(u), { recursive: true }); return undefined; }),
       readFile: wrap(async (u) => {
-        if (T.Uri.isUri(u) && u.scheme !== 'file') { const d = await host.openTextDocument(u); return new Uint8Array(Buffer.from(d.getText(), 'utf8')); }
+        if (other(u)) {
+          const d = await viaDoc(u);
+          if (d) return new Uint8Array(Buffer.from(d.getText(), 'utf8'));
+          return host.fsx.op('readFile', u);
+        }
         return new Uint8Array(await fsp.readFile(P(u)));
       }),
-      writeFile: wrap(async (u, content) => { await fsp.mkdir(path.dirname(P(u)), { recursive: true }); await fsp.writeFile(P(u), Buffer.from(content)); }),
-      delete: wrap(async (u, o) => { await fsp.rm(P(u), { recursive: !!(o && o.recursive), force: false }); }),
-      rename: wrap(async (a, b, o) => { if (!(o && o.overwrite) && fs.existsSync(P(b))) throw T.FileSystemError.FileExists(b); await fsp.rename(P(a), P(b)); }),
-      copy: wrap(async (a, b, o) => { await fsp.cp(P(a), P(b), { recursive: true, force: !!(o && o.overwrite), errorOnExist: !(o && o.overwrite) }); }),
-      isWritableFileSystem: (scheme) => scheme === 'file',
+      writeFile: wrap(async (u, content) => {
+        if (other(u)) {
+          if (!host.fsx.has(u.scheme)) await host.fsx.entry(u.scheme);
+          if (!host.fsx.has(u.scheme)) throw T.FileSystemError.NoPermissions(u);
+          return host.fsx.op('writeFile', u, content);
+        }
+        await fsp.mkdir(path.dirname(P(u)), { recursive: true }); await fsp.writeFile(P(u), Buffer.from(content));
+        return undefined;
+      }),
+      delete: wrap(async (u, o) => { if (other(u)) return host.fsx.op('delete', u, o); await fsp.rm(P(u), { recursive: !!(o && o.recursive), force: false }); return undefined; }),
+      rename: wrap(async (a, b, o) => {
+        if (other(a) || other(b)) return host.fsx.move('rename', a, b, o, api);
+        if (!(o && o.overwrite) && fs.existsSync(P(b))) throw T.FileSystemError.FileExists(b);
+        await fsp.rename(P(a), P(b));
+        return undefined;
+      }),
+      copy: wrap(async (a, b, o) => {
+        if (other(a) || other(b)) return host.fsx.move('copy', a, b, o, api);
+        await fsp.cp(P(a), P(b), { recursive: true, force: !!(o && o.overwrite), errorOnExist: !(o && o.overwrite) });
+        return undefined;
+      }),
+      isWritableFileSystem: (scheme) => host.fsx.isWritable(scheme),
     };
+    return api;
   }
 
   _excludes() {
@@ -861,6 +1212,22 @@ class Host {
         if (kind === 'change' && w.ignoreChangeEvents) return;
         if (kind === 'delete' && w.ignoreDeleteEvents) return;
         em[kind].fire(T.Uri.file(p));
+      },
+      // FileSystemProvider schemes: RelativePattern on a provider Uri (or a plain glob on the path)
+      _matchUri: (u) => {
+        if (glob && typeof glob === 'object' && glob.baseUri) {
+          if (glob.baseUri.scheme !== u.scheme) return false;
+          const base = glob.baseUri.path.replace(/\/$/, '');
+          if (!u.path.startsWith(base + '/')) return false;
+          return globToRegExp(String(glob.pattern)).test(u.path.substring(base.length + 1));
+        }
+        return typeof glob === 'string' && globToRegExp(glob).test(u.path.replace(/^\//, '')) ;
+      },
+      _fireUri: (kind, u) => {
+        if (kind === 'create' && w.ignoreCreateEvents) return;
+        if (kind === 'change' && w.ignoreChangeEvents) return;
+        if (kind === 'delete' && w.ignoreDeleteEvents) return;
+        em[kind].fire(u);
       },
       dispose: () => { host.watchers.delete(w); },
     };
@@ -1143,6 +1510,7 @@ class Host {
   _registerHandlers() {
     const R = (m, fn) => this.rpc.requestHandlers.set(m, fn);
     const N = (m, fn) => this.rpc.notificationHandlers.set(m, fn);
+    this.webviews.register(R, N);
 
     R('initialize', async (p) => {
       this.apiVersion = p.apiVersion || this.apiVersion;
@@ -1150,6 +1518,8 @@ class Host {
       this.appRoot = p.appRoot || this.appRoot;
       this.uiLanguage = p.language || 'en';
       this.themeKind = p.themeKind || this.themeKind;
+      this.webviewBase = p.webviewBase || '';
+      this.webviewOrigin = p.webviewOrigin || '';
       this.ideLanguages = p.languages || [];
       if (p.machineId) this.machineId = p.machineId;
       this._settings = p.settings || {};
@@ -1179,7 +1549,9 @@ class Host {
     R('activate', async (p) => { await this.activateByEvent(p.event); return true; });
     R('extensions/status', async () => this.extensionList().map((e) => ({ id: e.id, active: e.active, failed: e.failed, main: !!e.main })));
     R('commands/execute', async (p) => {
-      const r = await this.executeCommand(p.command, this.cmdCache.args(p.args));
+      // {$uri: "..."} arguments from the IDE (editor/title menus pass the editor's resource) become vscode.Uri
+      const args = this.cmdCache.args(p.args).map((a) => (a && typeof a === 'object' && !Array.isArray(a) && typeof a.$uri === 'string' && Object.keys(a).length <= 2 ? C.uriFromIde(a.$uri) : a));
+      const r = await this.executeCommand(p.command, args);
       return C.plain(r);
     });
     R('commands/list', async () => [...this.commands.keys()]);
@@ -1192,43 +1564,108 @@ class Host {
     N('debug/customEvent', (p) => this.debug.customEvent(p));
 
     N('document/open', (p) => {
+      const v = this.tabs.virtualFor(p.path);
+      if (v) {                                  // the IDE's temp copy of a virtual document
+        const doc = this.docs.get(v.uri);
+        if (doc && typeof p.text === 'string' && p.text !== doc.getText()) { this.docs.change(v.uri, undefined, p.text, true); this.tabs.docUpdated(doc, { ide: true }); }
+        return;
+      }
       const uri = p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri);
       const doc = this.docs.open(uri, p.languageId, p.version || 1, p.text || '');
+      doc._ideOpen = true;
       if (p.dirty !== undefined) doc.isDirty = !!p.dirty;
+      this.tabs.changed();
       this.activateByEvent('onLanguage:' + doc.languageId);
     });
-    N('document/change', (p) => { this.docs.change(p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri), p.version, p.text, p.dirty); });
+    N('document/change', (p) => {
+      const v = this.tabs.virtualFor(p.path);
+      if (v) {
+        const doc = this.docs.get(v.uri);
+        if (doc && p.text !== doc.getText()) { this.docs.change(v.uri, undefined, p.text, true); this.tabs.docUpdated(doc, { ide: true }); }
+        return;
+      }
+      const before = this.docs.get(p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri));
+      const wasDirty = before && before.isDirty;
+      this.docs.change(p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri), p.version, p.text, p.dirty);
+      if (before && before.isDirty !== wasDirty) this.tabs.changed();
+    });
     N('document/save', (p) => {
+      const v = this.tabs.virtualFor(p.path);
+      if (v) {                                  // Ctrl+S in the temp copy: write through the provider
+        const doc = this.docs.get(v.uri);
+        if (doc) {
+          if (p.text !== undefined && p.text !== doc.getText()) this.docs.change(v.uri, undefined, p.text, true);
+          if (this.fsx.has(v.uri.scheme)) doc.save().catch((e) => this.logHost('save failed: ' + e));
+        }
+        return;
+      }
       const uri = p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri);
       const doc = this.docs.get(uri);
       if (doc && p.text !== undefined) this.docs.change(uri, undefined, p.text, false);
       this.docs.saved(uri);
+      this.tabs.changed();
     });
     N('document/close', (p) => {
-      const uri = p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri);
-      this.docs.close(uri);
+      const v = this.tabs.removeVirtualPath(p.path);
+      const uri = v ? v.uri : (p.path ? T.Uri.file(p.path) : T.Uri.parse(p.uri));
+      if (!v) this.docs.close(uri);
       this._editors.delete(uri.toString());
-      if (this._active && this._active.document.uri.toString() === uri.toString()) { this._active = null; this.events.activeEditor.fire(undefined); }
+      if (this._active && this._active.document.uri.toString() === uri.toString()) this._setActiveEditor(null, null);
+      this.tabs.changed();
     });
     N('editor/active', (p) => {
       let ed = null;
+      let key = null;
       if (p.path) {
-        const doc = this.docs.get(T.Uri.file(p.path));
-        if (doc) { ed = this._editorFor(doc); if (p.selection) ed._setSelection(p.selection); }
+        const v = this.tabs.virtualFor(p.path);
+        const doc = v ? this.docs.get(v.uri) : this.docs.get(T.Uri.file(p.path));
+        if (doc) { ed = this._editorFor(doc); key = 'text:' + doc.uri.toString(); if (p.selection) ed._setSelection(p.selection); }
       }
-      if (ed !== this._active) {
-        this._active = ed;
-        this.events.activeEditor.fire(ed || undefined);
-        this.events.visibleEditors.fire(this.visibleEditors());
-        if (this._tabEvents) this._tabEvents.tabs.fire({ opened: [], closed: [], changed: [] });
+      if (ed !== this._active || this._diffEditors) {
+        if (key) this.tabs.activeKey = key;
+        this._setActiveEditor(ed, null);
+        this.tabs.changed();
       }
     });
+    N('tabs/active', (p) => {
+      if (p.kind === 'diff') {
+        const e = this.tabs.diffs.get(p.id);
+        if (!e) return;
+        this.tabs.setActive('diff:' + e.id);
+        this.diffActivated(e);
+        return;
+      }
+      if (p.kind === 'text' && p.path) {
+        const v = this.tabs.virtualFor(p.path);
+        const doc = v ? this.docs.get(v.uri) : this.docs.get(T.Uri.file(p.path));
+        if (!doc) return;
+        this.tabs.setActive('text:' + doc.uri.toString());
+        const ed = this._editorFor(doc);
+        if (ed !== this._active || this._diffEditors) this._setActiveEditor(ed, null);
+        return;
+      }
+      if (p.kind === 'webview' && p.handle) { this.tabs.setActive('webview:' + p.handle); return; }
+      this.tabs.setActive(null);
+      if (this._active || this._diffEditors) this._setActiveEditor(null, null);
+    });
+    N('tabs/closed', (p) => { if (p.diffId) this.tabs.diffClosed(p.diffId); });
+    N('diff/changed', (p) => this.tabs.diffChanged(p));
+    R('diff/save', (p) => this.tabs.diffSave(p));
     N('editor/selection', (p) => {
-      const doc = p.path && this.docs.get(T.Uri.file(p.path));
+      const v = this.tabs.virtualFor(p.path);
+      const doc = v ? this.docs.get(v.uri) : (p.path && this.docs.get(T.Uri.file(p.path)));
       if (!doc) return;
       const ed = this._editorFor(doc);
       ed._setSelection(p.selection);
       this.events.selection.fire({ textEditor: ed, selections: ed.selections, kind: T.TextEditorSelectionChangeKind.Keyboard });
+    });
+    N('editor/visibleRanges', (p) => {
+      const v = this.tabs.virtualFor(p.path);
+      const doc = v ? this.docs.get(v.uri) : (p.path && this.docs.get(T.Uri.file(p.path)));
+      if (!doc) return;
+      const ed = this._editorFor(doc);
+      ed._visible = (p.ranges || []).map((r) => new T.Range(r[0], 0, r[1], 0));
+      this.events.visibleRanges.fire({ textEditor: ed, visibleRanges: ed.visibleRanges });
     });
     N('configuration/changed', (p) => {
       const old = this._tree();
@@ -1243,23 +1680,48 @@ class Host {
         },
       });
     });
-    N('workspace/folders', (p) => {
-      const old = this._folders;
-      this._folders = (p.folders || []).map((f, i) => ({ uri: T.Uri.file(f), name: path.basename(f), index: i }));
-      this.events.workspaceFolders.fire({ added: this._folders.filter((f) => !old.some((o) => o.uri.fsPath === f.uri.fsPath)), removed: old.filter((o) => !this._folders.some((f) => o.uri.fsPath === f.uri.fsPath)) });
-      this._ensureFsWatch();
-      this._workspaceContains();
-    });
+    N('workspace/folders', (p) => this._setFolders(p.folders || []));
     N('theme/changed', (p) => { this.themeKind = p.kind || this.themeKind; this.events.theme.fire({ kind: this.themeKind }); });
-    N('window/focus', (p) => this.events.windowState.fire({ focused: !!p.focused, active: !!p.focused }));
+    N('window/focus', (p) => { this.windowState = { focused: !!p.focused, active: !!p.focused }; this.events.windowState.fire(this.windowState); });
     N('progress/cancel', (p) => { const c = this._progress && this._progress.get(p.id); if (c) c.cancel(); });
-    N('terminal/closed', (p) => { const t = this._terminals.get(p.id); if (t) { this._terminals.delete(p.id); t.exitStatus = { code: p.code, reason: T.TerminalExitReason.Process }; this.events.terminalClose.fire(t); } });
+    N('terminal/closed', (p) => this.terminalsSvc.closedByUser(p));
+    N('terminal/input', (p) => this.terminalsSvc.input(p));
+    N('terminal/focused', (p) => this.terminalsSvc.focused(p));
+    R('terminal/link', (p) => this.terminalsSvc.link(p));
+    R('terminal/profiles', async () => this.terminalsSvc.profiles());
+    R('terminal/newFromProfile', (p) => this.terminalsSvc.newFromProfile(p));
+    R('terminal/new', async (p) => { const t = this.terminalsSvc.create(null, { name: p && p.name }); t.show(); return t._id; });
+    R('uri/handle', (p) => this.uriHandlers.handle(p));
+    R('decorations/file', (p) => this.fileDecorations.provide(p));
+    R('tabs/list', async () => this.tabs.group.tabs.map((t) => ({ key: t._key, label: t.label, active: t.isActive, dirty: t.isDirty,
+      kind: t.input instanceof T.TabInputTextDiff ? 'diff' : t.input instanceof T.TabInputText ? 'text' : t.input instanceof T.TabInputCustom ? 'custom' : t.input instanceof T.TabInputWebview ? 'webview' : t.input instanceof T.TabInputTerminal ? 'terminal' : 'other',
+      uri: t.input && t.input.uri ? t.input.uri.toString() : t.input && t.input.modified ? t.input.modified.toString() : undefined, viewType: t.input && t.input.viewType })));
     N('files/event', (p) => {
       const uris = (p.paths || []).map((x) => T.Uri.file(x));
       if (p.kind === 'create') this.events.createFiles.fire({ files: uris });
       else if (p.kind === 'delete') this.events.deleteFiles.fire({ files: uris });
       for (const u of uris) for (const w of this.watchers) if (w._match(u.fsPath)) w._fire(p.kind, u.fsPath);
     });
+  }
+
+  _setFolders(list) {
+    const old = this._folders;
+    this._folders = list.map((f, i) => ({ uri: T.Uri.file(f), name: path.basename(f), index: i }));
+    this.events.workspaceFolders.fire({ added: this._folders.filter((f) => !old.some((o) => o.uri.fsPath === f.uri.fsPath)), removed: old.filter((o) => !this._folders.some((f) => o.uri.fsPath === f.uri.fsPath)) });
+    this._ensureFsWatch();
+    this._workspaceContains();
+  }
+
+  /** workspace.updateWorkspaceFolders: the extension host's folder list (the IDE is told; it keeps its projects) */
+  updateWorkspaceFolders(start, deleteCount, ...add) {
+    const cur = this._folders.map((f) => f.uri.fsPath);
+    if (start < 0 || start > cur.length) return false;
+    const adds = add.filter(Boolean).map((x) => (x.uri ? x.uri.fsPath : String(x)));
+    if (adds.some((a) => cur.some((c, i) => (i < start || i >= start + (deleteCount || 0)) && c.toLowerCase() === a.toLowerCase()))) return false;
+    cur.splice(start, deleteCount || 0, ...adds);
+    this._setFolders(cur);
+    this.rpc.notify('workspace/foldersUpdated', { folders: cur });
+    return true;
   }
 
   async _startup() {
@@ -1290,19 +1752,33 @@ class TextEditor {
     this._host = host;
     this._doc = doc;
     this._selections = [new T.Selection(0, 0, 0, 0)];
-    this.options = { tabSize: 4, insertSpaces: true, cursorStyle: T.TextEditorCursorStyle.Line, lineNumbers: T.TextEditorLineNumbersStyle.On, indentSize: 4 };
+    this._visible = null;
+    this._options = { tabSize: 4, insertSpaces: true, cursorStyle: T.TextEditorCursorStyle.Line, lineNumbers: T.TextEditorLineNumbersStyle.On, indentSize: 4 };
     this.viewColumn = T.ViewColumn.One;
   }
   get document() { return this._host.docs.get(this._doc.uri) || this._doc; }
+  get _path() { return this._host.idePath(this.document); }
+  get options() { return this._options; }
+  set options(o) {
+    this._options = Object.assign({}, this._options, o || {});
+    if (this._options.indentSize === 'tabSize') this._options.indentSize = this._options.tabSize;
+    this._host.rpc.notify('editor/options', { path: this._path, tabSize: this._options.tabSize, insertSpaces: this._options.insertSpaces, lineNumbers: this._options.lineNumbers, cursorStyle: this._options.cursorStyle });
+    this._host.events.editorOptions.fire({ textEditor: this, options: this._options });
+  }
   get selection() { return this._selections[0]; }
   set selection(s) { this.selections = [s]; }
   get selections() { return this._selections; }
   set selections(list) {
     this._selections = list.map((s) => (s instanceof T.Selection ? s : new T.Selection(s.start, s.end)));
     const s = this._selections[0];
-    this._host.rpc.notify('editor/setSelection', { path: this.document.uri.fsPath, selection: [s.anchor.line, s.anchor.character, s.active.line, s.active.character] });
+    this._host.rpc.notify('editor/setSelection', { path: this._path, selection: [s.anchor.line, s.anchor.character, s.active.line, s.active.character] });
+    this._host.events.selection.fire({ textEditor: this, selections: this._selections, kind: T.TextEditorSelectionChangeKind.Command });
   }
-  get visibleRanges() { return [new T.Range(0, 0, this.document.lineCount, 0)]; }
+  get visibleRanges() {
+    if (this._visible && this._visible.length) return this._visible.map((r) => this.document.validateRange(r));
+    const last = Math.max(0, Math.min(this.document.lineCount - 1, 49));
+    return [new T.Range(0, 0, last, this.document.lineAt(last).text.length)];
+  }
   _setSelection(sel) {
     const [l1, c1, l2, c2] = sel;
     this._selections = [new T.Selection(l1, c1, l2, c2)];
@@ -1318,7 +1794,14 @@ class TextEditor {
       const r = Array.isArray(location) ? location[0] : location;
       range = r instanceof T.Position ? [r.line, r.character, r.line, r.character] : [r.start.line, r.start.character, r.end.line, r.end.character];
     }
-    return this._host.rpc.request('editor/insertSnippet', { path: this.document.uri.fsPath, snippet: typeof snippet === 'string' ? snippet : snippet.value, range }).then((r) => !!r);
+    if (!this._path) {                     // a document without an IDE editor: insert the snippet text plainly
+      const we = new T.WorkspaceEdit();
+      const text = (typeof snippet === 'string' ? snippet : snippet.value).replace(/\$\{\d+:([^}]*)\}/g, '$1').replace(/\$\d+/g, '');
+      const rr = range ? new T.Range(range[0], range[1], range[2], range[3]) : this.selection;
+      we.replace(this.document.uri, rr, text);
+      return this._host.applyEdit(we);
+    }
+    return this._host.rpc.request('editor/insertSnippet', { path: this._path, snippet: typeof snippet === 'string' ? snippet : snippet.value, range }).then((r) => !!r);
   }
   setDecorations(type, rangesOrOptions) {
     const ranges = (rangesOrOptions || []).map((x) => {
@@ -1330,13 +1813,13 @@ class TextEditor {
       }
       return o;
     });
-    this._host.rpc.notify('editor/decorations', { path: this.document.uri.fsPath, key: type.key, ranges });
+    if (this._path) this._host.rpc.notify('editor/decorations', { path: this._path, key: type.key, ranges });
   }
   revealRange(range, revealType) {
-    this._host.rpc.notify('editor/reveal', { path: this.document.uri.fsPath, line: range.start.line, type: revealType || 0 });
+    if (this._path) this._host.rpc.notify('editor/reveal', { path: this._path, line: range.start.line, type: revealType || 0 });
   }
   show() { this._host.showTextDocument(this.document); }
-  hide() {}
+  hide() { if (this._path) this._host.rpc.request('tabs/close', { path: this._path }).catch(() => {}); }
 }
 
 // ============================================================================ start
