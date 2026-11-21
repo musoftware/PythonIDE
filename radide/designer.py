@@ -212,6 +212,7 @@ class Overlay(QWidget):
         if self.handle >= 0:
             self.mode = "resize"
             c = self.doc.selected
+            self.view.blend_begin_edit()    # Record off: the edit is on the designed form, not the timeline
             self.starts = {id(c): self.start_rect(c)}
             return
         hit = self.control_at(pos)
@@ -235,6 +236,7 @@ class Overlay(QWidget):
             self.mode = None
             return
         self.mode = "move"
+        self.view.blend_begin_edit()        # Record off: the edit is on the designed form, not the timeline
         self.starts = {id(c): self.start_rect(c) for c in self._movable()}
         self.view.phone.begin_drag(self._movable())     # children of a Column / Row follow the mouse
 
@@ -353,17 +355,20 @@ class Overlay(QWidget):
             return super().keyPressEvent(e)
         if self.doc.locked:
             return
+        self.view.blend_begin_edit()
         self.doc.checkpoint()
+        # from what is shown (a previewed state / keyframe); the other two values keep their base value
         if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
             c = self.doc.selected
             if c is not None and not c.ctype.nonvisual:
                 p = self.view.design_props(c)
-                self.doc.set_geometry(c, p["Left"], p["Top"], max(MIN_SIZE, p["Width"] + step[0]),
-                                      max(MIN_SIZE, p["Height"] + step[1]))
+                self.doc.set_geometry(c, int(c.props["Left"]), int(c.props["Top"]),
+                                      max(MIN_SIZE, p["Width"] + step[0]), max(MIN_SIZE, p["Height"] + step[1]))
         else:
             for c in self._movable():
                 p = self.view.design_props(c)
-                self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], p["Width"], p["Height"])
+                self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], int(c.props["Width"]),
+                                      int(c.props["Height"]))
 
     # ------------------------------------------------------------ drag & drop
     def dragEnterEvent(self, e):
@@ -803,6 +808,16 @@ class DesignerView(QScrollArea):
             except (TypeError, ValueError, KeyError, AttributeError):
                 pass
         return self.doc.form.props
+
+    def blend_begin_edit(self) -> None:
+        """A move / resize of the designed form starts: with timeline Record off a scrubbed timeline
+        preview is dropped first (the edit changes the base values, and the control must follow the mouse)."""
+        bp = getattr(self, "_blend_preview", None)
+        if bp is None or bp.timeline is None or self.blend_recording():
+            return
+        release = getattr(bp, "timeline_release", None)
+        if callable(release):
+            release()
 
     def blend_recording(self) -> bool:
         """True while edits are recorded into a visual state or as timeline keyframes."""

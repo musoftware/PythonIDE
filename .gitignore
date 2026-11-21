@@ -119,3 +119,6 @@ _exeimport_work/
 mysql-data/
 pgdata/
 
+
+# Browser automation output
+.playwright-mcp/

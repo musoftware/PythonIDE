@@ -3075,7 +3075,31 @@
   "Extension code (Node.js: LSP clients, commands, providers)": "كود الإضافة (Node.js: عملاء LSP، أوامر، مزودات)",
   "runs in the RAD IDE extension host (vscode API shim; not every API exists)": "يعمل في مضيف إضافات RAD IDE (محاكاة واجهة vscode؛ ليست كل الواجهات موجودة)",
   "the extension host is not available - code does not run": "مضيف الإضافات غير متوفر - الكود لا يعمل",
-  "Install Extension from VSIX": "تثبيت إضافة من ملف VSIX"
+  "Install Extension from VSIX": "تثبيت إضافة من ملف VSIX",
+  "1. Turn on Record  2. Move the time cursor  3. Move or change a control - a keyframe is added  4. Play to preview; Begin on Load starts it when the program runs": "1. شغّل التسجيل  2. حرّك مؤشر الوقت  3. حرّك عنصرًا أو غيّر خاصية - يُضاف إطار رئيسي  4. شغّل للمعاينة؛ «البدء عند التحميل» يبدأ الحركة عند تشغيل البرنامج",
+  "Record: while it is on, moving / resizing a control in the designer or changing a property in the Properties window adds a keyframe at the time cursor.\nPlay: runs the storyboard in the designer from the time cursor to the end; Stop puts the controls back where you designed them.": "التسجيل: أثناء تشغيله يضيف تحريك عنصر أو تغيير حجمه في المصمم أو تغيير خاصية في نافذة الخصائص إطارًا رئيسيًا عند مؤشر الوقت.\nتشغيل: يعرض القصة المصورة في المصمم من مؤشر الوقت حتى النهاية؛ و«إيقاف» يعيد العناصر إلى أماكنها المصممة.",
+  "● Record keyframes": "● تسجيل الإطارات الرئيسية",
+  "Record: while it is on, moving / resizing a control in the designer or changing a property in the Properties window adds ONE keyframe at the time cursor for the properties that changed.\nWhile it is off, edits change the designed (base) form.": "التسجيل: أثناء تشغيله يضيف تحريك عنصر أو تغيير حجمه في المصمم أو تغيير خاصية في نافذة الخصائص إطارًا رئيسيًا واحدًا عند مؤشر الوقت للخصائص التي تغيّرت.\nوأثناء إيقافه تغيّر التعديلات النموذج المصمم (الأساسي).",
+  "▶ Play": "▶ تشغيل",
+  "■ Stop": "■ إيقاف",
+  "Play: runs the storyboard in the designer from the time cursor to the end (honours Repeat / AutoReverse). The controls cannot be edited while it plays.": "تشغيل: يعرض القصة المصورة في المصمم من مؤشر الوقت حتى النهاية (مع التكرار / العكس التلقائي). لا يمكن تعديل العناصر أثناء التشغيل.",
+  "Stop: puts the controls back where you designed them and the time cursor at 0.": "إيقاف: يعيد العناصر إلى أماكنها المصممة ومؤشر الوقت إلى 0.",
+  "Time cursor (ms): type a time or drag the red cursor on the timeline": "مؤشر الوقت (مللي ثانية): اكتب وقتًا أو اسحب المؤشر الأحمر على الخط الزمني",
+  "Animated properties (tracks). Turn on Record and move / change a control to add one.": "الخصائص المتحركة (المسارات). شغّل التسجيل وحرّك عنصرًا أو غيّره لإضافة مسار.",
+  "Time cursor: click or drag on the ruler to move it (the designer shows the animation at that time).\nKeyframes (diamonds): click to select, drag to change the time, Del or right-click to delete.\nCtrl+wheel zooms the timeline.": "مؤشر الوقت: انقر أو اسحب على المسطرة لتحريكه (يعرض المصمم الحركة في ذلك الوقت).\nالإطارات الرئيسية (المعيّنات): انقر للتحديد، واسحب لتغيير الوقت، وDel أو النقر بالزر الأيمن للحذف.\nCtrl+عجلة الفأرة لتكبير الخط الزمني.",
+  "Edit a keyframe's time or value here; Easing = how the move into this keyframe speeds up / slows down. Del deletes the selected keyframe.": "عدّل وقت الإطار الرئيسي أو قيمته هنا؛ التخفيف = كيف تتسارع الحركة إلى هذا الإطار أو تتباطأ. Del يحذف الإطار المحدد.",
+  "linear = constant speed; in = starts slowly; out = ends slowly; inout = both": "linear = سرعة ثابتة؛ in = تبدأ ببطء؛ out = تنتهي ببطء؛ inout = كلاهما",
+  "Value of the keyframe; empty = the value the control shows now": "قيمة الإطار الرئيسي؛ فارغة = القيمة التي يعرضها العنصر الآن",
+  "Delete the selected keyframe (Del)": "حذف الإطار الرئيسي المحدد (Del)",
+  "Keyframe of the selected control's property at the time cursor": "إطار رئيسي لخاصية العنصر المحدد عند مؤشر الوقت",
+  "Delete Keyframe": "حذف الإطار الرئيسي",
+  "Record is off: you are changing the designed form (time cursor back to 0). Turn on Record to add keyframes instead.": "التسجيل متوقف: أنت تعدّل النموذج المصمم (عاد مؤشر الوقت إلى 0). شغّل التسجيل لإضافة إطارات رئيسية بدلًا من ذلك.",
+  "Nothing to play yet: turn on Record, move the time cursor and move a control.": "لا شيء للتشغيل بعد: شغّل التسجيل وحرّك مؤشر الوقت ثم حرّك عنصرًا.",
+  "Choose the property to animate first.": "اختر الخاصية المراد تحريكها أولًا.",
+  "Type a value for the keyframe.": "اكتب قيمة للإطار الرئيسي.",
+  "The storyboard starts by itself when the program runs (after Form_Load).": "تبدأ القصة المصورة تلقائيًا عند تشغيل البرنامج (بعد Form_Load).",
+  "Start again from the beginning at the end (forever) - in the designer too.": "البدء من جديد عند النهاية (إلى الأبد) - في المصمم أيضًا.",
+  "Play forward, then backward to the start.": "التشغيل للأمام ثم للخلف حتى البداية."
  },
  "patterns": {
   "{} of {} examples": "{} من {} مثال",
@@ -3556,6 +3580,10 @@
   "Help > Ring Samples - every sample, application and documentation example that comes with Ring": "تعليمات > أمثلة Ring - كل مثال وتطبيق ومثال توثيق يأتي مع Ring",
   "Every sample, application and documentation example that comes with Ring: run them or open them as projects": "كل الأمثلة والتطبيقات وأمثلة التوثيق التي تأتي مع Ring: شغّلها أو افتحها كمشاريع",
   "Ring Samples - run or open every example that comes with Ring": "أمثلة Ring - شغّل أو افتح كل مثال يأتي مع Ring",
-  "Cannot copy the sample:\n{}": "تعذّر نسخ المثال:\n{}"
+  "Cannot copy the sample:\n{}": "تعذّر نسخ المثال:\n{}",
+  "Duration: {} ms": "المدة: {} مللي ثانية",
+  "▶ Playing {} - Stop puts the controls back": "▶ تشغيل {} - «إيقاف» يعيد العناصر إلى أماكنها",
+  "● Recording {} at {} ms - moves and edits add keyframes": "● تسجيل {} عند {} مللي ثانية - التحريك والتعديل يضيفان إطارات رئيسية",
+  "Repaired the storyboards: removed {} broken tracks / keyframes (no property or no value).": "تم إصلاح القصص المصورة: حُذف {} من المسارات / الإطارات التالفة (بلا خاصية أو بلا قيمة)."
  }
 }

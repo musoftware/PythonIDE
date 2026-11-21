@@ -666,6 +666,14 @@ class LocPreview:
         w = self.view.previews.get(id(ctrl))
         if w is None:
             return
+        bp = getattr(self.view, "_blend_preview", None)
+        if bp is not None and not (self.code or self.mirrored):
+            # no language shown: the Blend preview (visual state / storyboard time) decides what the
+            # control shows - the raw values here undid a scrubbed / recorded keyframe position
+            bp.apply(ctrl)
+            from PyQt6.QtCore import Qt
+            w.setLayoutDirection(Qt.LayoutDirection.RightToLeft if self.rtl else Qt.LayoutDirection.LeftToRight)
+            return
         try:
             apply_props(w, Control(ctrl.type, self.localized(ctrl), ctrl.states)
                         if (self.code or self.mirrored) else ctrl)
