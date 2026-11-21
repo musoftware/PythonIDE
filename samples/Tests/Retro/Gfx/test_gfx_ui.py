@@ -124,6 +124,19 @@ pump(0.1)
 check("upside-down storage flips the view", ed2.pixels.block[-1] == [0, 0, 0, 1, 1, 0, 0, 0])
 ed2.bottom_up.setChecked(False)
 
+# ---- the ROM slice's hex editor (when present): View Current File as Tiles + refresh through the file bus
+hexdoc = None
+try:
+    from radide.retro.rom.hexdoc import HexDocument
+    hexdoc = HexDocument(bin_path)
+    w._show_tab(hexdoc, "castle.bin [hex]")
+    hexdoc.view.set_cursor(0x80)
+    pump(0.2)
+    t2 = feat.tiles_from_current()
+    check("View Current File as Tiles opens at the hex cursor", t2 is ed2 and ed2.sheet.offset == 0x80)
+except ImportError:
+    print("SKIP hex editor integration (radide.retro.rom.hexdoc not available)")
+
 # ------------------------------------------------------------------ playfield editor
 pfe = w.open_any_file(os.path.join(WORK, "castle.rtpf"))
 pump(0.3)
@@ -141,6 +154,8 @@ back = Playfield.from_binary(open(bin_path, "rb").read(), 0x20, 16, reflect=True
 check("write playfield into castle.bin and read back", n == 1 and back.rows[3][:20] == pfe.pf.rows[3][:20])
 check("tile editor of castle.bin refreshed after the playfield write", bytes(ed2.sheet.data) ==
       open(bin_path, "rb").read())
+if hexdoc is not None:
+    check("hex editor of castle.bin refreshed after the playfield write", hexdoc.data() == open(bin_path, "rb").read())
 pfe.asym.setChecked(True)
 pump(0.1)
 check("asymmetric mode: 6 tables", "Playfield_PF2R:" in pfe.asm.toPlainText())
@@ -214,4 +229,6 @@ pump(0.3)
 mp.set_modified(False)
 for doc in (ed, ed2, pfe, te, se, mp):
     doc.set_modified(False)
+if hexdoc is not None:
+    w.tabs.removeTab(w.tabs.indexOf(hexdoc))
 finish(w)

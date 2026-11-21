@@ -4,7 +4,7 @@ Each slice of radide/retro (and radide/agc) documents itself in its own section 
 
 ## Emulators (slice "emu": `radide/retro/emu`, `radide/features/retro_emu.py`, `radide/languages/retro_dos.py`)
 
-RAD IDE never bundles an emulator, a BIOS or a game. On request (**Tools > Retro > Retro Emulators...**) it
+RAD IDE never bundles an emulator, a BIOS or a game. On request (**Tools > Retro > Emulators...**) it
 downloads the pinned portable Windows build of a free emulator from the project's **official GitHub releases
 page** into `%LOCALAPPDATA%\RADIDE\tools\<id>`. There is no installer, no admin and no winget. The SHA-256 is
 checked (GitHub's release `digest`, or measured when this version was written) and recorded in
@@ -25,7 +25,8 @@ Portable settings: mGBA gets `portable.ini` next to its exe. Mesen gets `setting
 Mesen's portable mode, so nothing goes to `Documents\Mesen2`. Stella uses `-basedir %LOCALAPPDATA%\RADIDE\retro\stella`.
 VICE uses `-config ...\retro\vice\vice.ini -logfile ...` and `-autostartprgmode 1`, which injects programs into RAM so
 no autostart disk image is written. VICE still creates `%APPDATA%\vice` for its startup log. Atari800 uses
-`-config ...\retro\atari800\atari800.cfg -no-autosave-config`. DOSBox-X gets `<project>\.radide\dosbox-x.conf`.
+`-config ...\retro\atari800\atari800.cfg -no-autosave-config`. DOSBox-X gets `<project>\.radide\dosbox-x.conf`. DOSBox-X still writes its default
+`%LOCALAPPDATA%\DOSBox-X\dosbox-x-<version>.conf` on its first start, and there is no switch to prevent it.
 You can set your own emulator paths in the manager (QSettings `retro/emu/<id>`).
 
 ### API for the other retro slices
@@ -50,12 +51,12 @@ from radide.retro.emu.ui import start_rom, hot_reload            # IDE versions 
 * `symbols`: a path or a list of paths: `.sym`, `.lst`, `.dbg`, `.mlb`, `.lbl`, `.lua` or a label listing.
   `ui.start_rom` picks up `<rom>.sym/.lst/.dbg/.lbl/.mlb` automatically.
 * Errors: `launch.EmuError`. When no emulator is installed, its message tells the user to open Tools > Retro >
-  Retro Emulators...
+  Emulators...
 * CLI: `python -m radide.retro.emu status | install <id> | run <rom> [--debug] [--symbols f] | dos <folder|program>`.
 
 ### Hot reload
 
-**Tools > Retro > Reload ROM in Emulator** (Ctrl+Alt+F5) or the dock's **Reload ROM** button (`ui.hot_reload` /
+**Tools > Retro > Reload ROM in Emulator** (Ctrl+Shift+Alt+F5) or the dock's **Reload ROM** button (`ui.hot_reload` /
 `RetroProcess.reload`). In VICE the program is loaded again in place: the monitor runs `autostart` and the emulator
 keeps running. Stella, Mesen, FCEUX, mGBA and Atari800 have no reload command on their command line or protocol, so
 RAD IDE restarts them with the same options. When a GDB or monitor session was attached, the Retro Debugger attaches
@@ -63,12 +64,12 @@ to the restarted emulator again.
 
 ### DOS programs and legacy DOS development
 
-* **New Project > Retro > DOS Program** (`retro-dos` plugin) has these templates:
+* **New Project > Retro > DOS Program** (`retro-dos` plugin) has two templates:
   * Existing DOS Program: copy in a program or game you own.
   * DOS .COM in Assembly: NASM builds it on Windows, using the downloader of `radide/asm/toolchain.py`.
-  * Turbo Pascal / Free Pascal.
-  * Turbo C / Open Watcom C.
-  * QBasic / QuickBASIC.
+
+  To write new QBasic, Pascal, C or MASM programs for DOS, use the "DOS" project family of the dosdev slice
+  (`radide/retro/dos`). That slice finds DOSBox-X through `radide.retro.emu.manager`.
 * **File > Open Folder** on a folder whose `.EXE` files are MZ programs without a PE/NE/LE header (or `.COM`
   files) offers "DOS program (DOSBox-X)". The detector is registered by `features/retro_emu.py` into
   `project_detect.DETECTORS`. It writes only `project.radproj` with a `"dos"` block and never touches the user's files.
@@ -79,8 +80,8 @@ to the restarted emulator again.
 * F5 runs `python -m radide.retro.emu dos <folder|file>`. It writes `.radide/dosbox-x.conf`, which mounts the folder as
   C: and the toolchain folder as T:, then starts DOSBox-X with `-conf ... -nopromptfolder -fastlaunch`. On Windows
   DOSBox-X runs inside a job object, so the IDE's Stop also closes it.
-* Compilers: RAD IDE ships none. NASM, which is free, builds `.COM` files on the host. For Pascal, C and BASIC, the
-  project's toolchain folder is searched for one of these compilers and the build runs inside DOSBox-X:
+* Compilers for sources inside an existing program's folder: RAD IDE ships none. NASM, which is free, builds
+  `.COM` files on the host. For Pascal, C and BASIC, the project's toolchain folder is searched for one of these compilers and the build runs inside DOSBox-X:
   * TPC/BPC (Turbo/Borland Pascal, your copy).
   * PPC386/FPC (Free Pascal go32v2, GPL/LGPL).
   * TCC/BCC (Turbo/Borland C, your copy).
@@ -89,8 +90,8 @@ to the restarted emulator again.
   * BC.
   * FBC (FreeBASIC DOS, GPL).
 
-  You can also give your own `build` command with `{src}` / `{stem}` placeholders.
-  RAD IDE does not download the free DOS compilers yet.
+  You can also give your own `build` command with `{src}` / `{stem}` placeholders. The dosdev slice downloads
+  the free compilers.
 
 ### Tests (`samples/Tests/Retro/Emulators`)
 
@@ -198,12 +199,130 @@ ca65 / DASM / RGBDS / NASM / ACME / WLA data or C arrays; read from / write into
   metatiles, asm / C export, `.tbl` parse / decode / encode, dump / insert with pointers (in place, repack,
   overflow refused, missing end code added, duplicates shared, ranges, CSV), Arabic shaping / visual order /
   insert.
-* `test_gfx_ui.py` - 44 IDE checks with `qh.py` (offscreen, QSettings "RADIDE-TEST", `widget.grab()` shots):
+* `test_gfx_ui.py` - 46 IDE checks with `qh.py` (offscreen, QSettings "RADIDE-TEST", `widget.grab()` shots):
   menu, `.chr` / `.rtmap` / `.rtpf` / `.tbl` open the editors, pencil and fill by mouse, undo / redo, write back,
-  file-bus refresh of the tile map and of the tile editor, PNG, 2600 player preview, playfield click + ROM
+  file-bus refresh of the tile map, the tile editor and the ROM slice's hex editor, View Current File as Tiles, PNG, 2600 player preview, playfield click + ROM
   write, table check, script dump + Arabic sheet + repack insert, Arabic UI.
 * `make_sample.py` regenerates `Sample/` (original CC0 data, see the README there).
 
 Not done yet: SNES 8bpp / mode 7 and NES 8x16 sprite ordering, palette data read from the ROM itself
 (CGRAM / NES palette tables), a font-tile generator that renders Arabic glyphs into tiles automatically, DTE /
 dictionary compression on insert, a tutorial course.
+
+## ROM workbench (slice "rom": `radide/retro/rom`, `radide/features/retro_rom.py`, `radide/languages/retro_romhack.py`)
+
+Hex editor, ROM / disk / tape detection, checksum repair, IPS / BPS / UPS patches and the **ROM Hacking Project**.
+The tools work on the user's own files; nothing here downloads or ships game data (tests and samples use the
+original homebrew images of `synth.py`).
+
+### Hex editor (`hexview.py`, `hexdoc.py`, core `buffer.py`, `formats.py`, `inspector.py`, `tbl.py`)
+
+* Opens automatically for ROM / image / patch extensions (`.nes .fds .gb .gbc .gba .sfc .smc .md .gen .smd .sms .gg
+  .a26 .a78 .xex .atr .car .d64 .t64 .tzx .sna .ips .bps .ups ...`) from File > Open, Solution Explorer and
+  `win.open_file`; `.bin .rom .prg .tap .dat .sav` when the content is binary. It wraps `open_any_file` /
+  `open_file` after editor_extras, so ROMs get this editor and other binaries keep the generic hex view.
+  Tools > Retro > ROM Workbench > Open in Hex Editor... opens anything.
+* Virtualised painting (only visible rows; 64 MB files scroll instantly), 8 / 16 / 32 bytes per row, overwrite /
+  insert (Insert key), nibble editing, hex and text columns (Tab switches), selection by mouse / Shift, undo /
+  redo where one typed byte (both nibbles) is one step, save point (the tab's `*`), atomic save.
+* Copy As: hex, compact hex, C array, `db` (NASM / FASM / MASM), `.byte` (ca65 / DASM), `dc.b` (68000), `DEFB`
+  (Z80), Python bytes, Base64, text. Paste takes hex text in the hex column.
+* Go To (Ctrl+G: `1F0` hex default, `$1F0`, `0x1F0`, `1F0h`, `#496` decimal, `+10` / `-20` relative), bookmarks
+  (Ctrl+F2 toggle, F2 / Shift+F2 next / previous, Bookmarks panel).
+* Find / Replace bar (Ctrl+F, F3 / Shift+F3): hex with `??` (any byte), `A?` / `?F` (nibble) and `*` (any run)
+  wildcards, text in Latin-1 / ASCII / Shift-JIS / CP437 / EBCDIC with case and `?` / `*` wildcards, or text
+  through the loaded table; Find All lists hits in Results; Replace / Replace All. Searches compile to a byte
+  regex (C speed).
+* Data inspector: offset, binary, int8..int64 LE / BE signed / unsigned, float32 / 64 LE / BE, BCD, ASCII, the
+  table character, the **6502 instruction** at the cursor (all 151 official opcodes, branch targets resolved)
+  and the CPU address of the byte (NES PRG mapping, GB banks, SNES LoROM / HiROM, C64 load address, XEX
+  segments, 2600 / 7800 cart window, DOS image) plus the header field under the cursor.
+* Character tables (`.tbl`: `XX=text`, multi-byte `XXYY=text`, `/XX` end codes, `*XX` line breaks): the text
+  column, text search / replace and typing use them. Relative search finds a word stored with an unknown
+  letter encoding and builds a table from the hit; "Find Text Strings" dumps runs of table text. Tables listed
+  in a ROM Hacking project are preloaded.
+* Structure overlay: the detected header fields are coloured by kind (magic, size, flags, title, checksum,
+  vector, region) with a tooltip; clicking a row of the ROM Info panel selects the field.
+* Compare Files (`diffview.py`): two read-only views scrolling together, differing bytes in red, a list of the
+  difference runs, Next / Previous Difference.
+* The tab protocol of the other retro slices: `retro_path`, `reload_from_disk()`, `save()`, `is_modified()`;
+  saving calls `radide.retro.filebus.file_changed` so open tile / map editors of the same file reload.
+
+### Detection and checksums (`detect.py`)
+
+`detect(data, filename) -> RomInfo(system, format, rows, fields, listing, warnings, checksum_ok, fixable,
+cpu_address, cpu, title)`:
+
+| System | What is read |
+|--------|--------------|
+| Atari 2600 | size, 4 KB banks, bankswitching guess (2K, 4K, F8 / F6 / F4 (+SC SuperChip), E0, E7, FE, 3F, UA, FA, DPC, EF) from size + hotspot access patterns, RESET / IRQ vectors |
+| Atari 7800 | A78 header: title, ROM size, cartridge type bits, controllers, TV, save device |
+| Atari 8-bit | XEX segments + RUNAD / INITAD, ATR geometry + Atari DOS 2 directory, CAR type + checksum |
+| NES / FDS | iNES and NES 2.0: mapper (+ name, submapper), PRG / CHR sizes (incl. exponent notation), mirroring, battery, trainer, console type, timing, size check, NMI / RESET / IRQ vectors; FDS sides |
+| Game Boy / Color | title, CGB / SGB flags, cartridge type, ROM / RAM size, destination, version, header + global checksum (the boot logo area is *not* compared - no Nintendo data is embedded) |
+| GBA | title, game / maker code, complement check |
+| SNES | copier header, LoROM / HiROM / ExHiROM scoring, title, map mode, sizes, country, version, checksum + complement (mirrored non-power-of-two sizes), vectors |
+| Genesis | system, titles, serial, checksum (16-bit word sum from 0x200), ROM / RAM ranges, region; SMD interleave warning |
+| Master System / Game Gear | `TMR SEGA` header, region / size, product code |
+| C64 | PRG load address + detokenised BASIC V2 listing, D64 BAM + directory, T64 directory, raw TAP version |
+| ZX Spectrum | TAP blocks (headers, XOR checksums), TZX block list, SNA registers (+ PC from the stack) |
+| DOS | MZ header (sizes, SS:SP, CS:IP, relocations, overlay, PE / NE / LE / LX), COM |
+| Patches | IPS records, UPS / BPS sizes, CRCs, actions, metadata |
+
+`fix_checksum(data, filename) -> (data, message)` repairs Game Boy / Color (header + global), GBA (complement),
+SNES (checksum + complement, copier header kept), Genesis and Atari CAR. In the editor it is one undoable edit
+(ROM Tools > Fix Header Checksum). `detect_system(path)` returns the emulator slice's ids (a2600, a8, nes, snes,
+gb, gbc, gba, sms, gg, c64, dos, ...); `radide/retro/emu/systems.py` calls it first.
+
+### Patches (`patches.py`)
+
+* IPS: create (records <= 64 KB, RLE for runs of 9+, up to 5 equal bytes kept inside a record, truncation size
+  when the target is shorter, the 0x454F46 offset written from one byte earlier) and apply (grow / truncate).
+* UPS: create / apply with the three CRC32 checks; applying to the target gives the source back.
+* BPS: apply supports all four actions (SourceRead, TargetRead, SourceCopy, TargetCopy incl. overlapping
+  copies) + metadata + CRC32 checks; create emits SourceRead for unchanged runs, TargetCopy for byte runs and
+  SourceCopy for blocks found elsewhere in the source (sampled index), so moved / inserted data stays small.
+* Equal runs are compared in growing blocks, so a 4 MB ROM with a few changes is diffed in well under a second.
+* Tools > Retro > ROM Workbench > Create Patch / Apply Patch (the output must be a new file).
+
+### ROM Hacking Project (`project.py`, `projectui.py`, `retro_romhack.py`)
+
+New Project > Retro > **ROM Hacking Project** (or **(Demo ROM)**, which starts with a synthetic NES image and an
+example IPS patch). `rom.json` keeps the source ROM (copied into `rom/` or referenced by absolute path) with
+its CRC32, the ordered patch list (`enabled`, `note`), tables, output path, `fix_checksum` and the optional
+working copy:
+
+* Build (Project > ROM Hacking > Build Patched ROM, Build > Build Project, Patch Manager > Build, or
+  `python -m radide.retro.rom build <folder>`) applies the enabled patches in order to a fresh in-memory copy,
+  optionally fixes the header checksum and writes `build/<name>_patched.<ext>`. The source ROM is never written
+  and always opens read-only; Build warns when its CRC32 changed.
+* Run (F5 / Ctrl+F5) runs `python -m radide.retro.rom run <folder>`: build, then `emulink.run_rom`.
+* Patch Manager tab: source ROM info, Set Source ROM (copy or reference), patch list with check boxes, Add /
+  Remove / Move Up / Down / Note, details of the selected patch, Edit Working Copy (clean ROM + patches ->
+  `work/`, opened in the hex editor) and **Capture Edits as Patch** (the diff becomes `patches/NNN_<name>.ips|bps|
+  ups`), Build, Build & Run, Open Output.
+* Solution Explorer shows a "ROM Hacking" node with the source ROM, the patches, the working copy and the build.
+
+### Emulator link (`emulink.py`)
+
+`run_rom(path, system=None, debug=False, **kw)` - translates the ids of `detect.py` (atari2600 -> a2600,
+atari8bit -> a8, ...) and calls `radide.retro.emu.run_rom`; raises `emulink.RunError` with a user message when
+the emulator slice or an installed emulator is missing. The CLI prints the message and keeps the built ROM.
+
+### Command line
+
+    python -m radide.retro.rom build|run <project folder>
+    python -m radide.retro.rom info <file>
+    python -m radide.retro.rom apply <rom> <patch> <output>
+    python -m radide.retro.rom create <original> <modified> <patch.ips|.bps|.ups>
+    python -m radide.retro.rom fixsum <file> [<output>]
+
+### Tests (`samples/Tests/Retro/RomTools`) and sample (`samples/Tests/Retro/RomHackDemo`)
+
+* `test_rom_core.py` (90 checks, no Qt) and `test_hex_ui.py` (34 checks in the IDE); `run_all.py` runs both.
+* `RomHackDemo` - the Demo ROM project (CC0 homebrew image + IPS patch).
+
+Not done yet: SMD de-interleaving and SMS / Game Gear checksum repair, an x86 / Z80 / 68000 / 65816
+disassembler in the inspector (6502 only; the retro-dev slice owns the full disassemblers), structure templates
+the user can write (only the built-in header templates), Open Folder detection of a folder of ROMs, a tutorial
+course.

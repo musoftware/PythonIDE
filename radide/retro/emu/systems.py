@@ -1,7 +1,7 @@
 """Which machine a ROM / program file is for (no Qt).
 
 The ROM workbench slice (radide/retro/rom) owns the detailed header parsers; when it is present its
-``detect_system`` is used first, so both slices agree. This fallback looks at the extension and the
+``detect()`` + ``emu_system()`` are used first, so both slices agree. This fallback looks at the extension and the
 well-known magic bytes only.
 """
 from __future__ import annotations
@@ -16,18 +16,17 @@ EXT = {".a26": "a2600", ".nes": "nes", ".fds": "nes", ".unf": "nes", ".sfc": "sn
 
 
 def _external(path: Path) -> str:
-    for mod, fn in (("radide.retro.rom.detect", "detect_system"), ("radide.retro.rom", "detect_system")):
-        try:
-            m = __import__(mod, fromlist=[fn])
-            f = getattr(m, fn, None)
-            if callable(f):
-                r = f(path)
-                r = getattr(r, "system", r)
-                if isinstance(r, str) and r:
-                    return r
-        except Exception:  # noqa: BLE001 - the other slice is optional
-            continue
-    return ""
+    """System id from the ROM workbench's header parsers (radide/retro/rom/detect.py) when that slice exists."""
+    try:
+        from ..rom.detect import detect, emu_system
+    except Exception:  # noqa: BLE001 - the other slice is optional
+        return ""
+    try:
+        if not path.is_file() or path.stat().st_size > 64 * 1024 * 1024:
+            return ""
+        return emu_system(detect(path.read_bytes(), path.name)) or ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def sniff(data: bytes, ext: str = "") -> str:

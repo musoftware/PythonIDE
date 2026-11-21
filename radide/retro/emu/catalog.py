@@ -1,7 +1,7 @@
 """The emulators RAD IDE can drive (no Qt in here).
 
 Every entry is a free emulator published by its own team; RAD IDE never bundles one. On request
-(Tools > Retro Emulators...) the pinned portable Windows build is downloaded from the project's OFFICIAL
+(Tools > Retro > Emulators...) the pinned portable Windows build is downloaded from the project's OFFICIAL
 GitHub releases page into ``%LOCALAPPDATA%\\RADIDE\\tools\\<id>`` - no installer, no admin rights, no winget.
 The SHA-256 of every archive is pinned below (taken from the GitHub release "digest" where GitHub publishes
 one, otherwise measured when this version of RAD IDE was written); a changed file is refused and the user is

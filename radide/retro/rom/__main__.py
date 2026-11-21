@@ -33,8 +33,11 @@ def main(argv=None) -> int:
             if cmd == "run":
                 from .emulink import RunError, run_rom
                 try:
-                    run_rom(out, rp.system or None)
-                    _say(f"Started the emulator for {out.name}")
+                    proc = run_rom(out, rp.system or None)
+                    if getattr(proc, "popen", None) is None and hasattr(proc, "command"):
+                        _say("Emulator command (dry run): " + " ".join(map(str, proc.command)))
+                    else:
+                        _say(f"Started the emulator for {out.name}")
                 except RunError as e:
                     _say(f"*** Cannot start an emulator: {e}")
                     _say("    (Tools > Retro > Emulators downloads one; the patched ROM is ready in build/)")

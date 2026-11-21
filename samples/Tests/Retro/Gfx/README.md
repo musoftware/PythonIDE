@@ -23,6 +23,6 @@ graphics or game text is used. The sample files are dedicated to the public doma
 
 ```
 .venv\Scripts\python.exe samples\Tests\Retro\Gfx\test_gfx_core.py    # 79 unit checks, no Qt
-.venv\Scripts\python.exe samples\Tests\Retro\Gfx\test_gfx_ui.py      # 44 IDE checks (qh.py, offscreen)
+.venv\Scripts\python.exe samples\Tests\Retro\Gfx\test_gfx_ui.py      # 46 IDE checks (qh.py, offscreen)
 .venv\Scripts\python.exe samples\Tests\Retro\Gfx\make_sample.py      # regenerate Sample/
 ```

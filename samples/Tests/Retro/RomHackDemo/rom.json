@@ -1,0 +1,17 @@
+{
+  "rom": "rom/demo.nes",
+  "rom_crc32": "4ACE1F12",
+  "system": "nes",
+  "output": "build/RomHackDemo_patched.nes",
+  "patches": [
+    {
+      "file": "patches/001_message.ips",
+      "enabled": true,
+      "note": "changes the message text"
+    }
+  ],
+  "tables": [
+    "tables/ascii.tbl"
+  ],
+  "fix_checksum": true
+}

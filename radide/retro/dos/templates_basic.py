@@ -159,6 +159,7 @@ END SUB
 MOUSE = """' {name} - the mouse in mode 13h. Left button paints, right button or a key quits.
 ' FreeBASIC -lang qb reads the mouse with __GETMOUSE (QuickBASIC 4.5 would use CALL INTERRUPT &H33).
 DEFINT A-Z
+DIM X AS LONG, Y AS LONG, B AS LONG
 SCREEN 13
 LOCATE 1, 1: PRINT "Paint with the left button"
 LOCATE 25, 1: PRINT "Right button / any key: quit";

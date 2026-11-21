@@ -273,12 +273,15 @@ def fit_window(w: QWidget, wrap: bool = True) -> None:
         w.setWindowState(w.windowState() | Qt.WindowState.WindowMaximized)
         return
     width, height = min(g.width(), area.width()), min(g.height(), area.height())
-    if not w.isVisible() and not w.testAttribute(Qt.WidgetAttribute.WA_Moved):
+    if not w.testAttribute(Qt.WidgetAttribute.WA_Moved):
+        # not placed yet: a dialog is centred over its parent by its own showEvent (after this filter)
         if not big:
-            return                          # not placed yet and it fits: the window system centres it
-        g = QRect(area.left() + (area.width() - width) // 2, area.top() + (area.height() - height) // 2,
-                  width, height)
-        w.setGeometry(g)
+            return                          # it fits: Qt places it exactly as before
+        par = w.parentWidget().window() if w.parentWidget() is not None else None
+        c = par.frameGeometry().center() if par is not None and par.isVisible() else area.center()
+        x = min(max(c.x() - width // 2, area.left()), area.right() + 1 - width)
+        y = min(max(c.y() - height // 2, area.top()), area.bottom() + 1 - height)
+        w.setGeometry(x, y, width, height)  # (sets WA_Moved: Qt keeps this position)
         return
     x = min(max(g.x(), area.left()), area.right() + 1 - width)
     y = min(max(g.y(), area.top()), area.bottom() + 1 - height)

@@ -349,19 +349,30 @@ class Regions:
         body = self.old.get(key)
         return body is not None and body.strip() != "" and body != self.defaults.get(key)
 
-    def orphans(self, line_comment: str) -> str:
+    def orphans(self, line_comment: str, suffix: str = "", handler_default: str = "") -> str:
         """Handlers whose control / event was removed: their code is kept, commented out."""
         keep = self.old.get("orphaned", "")
         parts = [keep] if keep.strip() else []
+        lc = line_comment.strip()
         for k, body in self.old.items():
-            if k in self.used or k == "orphaned" or not body.strip():
+            if k in self.used or k == "orphaned" or not body.strip() or body == handler_default:
                 continue
-            if all(not ln.strip() or ln.strip().startswith(line_comment.strip()) for ln in body.splitlines()):
+            if all(not ln.strip() or ln.strip().startswith(lc) for ln in body.splitlines()):
                 continue
-            parts.append(f"{line_comment}--- {k} (its control or event no longer exists) ---")
-            parts.extend(f"{line_comment}{ln}" for ln in body.splitlines())
+            parts.append(f"{line_comment}--- {k} (its control or event no longer exists) ---{suffix}")
+            parts.extend(f"{line_comment}{_safe_comment(ln, suffix)}{suffix}" for ln in body.splitlines())
         self.used.add("orphaned")
-        return f"{self.begin('orphaned')}\n" + ("\n".join(parts) + "\n" if parts else "") + self.end()
+        nl = "\n"
+        return self.begin("orphaned") + nl + (nl.join(parts) + nl if parts else "") + self.end()
+
+
+def _safe_comment(line: str, suffix: str) -> str:
+    """*line* inside a block comment that ends with *suffix* (*/ or })."""
+    if "*/" in suffix:
+        return line.replace("*/", "* /")
+    if "}" in suffix:
+        return line.replace("}", ")")
+    return line
 
 
 def chunks(seq, n: int):

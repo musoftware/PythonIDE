@@ -150,7 +150,7 @@ class Disassembly:
         """Segments a target address can be in when seen from *seg*: itself, else the fixed ones."""
         if seg.offset(addr) is not None:
             return [seg]
-        return [s for s in self.segments if s.fixed and s is not seg and s.exact(addr) is not None][:1]
+        return [s for s in self.segments if s.fixed and s.trace and s is not seg and s.exact(addr) is not None][:1]
 
     def run(self, undocumented: bool | None = None) -> "Disassembly":
         undoc = self.hints.undocumented if undocumented is None else undocumented

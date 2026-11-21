@@ -134,12 +134,25 @@ def command_line(run: DosRun, conf: Path, silent: bool = False, time_limit: int 
     return args
 
 
+def _tie(proc: subprocess.Popen) -> None:
+    """Close DOSBox-X together with this runner (the IDE's Stop kills the runner): the emu slice's job object."""
+    try:
+        from types import SimpleNamespace
+
+        from ..emu.launch import tie_to_this_process
+        tie_to_this_process(SimpleNamespace(popen=proc))       # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001 - best effort
+        pass
+
+
 def launch(run: DosRun, conf_dir: Path, name: str = "run.conf", log=print) -> subprocess.Popen:
     """Start DOSBox-X with a window (the IDE's Run). The caller owns the process."""
     conf = write_conf(run, Path(conf_dir) / name)
     args = command_line(run, conf, exe=_exe(log))
     log("DOSBox-X: " + " ".join(f'"{a}"' if " " in a else a for a in args))
-    return subprocess.Popen(args, cwd=str(Path(args[0]).parent))
+    proc = subprocess.Popen(args, cwd=str(Path(args[0]).parent))
+    _tie(proc)
+    return proc
 
 
 def run_headless(run: DosRun, conf_dir: Path, timeout: int = 60, name: str = "headless.conf",
@@ -150,6 +163,7 @@ def run_headless(run: DosRun, conf_dir: Path, timeout: int = 60, name: str = "he
     args = command_line(run, conf, silent=True, time_limit=timeout + 5, exe=_exe(log))
     t0 = time.time()
     p = subprocess.Popen(args, cwd=str(Path(args[0]).parent), creationflags=NO_WINDOW)
+    _tie(p)
     try:
         rc = p.wait(timeout=timeout + 15)
         return rc, (time.time() - t0) >= timeout

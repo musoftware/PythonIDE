@@ -46,6 +46,8 @@ class HexView(QAbstractScrollArea):
         self.hit: tuple[int, int] | None = None
         self.hits: list[tuple[int, int]] = []
         self.addr_base = 0                           # added to the offsets shown in the left column
+        self.shortcut_handler = None                 # callable(combo text) -> bool (the document's commands)
+        self.shortcut_keys: set[str] = set()
         self.setFont(_font())
         self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -366,7 +368,30 @@ class HexView(QAbstractScrollArea):
         super().mouseReleaseEvent(e)
 
     # ------------------------------------------------------------------ keyboard
+    OWN_KEYS = (QKeySequence.StandardKey.Undo, QKeySequence.StandardKey.Redo, QKeySequence.StandardKey.Copy,
+                QKeySequence.StandardKey.Cut, QKeySequence.StandardKey.Paste, QKeySequence.StandardKey.SelectAll)
+
+    def _combo(self, e) -> str:
+        return QKeySequence(e.keyCombination()).toString()
+
+    def event(self, e) -> bool:
+        """Keys the view handles itself win over the main window's shortcuts (Ctrl+F / Ctrl+G / F3 / undo...)."""
+        if e.type() == e.Type.ShortcutOverride:
+            if any(e.matches(k) for k in self.OWN_KEYS) or                     (self.shortcut_handler is not None and self._combo(e) in self.shortcut_keys):
+                e.accept()
+                return True
+            if e.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace, Qt.Key.Key_Insert, Qt.Key.Key_Home,
+                           Qt.Key.Key_End) or (e.text() and e.text().isprintable() and
+                                               not e.modifiers() & Qt.KeyboardModifier.ControlModifier):
+                e.accept()
+                return True
+        return super().event(e)
+
     def keyPressEvent(self, e) -> None:  # noqa: N802
+        if self.shortcut_handler is not None:
+            combo = self._combo(e)
+            if combo in self.shortcut_keys and self.shortcut_handler(combo):
+                return
         key = e.key()
         mods = e.modifiers()
         shift = bool(mods & Qt.KeyboardModifier.ShiftModifier)

@@ -1,0 +1,10 @@
+{
+  "name": "RomHackDemo",
+  "language": "retro-romhack",
+  "forms": [],
+  "startup": "rom.json",
+  "modules": [
+    "notes.md",
+    "tables/ascii.tbl"
+  ]
+}

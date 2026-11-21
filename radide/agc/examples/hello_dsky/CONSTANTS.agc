@@ -27,8 +27,8 @@ PLUSBIT         OCT     2000            # relay-word sign bit (bit 11)
 CODE8           OCT     35              # DSKY code of the digit 8
 OPRBIT          OCT     100             # channel 11 bit 7: OPR ERR
 LAMPS11         OCT     176             # channel 11 bits 2-7: COMP ACTY, UPLINK, TEMP, KEY REL, V/N, OPR ERR
-RELAY12         OCT     30000           # relay word 12, no lamps
-LAMPS12         OCT     30677           # relay word 12, PRIO DISP ... PROG lamps
+RELAY12         OCT     60000           # relay word 12, no lamps
+LAMPS12         OCT     60677           # relay word 12, PRIO DISP ... PROG lamps
 
 PWRTAB          DEC     10000           # powers of ten for PUTNUM
                 DEC     1000
@@ -48,47 +48,47 @@ DIGTAB          OCT     25              # 5-bit DSKY codes of the digits 0-9
                 OCT     37
 
 # FLUSH table: relay bits (word number << 11), left position, right position, sign cell.
-RWTAB           OCT     26000           # relay 11: PROG
+RWTAB           OCT     54000           # relay 11: PROG
                 DEC     0
                 DEC     1
                 DEC     21
-                OCT     24000           # relay 10: VERB
+                OCT     50000           # relay 10: VERB
                 DEC     2
                 DEC     3
                 DEC     21
-                OCT     22000           # relay 9: NOUN
+                OCT     44000           # relay 9: NOUN
                 DEC     4
                 DEC     5
                 DEC     21
-                OCT     20000           # relay 8: R1 digit 1
+                OCT     40000           # relay 8: R1 digit 1
                 DEC     21
                 DEC     6
                 DEC     21
-                OCT     16000           # relay 7: +R1, R1 digits 2-3
+                OCT     34000           # relay 7: +R1, R1 digits 2-3
                 DEC     7
                 DEC     8
                 DEC     22
-                OCT     14000           # relay 6: R1 digits 4-5
+                OCT     30000           # relay 6: R1 digits 4-5
                 DEC     9
                 DEC     10
                 DEC     21
-                OCT     12000           # relay 5: +R2, R2 digits 1-2
+                OCT     24000           # relay 5: +R2, R2 digits 1-2
                 DEC     11
                 DEC     12
                 DEC     23
-                OCT     10000           # relay 4: R2 digits 3-4
+                OCT     20000           # relay 4: R2 digits 3-4
                 DEC     13
                 DEC     14
                 DEC     21
-                OCT     06000           # relay 3: R2 digit 5, R3 digit 1
+                OCT     14000           # relay 3: R2 digit 5, R3 digit 1
                 DEC     15
                 DEC     16
                 DEC     21
-                OCT     04000           # relay 2: +R3, R3 digits 2-3
+                OCT     10000           # relay 2: +R3, R3 digits 2-3
                 DEC     17
                 DEC     18
                 DEC     24
-                OCT     02000           # relay 1: R3 digits 4-5
+                OCT     04000           # relay 1: R3 digits 4-5
                 DEC     19
                 DEC     20
                 DEC     21

@@ -29,14 +29,16 @@ class HexDocument(QWidget):
     compareRequested = pyqtSignal(str, str)      # left path, right path
     message = pyqtSignal(str)
 
-    def __init__(self, path=None, data: bytes | None = None, parent=None):
+    def __init__(self, path=None, data: bytes | None = None, parent=None, read_only: bool = False):
         super().__init__(parent)
+        self.read_only = read_only
         self.path = Path(path) if path else None
         self.buf = HexBuffer(data if data is not None else (self.path.read_bytes() if self.path else b""), self.path)
         self.info: RomInfo = RomInfo()
         self.tables: list = []
         self._last_modified = False
         self.view = HexView(self.buf)
+        self.view.read_only = read_only
         self._build()
         self.view.cursorMoved.connect(self._on_cursor)
         self.view.selectionChanged.connect(lambda *_a: self._update_status())
@@ -56,6 +58,11 @@ class HexDocument(QWidget):
         return self.buf.modified
 
     def save(self) -> bool:
+        if self.read_only:
+            if self.buf.modified:
+                QMessageBox.information(self, "Hex Editor", "This file is open read-only (the source ROM of a ROM "
+                                        "Hacking project is never changed). Use Save As to write a copy.")
+            return False
         if self.path is None:
             return self.save_as()
         try:
@@ -76,6 +83,8 @@ class HexDocument(QWidget):
             path = f
         self.path = Path(path)
         self.buf.path = self.path
+        self.read_only = False
+        self.view.read_only = False
         return self.save()
 
     def reload_from_disk(self) -> None:
@@ -107,24 +116,22 @@ class HexDocument(QWidget):
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.toolbar = tb
 
+        self._keys: dict[str, object] = {}
+
         def act(text, slot, shortcut=None, tip=""):
             a = QAction(text, self)
             a.triggered.connect(lambda _c=False: slot())
-            if shortcut:
-                a.setShortcut(QKeySequence(shortcut))
-                a.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            if shortcut:          # handled by the view (HexView.shortcut_handler): no clash with the IDE's keys
+                self._keys[QKeySequence(shortcut).toString()] = slot
             if tip:
                 a.setToolTip(tip)
             tb.addAction(a)
-            self.addAction(a)
             return a
         self.a_goto = act("Go To...", self.goto_dialog, "Ctrl+G", "Go to an offset (Ctrl+G)")
         self.a_find = act("Find...", self.show_find, "Ctrl+F", "Find / Replace hex or text (Ctrl+F)")
-        self.a_findnext = QAction("Find Next", self)
-        self.a_findnext.setShortcut(QKeySequence("F3"))
-        self.a_findnext.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self.a_findnext.triggered.connect(lambda: self.find_next(False))
-        self.addAction(self.a_findnext)
+        self._keys[QKeySequence("F3").toString()] = lambda: self.find_next(False)
+        self._keys[QKeySequence("Shift+F3").toString()] = lambda: self.find_next(True)
+        self._keys[QKeySequence("Shift+F2").toString()] = lambda: self.goto_bookmark(True)
         self.a_insert = act("Overwrite", self.toggle_insert, None, "Insert / Overwrite mode (Insert key)")
         tb.addSeparator()
         self.a_bookmark = act("Bookmark", self.toggle_bookmark, "Ctrl+F2", "Toggle a bookmark (Ctrl+F2)")
@@ -168,6 +175,8 @@ class HexDocument(QWidget):
         tools.setMenu(tm)
         tb.addWidget(tools)
         lay.addWidget(tb)
+        self.view.shortcut_keys = set(self._keys)
+        self.view.shortcut_handler = self._shortcut
         self.find_panel = FindPanel(self)
         self.find_panel.hide()
         self.find_panel.findRequested.connect(self.find_next)
@@ -216,6 +225,13 @@ class HexDocument(QWidget):
         self.status = QLabel()
         self.status.setContentsMargins(6, 2, 6, 2)
         lay.addWidget(self.status)
+
+    def _shortcut(self, combo: str) -> bool:
+        fn = self._keys.get(combo)
+        if fn is None:
+            return False
+        fn()
+        return True
 
     # ------------------------------------------------------------------ state
     def _emit_modified(self) -> None:
@@ -450,6 +466,9 @@ class HexDocument(QWidget):
         return text.encode(self.view.codec)
 
     def replace(self, all_: bool = False) -> int:
+        if self.read_only:
+            self.find_panel.status.setText("read-only")
+            return 0
         try:
             pat = self.pattern()
             new = self._replacement()
@@ -484,6 +503,9 @@ class HexDocument(QWidget):
     # ------------------------------------------------------------------ ROM tools
     def fix_checksum(self) -> bool:
         from .detect import fix_checksum
+        if self.read_only:
+            QMessageBox.information(self, "Fix Checksum", "The file is open read-only.")
+            return False
         try:
             data, msg = fix_checksum(bytes(self.buf.data), self.path.name if self.path else "")
         except ValueError as e:
@@ -563,6 +585,8 @@ class HexDocument(QWidget):
         self.message.emit(f"{len(found):,} string(s) with table '{t.name}'")
 
     def fill_dialog(self) -> None:
+        if self.read_only:
+            return
         s, n = self.view.selection()
         if not n:
             QMessageBox.information(self, "Fill", "Select the bytes to fill first.")

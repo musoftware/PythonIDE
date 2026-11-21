@@ -522,7 +522,6 @@ int main(void)
         }
         cputcxy(x, y, '@');
     }
-    return 0;
 }
 """
 
@@ -700,10 +699,12 @@ wPlayerY: db
 # ============================================================================================ C64
 C64_CFG = """# {name}: a C64 program with a BASIC "SYS" line (written for RAD IDE)
 MEMORY {
+    ZP:       start = $00FB, size = 4,     type = rw, file = "";     # 4 zero-page bytes BASIC leaves free
     LOADADDR: start = $07FF, size = 2,     file = %O;
     MAIN:     start = $0801, size = $97FF, file = %O;
 }
 SEGMENTS {
+    ZEROPAGE: load = ZP, type = zp;
     LOADADDR: load = LOADADDR, type = ro;
     EXEHDR:   load = MAIN, type = ro;
     CODE:     load = MAIN, type = ro;

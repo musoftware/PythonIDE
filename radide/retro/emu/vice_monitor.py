@@ -265,7 +265,7 @@ class ViceMonitor:
         pos, names = 2, {}
         for _ in range(count):
             size = b[pos]
-            rid, _bits, nlen = b[pos + 1], b[pos + 2], b[pos + 3]
+            rid, nlen = b[pos + 1], b[pos + 3]          # b[pos + 2] = size in bits
             names[rid] = b[pos + 4:pos + 4 + nlen].decode("ascii", "replace")
             pos += size + 1
         self.reg_names = names

@@ -323,8 +323,10 @@ class AgcCpu:
                 if k12 == 6:                   # EXTEND
                     self.extend = True
                     return 1
-                r[Q] = self.Z                  # TC K (TC A / L / Q run the register as an instruction:
-                self.Z = k12                   # RETURN = TC Q fetches "TC <return address>" from Q)
+                if k12 < 3:                    # TC A / L / Q run the register as the next instruction; the
+                    self.pending_word = self.read(k12) & 0o77777   # word is read before Q changes, so
+                r[Q] = self.Z                  # RETURN (TC Q) runs "TC <return address>"
+                self.Z = k12                   # TC K
                 return 1
             if op == 1:
                 if qc == 0:                    # CCS K

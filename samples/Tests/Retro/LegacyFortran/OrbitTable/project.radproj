@@ -1,0 +1,13 @@
+{
+  "name": "OrbitTable",
+  "language": "fortran-legacy",
+  "forms": [],
+  "startup": "ORBITS",
+  "modules": [
+    "ORBITS.f"
+  ],
+  "fortran": {
+    "preset": "f66",
+    "flags": ""
+  }
+}

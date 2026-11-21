@@ -1,4 +1,4 @@
-"""Qt side of the retro emulators: Tools > Retro Emulators... (manager), the Retro Debugger dock (VICE binary
+"""Qt side of the retro emulators: Tools > Retro > Emulators... (manager), the Retro Debugger dock (VICE binary
 monitor / mGBA GDB stub: registers, memory, breakpoints, step) and Project > DOS Settings...
 """
 from __future__ import annotations

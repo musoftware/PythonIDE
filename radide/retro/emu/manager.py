@@ -2,7 +2,7 @@
 
 Where an emulator is looked up (first hit wins):
 
-    1. the path set in Tools > Retro Emulators... (QSettings ``retro/emu/<id>``, passed in as *configured*)
+    1. the path set in Tools > Retro > Emulators... (QSettings ``retro/emu/<id>``, passed in as *configured*)
     2. ``%LOCALAPPDATA%\\RADIDE\\tools\\<id>`` (what the download puts there; searched recursively)
     3. PATH
 
@@ -119,7 +119,7 @@ def status() -> list[dict]:
 
 def missing_hint(emu_id: str) -> str:
     e = EMULATORS[emu_id]
-    return (f"{e.title} was not found. Tools > Retro Emulators... downloads the official portable build "
+    return (f"{e.title} was not found. Tools > Retro > Emulators... downloads the official portable build "
             f"{e.version} into {install_dir(emu_id)}, or download it yourself from {e.page} and set its path there.")
 
 

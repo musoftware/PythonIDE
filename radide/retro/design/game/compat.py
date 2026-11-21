@@ -19,7 +19,7 @@ RGB = tuple
 
 # ------------------------------------------------------------------ palettes
 def _fallback_vga() -> list:
-    from ...emu8086.machine import vga_palette     # the 8086 emulator's mode 13h default palette
+    from ....emu8086.machine import vga_palette     # the 8086 emulator's mode 13h default palette
     return vga_palette()
 
 
@@ -28,7 +28,7 @@ def system_palette(key: str) -> list:
     if key == "vga":
         return _fallback_vga()
     try:
-        from ..gfx import palettes as gp
+        from ...gfx import palettes as gp
         return list(gp.palette(key))
     except Exception:  # noqa: BLE001 - the graphics slice is optional
         pass
@@ -43,7 +43,7 @@ def encode_tile(fmt: str, pixels) -> bytes:
     """8x8 tile (64 values 0-3) -> NES CHR ("nes", planes) or Game Boy ("gb", interleaved) bytes."""
     px = [int(p) & 3 for p in pixels]
     try:
-        from ..gfx.codecs import get_format
+        from ...gfx.codecs import get_format
         return bytes(get_format(fmt).encode(px))
     except Exception:  # noqa: BLE001
         pass
@@ -64,7 +64,7 @@ def encode_tile(fmt: str, pixels) -> bytes:
 def half_to_bytes(bits) -> tuple[int, int, int]:
     """20 Atari 2600 playfield bits (left to right) -> (PF0, PF1, PF2)."""
     try:
-        from ..gfx.atari2600 import half_to_bytes as h2b
+        from ...gfx.atari2600 import half_to_bytes as h2b
         return h2b([1 if b else 0 for b in bits])
     except Exception:  # noqa: BLE001
         pass
@@ -106,13 +106,13 @@ def find_tool(exe: str) -> str:
         return hit
     if exe in ("dasm", "ca65", "ld65", "cc65", "cl65", "rgbasm", "rgblink", "rgbfix"):
         try:
-            from ..dev import toolchain as tc
+            from ...dev import toolchain as tc
             hit = tc.find(exe)
         except Exception:  # noqa: BLE001
             hit = ""
     elif exe == "nasm":
         try:
-            from ...asm.toolchain import find_nasm
+            from ....asm.toolchain import find_nasm
             hit = find_nasm()
         except Exception:  # noqa: BLE001
             hit = ""
@@ -124,7 +124,7 @@ def find_tool(exe: str) -> str:
 def _dos_tool(exe: str) -> str:
     """FreeBASIC / OpenWatcom through the DOS development slice (radide.retro.dos), when it is installed."""
     try:
-        from .. import dos as dosmod                  # noqa: F401
+        __import__("radide.retro.dos")
     except Exception:  # noqa: BLE001
         return ""
     for modname in ("toolchains", "toolchain", "tools"):
@@ -153,10 +153,10 @@ def ensure_tool(exe: str, log=print, download: bool = True) -> str:
         return hit
     try:
         if exe in ("dasm", "ca65", "ld65", "rgbasm", "rgblink", "rgbfix"):
-            from ..dev import toolchain as tc
+            from ...dev import toolchain as tc
             return tc.ensure(exe, log=log, download=True)
         if exe == "nasm":
-            from ...asm import toolchain as atc
+            from ....asm import toolchain as atc
             return atc.ensure("nasm", log=log)
         for modname in ("toolchains", "toolchain", "tools"):
             try:
@@ -176,7 +176,7 @@ def ensure_tool(exe: str, log=print, download: bool = True) -> str:
 def run_in_emulator(path, system: str, log=print):
     """Start *path* in the emulator for *system* (a2600 / nes / gb / dos). Returns the process object or None."""
     try:
-        from ..emu import run_rom
+        from ...emu import run_rom
     except Exception as e:  # noqa: BLE001
         log(f"The retro emulator manager is not available: {e}")
         return None

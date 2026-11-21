@@ -78,11 +78,16 @@ class HexBuffer:
     def _push(self, e: Edit) -> None:
         self._do(e)
         top = self.undo_stack[-1] if self.undo_stack else None
-        if (e.merge_key and top is not None and top.merge_key == e.merge_key and
-                len(self.undo_stack) != self._save_point and
-                top.offset + len(top.new) == e.offset):
+        same = (e.merge_key and top is not None and top.merge_key[:3] == e.merge_key[:3] and
+                len(self.undo_stack) != self._save_point)
+        end = top.offset + len(top.new) if top is not None else -1
+        if same and end == e.offset:
             # contiguous typing: one undo step
             self.undo_stack[-1] = Edit(top.offset, top.old + e.old, top.new + e.new, e.merge_key,
+                                       top.cursor_before, e.cursor_after)
+        elif same and top.new and end - 1 == e.offset and len(e.old) == len(e.new) == 1:
+            # the low nibble of the byte just typed: still the same undo step
+            self.undo_stack[-1] = Edit(top.offset, top.old, top.new[:-1] + e.new, e.merge_key,
                                        top.cursor_before, e.cursor_after)
         else:
             if self._save_point > len(self.undo_stack):

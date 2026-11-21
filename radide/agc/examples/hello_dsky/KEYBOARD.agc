@@ -118,8 +118,10 @@ OPRERR          CAF     OPRBIT          # unknown request: OPR ERR lamp (channel
                 WRITE   11
                 TCF     KEYDONE
 
-CLOCK           CA      ZERO            # V16 N36: lamps off, clock back
+CLOCK           CA      ZERO            # V16 N36: lamps off, PROG blank, clock back
                 TS      LAMPT
+                TS      CODES
+                TS      CODES +1
                 EXTEND
                 WRITE   11
                 CAF     RELAY12

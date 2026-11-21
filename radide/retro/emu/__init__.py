@@ -6,7 +6,7 @@ Public API for the other retro slices and the IDE::
     proc = run_rom("game.nes", system=None, debug=False, symbols=None)   # -> RetroProcess (or raises EmuError)
     proc.alive(); proc.stop(); proc.reload("game.nes")                    # hot reload or restart
 
-The emulators are downloaded only on request (Tools > Retro Emulators...) - see manager.py / catalog.py.
+The emulators are downloaded only on request (Tools > Retro > Emulators...) - see manager.py / catalog.py.
 """
 from __future__ import annotations
 

@@ -32,7 +32,8 @@ LANGUAGE_GROUPS = [
     ("Mobile", ["flutter", "kivy", "expo"]),                   # mobile apps (CONTRACTS 10.1)
     ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game",   # game projects (CONTRACTS 10.2)
                "python-ursina", "godot3d"]),                                     # 3D games (round 7, games3d/)
-    ("Retro", ["retro-dos"]),                                  # old games / DOS programs (docs/RETRO.md)
+    ("Retro Games", ["retro-atari2600", "retro-nes", "retro-gameboy", "retro-c64", "retro-zx"]),  # docs/RETRO.md
+    ("Retro", ["retro-dos", "retro-romhack"]),                                  # old games / DOS programs (docs/RETRO.md)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
          "ring-qt": ("Rg", "#2C3E50"), "ring-app": ("Rg", "#34495E"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
@@ -47,7 +48,9 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "flutter": ("Fl", "#02569B"), "kivy": ("Kv", "#5A7D2E"), "expo": ("RN", "#087EA4"),
          "html5-game": ("H5", "#F16529"), "python-arcade": ("Ar", "#7B3FA0"), "ring-game": ("RG", "#2C3E50"),
          "python-django": ("Dj", "#0C4B33"), "python-flask": ("Fk", "#2B2B2B"), "python-fastapi": ("FA", "#009688"),
-         "python-ursina": ("3D", "#5B3F8C"), "godot3d": ("G3", "#2F6A9F"), "retro-dos": ("DOS", "#0000AA"),
+         "python-ursina": ("3D", "#5B3F8C"), "godot3d": ("G3", "#2F6A9F"), "retro-atari2600": ("2600", "#A0522D"), "retro-nes": ("NES", "#C0392B"),
+         "retro-gameboy": ("GB", "#5B6E2D"), "retro-c64": ("C64", "#4B3FA5"), "retro-zx": ("ZX", "#1F1F1F"),
+         "retro-dos": ("DOS", "#0000AA"), "retro-romhack": ("ROM", "#7A1F5C"),
          "aspnet-web": ("ASP", "#512BD4"), "spring-web": ("Sp", "#6DB33F"), "rails-web": ("RoR", "#CC0000"),
          "nestjs-web": ("Ns", "#E0234E")}
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",

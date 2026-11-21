@@ -33,6 +33,7 @@ class RetroGfx:
         self.menu = m
         m.addAction("Tile Editor (Open ROM / Binary)...", self.open_tiles_dialog)
         m.addAction("New Tile Sheet (8 KB CHR)", lambda: self.open_tiles(None))
+        m.addAction("View Current File as Tiles", self.tiles_from_current)
         m.addSeparator()
         m.addAction("Atari 2600 Playfield Editor", lambda: self.open_playfield(None))
         m.addAction("Tile Map Editor", lambda: self.open_map(None))
@@ -165,6 +166,19 @@ class RetroGfx:
     def open_script(self, rom=None, table=None):
         from ..retro.gfx.ui_text import ScriptEditor
         return self._show(ScriptEditor(self.win, rom, table))
+
+    def tiles_from_current(self):
+        """The file of the current tab (e.g. a hex editor of a ROM) in the Tile Editor, at its cursor offset."""
+        w = self.win.tabs.currentWidget()
+        path = getattr(w, "retro_path", None) or getattr(w, "path", None)
+        if path is None or not Path(path).is_file():
+            self.win.statusBar().showMessage("The current tab is not a file", 4000)
+            return None
+        cursor = getattr(getattr(w, "view", None), "cursor", None)
+        doc = self.open_tiles(Path(path))
+        if doc is not None and isinstance(cursor, int):
+            doc.set_offset(cursor)
+        return doc
 
     def _start_dir(self) -> str:
         p = getattr(self.win, "project", None)

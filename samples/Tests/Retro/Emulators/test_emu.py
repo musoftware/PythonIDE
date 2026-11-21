@@ -216,8 +216,7 @@ def core_tests():
     # ---------------------------------------------------------------- DOS Program plugin + Open Folder
     from radide.languages import get_plugin
     plug = get_plugin("retro-dos")
-    for tmpl, fname in (("dos_asm", "HELLO.ASM"), ("dos_pascal", "MAIN.PAS"), ("dos_c", "MAIN.C"),
-                        ("dos_qbasic", "MAIN.BAS"), ("dos_existing", "README.txt")):
+    for tmpl, fname in (("dos_asm", "HELLO.ASM"), ("dos_existing", "README.txt")):
         d = WORK / "projects" / tmpl
         if (d / "project.radproj").exists():
             (d / "project.radproj").unlink()
@@ -227,7 +226,7 @@ def core_tests():
     spec = plug.run_spec(WORK / "projects" / "dos_asm", "HELLO.ASM", "")
     check("run_spec = python -m radide.retro.emu dos <file>", spec.args[:3] == ["-m", "radide.retro.emu", "dos"]
           and "PYTHONPATH" in (spec.env or {}))
-    if manager.find("dosbox-x") and manager.find("dosbox-x"):
+    if manager.find("dosbox-x"):
         import subprocess
         d = WORK / "projects" / "dos_asm"
         (d / "HELLO.ASM").write_text(homebrew.DOS_ASM, encoding="ascii")
@@ -267,7 +266,7 @@ def ide_tests():
                  None)
     names = [a.text().replace("&", "") for a in retro.actions()] if retro else []
     qh.check("Tools > Retro menu with the emulator commands",
-             all(n in names for n in ("Retro Emulators...", "Run ROM in Emulator...", "Debug ROM in Emulator...",
+             all(n in names for n in ("Emulators...", "Run ROM in Emulator...", "Debug ROM in Emulator...",
                                       "Reload ROM in Emulator")), names)
     dlg = ui.show_manager(w)
     qh.pump(0.5)

@@ -7,6 +7,7 @@
     RGBDS       error: Undefined symbol `nowhere`                  warning: ...
                     at main.asm(12)          (or "at main.asm(12) <- other.inc(3)")
     sjasmplus   main.asm(12): error: Unrecognized instruction: foo
+    ACME        Error - File main.a, line 12 (Zone <untitled>): Value not defined.
 """
 from __future__ import annotations
 
@@ -37,6 +38,8 @@ RGBDS_AT_RX = re.compile(r"^\s+at\s+(?P<file>[^\n(]+?)\((?P<line>\d+)\)")
 RGBDS_OLD_RX = re.compile(r"^(?P<sev>ERROR|error|warning):\s*(?P<file>[^\n(:]+?)\((?P<line>\d+)\)(?:\s*->\s*[^:]*)?:\s*$")
 SJ_RX = re.compile(r"^(?P<file>[^\n()]+?)\((?P<line>\d+)\):\s*(?P<sev>error|warning|fatal)\s*(?:\[[^\]]*\])?:?\s*(?P<msg>.*)$",
                    re.I)
+ACME_RX = re.compile(r"^(?P<sev>Error|Warning|Serious error)\s*-\s*File\s+(?P<file>.+?),\s*line\s+(?P<line>\d+)"
+                     r"[^:]*:\s*(?P<msg>.*)$")
 UNRESOLVED_RX = re.compile(r"^(?P<name>[A-Za-z_.][\w.]*)\s+0000\s+\?\?\?\?")
 
 
@@ -104,6 +107,10 @@ def parse(text: str, folder: Path | None = None, tool: str = "") -> list[Diag]:
             msg = lines[i].strip() if i < len(lines) else ""
             i += 1
             add(m.group("sev"), msg, m.group("file"), m.group("line"))
+            continue
+        m = ACME_RX.match(ln)
+        if m:
+            add(m.group("sev"), m.group("msg"), m.group("file"), m.group("line"))
             continue
         m = DASM_RX.match(ln)
         if m:

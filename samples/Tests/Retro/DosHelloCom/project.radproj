@@ -1,0 +1,16 @@
+{
+  "name": "DosHelloCom",
+  "language": "retro-dos",
+  "forms": [],
+  "startup": "HELLO.ASM",
+  "modules": [
+    "HELLO.ASM"
+  ],
+  "dos": {
+    "program": "HELLO.ASM",
+    "cycles": "auto",
+    "machine": "svga_s3",
+    "memsize": 16,
+    "sound": "sb16"
+  }
+}

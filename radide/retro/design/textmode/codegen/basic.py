@@ -877,7 +877,7 @@ def generate(screens, old_text: str = "", dialect: str = "freebasic", app: App |
     rt = rt.replace("@COLS@", str(app.cols)).replace("@ROWS@", str(app.rows)).replace("@MODE@", mode)
     rt = rt.replace("@TABLES@", "\n".join(_tables(app)))
     rt = rt.replace("@RESTORES@", "\n".join(
-        ([f"CASE 0: RESTORE TS0"] if app.splash() else []) +
+        (["CASE 0: RESTORE TS0"] if app.splash() else []) +
         [f"CASE {s.index}: RESTORE TS{s.index}" for s in app.screens]))
     m = MOUSE[dialect]
     rt = rt.replace("@MOUSEINIT@", m["init"]).replace("@MOUSESHOW@", m["show"]).replace("@MOUSEPOLL@", m["poll"])

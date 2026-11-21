@@ -81,7 +81,7 @@ class Builder:
             self.output.append(f"error: {e}")
             self.log(f"error: {e}")
             return 1
-        text = (r.stdout + b"\n" + r.stderr).decode("utf-8", "replace").replace("\r\n", "\n")
+        text = _decode(r.stdout + b"\n" + r.stderr).replace("\r\n", "\n")
         text = "\n".join(ln for ln in text.splitlines() if ln.strip())
         if text:
             self.log(text)
@@ -146,6 +146,11 @@ class Builder:
     def _cc65(self) -> bool:
         target = "nes" if self.system.id == "nes" else "c64"
         env = None
+        if self.s["lang"] == "acme":
+            acme = self.tool("acme")
+            rc = self.run([acme, "-f", "cbm", "-o", self.s["output"], "-r", f"{BUILD_DIR}/report.txt",
+                           "--vicelabels", f"{BUILD_DIR}/labels.txt", self.s["main"]])
+            return rc == 0 and self.out_path.is_file()
         if self.s["lang"] == "c":
             cl65 = self.tool("cl65")
             env = self._cc65_env()
@@ -274,6 +279,14 @@ class Builder:
             self.log(f"Rebuild check: DIFFERENT from {orig.name}: {res['reason']}")
             self.diags.append(errors.Diag("Warning", f"Rebuilt ROM differs from {orig.name}: {res['reason']}", "", 0))
         return res
+
+
+def _decode(data: bytes) -> str:
+    """Tool output: UTF-8 when it is valid, else the Windows ANSI code page (ld65's quotes)."""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", "replace")
 
 
 def compare_bytes(want: bytes, got: bytes) -> dict:

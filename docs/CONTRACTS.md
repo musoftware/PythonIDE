@@ -755,3 +755,4 @@ kivy / expo).
   that show a file expose `retro_path` (and optionally a `retro_watch` list) plus `reload_from_disk()`; they are
   refreshed automatically (the hex editor, tile editor, tile map ...).
 - Retro menus go under Tools > Retro via `radide.retro.menu.retro_menu(win)` / `section(win, title)`.
+- Emulators (slice emu): `radide.retro.emu.run_rom(path, system=None, debug=False, symbols=None)` -> `RetroProcess` (`alive() / stop() / reload(rom) / monitor() / gdb()`), `detect_system(path)`, `manager.find(id) / ensure(id, download=True)`; errors are `launch.EmuError`. Rebuilt ROMs announced with `file_changed` are hot-reloaded in VICE. Details: docs/RETRO.md "Emulators".

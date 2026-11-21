@@ -243,7 +243,7 @@ def _usr_address(basic: bytes) -> int | None:
         j = i + 1
         while j < len(basic) and basic[j] in b" ":
             j += 1
-        if basic[j:j + 4] == b'VAL"' or basic[j:j + 5] == b'\xb0"':          # USR VAL "nnnnn"
+        if basic[j:j + 4] == b'VAL"' or basic[j:j + 2] == b'\xb0"':          # USR VAL "nnnnn"
             j = basic.index(b'"', j) + 1
         digits = b""
         while j < len(basic) and 48 <= basic[j] <= 57:

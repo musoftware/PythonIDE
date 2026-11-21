@@ -101,7 +101,8 @@ class FindPanel(QWidget):
         b_close.setFixedWidth(24)
         b_close.setToolTip("Close")
         b_close.clicked.connect(self._close)
-        for w in (QLabel("Find:"), self.mode, self.find, self.case, self.wild, b_next, b_prev, b_all, b_close):
+        self.find.setMinimumWidth(160)
+        for w in (QLabel("Find:"), self.mode, self.find, b_next, b_prev, b_all, b_close):
             row.addWidget(w)
         row.setStretch(2, 1)
         lay.addLayout(row)
@@ -113,7 +114,8 @@ class FindPanel(QWidget):
         b_rall = QPushButton("Replace All")
         b_rall.clicked.connect(lambda: self.replaceRequested.emit(True))
         self.status = QLabel("")
-        for w in (QLabel("Replace:"), self.replace, b_rep, b_rall, self.status):
+        self.replace.setMinimumWidth(160)
+        for w in (QLabel("Replace:"), self.replace, b_rep, b_rall, self.case, self.wild, self.status):
             row2.addWidget(w)
         row2.setStretch(1, 1)
         lay.addLayout(row2)
