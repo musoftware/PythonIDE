@@ -37,6 +37,7 @@ LANGUAGE_GROUPS = [
     ("DOS", ["dos-qbasic", "dos-pascal", "dos-c", "dos-asm", "dos-batch",      # DOS development (radide/retro/dos)
              "dos-tuiforms"]),                                               # text-mode forms (retro/design/textmode)
     ("Space & Science", ["agc-yul", "fortran-legacy"]),     # Apollo AGC + Fortran 66/77 (docs/RETRO.md)
+    ("Firmware", ["firmware-ecu", "firmware-analysis"]),                         # ECU / firmware binaries (docs/FIRMWARE.md)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
          "ring-qt": ("Rg", "#2C3E50"), "ring-app": ("Rg", "#34495E"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
@@ -60,6 +61,8 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "dos-asm": ("A16", "#A85400"), "dos-batch": ("BAT", "#545454")}
 BADGE.update({"agc-yul": ("AGC", "#1F3A5F"), "fortran-legacy": ("F77", "#6B4E16")})     # docs/RETRO.md
 BADGE.update({"dos-tuiforms": ("TUI", "#0000AA")})                                   # docs/RETRO.md
+BADGE.update({"firmware-ecu": ("ECU", "#2E5E4E")})                                  # docs/FIRMWARE.md
+BADGE.update({"firmware-analysis": ("FW", "#3B4B6B")})                             # docs/FIRMWARE.md
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
                   "data": "SP_FileDialogDetailedView", "console": "rad:console",
                   "library": "SP_DriveHDIcon"}

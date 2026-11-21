@@ -66,10 +66,11 @@ def crc32(data: bytes, start: int, end: int) -> int:
 
 def checksum_profiles(size: int = SIZE) -> list[dict]:
     """The two checksums of the demo image, in the order they must be fixed."""
-    return [{"name": "Calibration sum16", "algo": "sum16be", "start": CAL_START, "end": CAL_END - 2,
-             "store": CAL_END - 2, "width": 2, "endian": "big"},
-            {"name": "Image CRC32", "algo": "crc32", "start": 0, "end": size - 4, "store": size - 4,
-             "width": 4, "endian": "big"}]
+    return [{"name": "Calibration sum16", "algorithm": "sum16-be",
+             "ranges": [[f"0x{CAL_START:X}", f"0x{CAL_END - 2:X}"]],
+             "store": f"0x{CAL_END - 2:X}", "width": 2, "endian": "be"},
+            {"name": "Image CRC32", "algorithm": "crc32", "ranges": [["0x0", f"0x{size - 4:X}"]],
+             "store": f"0x{size - 4:X}", "width": 4, "endian": "be"}]
 
 
 def fix_checksums(data: bytearray) -> bytearray:

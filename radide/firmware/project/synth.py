@@ -64,9 +64,32 @@ def image(seed: int = 2026) -> bytes:
     cv = [1000 + 37 * i for i in range(12)]
     d[CURVE_AT:CURVE_AT + 48] = struct.pack(">12H12H", *cx, *cv)
     d[0xC000:0xD000] = bytes(rng.randrange(256) for _ in range(0x1000))        # adaptation (varies)
-    d[0xD000:0xE000] = bytes((i * 7 + 3) & 0xFF for i in range(0x1000))
+    d[0xD000:0xE000] = bytes(rng.randrange(256) for _ in range(0x1000))          # more calibration data
     correct(d, demo_blocks())
     return bytes(d)
 
 
-__all__ = ["image", "demo_blocks", "SIZE", "MAP16_AT", "MAP8_AT", "CURVE_AT", "ID_TEXT"]
+def demo_maps() -> list[dict]:
+    """The calibration tables of :func:`image` in the map-pack JSON shape (radide/firmware/maps/model.py)."""
+    return [
+        {"name": "Demo map 16x16", "address": f"0x{MAP16_AT + 64:X}", "cols": 16, "rows": 16, "dtype": "u16",
+         "endian": "be", "order": "row", "factor": 0.1, "offset": 0.0, "unit": "units", "folder": "Demo",
+         "description": "synthetic 16x16 table", "source": "manual",
+         "x_axis": {"name": "rpm", "address": f"0x{MAP16_AT:X}", "count": 16, "dtype": "u16", "endian": "be",
+                    "factor": 1.0, "unit": "rpm"},
+         "y_axis": {"name": "load", "address": f"0x{MAP16_AT + 32:X}", "count": 16, "dtype": "u16",
+                    "endian": "be", "factor": 1.0, "unit": "%"}},
+        {"name": "Demo map 8x8", "address": f"0x{MAP8_AT + 16:X}", "cols": 8, "rows": 8, "dtype": "u8",
+         "endian": "be", "order": "row", "factor": 1.0, "offset": 0.0, "unit": "", "folder": "Demo",
+         "description": "synthetic 8x8 table", "source": "manual",
+         "x_axis": {"name": "x", "address": f"0x{MAP8_AT:X}", "count": 8, "dtype": "u8", "factor": 1.0},
+         "y_axis": {"name": "y", "address": f"0x{MAP8_AT + 8:X}", "count": 8, "dtype": "u8", "factor": 1.0}},
+        {"name": "Demo curve", "address": f"0x{CURVE_AT + 24:X}", "cols": 12, "rows": 1, "dtype": "u16",
+         "endian": "be", "order": "row", "factor": 1.0, "offset": 0.0, "unit": "", "folder": "Demo",
+         "description": "synthetic curve", "source": "manual",
+         "x_axis": {"name": "x", "address": f"0x{CURVE_AT:X}", "count": 12, "dtype": "u16", "endian": "be",
+                    "factor": 1.0}},
+    ]
+
+
+__all__ = ["image", "demo_blocks", "demo_maps", "SIZE", "MAP16_AT", "MAP8_AT", "CURVE_AT", "ID_TEXT"]

@@ -91,10 +91,10 @@ def build_image(seed: int = 1, size: int = 0x40000) -> tuple[bytes, list[MapDef]
     _place(img, p, encode_array(z, "s16", "le"))
     pos = p + nx * ny * 2
     gap()
-    # 3. headerless big-endian 16-bit map, column order, 8x8
-    nx, ny = 8, 8
-    x = np.array([500, 1000, 1500, 2200, 3000, 4000, 5200, 6500])
-    y = np.array([0, 20, 40, 60, 80, 100, 130, 160])
+    # 3. headerless big-endian 16-bit map, column order (Y fastest), 10x7
+    nx, ny = 10, 7
+    x = np.array([500, 1000, 1500, 2200, 3000, 4000, 5200, 6500, 7200, 8000])
+    y = np.array([0, 20, 40, 60, 80, 130, 160])
     z = _surface(ny, nx, 2, 1000, 30000).round()
     xo = pos
     p = _place(img, pos, encode_array(x, "u16", "be"))

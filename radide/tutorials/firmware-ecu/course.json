@@ -1,0 +1,18 @@
+{
+  "id": "firmware-ecu",
+  "title_ar": "ملفات وحدات التحكم (ECU) والبرامج الثابتة: التحليل وتعديل المعايرة",
+  "title_en": "ECU and Firmware Files: Analysis and Calibration Editing",
+  "language": "firmware-ecu",
+  "level": "intermediate",
+  "description_ar": "دورة عربية عن ملفات البرامج الثابتة (Firmware) لوحدات التحكم الإلكترونية مثل ملفات .bin لسيارات مرسيدس وغيرها، في RAD IDE: ما هذه الملفات ومن أين تأتي وما الحدود القانونية وحدود السلامة، والصيغ Intel HEX و S-record والملف الخام، وخريطة الذاكرة وعنوان التحميل وتخمين المعالج، والتفكيك و Ghidra، وخرائط المعايرة والبحث عنها، والتعديل بالوحدات الفيزيائية وملفات A2L، والمجاميع الاختبارية (Checksums) والتحقق منها، ثم مشروع كامل بنسخ وتقارير ورقعة. كل الأمثلة على ملفات اصطناعية يكتبها RAD IDE أو برامج مفتوحة المصدر (rusEFI)، ولا تُستخدم أي ملفات من شركات السيارات.",
+  "lessons": [
+    {"id": "01-ecu-files-and-law", "file": "01-ecu-files-and-law.md", "title_ar": "ما هي ملفات ECU؟ والحدود القانونية وحدود السلامة", "minutes": 30},
+    {"id": "02-hex-srec-bin", "file": "02-hex-srec-bin.md", "title_ar": "صيغ الملفات: الخام و Intel HEX و S-record", "minutes": 50},
+    {"id": "03-memory-map-cpu", "file": "03-memory-map-cpu.md", "title_ar": "خريطة الذاكرة وعنوان التحميل وتخمين المعالج", "minutes": 45},
+    {"id": "04-disassembly-ghidra", "file": "04-disassembly-ghidra.md", "title_ar": "التفكيك والمراجع و Ghidra", "minutes": 45},
+    {"id": "05-calibration-maps", "file": "05-calibration-maps.md", "title_ar": "خرائط المعايرة والبحث عنها", "minutes": 50},
+    {"id": "06-units-and-a2l", "file": "06-units-and-a2l.md", "title_ar": "تعديل الخرائط بالوحدات الفيزيائية وملفات A2L", "minutes": 50},
+    {"id": "07-checksums", "file": "07-checksums.md", "title_ar": "المجاميع الاختبارية (Checksums) والتحقق منها", "minutes": 50},
+    {"id": "08-full-project", "file": "08-full-project.md", "title_ar": "المشروع الكامل: نسخ وتقارير ورقعة", "minutes": 60}
+  ]
+}

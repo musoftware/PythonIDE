@@ -133,15 +133,20 @@ def copy_text(z, mask=None, digits: int | None = None) -> str:
 
 
 # ====================================================================== write-back
+def _is_buffer(b) -> bool:
+    """A HexBuffer-like object (``data`` + ``replace(offset, bytes)``), not a plain bytearray."""
+    return not isinstance(b, (bytearray, bytes, memoryview)) and hasattr(b, "replace") and hasattr(b, "data")
+
+
 def apply(buf, m: MapDef, z_phys) -> bool:
     """Write physical values into *buf* (a HexBuffer with ``replace``/``data``, or a bytearray). True when bytes
     changed."""
     new = m.encode_phys(z_phys)
-    data = buf.data if hasattr(buf, "data") else buf
+    data = buf.data if _is_buffer(buf) else buf
     old = bytes(data[m.address:m.address + len(new)])
     if old == new:
         return False
-    if hasattr(buf, "replace"):
+    if _is_buffer(buf):
         buf.replace(m.address, new)
     else:
         buf[m.address:m.address + len(new)] = new
@@ -154,11 +159,11 @@ def apply_axis(buf, axis, phys_values) -> bool:
         return False
     raw = (np.asarray(phys_values, dtype=np.float64) - axis.offset) / (axis.factor or 1.0)
     new = encode_array(raw, axis.dtype, axis.endian)
-    data = buf.data if hasattr(buf, "data") else buf
+    data = buf.data if _is_buffer(buf) else buf
     a = int(axis.address)
     if bytes(data[a:a + len(new)]) == new:
         return False
-    if hasattr(buf, "replace"):
+    if _is_buffer(buf):
         buf.replace(a, new)
     else:
         buf[a:a + len(new)] = new
@@ -259,17 +264,17 @@ def locate_in(m: MapDef, src, dst) -> int | None:
 def copy_map(m: MapDef, src, dst_buf, delta: int | None = None, axes: bool = True) -> bool:
     """Copy the values (and stored axes) of *m* from *src* into *dst_buf* (HexBuffer or bytearray)."""
     if delta is None:
-        delta = locate_in(m, src, dst_buf.data if hasattr(dst_buf, "data") else dst_buf)
+        delta = locate_in(m, src, dst_buf.data if _is_buffer(dst_buf) else dst_buf)
         if delta is None:
             return False
     changed = False
     rngs = m.ranges() if axes else [(m.address, m.end)]
     for s, e in rngs:
         new = bytes(src[s:e])
-        data = dst_buf.data if hasattr(dst_buf, "data") else dst_buf
+        data = dst_buf.data if _is_buffer(dst_buf) else dst_buf
         if bytes(data[s + delta:e + delta]) == new:
             continue
-        if hasattr(dst_buf, "replace"):
+        if _is_buffer(dst_buf):
             dst_buf.replace(s + delta, new)
         else:
             dst_buf[s + delta:e + delta] = new

@@ -67,6 +67,24 @@ def subtract(ranges, holes) -> list[tuple[int, int]]:
     return out
 
 
+def _compat(d: dict) -> dict:
+    """Older / simpler shapes: {"algo": "sum16be", "start": .., "end": ..} (radide/firmware/ui/adapters.py)."""
+    if "algorithm" in d and "ranges" in d:
+        return d
+    d = dict(d)
+    if "algorithm" not in d and "algo" in d:
+        a = str(d.pop("algo")).lower()
+        for suf in ("be", "le"):
+            if a.startswith(("sum16", "sum32", "xor16", "xor32")) and a.endswith(suf) and not a.endswith("-" + suf):
+                a = a[:-2] + "-" + suf
+        d["algorithm"] = a
+    if "ranges" not in d and "start" in d:
+        d["ranges"] = [[d.get("start"), d.get("end", 0)]]
+    if str(d.get("endian", "")).lower() in ("little", "big"):
+        d["endian"] = "le" if str(d["endian"]).lower() == "little" else "be"
+    return d
+
+
 @dataclass
 class ChecksumBlock:
     name: str = "Checksum"
@@ -87,6 +105,7 @@ class ChecksumBlock:
     # ---------------------------------------------------------------- json
     @classmethod
     def from_dict(cls, d: dict) -> "ChecksumBlock":
+        d = _compat(d)
         rep = d.get("repeat") or {}
         ca = d.get("complement_at")
         b = cls(str(d.get("name") or "Checksum"), d.get("algorithm") or "crc32", _ranges(d.get("ranges")),

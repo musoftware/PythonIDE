@@ -43,7 +43,9 @@ _U16BE = re.compile(rb"(?:\x00[\x20-\x7e]){%d,}")
 
 
 def tags_for(text: str) -> tuple[str, ...]:
-    out = []
+    out: list[str] = []
+    if sum(1 for c in text if c.isalnum() or c in " .-_/:") < len(text) * 0.75:
+        return ()                   # punctuation soup (tables that happen to be printable)
     for name, rx in ID_PATTERNS:
         if rx.search(text) and name not in out:
             out.append(name)

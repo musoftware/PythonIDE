@@ -64,6 +64,7 @@ class Image:
     path: str = ""
     notes: list[str] = field(default_factory=list)
     gaps: list[tuple[int, int]] = field(default_factory=list)    # (offset, length) filled with 0xFF
+    native: object = None                                         # formats.MemoryMap when that slice loaded it
 
     def __len__(self) -> int:
         return len(self.data)
@@ -166,6 +167,24 @@ def _image_from_slice(res, path, fmt) -> Image | None:
         return Image(bytearray(res), 0, fmt, str(path))
     if isinstance(res, tuple) and res and isinstance(res[0], (bytes, bytearray)):
         return Image(bytearray(res[0]), int(res[1]) if len(res) > 1 else 0, fmt, str(path))
+    if callable(getattr(res, "to_flat", None)):                  # formats.memmap.MemoryMap
+        def val(name, default=0):
+            v = getattr(res, name, default)
+            return v() if callable(v) else v
+        flat = res.to_flat(0xFF)
+        base = int(val("min_address", 0) or 0) if flat else 0
+        meta = getattr(res, "meta", {}) or {}
+        f = str(meta.get("format", fmt) or fmt)
+        gaps = []
+        try:
+            for g in val("gaps", []) or []:
+                a, b = int(g[0]), int(g[1])
+                gaps.append((a - base, b - a if b > a else b))
+        except Exception:  # noqa: BLE001
+            gaps = []
+        img = Image(bytearray(flat), base, "binary" if f == "raw" else f, str(path), gaps=gaps)
+        img.native = res
+        return img
     data = None
     for attr in ("data", "flat", "image", "bytes"):
         v = getattr(res, attr, None)
@@ -272,18 +291,13 @@ _CPU_HINTS = [
 
 
 def cpu_guess(data: bytes) -> list[tuple[str, str, float]]:
-    """[(arch id, title, score 0..1)] best first - asks radide/firmware/cpu first."""
-    found, res = _call("cpu", ("cpu:guess", "cpu:detect", "cpu:detect_cpu", "cpu.detect:detect"), bytes(data))
-    if found and res:
-        out = []
+    """[(arch id, title, confidence 0..1)] best first - radide/firmware/analysis/arch first."""
+    m = _mod("analysis.arch")
+    if m is not None and hasattr(m, "guess_arch"):
         try:
-            for r in (res if isinstance(res, (list, tuple)) else [res]):
-                if isinstance(r, (tuple, list)):
-                    out.append((str(r[0]), str(r[1] if len(r) > 2 else r[0]), float(r[-1])))
-                else:
-                    arch = str(getattr(r, "arch", "") or getattr(r, "id", "") or r)
-                    out.append((arch, str(getattr(r, "title", "") or getattr(r, "name", "") or arch),
-                                float(getattr(r, "score", 0) or getattr(r, "confidence", 0) or 0.5)))
+            res = m.guess_arch(bytes(data))
+            out = [(g.arch, str(getattr(g, "label", g.arch)), float(g.confidence)) for g in res]
+            _USED["cpu"] = "radide.firmware.analysis.arch.guess_arch"
             if out:
                 return out
         except Exception:  # noqa: BLE001
@@ -299,6 +313,17 @@ def cpu_guess(data: bytes) -> list[tuple[str, str, float]]:
         [("unknown", "Unknown CPU", 0.0)]
 
 
+def base_guess(data: bytes, arch: str) -> list[tuple[int, float, str]]:
+    """[(load address, confidence, reason)] from radide/firmware/analysis/arch (empty when missing)."""
+    m = _mod("analysis.arch")
+    if m is None or not hasattr(m, "guess_base") or not arch or arch == "unknown":
+        return []
+    try:
+        return [(int(b.base), float(b.confidence), str(b.reason)) for b in m.guess_base(bytes(data), arch)][:5]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def analyze(img: Image) -> dict:
     """Facts for the Analysis tab: format, size, base, EEPROM guess, CPU guesses, entropy, strings."""
     d = bytes(img.data)
@@ -311,17 +336,43 @@ def analyze(img: Image) -> dict:
     info["CPU (guess)"] = "; ".join(f"{t} {s:.0%}" for _a, t, s in cpus[:3])
     ff = d.count(0xFF)
     info["0xFF bytes"] = f"{ff:,} ({ff / max(1, len(d)):.0%})"
-    found, res = _call("analysis", ("formats:identify", "cpu:base_address", "cpu:guess_base"), d)
-    if found and res:
-        info["Identification"] = str(res)[:300]
-    return {"facts": info, "entropy": entropy_blocks(d, max(256, len(d) // 256 or 256)),
-            "strings": strings(d), "cpu": cpus, "eeprom": ee}
+    bases = base_guess(d, cpus[0][0]) if cpus else []
+    if bases:
+        info["Load address (guess)"] = "; ".join(f"0x{b:08X} {c:.0%}" for b, c, _r in bases[:3])
+    block = max(256, len(d) // 256 or 256)
+    ent = None
+    em = _mod("analysis.entropy")
+    if em is not None and hasattr(em, "entropy_profile"):
+        try:
+            ent = [float(x) for x in em.entropy_profile(d, block)]
+            if ent and max(ent) > 1.0:                 # bits per byte (0..8) -> 0..1
+                ent = [x / 8.0 for x in ent]
+            regions = em.summary(em.classify(d, 1024)) if hasattr(em, "classify") else {}
+            if regions:
+                info["Regions"] = ", ".join(f"{k} {v:,}" for k, v in regions.items())
+            _USED["analysis"] = "radide.firmware.analysis"
+        except Exception:  # noqa: BLE001
+            ent = None
+    strs = None
+    sm = _mod("analysis.strings")
+    if sm is not None and hasattr(sm, "find_strings"):
+        try:
+            found = sm.find_strings(d, 6, True, 2000)
+            strs = [(f.offset, f.text) for f in found[:400]]
+            ident = sm.identification(found) if hasattr(sm, "identification") else []
+            if ident:
+                info["Identification strings"] = " | ".join(f.text for f in ident[:6])[:300]
+        except Exception:  # noqa: BLE001
+            strs = None
+    return {"facts": info, "entropy": ent if ent else entropy_blocks(d, block),
+            "strings": strs if strs is not None else strings(d), "cpu": cpus, "eeprom": ee, "bases": bases}
 
 
 # ============================================================================ disassembly
 ARCHES = {"ppc": "PowerPC BE", "ppc-vle": "PowerPC VLE (Ghidra)", "arm-thumb": "ARM Thumb", "arm": "ARM",
           "arm64": "ARM64", "tricore": "TriCore", "m68k": "68000 / CPU32", "mips": "MIPS BE", "sh": "SuperH",
-          "c166": "C166 / ST10 (Ghidra)", "x86": "x86 (16-bit)", "6502": "6502", "z80": "Z80"}
+          "c166": "C166 / ST10 (Ghidra)", "hc12": "HC12 / S12", "sh2": "SuperH SH-2", "v850": "V850 (Ghidra)",
+          "8051": "8051 (Ghidra)", "x86": "x86 (16-bit)", "6502": "6502"}
 
 
 def _capstone(arch: str):
@@ -333,6 +384,8 @@ def _capstone(arch: str):
              "m68k": (cs.CS_ARCH_M68K, cs.CS_MODE_M68K_040),
              "mips": (cs.CS_ARCH_MIPS, cs.CS_MODE_MIPS32 | cs.CS_MODE_BIG_ENDIAN),
              "sh": (getattr(cs, "CS_ARCH_SH", None), getattr(cs, "CS_MODE_SH2", 0) | cs.CS_MODE_BIG_ENDIAN),
+             "sh2": (getattr(cs, "CS_ARCH_SH", None), getattr(cs, "CS_MODE_SH2", 0) | cs.CS_MODE_BIG_ENDIAN),
+             "hc12": (getattr(cs, "CS_ARCH_M680X", None), getattr(cs, "CS_MODE_M680X_CPU12", 0)),
              "x86": (cs.CS_ARCH_X86, cs.CS_MODE_16),
              "6502": (getattr(cs, "CS_ARCH_MOS65XX", None), getattr(cs, "CS_MODE_MOS65XX_6502", 0))}
     a = table.get(arch)
@@ -375,7 +428,7 @@ def disassemble(data: bytes, base: int, arch: str, start: int, count: int = 400)
 
 
 def find_ghidra() -> str | None:
-    found, res = _call("ghidra", ("disasm:find_ghidra", "disasm.ghidra:find_ghidra"))
+    found, res = _call("ghidra", ("analysis.ghidra:find_ghidra", "disasm:find_ghidra", "disasm.ghidra:find_ghidra"))
     if found:
         return res or None
     try:
@@ -437,6 +490,22 @@ class MapDef:
     def from_any(cls, m) -> "MapDef":
         if isinstance(m, MapDef):
             return m
+        score = None
+        if not isinstance(m, dict) and hasattr(m, "mapdef"):          # maps.finder.Candidate
+            score = float(getattr(m, "score", 0) or 0)
+            m = m.mapdef
+        if isinstance(m, dict) and "dtype" in m:                       # maps.model.MapDef.to_dict()
+            mm = _mod("maps.model")
+            if mm is not None and hasattr(mm, "MapDef"):
+                try:
+                    m = mm.MapDef.from_dict(m)
+                except Exception:  # noqa: BLE001
+                    pass
+        if not isinstance(m, dict) and hasattr(m, "dtype") and hasattr(m, "x_axis"):
+            out = cls._from_slice_map(m)
+            if score is not None:
+                out.score = round(score / 50.0, 3)         # 0..100 -> 0..2 like the built-in finder
+            return out
         d = m if isinstance(m, dict) else {k: getattr(m, k) for k in dir(m) if not k.startswith("_")}
         alias = {"addr": "address", "data_addr": "address", "offset_addr": "address", "nx": "cols", "ny": "rows",
                  "x_address": "x_addr", "y_address": "y_addr", "type": "cell", "cell_type": "cell",
@@ -447,11 +516,59 @@ class MapDef:
             k2 = alias.get(k, k)
             if k2 in names and not callable(v):
                 kw[k2] = v
+        for k in ("address", "x_addr", "y_addr"):
+            if isinstance(kw.get(k), str):
+                kw[k] = int(kw[k], 0) if kw[k].strip() else 0
         out = cls(**kw)
         out.cell = _norm_cell(out.cell)
         out.x_cell = _norm_cell(out.x_cell) if out.x_cell else ""
         out.y_cell = _norm_cell(out.y_cell) if out.y_cell else ""
         return out
+
+    @classmethod
+    def _from_slice_map(cls, m) -> "MapDef":
+        """radide.firmware.maps.model.MapDef (dtype + endian, AxisDef axes) -> the UI model."""
+        def cell(dt, en):
+            dt = str(dt or "u16").lower()
+            return dt if dt in ("u8", "s8") else _norm_cell(f"{dt}{'le' if str(en).lower() == 'le' else 'be'}")
+        x, y = m.x_axis, m.y_axis
+        out = cls(name=str(m.name or f"Map_{m.address:06X}"), address=int(m.address), rows=max(1, int(m.rows)),
+                  cols=max(1, int(m.cols)), cell=cell(m.dtype, m.endian), factor=float(m.factor or 1.0),
+                  offset=float(m.offset or 0.0), unit=str(m.unit or ""), folder=str(getattr(m, "folder", "") or ""),
+                  source=str(getattr(m, "source", "") or "finder"), comment=str(getattr(m, "description", "") or ""))
+        if getattr(x, "stored", False):
+            out.x_addr, out.x_cell, out.x_factor, out.x_unit = int(x.address), cell(x.dtype, x.endian), \
+                float(x.factor or 1.0), str(x.unit or "")
+        if getattr(y, "stored", False):
+            out.y_addr, out.y_cell, out.y_factor, out.y_unit = int(y.address), cell(y.dtype, y.endian), \
+                float(y.factor or 1.0), str(y.unit or "")
+        if str(getattr(m, "order", "row")) == "col":
+            out.comment = (out.comment + " " if out.comment else "") + "(column order: shown transposed)"
+            out.rows, out.cols = out.cols, out.rows
+            out.x_addr, out.y_addr, out.x_cell, out.y_cell = out.y_addr, out.x_addr, out.y_cell, out.x_cell
+        return out
+
+    def to_slice_map(self):
+        """The maps slice's MapDef for this map (None when radide/firmware/maps is missing)."""
+        mm = _mod("maps.model")
+        if mm is None or not hasattr(mm, "MapDef"):
+            return None
+        def split(c):
+            c = c or self.cell
+            return (c, "le") if c in ("u8", "s8") else (c[:-2], c[-2:])
+        dt, en = split(self.cell)
+        m = mm.MapDef(self.name, self.address, cols=self.cols, rows=self.rows, dtype=dt, endian=en,
+                      factor=self.factor, offset=self.offset, unit=self.unit, folder=self.folder,
+                      description=self.comment, source=self.source)
+        if self.x_addr:
+            xd, xe = split(self.x_cell)
+            m.x_axis = mm.AxisDef(address=self.x_addr, count=self.cols, dtype=xd, endian=xe, factor=self.x_factor,
+                                  unit=self.x_unit)
+        if self.y_addr:
+            yd, ye = split(self.y_cell)
+            m.y_axis = mm.AxisDef(address=self.y_addr, count=self.rows, dtype=yd, endian=ye, factor=self.y_factor,
+                                  unit=self.y_unit)
+        return m
 
 
 def _norm_cell(c) -> str:
@@ -559,7 +676,8 @@ def builtin_find_maps(data: bytes, limit: int = 300) -> list[MapDef]:
                 continue
             ny = vals[i + 1]
             start = i * w
-            if 2 <= ny <= 32 and _increasing_len(vals, i + 2, nx) >= nx and                     _increasing_len(vals, i + 2 + nx, ny) >= ny:
+            if 2 <= ny <= 32 and _increasing_len(vals, i + 2, nx) >= nx and \
+                    _increasing_len(vals, i + 2 + nx, ny) >= ny:
                 addr = (i + 2 + nx + ny) * w
                 if addr + nx * ny * w <= len(d) and free(start, addr + nx * ny * w):
                     cells = vals[i + 2 + nx + ny:i + 2 + nx + ny + nx * ny]
@@ -632,14 +750,18 @@ def find_maps(data: bytes) -> list[MapDef]:
     return builtin_find_maps(data)
 
 
-def parse_a2l(text: str) -> list[MapDef]:
+def parse_a2l(text: str, data: bytes | None = None) -> list[MapDef]:
     """CHARACTERISTIC entries of an ASAP2 file -> MapDef (the maps slice first; built-in: address, kind and
     the dimensions of MAP / CURVE / VALUE, cell size from the record layout name)."""
-    found, res = _call("a2l", ("maps.a2l:parse", "maps.a2l:parse_a2l", "maps:parse_a2l", "a2l:parse"), text)
+    found, res = _call("a2l", ("maps.a2l:parse_a2l", "maps:parse_a2l"), text, data)
     if found and res is not None:
         try:
-            items = res.get("maps", res) if isinstance(res, dict) else getattr(res, "maps", res)
-            return [MapDef.from_any(m) for m in items]
+            items = res.get("maps", res) if isinstance(res, dict) else getattr(res, "pack", None) or \
+                getattr(res, "maps", res)
+            out = [MapDef.from_any(m) for m in items]
+            for m in out:
+                m.source = "a2l"
+            return out
         except Exception:  # noqa: BLE001
             pass
     _USED["a2l"] = "built-in"
@@ -661,23 +783,46 @@ def parse_a2l(text: str) -> list[MapDef]:
 
 
 # ============================================================================ checksums
-def _sum(data, start, end, width, endian):
-    fmt = {1: "B", 2: "H", 4: "I"}[width]
-    n = (end - start) // width
-    vals = struct.unpack_from(("<" if endian == "little" else ">") + fmt * n, data, start)
-    return sum(vals)
+def norm_profile(p: dict) -> dict:
+    """A checksum profile in the checksum slice's JSON shape (``algorithm``, ``ranges`` [start, end), ``store``,
+    ``width``, ``endian`` be/le). Older built-in shapes (``algo``, ``start`` / ``end``, ``big``) are converted."""
+    d = dict(p)
+    if "algorithm" not in d and "algo" in d:
+        a = str(d.pop("algo")).lower()
+        for suf in ("be", "le"):
+            if a.startswith(("sum16", "sum32", "xor16", "xor32")) and a.endswith(suf) and not a.endswith("-" + suf):
+                a = a[:-2] + "-" + suf
+        d["algorithm"] = a
+    if "ranges" not in d and "start" in d:
+        d["ranges"] = [[d.pop("start"), d.pop("end", 0)]]
+    e = str(d.get("endian", "be")).lower()
+    d["endian"] = "le" if e in ("le", "little") else "be"
+    return d
+
+
+def _ranges_of(d: dict) -> list[tuple[int, int]]:
+    out = []
+    for r in d.get("ranges", []) or []:
+        out.append((int(str(r[0]), 0) if isinstance(r[0], str) else int(r[0]),
+                    int(str(r[1]), 0) if isinstance(r[1], str) else int(r[1])))
+    return out
+
+
+def _int(v) -> int:
+    return int(v, 0) if isinstance(v, str) else int(v or 0)
 
 
 def builtin_checksum(data: bytes, p: dict) -> int:
-    algo = str(p.get("algo", "sum16be")).lower()
-    s, e = int(p.get("start", 0)), int(p.get("end", len(data)))
-    w = int(p.get("width", 2))
+    d = norm_profile(p)
+    algo = str(d.get("algorithm", "sum16-be")).lower()
+    w = _int(d.get("width", 0)) or (4 if "32" in algo else 1 if algo in ("sum8", "xor8", "crc8") else 2)
     mask = (1 << (8 * w)) - 1
+    blob = b"".join(bytes(data[s:e]) for s, e in _ranges_of(d))
     if algo.startswith("crc32"):
-        return zlib.crc32(bytes(data[s:e])) & 0xFFFFFFFF
+        return zlib.crc32(blob) & 0xFFFFFFFF
     if algo.startswith("crc16"):
         crc = 0xFFFF
-        for b in data[s:e]:
+        for b in blob:
             crc ^= b << 8
             for _ in range(8):
                 crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else crc << 1
@@ -685,64 +830,93 @@ def builtin_checksum(data: bytes, p: dict) -> int:
         return crc
     if algo.startswith("xor8"):
         x = 0
-        for b in data[s:e]:
+        for b in blob:
             x ^= b
         return x
-    if algo.startswith("sum8"):
-        return sum(data[s:e]) & mask
-    word = 4 if "32" in algo else 2
-    endian = "little" if algo.endswith("le") else "big"
-    v = _sum(data, s, e, word, endian)
-    if "complement" in algo or algo.startswith("neg"):
+    if algo.startswith("sum8") or algo.endswith("bytes"):
+        v = sum(blob)
+    else:
+        word = 4 if "sum32" in algo else 2
+        n = len(blob) // word
+        v = sum(struct.unpack_from(("<" if "-le" in algo else ">") + ("I" if word == 4 else "H") * n, blob, 0))
+    if algo.endswith("twos"):
         v = -v
+    elif algo.endswith("ones"):
+        v = ~v
     return v & mask
 
 
-def verify(data: bytes, profiles: list[dict]) -> list[dict]:
-    """[{name, ok, stored, computed, store, width, algo}] - radide/firmware/checksum first."""
-    found, res = _call("checksum", ("checksum:verify", "checksum:verify_all", "checksum.engine:verify"),
-                       bytes(data), profiles)
-    if found and isinstance(res, (list, tuple)) and res:
-        out = []
-        for r in res:
-            d = r if isinstance(r, dict) else {k: getattr(r, k) for k in dir(r) if not k.startswith("_")}
-            out.append({"name": d.get("name", "?"), "ok": bool(d.get("ok", d.get("valid", False))),
-                        "stored": d.get("stored", 0), "computed": d.get("computed", d.get("expected", 0)),
-                        "store": d.get("store", d.get("address", 0)), "width": d.get("width", 0),
-                        "algo": d.get("algo", d.get("algorithm", ""))})
-        return out
+def _slice_blocks(profiles):
+    ck = _mod("checksum")
+    if ck is None or not hasattr(ck, "blocks_from_json"):
+        return None, None
+    try:
+        return ck, ck.blocks_from_json([norm_profile(p) if isinstance(p, dict) else p.to_dict() for p in profiles])
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
+def _result_dict(r) -> dict:
+    if isinstance(r, dict):
+        return r
+    ok = getattr(r, "ok", False)
+    return {"name": getattr(r, "name", "?"), "ok": bool(ok() if callable(ok) else ok),
+            "stored": int(getattr(r, "stored", 0) or 0), "computed": int(getattr(r, "computed", 0) or 0),
+            "store": int(getattr(r, "store", 0) or 0), "width": int(getattr(r, "width", 0) or 0),
+            "error": str(getattr(r, "error", "") or ""), "corrected": bool(getattr(r, "corrected", False)),
+            "line": r.line() if callable(getattr(r, "line", None)) else ""}
+
+
+def verify(data: bytes, profiles: list) -> list[dict]:
+    """[{name, ok, stored, computed, store, width, error}] - radide/firmware/checksum first."""
+    if not profiles:
+        return []
+    ck, blocks = _slice_blocks(profiles)
+    if ck is not None:
+        try:
+            res = [_result_dict(r) for r in ck.verify(bytes(data), blocks)]
+            _USED["checksum"] = "radide.firmware.checksum.verify"
+            return res
+        except Exception:  # noqa: BLE001
+            pass
     _USED["checksum"] = "built-in"
     out = []
     for p in profiles:
-        w = int(p.get("width", 2))
-        st = int(p.get("store", 0))
-        if st + w > len(data):
-            out.append({**p, "ok": False, "stored": 0, "computed": 0, "error": "outside the file"})
+        d = norm_profile(p)
+        w = _int(d.get("width", 0)) or 2
+        st = _int(d.get("store", 0))
+        name = d.get("name", "?")
+        if st + w > len(data) or any(e > len(data) for _s, e in _ranges_of(d)):
+            out.append({"name": name, "ok": False, "stored": 0, "computed": 0, "store": st, "width": w,
+                        "error": "outside the file"})
             continue
-        stored = int.from_bytes(bytes(data[st:st + w]), "little" if p.get("endian") == "little" else "big")
-        comp = builtin_checksum(data, p)
-        out.append({"name": p.get("name", "?"), "ok": stored == comp, "stored": stored, "computed": comp,
-                    "store": st, "width": w, "algo": p.get("algo", "")})
+        stored = int.from_bytes(bytes(data[st:st + w]), "little" if d["endian"] == "le" else "big")
+        comp = builtin_checksum(data, d)
+        out.append({"name": name, "ok": stored == comp, "stored": stored, "computed": comp, "store": st,
+                    "width": w, "error": ""})
     return out
 
 
-def fix(data: bytes, profiles: list[dict]) -> tuple[bytes, list[dict]]:
-    """Write correct checksums (profiles in order); returns (new data, verify report after fixing)."""
-    found, res = _call("checksum_fix", ("checksum:fix", "checksum:fix_all", "checksum.engine:fix"),
-                       bytes(data), profiles)
-    if found and res is not None:
-        new = res[0] if isinstance(res, tuple) else res
-        if isinstance(new, (bytes, bytearray)) and len(new) == len(data):
-            return bytes(new), verify(new, profiles)
+def fix(data: bytes, profiles: list) -> tuple[bytes, list[dict]]:
+    """Write correct checksums (profiles in order); returns (new data, report)."""
+    ck, blocks = _slice_blocks(profiles)
+    if ck is not None and hasattr(ck, "correct"):
+        try:
+            buf = bytearray(data)
+            res = [_result_dict(r) for r in ck.correct(buf, blocks)]
+            _USED["checksum_fix"] = "radide.firmware.checksum.correct"
+            return bytes(buf), res
+        except Exception:  # noqa: BLE001
+            pass
     _USED["checksum_fix"] = "built-in"
     d = bytearray(data)
     for p in profiles:
-        w = int(p.get("width", 2))
-        st = int(p.get("store", 0))
+        q = norm_profile(p)
+        w = _int(q.get("width", 0)) or 2
+        st = _int(q.get("store", 0))
         if st + w > len(d):
             continue
-        comp = builtin_checksum(d, p)
-        d[st:st + w] = comp.to_bytes(w, "little" if p.get("endian") == "little" else "big")
+        d[st:st + w] = builtin_checksum(d, q).to_bytes(w, "little" if q["endian"] == "le" else "big")
     return bytes(d), verify(d, profiles)
 
 
@@ -769,211 +943,286 @@ def diff_ranges(a: bytes, b: bytes, limit: int = 20000) -> list[tuple[int, int]]
 PROJECT_FILE = "ecu.json"
 
 
-@dataclass
+def _native_project():
+    m = _mod("project")
+    return m if m is not None and hasattr(m, "EcuProject") else None
+
+
+def _rel(folder: Path, p) -> str:
+    try:
+        return Path(p).resolve().relative_to(Path(folder).resolve()).as_posix()
+    except ValueError:
+        return str(p)
+
+
 class EcuProject:
-    """Fallback ECU project (``ecu.json``) used until radide/firmware/project provides its own model:
-    original (never written), working copy, versions, maps, checksum profiles and the build output."""
-    folder: Path
-    name: str = "ECU"
-    original: str = ""
-    working: str = ""
-    versions: list[dict] = field(default_factory=list)          # {file, note, time}
-    maps: list[dict] = field(default_factory=list)
-    checksums: list[dict] = field(default_factory=list)
-    output: str = ""
-    base: int = 0
-    arch: str = ""
-    extra: dict = field(default_factory=dict)
-    native: object = None                                        # the project slice object, when it answered
+    """The workbench's view of an ECU project folder (``ecu.json``).
 
-    def path(self, rel: str) -> Path:
-        p = Path(rel)
-        return p if p.is_absolute() else self.folder / p
+    Delegates to radide/firmware/project (``EcuProject``: original kept read-only + SHA-256, working copy,
+    versions, checksum blocks, Build with report) and keeps a minimal built-in model when that package is missing.
+    Maps live in the map pack of radide/firmware/maps (``<work>.maps.json`` or ecu.json "maps")."""
 
-    def rel(self, p) -> str:
+    def __init__(self, folder, native=None, data: dict | None = None):
+        self.folder = Path(folder)
+        self._stamp = None
+        self.native = native
+        self.d = data if data is not None else {}
+
+    # The native project is re-read when ecu.json changed on disk since it was loaded (another tool - the ECU
+    # project menu's Build Settings, the Versions dialog ... - saved it), so a later save here never writes
+    # stale settings back.
+    def _disk_stamp(self):
         try:
-            return Path(p).resolve().relative_to(self.folder.resolve()).as_posix()
-        except ValueError:
-            return str(p)
+            st = (self.folder / PROJECT_FILE).stat()
+            return st.st_mtime_ns, st.st_size
+        except OSError:
+            return None
 
     @property
-    def original_path(self) -> Path | None:
-        return self.path(self.original) if self.original else None
-
-    @property
-    def working_path(self) -> Path | None:
-        return self.path(self.working) if self.working else None
-
-    @property
-    def output_path(self) -> Path:
-        return self.path(self.output or f"build/{self.name}.bin")
-
-    def map_defs(self) -> list[MapDef]:
-        return [MapDef.from_any(m) for m in self.maps]
-
-    def save(self) -> None:
-        if self.native is not None:
-            for meth in ("save",):
-                f = getattr(self.native, meth, None)
-                if callable(f):
+    def native(self):
+        n = self._native
+        if n is not None:
+            stamp = self._disk_stamp()
+            if stamp is not None and stamp != self._stamp:
+                np_ = _native_project()
+                if self._stamp is not None and np_ is not None:
                     try:
-                        self._push_native()
-                        f()
-                        return
-                    except Exception:  # noqa: BLE001
-                        break
-        d = {k: v for k, v in asdict(self).items() if k not in ("folder", "native")}
-        (self.folder / PROJECT_FILE).write_text(json.dumps(d, indent=1), encoding="utf-8")
+                        n = self._native = np_.EcuProject.load(self.folder)
+                    except Exception:  # noqa: BLE001 - half-written file: keep the loaded model
+                        return n
+                self._stamp = stamp
+        return n
 
-    def _push_native(self) -> None:
-        n = self.native
-        for k in ("maps", "checksums"):
-            if hasattr(n, k):
-                try:
-                    setattr(n, k, getattr(self, k))
-                except Exception:  # noqa: BLE001
-                    pass
+    @native.setter
+    def native(self, value) -> None:
+        self._native = value
+        self._stamp = self._disk_stamp() if value is not None else None
 
+    # ------------------------------------------------------------------ io
     @classmethod
     def load(cls, folder) -> "EcuProject":
         folder = Path(folder)
-        found, res = _call("project", ("project:load", "project:EcuProject.load", "project:load_project"), folder)
-        if not found:
-            m = _mod("project")
-            klass = getattr(m, "EcuProject", None) if m is not None else None
-            if klass is not None and callable(getattr(klass, "load", None)):
-                try:
-                    res, found = klass.load(folder), True
-                    _USED["project"] = "radide.firmware.project.EcuProject.load"
-                except Exception:  # noqa: BLE001
-                    found = False
-        if found and res is not None:
-            return cls._from_native(folder, res)
+        np_ = _native_project()
+        if np_ is not None:
+            _USED["project"] = "radide.firmware.project.EcuProject"
+            return cls(folder, np_.EcuProject.load(folder))
         _USED["project"] = "built-in"
-        p = folder / PROJECT_FILE
-        d = json.loads(p.read_text(encoding="utf-8"))
-        names = set(cls.__dataclass_fields__) - {"folder", "native"}
-        return cls(folder, **{k: v for k, v in d.items() if k in names})
-
-    @classmethod
-    def _from_native(cls, folder: Path, n) -> "EcuProject":
-        def get(*names, default=None):
-            for k in names:
-                v = n.get(k) if isinstance(n, dict) else getattr(n, k, None)
-                if callable(v) and not isinstance(v, type):
-                    try:
-                        v = v()
-                    except TypeError:
-                        v = None
-                if v not in (None, ""):
-                    return v
-            return default
-        def rel(v):
-            return "" if v in (None, "") else str(v)
-        vers = []
-        for v in get("versions", default=[]) or []:
-            if isinstance(v, dict):
-                vers.append({"file": rel(v.get("file") or v.get("path")), "note": v.get("note", ""),
-                             "time": v.get("time", "")})
-            else:
-                vers.append({"file": rel(getattr(v, "file", "") or getattr(v, "path", "")),
-                             "note": str(getattr(v, "note", "") or getattr(v, "comment", "")),
-                             "time": str(getattr(v, "time", "") or getattr(v, "created", ""))})
-        maps = []
-        for m in get("maps", default=[]) or []:
-            try:
-                maps.append(MapDef.from_any(m).to_dict())
-            except Exception:  # noqa: BLE001
-                pass
-        cks = []
-        for c in get("checksums", "checksum_profiles", default=[]) or []:
-            cks.append(c if isinstance(c, dict) else {k: getattr(c, k) for k in dir(c) if not k.startswith("_")
-                                                     and not callable(getattr(c, k))})
-        return cls(folder, name=str(get("name", default=folder.name)),
-                   original=rel(get("original", "original_file", "ori", default="")),
-                   working=rel(get("working", "working_file", "work", "mod", default="")),
-                   versions=vers, maps=maps, checksums=cks,
-                   output=rel(get("output", "output_file", default="")), base=int(get("base", default=0) or 0),
-                   arch=str(get("arch", "cpu", default="") or ""), native=n)
+        return cls(folder, None, json.loads((folder / PROJECT_FILE).read_text(encoding="utf-8")))
 
     @classmethod
     def create(cls, folder, name: str, source=None, data: bytes | None = None, checksums=None,
                maps=None) -> "EcuProject":
-        """New project: copies *source* (or *data*) to original/<name>.ori (read-only use) and work/<name>.bin."""
+        """New project from a file (*source*) or bytes (*data*, written to original/<name>.bin first)."""
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
-        raw = data if data is not None else Path(source).read_bytes()
-        ext = Path(source).suffix if source else ".bin"
-        ori = folder / "original" / f"{name}{'.ori' if ext.lower() != '.ori' else ext}"
-        ori.parent.mkdir(parents=True, exist_ok=True)
-        ori.write_bytes(raw)
-        work = folder / "work" / f"{name}.bin"
-        work.parent.mkdir(parents=True, exist_ok=True)
-        work.write_bytes(raw)
-        (folder / "versions").mkdir(exist_ok=True)
-        p = cls(folder, name, original=f"original/{ori.name}", working=f"work/{work.name}",
-                checksums=list(checksums or []), maps=[MapDef.from_any(m).to_dict() for m in (maps or [])],
-                output=f"build/{name}.mod.bin")
-        p.save()
+        if source is None:
+            src = folder / "original" / f"{name}.bin"
+            src.parent.mkdir(parents=True, exist_ok=True)
+            src.write_bytes(bytes(data or b""))
+            source, copy = src, False
+        else:
+            copy = True
+        np_ = _native_project()
+        if np_ is not None:
+            ep = np_.new_project(folder, name, original=source, copy=copy)
+            if checksums:
+                ck = _mod("checksum")
+                ep.checksums = ck.blocks_from_json([norm_profile(c) for c in checksums])
+            ep.work_bytes()                       # creates the working copy
+            ep.save()
+            p = cls(folder, ep)
+        else:
+            raw = Path(source).read_bytes()
+            work = folder / "work" / f"{name}.bin"
+            work.parent.mkdir(parents=True, exist_ok=True)
+            work.write_bytes(raw)
+            p = cls(folder, None, {"name": name, "original": _rel(folder, source), "work": _rel(folder, work),
+                                   "checksums": [norm_profile(c) for c in checksums or []], "versions": [],
+                                   "output": f"build/{name}_mod.bin"})
+            p.save()
+        if maps:
+            p.save_maps([MapDef.from_any(m) for m in maps])
         return p
 
-    def add_version(self, data: bytes, note: str = "") -> Path:
+    def save(self) -> None:
+        if self.native is not None:
+            self.native.save()
+            return
+        (self.folder / PROJECT_FILE).write_text(json.dumps(self.d, indent=2), encoding="utf-8")
+
+    # ------------------------------------------------------------------ paths
+    def path(self, rel: str) -> Path:
+        p = Path(rel)
+        return p if p.is_absolute() else self.folder / p
+
+    @property
+    def name(self) -> str:
+        return str(self.native.name if self.native is not None else self.d.get("name", self.folder.name))
+
+    @property
+    def original_path(self) -> Path | None:
+        if self.native is not None:
+            return self.native.original_path
+        return self.path(self.d["original"]) if self.d.get("original") else None
+
+    @property
+    def working_path(self) -> Path | None:
+        if self.native is not None:
+            if self.native.work_path is None or not self.native.work_path.is_file():
+                try:
+                    self.native.work_bytes()
+                    self.native.save()
+                except Exception:  # noqa: BLE001
+                    pass
+            return self.native.work_path
+        return self.path(self.d["work"]) if self.d.get("work") else None
+
+    @property
+    def output_path(self) -> Path:
+        if self.native is not None:
+            return self.native.output_path
+        return self.path(self.d.get("output") or f"build/{self.name}_mod.bin")
+
+    @property
+    def base(self) -> int:
+        return int(getattr(self.native, "image_base", 0) or 0) if self.native is not None else 0
+
+    def original_bytes(self) -> bytes:
+        if self.native is not None:
+            return self.native.original_bytes()
+        p = self.original_path
+        return load_image(p).data if p is not None and p.is_file() else b""
+
+    def work_bytes(self) -> bytes:
+        if self.native is not None:
+            return self.native.work_bytes()
+        p = self.working_path
+        return p.read_bytes() if p is not None and p.is_file() else self.original_bytes()
+
+    def write_work(self, data: bytes) -> Path:
+        if self.native is not None:
+            p = self.native.write_work(bytes(data))
+            self.native.save()
+            return p
+        p = self.working_path
+        p.write_bytes(bytes(data))
+        return p
+
+    # ------------------------------------------------------------------ versions
+    @property
+    def versions(self) -> list[dict]:
+        if self.native is not None:
+            return [{"id": v.id, "name": v.name, "note": v.note, "time": v.created, "file": v.file}
+                    for v in self.native.versions]
+        return list(self.d.get("versions", []))
+
+    def add_version(self, data: bytes, name: str = "", note: str = "") -> Path:
         import time
-        f = getattr(self.native, "add_version", None) if self.native is not None else None
-        if callable(f):
-            try:
-                r = f(data, note)
-                if r:
-                    return Path(r)
-            except Exception:  # noqa: BLE001
-                pass
-        n = len(self.versions) + 1
-        p = self.folder / "versions" / f"{self.name}_v{n:03d}.bin"
+        if self.native is not None:
+            v = self.native.snapshot(name, note, bytes(data))
+            self.native.save()
+            return self.path(v.file)
+        vs = self.d.setdefault("versions", [])
+        vid = f"v{len(vs) + 1:03d}"
+        p = self.folder / "versions" / f"{vid}.bin"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(bytes(data))
-        self.versions.append({"file": self.rel(p), "note": note, "time": time.strftime("%Y-%m-%d %H:%M")})
+        vs.append({"id": vid, "name": name or vid, "note": note, "time": time.strftime("%Y-%m-%d %H:%M"),
+                   "file": _rel(self.folder, p)})
         self.save()
         return p
 
-    def build(self, data: bytes | None = None, log=print) -> tuple[Path, list[dict]]:
-        """Working copy (or *data*) with corrected checksums -> output file; returns (path, checksum report)."""
-        f = getattr(self.native, "build", None) if self.native is not None else None
-        if callable(f) and data is None:
+    def version_bytes(self, vid: str) -> bytes:
+        if self.native is not None:
+            return self.native.version_bytes(vid)
+        v = next((v for v in self.versions if v["id"] == vid), None)
+        return self.path(v["file"]).read_bytes() if v else b""
+
+    # ------------------------------------------------------------------ checksums
+    @property
+    def checksums(self) -> list[dict]:
+        if self.native is not None:
+            return [b.to_dict() if hasattr(b, "to_dict") else dict(b) for b in self.native.checksums]
+        return list(self.d.get("checksums", []))
+
+    def set_checksums(self, profiles: list) -> None:
+        if self.native is not None:
+            ck = _mod("checksum")
+            self.native.checksums = ck.blocks_from_json([norm_profile(p) for p in profiles])
+        else:
+            self.d["checksums"] = [norm_profile(p) for p in profiles]
+        self.save()
+
+    # ------------------------------------------------------------------ maps
+    def _pack_path(self) -> Path:
+        if self.native is not None and self.native.maps_path is not None:
+            return self.native.maps_path
+        if self.d.get("maps"):
+            return self.path(self.d["maps"])
+        w = self.working_path or self.folder / "work" / f"{self.name}.bin"
+        return w.with_name(w.name + ".maps.json")
+
+    def map_defs(self) -> list[MapDef]:
+        p = self._pack_path()
+        if not p.is_file():
+            return []
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        out = []
+        for m in d.get("maps", []):
             try:
-                r = f()
-                out = Path(r[0] if isinstance(r, tuple) else r) if r else self.output_path
-                if out.is_file():
-                    return out, verify(out.read_bytes(), self.checksums)
-            except Exception as e:  # noqa: BLE001
-                log(f"[ecu] project build: {e} - using the built-in build")
-        src = bytes(data) if data is not None else self.working_path.read_bytes()
+                out.append(MapDef.from_any(m))
+            except Exception:  # noqa: BLE001
+                pass
+        return out
+
+    def save_maps(self, maps: list[MapDef]) -> Path:
+        p = self._pack_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        mm = _mod("maps.model")
+        if mm is not None and hasattr(mm, "MapPack"):
+            pack = mm.MapPack(self.name, [m.to_slice_map() for m in maps], base_address=self.base)
+            pack.save(p)
+        else:
+            p.write_text(json.dumps({"format": "radide-mappack", "version": 1, "name": self.name,
+                                     "maps": [m.to_dict() for m in maps]}, indent=2), encoding="utf-8")
+        rel = _rel(self.folder, p)
+        if self.native is not None:
+            if self.native.maps != rel:
+                self.native.maps = rel
+                self.native.save()
+        elif self.d.get("maps") != rel:
+            self.d["maps"] = rel
+            self.save()
+        return p
+
+    # ------------------------------------------------------------------ build
+    def build(self, data: bytes | None = None, log=print) -> tuple[Path, list[dict]]:
+        """Working copy (saved from *data* first) + corrected checksums -> output; (path, checksum report)."""
+        if data is not None:
+            self.write_work(data)
+        if self.native is not None:
+            res = self.native.build(log=log)
+            self.native.save()
+            return Path(res.output), [_result_dict(r) for r in res.checksums]
+        src = self.work_bytes()
         new, report = fix(src, self.checksums) if self.checksums else (src, [])
         out = self.output_path
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(new)
-        log(f"Build: {self.rel(out)} ({len(new):,} bytes), checksums: "
-            + (", ".join(f"{r['name']} {'OK' if r['ok'] else 'BAD'}" for r in report) or "no profiles"))
+        log(f"Build: {_rel(self.folder, out)} ({len(new):,} bytes)")
         return out, report
 
 
 def is_ecu_project(folder) -> bool:
-    if folder is None:
-        return False
-    f = Path(folder)
-    if (f / PROJECT_FILE).is_file():
-        return True
-    m = _mod("project")
-    fn = getattr(m, "is_project", None) or getattr(m, "is_ecu_project", None) if m is not None else None
-    if callable(fn):
-        try:
-            return bool(fn(f))
-        except Exception:  # noqa: BLE001
-            return False
-    return False
+    return folder is not None and (Path(folder) / PROJECT_FILE).is_file()
 
 
 __all__ = ["Image", "MapDef", "EcuProject", "load_image", "sniff_format", "is_firmware_text", "analyze",
            "cpu_guess", "entropy_blocks", "strings", "disassemble", "ARCHES", "find_ghidra", "find_maps",
            "builtin_find_maps", "parse_a2l", "read_map", "read_cells", "pack_cell", "cell_address", "CELL",
-           "CELL_TITLES", "verify", "fix", "builtin_checksum", "diff_ranges", "is_ecu_project", "backends",
+           "CELL_TITLES", "verify", "fix", "builtin_checksum", "norm_profile", "diff_ranges",
+           "is_ecu_project", "backends",
            "PROJECT_FILE", "TEXT_FORMATS"]

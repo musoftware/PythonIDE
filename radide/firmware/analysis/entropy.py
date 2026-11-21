@@ -116,10 +116,11 @@ def classify_block(block: bytes, h: float | None = None) -> str:
         return "text"
     if h >= 7.55:
         return "random"
+    # neighbouring 8 / 16-bit values that change slowly: axes, curves and maps (code stays below ~0.35)
     smooth = max(_smoothness(block, 2, True), _smoothness(block, 2, False), _smoothness(block, 1))
-    if h < 6.2 and smooth > 0.55:
+    if smooth > 0.55:
         return "calibration"
-    if 5.3 <= h < 7.55:
+    if h >= 4.5 + 0.5 * min(1.0, len(block) / 4096):
         return "code"
     return "data"
 

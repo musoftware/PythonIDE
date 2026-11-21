@@ -138,6 +138,33 @@ class _Algo:
             st = self.update(st, self.pre.data[s:e])
         return self.finish(st)
 
+    def many(self, s: int, ends, stores, stored_at):
+        """Vectorised: (store, value) for the ranges [s, e) whose value equals the BE or LE stored value."""
+        import numpy as np
+        if not ends:
+            return []
+        u, d = self.unit, self.d
+        e_idx = np.asarray(ends, dtype=np.int64) // u
+        base = self.arr[s // u]
+        if d["type"] == "sum":
+            v = self.arr[e_idx] - base
+            c = d["complement"]
+            if c == "ones":
+                v = ~v
+            elif c == "twos":
+                v = np.uint64(0) - v
+        else:
+            v = self.arr[e_idx] ^ base
+            if d["complement"] == "ones":
+                v = ~v
+        v = v & np.uint64(self.mask)
+        out = []
+        for p, val in zip(stores, v.tolist()):
+            st = stored_at(p, self.w)
+            if st[3] and (val == st[1] or val == st[2]):
+                out.append((p, val))
+        return out
+
     # -- incremental algorithms
     def start(self):
         t = self.d["type"]
@@ -201,8 +228,11 @@ def complement_pairs(data, widths=(2, 4), align: int = 2, limit: int = 2000) -> 
 def find(data, algorithms=None, *, granularity: int | None = None, starts=None, ends=None, holes=None,
          search_holes: bool = False, window: int = 16, align: int | None = None, min_length: int = 16,
          include_8bit: bool = False, allow_trivial: bool = False, max_results: int = 50,
-         slow_budget: int = 6_000_000, progress=None, cancel=None) -> FindResult:
-    """Search *data* for stored checksums.  See the module docstring for the geometry."""
+         slow_budget: int = 12_000_000, confirm_with=None, progress=None, cancel=None) -> FindResult:
+    """Search *data* for stored checksums.  See the module docstring for the geometry.
+
+    *confirm_with*: other originals of the same layout (same size, different content); only candidates that
+    also hold for every one of them are kept - the best way to get rid of chance matches."""
     data = bytes(data)
     n = len(data)
     res = FindResult()
@@ -228,36 +258,52 @@ def find(data, algorithms=None, *, granularity: int | None = None, starts=None, 
     budget = [slow_budget]
     skipped_slow = set()
 
+    stored_cache: dict = {}
+
     def stored_at(p: int, w: int):
-        raw = data[p:p + w]
-        return raw, int.from_bytes(raw, "big"), int.from_bytes(raw, "little")
+        k = (p, w)
+        v = stored_cache.get(k)
+        if v is None:
+            raw = data[p:p + w]
+            v = stored_cache[k] = (raw, int.from_bytes(raw, "big"), int.from_bytes(raw, "little"),
+                                   len(raw) == w and (allow_trivial or not _trivial(raw)))
+        return v
 
     def add(al: _Algo, ranges, skip, p, value, mode, endian, comp_at=-1):
         key = (al.name, p)
         length = sum(e - s for s, e in ranges) - sum(e - s for s, e in skip)
         score = math.log2(max(length, 2))
-        end_of = ranges[-1][1]
-        if (p + al.w) in bounds or p in bounds or end_of in bounds:
-            score += 3
-        if all(s in bounds for s, _ in ranges):
-            score += 1
-        if comp_at >= 0:
+        w = al.w
+        if mode == "before":
+            exact = p in bounds
+        else:
+            exact = (p + w) in bounds or (comp_at == p + w and (p + 2 * w) in bounds)
+        if exact:
             score += 6
-        if al.w >= 4:
+        if comp_at >= 0:
+            score += 5 if comp_at > p else 3
+        if w >= 4:
             score += 3
+        elif not exact and comp_at < 0:
+            score -= 6                                   # a 16-bit value off a boundary: often chance
+        if al.d["type"] == "xor":
+            score -= 5                                   # XOR cancels on repeated data: weak evidence
         if mode == "hole":
             score -= 2
-        seg = data[ranges[0][0]:ranges[0][1]]
-        if len(set(seg[:4096])) <= 1:
+        seg = data[ranges[0][0]:min(ranges[0][1], ranges[0][0] + 4096)]
+        uniq = len(set(seg))
+        if uniq <= 1:
             score -= 8                                   # an erased / constant range is weak evidence
-        c = Candidate(al.name, list(ranges), list(skip), p, al.w, endian, value, mode, comp_at, round(score, 2))
+        elif uniq < 16:
+            score -= 4
+        c = Candidate(al.name, list(ranges), list(skip), p, w, endian, value, mode, comp_at, round(score, 2))
         old = found.get(key)
         if old is None or c.score > old.score:
             found[key] = c
 
     def check(al: _Algo, value: int, p: int, ranges, skip, mode):
-        raw, be, le = stored_at(p, al.w)
-        if len(raw) < al.w or (not allow_trivial and _trivial(raw)):
+        raw, be, le, usable = stored_at(p, al.w)
+        if not usable or (value != be and value != le):
             return
         for endian, v in (("be", be), ("le", le)):
             if v == value:
@@ -312,12 +358,11 @@ def find(data, algorithms=None, *, granularity: int | None = None, starts=None, 
             if not ps:
                 continue
             if al.prefix:
-                for p in ps:
-                    res.tried += 1
-                    check(al, al.value_segments([(s, p)]), p, [(s, p)], [], "after")
-                    if p - w - s >= min_length and al.ok_pos(p - w):
-                        res.tried += 1
-                        check(al, al.value_segments([(s, p - w)]), p, [(s, p - w)], [], "after")
+                for q_off in (0, w):
+                    qs = [p for p in ps if p - q_off - s >= min_length and al.ok_pos(p - q_off)]
+                    res.tried += len(qs)
+                    for p, v in al.many(s, [p - q_off for p in qs], qs, stored_at):
+                        check(al, v, p, [(s, p - q_off)], [], "after")
                 continue
             if not spend(al, ps[-1] - s, "after"):
                 continue
@@ -340,8 +385,8 @@ def find(data, algorithms=None, *, granularity: int | None = None, starts=None, 
                 if not es or p + w > n:
                     continue
                 if al.prefix:
+                    res.tried += len(es)
                     for e in es:
-                        res.tried += 1
                         check(al, al.value_segments([(s, e)]), p, [(s, e)], [], "before")
                     continue
                 if not spend(al, es[-1] - s, "before"):
@@ -385,6 +430,15 @@ def find(data, algorithms=None, *, granularity: int | None = None, starts=None, 
         res.notes.append("Pure-Python algorithms skipped over the byte budget (narrow the search with start / end "
                          "hints or a larger granularity): " + ", ".join(sorted(skipped_slow)))
     cands = sorted(found.values(), key=lambda c: (-c.score, c.store))
+    others = [bytes(o) for o in confirm_with or []]
+    if others:
+        before = len(cands)
+        cands = [c for c in cands if all(len(o) == n and confirm(o, c) for o in others)]
+        for c in cands:
+            c.score = round(c.score + 10, 2)
+            c.mode += "+confirmed"
+        res.notes.append(f"Cross-check with {len(others)} other file(s): {len(cands)} of {before} candidates "
+                         "also match there")
     # keep the best explanation per stored location (a value may match several algorithms only by chance)
     res.candidates = cands[:max_results]
     return res

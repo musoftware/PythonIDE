@@ -63,50 +63,50 @@ class Candidate:
 
 
 # ====================================================================== scoring helpers
-def _tv_ratio(z: np.ndarray, axis: int) -> float:
-    """mean over lines of total-variation / span along *axis* (1 = monotonic lines)."""
-    if z.shape[axis] < 2:
-        return 1.0
-    d = np.abs(np.diff(z, axis=axis)).sum(axis=axis)
-    span = np.ptp(z, axis=axis)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        r = np.where(span > 0, d / np.where(span > 0, span, 1), 1.0)
-    return float(r.mean())
-
-
 def smoothness(z: np.ndarray, raw_lo: float | None = None, raw_hi: float | None = None) -> float:
-    """0..1: how much *z* (rows, cols) looks like a calibration surface / curve."""
+    """0..1: how much *z* (rows, cols) looks like a calibration surface / curve.
+
+    Mix of: monotony of the lines (total variation / span), small steps next to the value range, small curvature
+    (|2nd differences| next to |1st differences|); penalties for jumps across the range (a signed table read
+    unsigned, random data), two-valued tables (flags) and cells glued to the type's extremes (fill)."""
     z = np.asarray(z, dtype=np.float64)
     if z.size < 2 or not np.all(np.isfinite(z)):
         return 0.0
-    rng = float(np.ptp(z))
+    zmin, zmax = float(z.min()), float(z.max())
+    rng = zmax - zmin
     if rng == 0:
-        v = float(z.flat[0])
+        v = zmin
         if v == 0 or (raw_lo is not None and v in (raw_lo, raw_hi)):
             return 0.03                       # fill (00 / FF ...)
         return 0.3
     rows, cols = z.shape
-    ratios = []
-    if cols > 1:
-        ratios.append(_tv_ratio(z, 1))
-    if rows > 1:
-        ratios.append(_tv_ratio(z, 0))
-    f1 = 1.0 / (sum(ratios) / len(ratios))
-    steps = []
-    if cols > 1:
-        steps.append(float(np.abs(np.diff(z, axis=1)).mean()))
-    if rows > 1:
-        steps.append(float(np.abs(np.diff(z, axis=0)).mean()))
-    m2 = (sum(steps) / len(steps)) / rng
-    f2 = min(1.0, max(0.0, 1.0 - 2.5 * m2))
-    s = 0.6 * f1 + 0.4 * f2
-    # few distinct values in a big table: flags / bit fields rather than a calibration
+    tv, steps, curv, jumps = [], [], [], []
+    for axis, n in ((1, cols), (0, rows)):
+        if n < 2:
+            continue
+        d = np.diff(z, axis=axis)
+        ad = np.abs(d)
+        line_tv = ad.sum(axis=axis)
+        span = z.max(axis=axis) - z.min(axis=axis)
+        ok = span > 0
+        tv.append(float(np.where(ok, line_tv / np.where(ok, span, 1), 1.0).mean()))
+        tot = float(ad.sum())
+        steps.append(tot / ad.size)
+        jumps.append(float(ad.max()))
+        if n > 2:
+            curv.append(float(np.abs(np.diff(d, axis=axis)).sum()) / max(1e-12, tot))
+    f1 = 1.0 / (sum(tv) / len(tv))
+    f2 = min(1.0, max(0.0, 1.0 - 2.5 * (sum(steps) / len(steps)) / rng))
+    f3 = min(1.0, max(0.0, 1.0 - (sum(curv) / len(curv)) / 1.4)) if curv else f1
+    sc = 0.3 * f1 + 0.3 * f2 + 0.4 * f3
+    jump = max(jumps) / rng
+    if jump > 0.5:
+        sc *= 1.0 - 0.9 * (jump - 0.5)
     if z.size >= 16 and len(np.unique(z)) <= 2:
-        s *= 0.5
-    # values glued to the type's extremes: pointers / fill
+        sc *= 0.5
     if raw_hi is not None and np.mean((z == raw_hi) | (z == raw_lo)) > 0.5:
-        s *= 0.4
-    return s
+        sc *= 0.4
+    return sc
 
 
 def axis_quality(a: np.ndarray) -> float:
@@ -118,13 +118,18 @@ def axis_quality(a: np.ndarray) -> float:
     if np.any(steps <= 0):
         return 0.0
     q = 0.6 + 0.4 * min(1.0, n / 12.0)
-    if np.all(steps == 1):
+    if np.all(steps == 1) and a[0] in (0, 1):
         q *= 0.45                             # 0,1,2,3...: an index table
     ratio = steps.max() / max(steps.min(), 1e-12)
     if ratio > 60:
         q *= 0.6
     if abs(a[-1]) > 1e9:
         q *= 0.3
+    if n >= 4:                                # an irregular first / last step: a cell that is not part of it
+        for s0, s1 in ((steps[0], steps[1]), (steps[-1], steps[-2])):
+            r = max(s0, s1) / max(min(s0, s1), 1e-12)
+            if r > 4:
+                q *= 0.75
     return q
 
 
@@ -151,9 +156,9 @@ def best_values(data: bytes, off: int, cols: int, rows: int, axis_dt: str, endia
         if rows > 1 and cols > 1:
             orders.append(("col", flat.reshape(cols, rows).T))
         for order, z in orders:
-            s = smoothness(z, lo, hi)
-            if best is None or s > best[0] + 1e-9:
-                best = (s, vdt, order, z)
+            sc = smoothness(z, lo, hi)
+            if best is None or sc > best[0] + 1e-9:
+                best = (sc, vdt, order, z)
     return best
 
 
@@ -167,25 +172,91 @@ def _runs(arr: np.ndarray, valid: np.ndarray | None):
     starts = np.flatnonzero(d == 1)
     ends = np.flatnonzero(d == -1)           # element indices: run = starts..ends (inclusive)
     lens = ends - starts + 1
-    keep = lens >= MIN_AXIS
+    keep = (lens >= MIN_AXIS) & (lens <= MAX_AXIS + 2)
     return starts[keep], lens[keep]
 
 
-def _view(data: bytes, dt: str, endian: str, align: int):
-    size = dtype_size(dt)
-    n = (len(data) - align) // size
-    if n <= 0:
-        return None, None
-    arr = np.frombuffer(data, dtype=np_dtype(dt, endian), count=n, offset=align).astype(np.float64)
-    valid = None
+def _as_float(data: bytes, dt: str, endian: str, align: int, n: int) -> np.ndarray:
+    raw = np.frombuffer(data, dtype=np_dtype(dt, endian), count=n, offset=align)
     if dt.startswith("f"):
-        a = np.abs(arr)
-        valid = np.isfinite(arr) & (a < 1e7) & ((a > 1e-6) | (arr == 0))
-    return arr, valid
+        with np.errstate(invalid="ignore", over="ignore"):
+            raw = np.where(np.isfinite(raw), raw, 0)
+    return raw.astype(np.float64)
+
+
+class _Scan:
+    """One view of the file (type, byte order, alignment) + cumulative sums for the fast smoothness pre-check."""
+
+    def __init__(self, data: bytes, dt: str, en: str, align: int):
+        self.data, self.dt, self.en, self.align = data, dt, en, align
+        self.size = dtype_size(dt)
+        self.n = (len(data) - align) // self.size
+        self.arr = _as_float(data, dt, en, align, self.n) if self.n > 0 else np.zeros(0)
+        self.valid = None
+        if dt.startswith("f") and self.n:
+            a = np.abs(self.arr)
+            self.valid = (a < 1e7) & ((a > 1e-6) | (self.arr == 0))
+        self.cums = []
+        self.diffs = []
+        for vdt in _value_options(dt):
+            v = self.arr if vdt == dt else _as_float(data, vdt, en, align, self.n)
+            if dt.startswith("f"):
+                v = np.clip(v, -1e9, 1e9)
+            d1 = np.abs(np.diff(v)) if self.n > 1 else np.zeros(0)
+            d2 = np.abs(v[2:] - 2 * v[1:-1] + v[:-2]) if self.n > 2 else np.zeros(0)
+            self.cums.append((np.concatenate(([0.0], np.cumsum(d1))), np.concatenate(([0.0], np.cumsum(d2)))))
+            self.diffs.append((d1, d2))
+
+    def off(self, i: int) -> int:
+        return self.align + i * self.size
+
+    def smooth_hint(self, i: int, count: int) -> float:
+        """sum|2nd diff| / sum|1st diff| over cells i..i+count (stored order); smooth data < 0.8, noise ~1.4."""
+        if count < 3 or i < 0 or i + count > self.n:
+            return 9.0
+        best = 9.0
+        for c1, c2 in self.cums:
+            s1 = c1[i + count - 1] - c1[i]
+            s2 = c2[i + count - 2] - c2[i]
+            r = 0.0 if s1 == 0 else s2 / s1
+            best = min(best, r)
+        return best
+
+
+    def smooth_hint_2d(self, i: int, cols: int, rows: int) -> float:
+        """Like smooth_hint for a cols x rows block, leaving out the jumps between rows (row order) or columns
+        (column order); the better of the two."""
+        n = cols * rows
+        if rows <= 1:
+            return self.smooth_hint(i, n)
+        if n < 3 or i < 0 or i + n > self.n:
+            return 9.0
+        best = 9.0
+        for (c1, c2), (d1, d2) in zip(self.cums, self.diffs):
+            s1 = c1[i + n - 1] - c1[i]
+            s2 = c2[i + n - 2] - c2[i]
+            for seg in (cols, rows):
+                if seg < 3:
+                    continue
+                b = i + np.arange(1, n // seg) * seg          # first cell of each later row
+                s1b = s1 - d1[b - 1].sum()
+                s2b = s2 - d2[b - 2].sum() - d2[b[b - 1 < i + n - 2] - 1].sum()
+                r = 0.0 if s1b <= 0 else max(0.0, s2b) / s1b
+                best = min(best, r)
+        return best
+
+
+PRE_CURVE = 0.95
+PRE_MAP = 1.0
+
+
+def _pre(n: int, base: float) -> float:
+    """Pre-check threshold: stricter for small blocks (few cells make the estimate noisy)."""
+    return base * (0.7 if n < 16 else 0.85 if n < 32 else 1.0)
 
 
 def find_maps(data, *, min_score: float = 35.0, max_results: int = 2000, types=None, axisless: bool = True,
-              time_budget: float = 60.0, progress=None) -> list[Candidate]:
+              time_budget: float = 60.0, progress=None, dedupe: bool = True) -> list[Candidate]:
     """Find potential maps in *data* (bytes). Sorted best first, non-overlapping."""
     data = bytes(data)
     t0 = time.time()
@@ -194,23 +265,22 @@ def find_maps(data, *, min_score: float = 35.0, max_results: int = 2000, types=N
     total = sum(len(a) for _d, _e, a in scan) + (1 if axisless else 0)
     step = 0
     for dt, en, aligns in scan:
-        size = dtype_size(dt)
         for align in aligns:
             step += 1
             if progress is not None:
                 progress(step, total)
             if time.time() - t0 > time_budget:
                 break
-            arr, valid = _view(data, dt, en, align)
-            if arr is None:
+            sc = _Scan(data, dt, en, align)
+            if sc.n < MIN_AXIS * 2:
                 continue
-            starts, lens = _runs(arr, valid)
+            starts, lens = _runs(sc.arr, sc.valid)
+            if dt.startswith("s"):            # all-positive runs were already seen by the unsigned scan
+                neg = np.array([sc.arr[s] < 0 for s in starts.tolist()], dtype=bool)
+                starts, lens = starts[neg] if len(neg) else starts, lens[neg] if len(neg) else lens
             run_at = dict(zip(starts.tolist(), lens.tolist()))
-            n = len(arr)
             for s, L in zip(starts.tolist(), lens.tolist()):
-                if L > MAX_AXIS + 2:
-                    continue
-                cands.extend(_around_run(data, arr, valid, n, s, L, dt, en, align, size, run_at))
+                cands.extend(_around_run(sc, s, L, run_at))
     if axisless and time.time() - t0 < time_budget:
         step += 1
         if progress is not None:
@@ -218,32 +288,26 @@ def find_maps(data, *, min_score: float = 35.0, max_results: int = 2000, types=N
         cands.extend(find_axisless(data, time_budget=max(1.0, time_budget - (time.time() - t0))))
     cands = [c for c in cands if c.score >= min_score]
     cands.sort(key=lambda c: (-c.score, c.address))
+    if not dedupe:
+        return cands
     picked: list[Candidate] = []
     taken: list[tuple[int, int]] = []
     import bisect
     for c in cands:
         s, e = c.span()
         i = bisect.bisect_left(taken, (s, s))
-        clash = False
-        for j in (i - 1, i):
-            if 0 <= j < len(taken) and taken[j][0] < e and s < taken[j][1]:
-                clash = True
-                break
-        if not clash:
-            # wider check (a candidate may cover several taken spans)
-            k = i
-            while k < len(taken) and taken[k][0] < e:
-                if s < taken[k][1]:
-                    clash = True
-                    break
-                k += 1
+        clash = 0 < i and taken[i - 1][1] > s
+        k = i
+        while not clash and k < len(taken) and taken[k][0] < e:
+            clash = s < taken[k][1]
+            k += 1
         if clash:
             continue
         bisect.insort(taken, (s, e))
         picked.append(c)
         if len(picked) >= max_results:
             break
-    for i, c in enumerate(picked, 1):
+    for c in picked:
         m = c.mapdef
         if not m.name:
             m.name = f"Map_{m.address:06X}" if m.rows > 1 else f"Curve_{m.address:06X}"
@@ -254,11 +318,11 @@ def _is_int(v) -> bool:
     return float(v).is_integer()
 
 
-def _around_run(data, arr, valid, n, s, L, dt, en, align, size, run_at):
+def _around_run(sc: _Scan, s: int, L: int, run_at: dict) -> list:
     out = []
-    off = lambda i: align + i * size  # noqa: E731
-    is_f = dt.startswith("f")
-    # ---- Bosch-style headers (the run may also have swallowed the last header cell: try trims 0..2)
+    arr, n = sc.arr, sc.n
+    is_f = sc.dt.startswith("f")
+    # ---- Bosch-style headers (the run may also have swallowed the last header cells: try trims 0..2)
     if not is_f:
         for t in range(0, 3):
             i = s + t
@@ -269,9 +333,10 @@ def _around_run(data, arr, valid, n, s, L, dt, en, align, size, run_at):
             h = arr[i - 1]
             if MIN_AXIS <= h <= min(avail, MAX_AXIS) and _is_int(h):
                 nx = int(h)
-                c = _make(data, arr, dt, en, size, off(i), nx, 1, off(i + nx), None, "header-curve", 1.0)
-                if c:
-                    out.append(c)
+                if sc.smooth_hint(i + nx, nx) < _pre(nx, PRE_CURVE):
+                    c = _make(sc, i, nx, 1, i + nx, None, "header-curve", 1.0)
+                    if c:
+                        out.append(c)
             if i < 2:
                 continue
             h1, h2 = arr[i - 2], arr[i - 1]
@@ -282,58 +347,71 @@ def _around_run(data, arr, valid, n, s, L, dt, en, align, size, run_at):
                 if not (MIN_AXIS <= nx <= min(avail, MAX_AXIS) and 2 <= ny <= MAX_AXIS):
                     continue
                 yi = i + nx
-                if yi + ny > n:
+                if yi + ny + nx * ny > n:
                     continue
-                ya = arr[yi:yi + ny]
-                if not np.all(np.diff(ya) > 0):
+                if not np.all(np.diff(arr[yi:yi + ny]) > 0):
                     continue
-                c = _make(data, arr, dt, en, size, off(i), nx, ny, off(yi + ny), off(yi), "header", 1.0)
+                if sc.smooth_hint_2d(yi + ny, nx, ny) >= _pre(nx * ny, PRE_MAP):
+                    continue
+                c = _make(sc, i, nx, ny, yi + ny, yi, "header", 1.0)
                 if c:
                     out.append(c)
                 break
-    # ---- headerless: [X][Y][values] or [axis][values]
-    for t in (0, 1):
+    # ---- headerless: [X][Y][values] or [axis][values]; the X run may start one or two cells early
+    for t in range(0, 4):
         i = s + t
         nx = L - t
         if nx < MIN_AXIS or nx > MAX_AXIS:
             continue
         yi = i + nx
-        ny = run_at.get(yi)
-        if ny and MIN_AXIS - 1 <= ny <= MAX_AXIS:
-            c = _make(data, arr, dt, en, size, off(i), nx, ny, off(yi + ny), off(yi), "axes", 0.55)
-            if c:
-                out.append(c)
-        elif nx >= (6 if size == 1 else 5) and t == 0:
-            c = _make(data, arr, dt, en, size, off(i), nx, 1, off(yi), None, "curve", 0.0)
+        ylen = run_at.get(yi)
+        if ylen and ylen >= MIN_AXIS - 1:
+            # the Y run may have swallowed the first values (values[0] > Y[-1]): try the lengths that pass
+            best = None
+            for ny in range(MIN_AXIS - 1, min(ylen, MAX_AXIS) + 1):
+                if sc.smooth_hint_2d(yi + ny, nx, ny) >= _pre(nx * ny, PRE_MAP):
+                    continue
+                c = _make(sc, i, nx, ny, yi + ny, yi, "axes", 0.55, t)
+                if c and (best is None or c.score > best.score):
+                    best = c
+            if best:
+                out.append(best)
+        elif nx >= (6 if sc.size == 1 else 5) and sc.smooth_hint(yi, nx) < _pre(nx, PRE_CURVE):
+            c = _make(sc, i, nx, 1, yi, None, "curve", 0.2, t)
             if c:
                 out.append(c)
     return out
 
 
-def _make(data, arr, dt, en, size, x_off, nx, ny, v_off, y_off, layout, hdr):
-    xa = np.frombuffer(data, dtype=np_dtype(dt, en), count=nx, offset=x_off).astype(np.float64)
-    qx = axis_quality(xa)
+def _make(sc: _Scan, xi: int, nx: int, ny: int, vi: int, yi, layout: str, hdr: float, trim: int = 0):
+    arr = sc.arr
+    if vi + nx * ny > sc.n:
+        return None
+    qx = axis_quality(arr[xi:xi + nx])
     if qx <= 0:
         return None
     qy = 1.0
-    if y_off is not None:
-        ya = np.frombuffer(data, dtype=np_dtype(dt, en), count=ny, offset=y_off).astype(np.float64)
-        qy = axis_quality(ya)
+    if yi is not None:
+        qy = axis_quality(arr[yi:yi + ny])
         if qy <= 0:
             return None
-    bv = best_values(data, v_off, nx, ny, dt, en)
+    bv = best_values(sc.data, sc.off(vi), nx, ny, sc.dt, sc.en)
     if bv is None:
         return None
-    vs, vdt, order, z = bv
+    vs, vdt, order, _z = bv
     cells = nx * ny
+    vs *= 0.5 + 0.5 * min(1.0, (cells - 2) / 10.0)        # few cells: smoothness says little
+    if ny == 1:
+        hdr *= min(1.0, (nx - 2) / 6.0)
+    elif layout == "axes":
+        hdr *= min(1.0, (nx - 2) / 5.0) * min(1.0, (ny - 1) / 5.0)
     size_f = min(1.0, math.log2(max(cells, 2)) / 7.0)
-    score = 100.0 * (0.47 * vs + 0.18 * (qx * qy) ** 0.5 + 0.13 * size_f + 0.22 * hdr)
-    if layout == "curve":
-        score *= 0.9
-    m = MapDef(name="", address=v_off, cols=nx, rows=ny, dtype=vdt, endian=en, order=order, source="finder")
-    m.x_axis = AxisDef(name="X", address=x_off, count=nx, dtype=dt, endian=en)
-    if y_off is not None:
-        m.y_axis = AxisDef(name="Y", address=y_off, count=ny, dtype=dt, endian=en)
+    score = 100.0 * (0.47 * vs + 0.18 * (qx * qy) ** 0.5 + 0.13 * size_f + 0.22 * hdr) * (1 - 0.03 * trim)
+    m = MapDef(name="", address=sc.off(vi), cols=nx, rows=ny, dtype=vdt, endian=sc.en, order=order,
+               source="finder")
+    m.x_axis = AxisDef(name="X", address=sc.off(xi), count=nx, dtype=sc.dt, endian=sc.en)
+    if yi is not None:
+        m.y_axis = AxisDef(name="Y", address=sc.off(yi), count=ny, dtype=sc.dt, endian=sc.en)
     if layout.startswith("header"):
         m.description = "Bosch-style header (axis sizes before the axes)"
     return Candidate(m, round(score, 1), layout, {"smooth": round(vs, 3), "axis": round(qx * qy, 3)})
