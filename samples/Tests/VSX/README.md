@@ -102,3 +102,23 @@ agent's sandbox did not allow executing it). A static scan of `redhat.vscode-yam
 2.8 and `ms-vscode.mock-debug` 0.52 found that every `vscode.*` API member they reference is implemented by
 `radide/vsx/host/api.js`; `radide/vsx/lsp_fallback.py` finds the YAML server (`dist/languageserver.js`). Try them
 from the Extensions view (Open VSX) - their output goes to View > Extension Output.
+
+## QA through the real IDE, like a user - `test_vsx_qa.py`
+
+    python samples\Tests\VSX\test_vsx_qa.py <out_dir> [--onscreen]
+
+Starts `MainWindow` with an **empty** scratch `RADIDE_VSX_ROOT` (and a scratch `RADIDE_EXTENSIONS_DIR` holding the
+IDE's own sample extensions from `samples/Tests/Extensions`) and does everything live through the UI: Ctrl+Shift+X,
+typing a search, clicking **Install** on the Open VSX cards (Dracula, One Dark Pro, nifty TOML, JavaScript (ES6)
+snippets, Material Icon Theme), **Uninstall** on the Installed tab, the details tab, choosing Dracula in
+Tools > Options (IDE chrome + Monaco), TOML grammar colours, the `clg` snippet in the suggest widget, Material icons
+in Solution Explorer, **Install from VSIX** of `hello-commands` and `mini-lsp` -> "Restart required" banner ->
+**Reload** starts the extension host -> the command runs from the Command Palette and from its status bar item ->
+language-server diagnostics (Monaco markers) and completions (suggest widget); the IDE's own Extensions dialog;
+the Arabic UI (no English UI words in the Extensions view / details page; extension content such as a
+description "Snippets" is *not* translated). Writes `extension_host_log.txt` (activations of the real Open VSX
+extensions with code: `nifty.nifty-toml`, `pkief.material-icon-theme`) and `arabic_missing.json`.
+QSettings: organisation `RADIDE-TEST`, application `RADIDE-TEST-VSXQA` (own registry key, so another test that
+clears `RADIDE-TEST\RADIDE-TEST` at the same time cannot wipe the theme setting mid-run); cleared at the end.
+Use `--onscreen` for screenshots of Monaco (offscreen `widget.grab()` of web views is blank).
+Checks: 61.

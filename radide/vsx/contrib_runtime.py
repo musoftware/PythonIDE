@@ -284,7 +284,12 @@ def _register_commands(win) -> None:
 
     def pick_icons():
         from PyQt6.QtWidgets import QInputDialog
-        items = ["None (RAD IDE icons)"] + [t.label for t in contrib_icons.available()]
+        try:
+            from ..i18n import tr
+        except Exception:  # noqa: BLE001
+            def tr(s):
+                return s
+        items = [tr("None (RAD IDE icons)")] + [t.label for t in contrib_icons.available()]
         ids = ["none"] + [t.theme_id for t in contrib_icons.available()]
         act = contrib_icons.active()
         cur = ids.index(act.info.theme_id) if act and act.info.theme_id in ids else 0

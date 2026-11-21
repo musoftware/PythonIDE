@@ -204,7 +204,12 @@ class _Field:
 def _extension_form(ext, store: dict):
     from PyQt6.QtWidgets import QFormLayout, QLabel, QScrollArea, QWidget
     from .. import theme as T
+    from PyQt6.QtCore import Qt
     page = QWidget()
+    # the extension's own (English) keys and descriptions: left-to-right and never through the UI translator,
+    # also in the Arabic IDE (a right-to-left form garbles and clips them)
+    page.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+    page.setProperty("i18n_skip", True)
     form = QFormLayout(page)
     head = QLabel(f"<b>{ext.label}</b> &nbsp; <span>{ext.id} {ext.version}</span>")
     form.addRow(head)
@@ -229,6 +234,7 @@ def _extension_form(ext, store: dict):
                     T.role(d, "muted")
                     form.addRow("", d)
     sa = QScrollArea()
+    sa.setLayoutDirection(Qt.LayoutDirection.LeftToRight)     # scrolls from the left like the form inside
     sa.setWidgetResizable(True)
     sa.setWidget(page)
     return sa, fields
@@ -247,7 +253,12 @@ def options_page(dialog):
     lay = QVBoxLayout(w)
     top = QFormLayout()
     icon_combo = QComboBox()
-    icon_combo.addItem("None (RAD IDE icons)", "none")
+    try:
+        from ..i18n import tr
+    except Exception:  # noqa: BLE001
+        def tr(s):
+            return s
+    icon_combo.addItem(tr("None (RAD IDE icons)"), "none")
     for t in icons:
         icon_combo.addItem(t.label, t.theme_id)
     cur = contrib_icons.active()
