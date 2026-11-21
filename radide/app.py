@@ -630,6 +630,12 @@ class MainWindow(QMainWindow):
             "as long as the credit to Musoftware (musoftwares.com) is kept. "
             "See LICENSE and THIRD_PARTY_NOTICES.md.</p>")))
         m.addAction(self._act("Check for &Updates...", self.check_ide_updates))
+        try:
+            from .features import ide_update
+            ide_update.install_menu(self, m)
+            ide_update.schedule_startup_check(self)
+        except Exception as e:  # noqa: BLE001 - the updater must never stop the IDE from starting
+            print(f"[update] {e}", file=sys.stderr)
 
         tb = self.addToolBar("Standard")
         tb.setObjectName("Standard")

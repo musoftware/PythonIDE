@@ -44,7 +44,8 @@ class PublishConfig:
     license_file: str = ""              # .txt / .rtf shown on a license page
     readme_file: str = ""               # shown before installing (InfoBeforeFile)
     output_dir: str = "Publish"         # relative to the project
-    build_kind: str = "auto"            # auto | pyinstaller | ring2exe | vbrun | bridge | flutter | folder
+    build_kind: str = "auto"            # auto | native | pyinstaller | ring2exe | vbrun | bridge | flutter | folder
+    prefer_native: bool = True          # auto: a small native exe without Python when the language has one
     prebuilt_dir: str = ""              # build_kind == folder: a folder with an already built program
     prebuilt_exe: str = ""              # ... and its main exe (relative to that folder)
     console: bool = False               # PyInstaller: keep a console window

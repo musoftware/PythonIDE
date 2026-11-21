@@ -63,6 +63,15 @@ def detect_kind(project: Project, cfg: PublishConfig) -> str:
     if cfg.build_kind and cfg.build_kind != "auto":
         return cfg.build_kind
     lang = startup_language(project)
+    if getattr(cfg, "prefer_native", True):
+        from .native import builder_for
+        if builder_for(lang) is not None:
+            return "native"
+    return fallback_kind(lang)
+
+
+def fallback_kind(lang: str) -> str:
+    """The kind used without a native builder (and when a native build falls back)."""
     if lang.startswith("python") or lang in ("pygame", "kivy", "python-arcade"):
         return "pyinstaller"
     if lang == "vb-basic":
@@ -78,6 +87,7 @@ def detect_kind(project: Project, cfg: PublishConfig) -> str:
 
 KIND_NAMES = {
     "auto": "Automatic (from the project's language)",
+    "native": "Native exe without Python (smallest)",
     "pyinstaller": "Python program (PyInstaller)",
     "vbrun": "VB6 program (bundled VB runtime)",
     "bridge": "GUI Bridge program (language build + bridge host)",
@@ -468,7 +478,26 @@ def build_folder(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     return BuildResult(src, exe, "folder")
 
 
-BUILDERS = {"pyinstaller": build_python, "vbrun": build_vbrun, "bridge": build_bridge, "ring2exe": build_ring,
+def build_native(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
+    """A small native exe (radide/deploy/native); falls back to vbrun / bridge with the reasons logged."""
+    from .native import NativeUnsupported, builder_for
+    lang = startup_language(project)
+    mod = builder_for(lang)
+    reasons = ["no native builder for " + lang] if mod is None else list(mod.check(folder, project, cfg))
+    if not reasons:
+        try:
+            log(f"Native build: {getattr(mod, 'NAME', mod.__name__)}")
+            return mod.build(folder, project, cfg, work, log)
+        except NativeUnsupported as e:
+            reasons = e.reasons
+    kind = fallback_kind(lang)
+    log("Native build not possible, using " + KIND_NAMES.get(kind, kind) + ":")
+    for r in reasons:
+        log("  - " + r)
+    return BUILDERS[kind](folder, project, cfg, work, interpreter, log)
+
+
+BUILDERS = {"native": build_native, "pyinstaller": build_python, "vbrun": build_vbrun, "bridge": build_bridge, "ring2exe": build_ring,
             "flutter": build_flutter, "folder": build_folder}
 
 
