@@ -100,10 +100,13 @@ def cmd_merge(a) -> int:
 
 
 def cmd_disasm(a) -> int:
-    from .disasm import listing
+    from .disasm import listing, pcode_listing
     mm = _load(a.file, a.base)
     start = a.start if a.start is not None else mm.min_address
-    print(listing(mm, a.arch, start, a.length))
+    if a.pcode:
+        print(pcode_listing(mm, a.arch, start, max(1, a.length // 4)))
+    else:
+        print(listing(mm, a.arch, start, a.length))
     return 0
 
 
@@ -219,6 +222,7 @@ def main(argv=None) -> int:
     p.add_argument("--base", type=_int)
     p.add_argument("--start", type=_int)
     p.add_argument("--length", type=_int, default=0x100)
+    p.add_argument("--pcode", action="store_true", help="p-code under every instruction (SLEIGH CPUs)")
     p.set_defaults(fn=cmd_disasm)
     p = sub.add_parser("xrefs")
     p.add_argument("file")

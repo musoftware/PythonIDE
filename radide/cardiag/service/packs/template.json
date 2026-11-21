@@ -1,0 +1,75 @@
+{
+ "_help": "Template of a RAD IDE service-function pack (docs/CARDIAG.md). Copy it, fill in the identifiers from service information you are entitled to use (manufacturer repair portal, ODX data of your tool, your own measurements), then Car Diagnostics > Service Functions > Import Definition Pack. All identifiers below are PLACEHOLDERS (0000 / FFxx) - replace them. Keys starting with '_' are ignored.",
+ "format": "radide-cardiag-service-pack",
+ "version": 1,
+ "name": "My vehicle (template)",
+ "name_ar": "سيارتي (قالب)",
+ "vehicle": {"make": "", "models": [], "years": "", "engine": ""},
+ "source": "Where the identifiers come from (document, version, date)",
+ "author": "",
+ "ecus": {
+  "_help": "One entry per control unit: physical request id (tx) and response id (rx) in hex, protocol uds or kwp.",
+  "engine": {"name": "Engine control unit", "name_ar": "وحدة التحكم في المحرك", "tx": "7E0", "rx": "7E8", "protocol": "uds"}
+ },
+ "dids": [
+  {"_help": "How to show a data identifier: type num (bytes, signed, scale, offset, unit) | ascii | hex | enum (map).",
+   "did": "FF00", "name": "Coolant temperature", "name_ar": "حرارة سائل التبريد", "bytes": 1, "offset": -40, "unit": "°C"}
+ ],
+ "routines": [
+  {
+   "_help": "RoutineControl 0x31: start = 31 01 <rid> <start_params>; poll = 31 03 <rid> every interval_s until a 'done' / 'failed' status byte or timeout_s; stop = 31 02 <rid> <stop.params>. Byte positions in poll / results count from the first byte after the RID. Without 'poll' the answer of the start request is the result.",
+   "id": "example_routine",
+   "name": "Example routine",
+   "name_ar": "روتين مثال",
+   "category": "cooling",
+   "safety": "overheating",
+   "ecu": "engine",
+   "session": "extended",
+   "security_level": 0,
+   "description": "What the routine does and when a workshop runs it.",
+   "description_ar": "ماذا يفعل الروتين ومتى تشغّله الورشة.",
+   "preconditions": [
+    {"text": "Engine off, ignition on", "text_ar": "المحرك متوقف والإشعال يعمل"},
+    {"text": "Coolant below 40 °C", "text_ar": "حرارة السائل أقل من 40 درجة", "check": {"did": "FF00", "op": "<", "value": 40}}
+   ],
+   "rid": "0000",
+   "start_params": "01",
+   "poll": {"interval_s": 1.0, "timeout_s": 300, "status_byte": 0, "progress_byte": 1,
+            "running": ["01"], "done": ["02"], "failed": ["03"],
+            "statuses": {"01": {"en": "running", "ar": "قيد التشغيل"}, "02": {"en": "completed", "ar": "اكتمل"}, "03": {"en": "failed", "ar": "فشل"}}},
+   "results": [{"name": "Result value", "name_ar": "قيمة النتيجة", "byte": 2, "bytes": 1, "unit": ""}],
+   "instructions": [{"at": 0, "text": "Instruction shown while the routine runs", "text_ar": "تعليمات تظهر أثناء التشغيل"}],
+   "stop": {"params": ""}
+  }
+ ],
+ "io_controls": [
+  {
+   "_help": "InputOutputControlByIdentifier 0x2F: set = 2F <did> <control (default 03 shortTermAdjustment)> <value>; RAD IDE always sends 2F <did> 00 (returnControlToECU) when the test ends, is stopped, or after max_duration_s.",
+   "id": "example_actuator",
+   "name": "Example actuator test",
+   "name_ar": "اختبار مشغّل مثال",
+   "category": "actuator",
+   "ecu": "engine",
+   "session": "extended",
+   "did": "FF01",
+   "states": [{"label": "Off", "label_ar": "إيقاف", "value": "00"}, {"label": "On", "label_ar": "تشغيل", "value": "01"}],
+   "max_duration_s": 30,
+   "preconditions": [{"text": "Keep away from moving parts", "text_ar": "ابتعد عن الأجزاء المتحركة"}]
+  }
+ ],
+ "adaptations": [
+  {
+   "_help": "WriteDataByIdentifier 0x2E <did> <data>: a fixed 'value' (hex) or an 'input' with fields (int: bytes/min/max/scale/offset/unit; enum: options). read_back: compare (read 0x22 and compare) | show | false. The old value is read and kept in the audit log first.",
+   "id": "example_reset",
+   "name": "Example service reset",
+   "name_ar": "تصفير صيانة مثال",
+   "category": "service",
+   "ecu": "engine",
+   "session": "extended",
+   "did": "FF02",
+   "value": "00",
+   "read_back": "compare",
+   "preconditions": []
+  }
+ ]
+}

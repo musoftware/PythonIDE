@@ -1,0 +1,265 @@
+{
+"version":1,
+"texts":{
+"5cd6b8fb":[
+"Loose connector under the seat (often after moving the seat)",
+"فيشة مفكوكة تحت الكرسي (غالبًا بعد تحريك الكرسي)"
+],
+"ea02c3c4":[
+"Worn steering-wheel clockspring (spiral cable)",
+"الشريط الحلزوني في الدركسيون (Clockspring) تالف"
+],
+"c2d3f4aa":[
+"Airbag or pretensioner circuit resistance out of range",
+"مقاومة دائرة الإيرباج أو شدّاد الحزام خارج المدى"
+],
+"455a8a0a":[
+"Loose, corroded or wet connector at the part",
+"فيشة القطعة مفكوكة أو عليها صدأ أو رطوبة"
+],
+"1def246b":[
+"Weak battery, poor battery terminals or a charging problem",
+"بطارية ضعيفة أو أقطاب بطارية سيئة أو مشكلة في الشحن"
+],
+"48f12960":[
+"Airbag circuits are dangerous: switch the ignition off and disconnect the battery for a few minutes before touching any airbag connector. Never measure an airbag with an ohmmeter.",
+"دوائر الإيرباج خطيرة: أطفئ المفتاح وافصل البطارية لبضع دقائق قبل لمس أي فيشة إيرباج. لا تقِس الإيرباج بالأوميتر أبدًا."
+],
+"5bb2d7d1":[
+"Check the yellow connectors under the seats and at the steering wheel.",
+"افحص الفيش الصفراء تحت الكراسي وعند الدركسيون."
+],
+"313fe016":[
+"This system is safety-related: if you are unsure, let a qualified workshop check it.",
+"هذا النظام متعلق بالسلامة: إذا لم تكن متأكدًا فاترك ورشة مؤهلة تفحصه."
+],
+"3c4cc633":[
+"After the repair clear the code and drive normally to confirm it does not return.",
+"بعد الإصلاح امسح العطل وقُد السيارة بشكل عادي للتأكد من عدم عودته."
+]
+},
+"codes":{
+"B0001":{
+"title":[
+"Driver Frontal Stage 1 Deployment Control",
+"التحكم في فتح الوسادة الأمامية للسائق - المرحلة 1"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"B0002":{
+"title":[
+"Driver Frontal Stage 2 Deployment Control",
+"التحكم في فتح الوسادة الأمامية للسائق - المرحلة 2"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"B0010":{
+"title":[
+"Passenger Frontal Stage 1 Deployment Control",
+"التحكم في فتح الوسادة الأمامية للراكب - المرحلة 1"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"B0011":{
+"title":[
+"Passenger Frontal Stage 2 Deployment Control",
+"التحكم في فتح الوسادة الأمامية للراكب - المرحلة 2"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"B0020":{
+"title":[
+"Left Side Airbag Deployment Control",
+"التحكم في فتح الوسادة الجانبية اليسرى"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"B0028":{
+"title":[
+"Right Side Airbag Deployment Control",
+"التحكم في فتح الوسادة الجانبية اليمنى"
+],
+"explain":[
+"The airbag computer found a fault in the circuit that fires this airbag. The airbag light stays on and this airbag (sometimes the whole system) may not deploy in a crash. Have it repaired soon by someone trained on airbags.",
+"كمبيوتر الإيرباج وجد عطلاً في الدائرة التي تفتح هذه الوسادة. تبقى لمبة الإيرباج مضاءة وقد لا تفتح هذه الوسادة (وأحيانًا النظام كله) عند الحادث. أصلحها قريبًا عند شخص مدرّب على الإيرباج."
+],
+"causes":[
+"5cd6b8fb",
+"ea02c3c4",
+"c2d3f4aa",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"48f12960",
+"5bb2d7d1",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0151"
+],
+"system":"airbag",
+"monitor":"components",
+"tags":[
+"airbag"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+}
+}
+}

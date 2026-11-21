@@ -1,0 +1,195 @@
+{
+"version":1,
+"drive":{
+"yes":[
+"Usually safe to drive. Have it checked when convenient.",
+"غالبًا القيادة آمنة. افحصها في أقرب وقت مناسب."
+],
+"caution":[
+"You can drive carefully to a workshop. The engine may lose power, use more fuel or run in limp mode - do not ignore it for long.",
+"يمكنك القيادة بحذر حتى الورشة. قد يفقد المحرك القوة أو يزيد استهلاك الوقود أو يدخل وضع الطوارئ - لا تتجاهله طويلاً."
+],
+"no":[
+"Stop as soon as it is safe and switch the engine off. Driving on can cause serious damage or is unsafe.",
+"توقف في أقرب مكان آمن وأطفئ المحرك. الاستمرار في القيادة قد يسبب تلفًا كبيرًا أو غير آمن."
+]
+},
+"ranges":[
+[
+"P0000",
+"P0099",
+"sae",
+"fuel-air",
+"Fuel and air metering and auxiliary emission controls",
+"قياس الوقود والهواء والتحكم المساعد في الانبعاثات"
+],
+[
+"P0100",
+"P0299",
+"sae",
+"fuel-air",
+"Fuel and air metering",
+"قياس الوقود والهواء"
+],
+[
+"P0300",
+"P0399",
+"sae",
+"ignition",
+"Ignition system or misfire",
+"نظام الإشعال أو الاحتراق الناقص"
+],
+[
+"P0400",
+"P0499",
+"sae",
+"emissions",
+"Auxiliary emission controls",
+"أنظمة التحكم المساعدة في الانبعاثات"
+],
+[
+"P0500",
+"P0599",
+"sae",
+"speed-idle",
+"Vehicle speed, idle control and auxiliary inputs",
+"سرعة السيارة والتحكم في الخامل والمدخلات المساعدة"
+],
+[
+"P0600",
+"P0699",
+"sae",
+"ecu",
+"Computer and auxiliary outputs",
+"الكمبيوتر والمخرجات المساعدة"
+],
+[
+"P0700",
+"P0999",
+"sae",
+"transmission",
+"Transmission",
+"ناقل الحركة (الفتيس)"
+],
+[
+"P0A00",
+"P0AFF",
+"sae",
+"hybrid",
+"Hybrid / electric propulsion",
+"أنظمة الدفع الهجين / الكهربائي"
+],
+[
+"P1000",
+"P1FFF",
+"mfr",
+"powertrain",
+"Manufacturer-specific powertrain code",
+"كود محرك/فتيس خاص بالمصنّع"
+],
+[
+"P2000",
+"P2FFF",
+"sae",
+"powertrain",
+"Generic powertrain (fuel, air, emissions, ignition, transmission)",
+"كود محرك/فتيس عام (وقود، هواء، انبعاثات، إشعال، فتيس)"
+],
+[
+"P3000",
+"P33FF",
+"mfr",
+"powertrain",
+"Manufacturer-specific powertrain code",
+"كود محرك/فتيس خاص بالمصنّع"
+],
+[
+"P3400",
+"P34FF",
+"sae",
+"vvt",
+"Cylinder deactivation",
+"إيقاف الأسطوانات"
+],
+[
+"P3500",
+"P3FFF",
+"sae",
+"powertrain",
+"Generic powertrain (reserved / newer assignments)",
+"كود محرك/فتيس عام (محجوز أو تخصيصات أحدث)"
+],
+[
+"B0000",
+"B0FFF",
+"sae",
+"body",
+"Generic body code (airbags, seats, climate, lighting ...)",
+"كود هيكل عام (وسائد هوائية، كراسي، تكييف، إضاءة ...)"
+],
+[
+"B1000",
+"B2FFF",
+"mfr",
+"body",
+"Manufacturer-specific body code",
+"كود هيكل خاص بالمصنّع"
+],
+[
+"B3000",
+"B3FFF",
+"sae",
+"body",
+"Generic body code (reserved)",
+"كود هيكل عام (محجوز)"
+],
+[
+"C0000",
+"C0FFF",
+"sae",
+"abs-brakes",
+"Generic chassis code (brakes, ABS, steering, suspension)",
+"كود شاسيه عام (فرامل، ABS، توجيه، تعليق)"
+],
+[
+"C1000",
+"C2FFF",
+"mfr",
+"abs-brakes",
+"Manufacturer-specific chassis code",
+"كود شاسيه خاص بالمصنّع"
+],
+[
+"C3000",
+"C3FFF",
+"sae",
+"abs-brakes",
+"Generic chassis code (reserved)",
+"كود شاسيه عام (محجوز)"
+],
+[
+"U0000",
+"U0FFF",
+"sae",
+"network",
+"Generic network communication code",
+"كود شبكة اتصال عام"
+],
+[
+"U1000",
+"U2FFF",
+"mfr",
+"network",
+"Manufacturer-specific network code",
+"كود شبكة خاص بالمصنّع"
+],
+[
+"U3000",
+"U3FFF",
+"sae",
+"network",
+"Generic network code (reserved)",
+"كود شبكة عام (محجوز)"
+]
+]
+}

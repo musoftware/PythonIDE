@@ -1,0 +1,579 @@
+{
+"version":1,
+"texts":{
+"af10fab8":[
+"Wheel speed sensor dirty with metal dust or damaged",
+"حساس سرعة العجلة عليه برادة حديد أو تالف"
+],
+"455a8a0a":[
+"Loose, corroded or wet connector at the part",
+"فيشة القطعة مفكوكة أو عليها صدأ أو رطوبة"
+],
+"8891c8b6":[
+"Cracked, rusted or damaged tone ring / magnetic bearing ring",
+"ترس الحساس (Tone Ring) مشروخ أو صدئ أو تالف"
+],
+"6aba39f3":[
+"Excessive wheel bearing play",
+"بلي العجلة به خلوص زائد"
+],
+"e7764e32":[
+"Broken wire or open circuit in the harness",
+"سلك مقطوع أو دائرة مفتوحة في الضفيرة"
+],
+"7bf63402":[
+"Watch the four wheel speeds in live data while driving slowly: the faulty one drops out or reads differently.",
+"راقب سرعات العجلات الأربع في البيانات الحية أثناء القيادة ببطء: العجلة المعطلة تنقطع أو تقرأ بشكل مختلف."
+],
+"0b3668ca":[
+"Inspect the sensor wire near the wheel (it moves with the suspension) and clean the sensor tip.",
+"افحص سلك الحساس قرب العجلة (يتحرك مع العفشة) ونظّف رأس الحساس."
+],
+"313fe016":[
+"This system is safety-related: if you are unsure, let a qualified workshop check it.",
+"هذا النظام متعلق بالسلامة: إذا لم تكن متأكدًا فاترك ورشة مؤهلة تفحصه."
+],
+"3c4cc633":[
+"After the repair clear the code and drive normally to confirm it does not return.",
+"بعد الإصلاح امسح العطل وقُد السيارة بشكل عادي للتأكد من عدم عودته."
+],
+"e646defe":[
+"Blown fuse or faulty relay feeding the circuit",
+"فيوز محروق أو ريلاي تالف يغذي الدائرة"
+],
+"80ccd959":[
+"Seized ABS pump motor",
+"موتور طرمبة ABS متيبّس"
+],
+"1def246b":[
+"Weak battery, poor battery terminals or a charging problem",
+"بطارية ضعيفة أو أقطاب بطارية سيئة أو مشكلة في الشحن"
+],
+"4ca7a8a6":[
+"Check the fuse and relay that feed this circuit.",
+"افحص الفيوز والريلاي اللذين يغذيان هذه الدائرة."
+],
+"79c1deab":[
+"Fault inside the control module - rare, rule out everything else first",
+"عطل داخل وحدة التحكم - نادر، استبعد كل الأسباب الأخرى أولاً"
+],
+"47b06024":[
+"Test the battery and charging voltage (about 12.6 V off, 13.8-14.7 V running).",
+"افحص البطارية وجهد الشحن (حوالي 12.6 فولت والمحرك مطفأ، و13.8 - 14.7 فولت والمحرك يعمل)."
+],
+"1952f75d":[
+"Faulty brake light switch",
+"مفتاح لمبة الفرامل تالف"
+],
+"e0b17a9a":[
+"Burnt brake light bulb",
+"لمبة فرامل محروقة"
+],
+"1c73bb36":[
+"Check that the brake lights work.",
+"تأكد أن لمبات الفرامل تعمل."
+],
+"ea02c3c4":[
+"Worn steering-wheel clockspring (spiral cable)",
+"الشريط الحلزوني في الدركسيون (Clockspring) تالف"
+],
+"66cf2991":[
+"Steering angle not calibrated after alignment",
+"زاوية الدركسيون غير معايرة بعد ضبط الزوايا"
+],
+"05775018":[
+"Faulty part",
+"عطل في القطعة نفسه"
+],
+"340f3f50":[
+"Run the steering angle sensor calibration (Service Functions) with the wheels straight.",
+"شغّل معايرة حساس زاوية الدركسيون (وظائف الصيانة) والعجلات مستقيمة."
+]
+},
+"codes":{
+"C0035":{
+"title":[
+"Left Front Wheel Speed Sensor Circuit",
+"حساس سرعة العجلة الأمامية اليسرى - الدائرة"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The left front sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الأمامية اليسرى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0036":{
+"title":[
+"Left Front Wheel Speed Sensor Circuit Range/Performance",
+"حساس سرعة العجلة الأمامية اليسرى - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The left front sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الأمامية اليسرى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0040":{
+"title":[
+"Right Front Wheel Speed Sensor Circuit",
+"حساس سرعة العجلة الأمامية اليمنى - الدائرة"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The right front sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الأمامية اليمنى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0041":{
+"title":[
+"Right Front Wheel Speed Sensor Circuit Range/Performance",
+"حساس سرعة العجلة الأمامية اليمنى - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The right front sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الأمامية اليمنى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0045":{
+"title":[
+"Left Rear Wheel Speed Sensor Circuit",
+"حساس سرعة العجلة الخلفية اليسرى - الدائرة"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The left rear sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الخلفية اليسرى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0046":{
+"title":[
+"Left Rear Wheel Speed Sensor Circuit Range/Performance",
+"حساس سرعة العجلة الخلفية اليسرى - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The left rear sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الخلفية اليسرى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0050":{
+"title":[
+"Right Rear Wheel Speed Sensor Circuit",
+"حساس سرعة العجلة الخلفية اليمنى - الدائرة"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The right rear sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الخلفية اليمنى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0051":{
+"title":[
+"Right Rear Wheel Speed Sensor Circuit Range/Performance",
+"حساس سرعة العجلة الخلفية اليمنى - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"Each wheel has a speed sensor used by ABS, traction control and ESP. The right rear sensor signal is missing or wrong, so these systems are switched off - the normal brakes still work, but without ABS help on a slippery road.",
+"لكل عجلة حساس سرعة تستخدمه أنظمة ABS والتحكم في الجر وESP. إشارة حساس العجلة الخلفية اليمنى مفقودة أو خاطئة، لذلك تتوقف هذه الأنظمة - الفرامل العادية ما زالت تعمل لكن بدون مساعدة ABS على الطريق الزلق."
+],
+"causes":[
+"af10fab8",
+"455a8a0a",
+"8891c8b6",
+"6aba39f3",
+"e7764e32"
+],
+"checks":[
+"7bf63402",
+"0b3668ca",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"C0035",
+"C0040",
+"C0045",
+"C0050",
+"P0500"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"esp",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0110":{
+"title":[
+"Pump Motor Circuit",
+"دائرة موتور طرمبة ABS"
+],
+"explain":[
+"The ABS hydraulic pump motor circuit has a fault, so ABS is switched off.",
+"دائرة موتور الطرمبة الهيدروليكية للـ ABS بها عطل، لذلك يتوقف ABS."
+],
+"causes":[
+"e646defe",
+"80ccd959",
+"455a8a0a",
+"1def246b"
+],
+"checks":[
+"4ca7a8a6",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0121":{
+"title":[
+"Valve Relay Circuit",
+"دائرة ريلاي صمامات ABS"
+],
+"explain":[
+"The relay that powers the ABS valves has a fault; ABS is switched off.",
+"الريلاي الذي يغذي صمامات ABS به عطل؛ يتوقف ABS."
+],
+"causes":[
+"e646defe",
+"455a8a0a",
+"1def246b",
+"79c1deab"
+],
+"checks":[
+"4ca7a8a6",
+"47b06024",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"brakes"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0161":{
+"title":[
+"ABS/TCS Brake Switch Circuit",
+"دائرة مفتاح الفرامل لنظام ABS/TCS"
+],
+"explain":[
+"The ABS module sees an implausible brake switch signal.",
+"وحدة ABS ترى إشارة غير منطقية من مفتاح الفرامل."
+],
+"causes":[
+"1952f75d",
+"e0b17a9a",
+"455a8a0a"
+],
+"checks":[
+"1c73bb36",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P0571",
+"P0504"
+],
+"system":"abs-brakes",
+"monitor":"components",
+"tags":[
+"abs",
+"brake-lights"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+},
+"C0455":{
+"title":[
+"Steering Wheel Position Sensor Circuit",
+"دائرة حساس وضع عجلة القيادة"
+],
+"explain":[
+"The steering angle sensor signal is faulty. ESP and some steering functions are switched off. After an alignment or replacing the sensor, the steering angle must be calibrated (Service Functions).",
+"إشارة حساس زاوية الدركسيون معطلة. يتوقف ESP وبعض وظائف التوجيه. بعد ضبط الزوايا أو تغيير الحساس يجب معايرة زاوية الدركسيون (وظائف الصيانة)."
+],
+"causes":[
+"455a8a0a",
+"ea02c3c4",
+"66cf2991",
+"05775018"
+],
+"checks":[
+"340f3f50",
+"313fe016",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0126"
+],
+"system":"steering",
+"monitor":"components",
+"tags":[
+"esp",
+"steering"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic-common"
+}
+}
+}

@@ -363,7 +363,14 @@ class FirmwareAnalysisView(QWidget):
         b = QPushButton("Show in Hex")
         b.clicked.connect(lambda: self.hexRequested.emit(self._dis_start))
         row.addWidget(b)
+        self.dis_pcode = QCheckBox("Show P-code")
+        self.dis_pcode.setToolTip("Ghidra's intermediate language under every instruction (SLEIGH CPUs)")
+        self.dis_pcode.toggled.connect(lambda _on: self.show_disassembly(self._dis_start) if self._dis_lines else None)
+        row.addWidget(self.dis_pcode)
         row.addStretch(1)
+        self.dis_backend = QLabel("")
+        self.dis_backend.setProperty("i18n_skip", True)
+        row.addWidget(self.dis_backend)
         dl.addLayout(row)
         sp2 = QSplitter(Qt.Orientation.Horizontal)
         self.listing = QPlainTextEdit()
@@ -653,13 +660,17 @@ class FirmwareAnalysisView(QWidget):
         a = self.current_arch()
         self._dis_start = address
         self.dis_addr.setText(f"0x{address:X}")
+        self.dis_backend.setText(f"Decoder: {disasm.backend_label(a)}")
+        sleigh = disasm.backend(a) == "sleigh"
+        self.dis_pcode.setEnabled(sleigh)
         if not disasm.supported(a):
             self.listing.setPlainText(disasm.unsupported_reason(a) + "\n\nThe Ghidra tab can analyze this CPU when "
                                       "Ghidra knows it.")
             self._dis_lines = []
             return []
         try:
-            lines = disasm.disassemble(self.mm, a, address, length, max_lines=1500)
+            lines = disasm.disassemble(self.mm, a, address, length, max_lines=1500,
+                                       pcode=sleigh and self.dis_pcode.isChecked())
         except ValueError as e:
             self.listing.setPlainText(str(e))
             return []
@@ -676,6 +687,9 @@ class FirmwareAnalysisView(QWidget):
                 rows += [None, None]
             out.append("    " + ln.text(labels, width))
             rows.append(ln)
+            for t in ln.pcode:
+                out.append("              | " + t)
+                rows.append(None)
         self._dis_lines = rows
         self._dis_labels = labels
         self.listing.setPlainText("\n".join(out))
@@ -700,6 +714,10 @@ class FirmwareAnalysisView(QWidget):
             return
         ranges = disasm.code_ranges(self.mm, self.analysis.regions, self.base_address()) or \
             [(s.address, s.end) for s in self.mm.segments]
+        try:
+            ranges = disasm.extend_to_entries(ranges, self.analysis.entry_points())
+        except Exception:  # noqa: BLE001 - entry points are a hint
+            pass
         self.xref_status.setText("Building the reference index...")
         self._xjob = _Job(disasm.build_xrefs, self.mm, a, ranges)
         self._timer.start()

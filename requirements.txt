@@ -20,6 +20,9 @@ pymunk>=6.5
 # File > Import > Program (.exe / .dll): identify PE files, read resources, disassemble (radide/importers/exe)
 pefile>=2023.2
 capstone>=5.0
+# Firmware & ECU: built-in disassembly + p-code for 8051, V850 / RH850, PowerPC VLE, C166 / ST10, RL78, M16C, MCS-96,
+# HCS08, HCS12X (Ghidra SLEIGH through pypcode; no Java / Ghidra needed). Optional: without it those CPUs need Ghidra
+pypcode>=3.0
 # optional for old Python exes (3.7/3.8): decompyle3 / uncompyle6. Installed on demand into %LOCALAPPDATA%\RADIDE\tools:
 #   ilspycmd (dotnet tool, .NET), Vineflower / CFR (Java); pycdc is used when present there
 

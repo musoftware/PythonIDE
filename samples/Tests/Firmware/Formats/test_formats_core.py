@@ -224,8 +224,12 @@ def test_disassembly():
         called = [fn for fn in im.functions[1:] if any(k == "call" for _s, k in idx.to(fn))]
         if a != "sh2":            # SH calls go through registers (JSR @Rn)
             check(f"xrefs {a}: call targets", len(called) >= 10, len(called))
-    check("capstone: VLE unsupported with a reason", not disasm.supported("ppc-vle") and
-          "Ghidra" in disasm.unsupported_reason("ppc-vle"))
+    from radide.firmware.analysis import sleigh as _sl
+    if _sl.available():         # VLE / C166 / V850 / 8051: built-in SLEIGH backend (samples/Tests/Firmware/Sleigh)
+        check("VLE: built-in SLEIGH backend", disasm.backend("ppc-vle") == "sleigh", disasm.backend("ppc-vle"))
+    else:
+        check("VLE unsupported without pypcode, with a reason", not disasm.supported("ppc-vle") and
+              "pypcode" in disasm.unsupported_reason("ppc-vle"))
     from radide.firmware.disasm import disassemble as short
     im = make_image("arm-thumb")
     rows = short(im.bytes(), im.base, "arm-thumb", im.functions[0], 10)

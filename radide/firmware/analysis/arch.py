@@ -36,6 +36,20 @@ ARCH_INFO: dict[str, dict] = {
     "v850": dict(label="Renesas V850 / RH850", endian="little", psize=4, ghidra="V850:LE:32:default", align=2),
     "m68k": dict(label="Motorola 68K / CPU32 (683xx)", endian="big", psize=4, ghidra="68000:BE:32:CPU32", align=2),
     "8051": dict(label="Intel 8051 / MCS-51", endian="big", psize=2, ghidra="8051:BE:16:default", align=1),
+    # chosen by hand (not auto-detected); disassembled by the built-in SLEIGH backend (sleigh.py)
+    "rh850": dict(label="Renesas RH850 (V850E3v5)", endian="little", psize=4, ghidra="V850:LE:32:v850e3v5",
+                  align=2, detect=False),
+    "rl78": dict(label="Renesas RL78", endian="little", psize=2, ghidra="", align=1, detect=False),
+    "m16c": dict(label="Renesas M16C/60 / R8C", endian="little", psize=2, ghidra="M16C/60:LE:16:default",
+                 align=1, detect=False),
+    "m32c": dict(label="Renesas M16C/80 / M32C", endian="little", psize=4, ghidra="M16C/80:LE:16:default",
+                 align=1, detect=False),
+    "mcs96": dict(label="Intel MCS-96 (80C196)", endian="little", psize=2, ghidra="MCS96:LE:16:default", align=1,
+                  detect=False),
+    "hcs08": dict(label="Freescale HC08 / HCS08", endian="big", psize=2, ghidra="HCS08:BE:16:default", align=1,
+                  detect=False),
+    "hcs12x": dict(label="Freescale HCS12X (global addresses)", endian="big", psize=2, ghidra="HCS12:BE:24:default",
+                   align=1, detect=False),
 }
 
 # (arch, regex, alignment, weight, probability in uniform random bytes, description)

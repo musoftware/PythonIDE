@@ -1,0 +1,1387 @@
+{
+"version":1,
+"texts":{
+"ebc4f57c":[
+"The other module has lost power or ground (fuse, wiring)",
+"الوحدة الأخرى فقدت التغذية أو الأرضي (فيوز أو سلك)"
+],
+"daebb2f8":[
+"Damaged CAN bus wiring or connector between modules",
+"تلف أسلاك أو فيش شبكة CAN بين الوحدات"
+],
+"1def246b":[
+"Weak battery, poor battery terminals or a charging problem",
+"بطارية ضعيفة أو أقطاب بطارية سيئة أو مشكلة في الشحن"
+],
+"e322defc":[
+"The other module is faulty or was disconnected",
+"الوحدة الأخرى تالفة أو مفصولة"
+],
+"14721ef4":[
+"Recent repairs or added accessories disturbing the wiring",
+"إصلاحات حديثة أو إكسسوارات مضافة أثّرت على الأسلاك"
+],
+"1a74c2bb":[
+"Scan all modules: which ones answer and which are silent? Check their fuses and ground.",
+"افحص كل الوحدات: أيها يرد وأيها صامت؟ افحص فيوزاتها وأرضيها."
+],
+"24850ab3":[
+"Check the fuses and ground of the silent module.",
+"افحص فيوزات وأرضي الوحدة الصامتة."
+],
+"adb795db":[
+"Battery disconnected: measure about 60 ohms between CAN-High and CAN-Low at the OBD socket (pins 6 and 14).",
+"والبطارية مفصولة: قِس حوالي 60 أوم بين CAN-High وCAN-Low في فيشة OBD (الطرفين 6 و14)."
+],
+"47b06024":[
+"Test the battery and charging voltage (about 12.6 V off, 13.8-14.7 V running).",
+"افحص البطارية وجهد الشحن (حوالي 12.6 فولت والمحرك مطفأ، و13.8 - 14.7 فولت والمحرك يعمل)."
+],
+"3c4cc633":[
+"After the repair clear the code and drive normally to confirm it does not return.",
+"بعد الإصلاح امسح العطل وقُد السيارة بشكل عادي للتأكد من عدم عودته."
+],
+"313fe016":[
+"This system is safety-related: if you are unsure, let a qualified workshop check it.",
+"هذا النظام متعلق بالسلامة: إذا لم تكن متأكدًا فاترك ورشة مؤهلة تفحصه."
+],
+"6eb0827f":[
+"Water in a connector of the network",
+"مياه في فيشة من فيش الشبكة"
+],
+"9753cb3d":[
+"Control module software needs an update (check service bulletins)",
+"برمجة وحدة التحكم تحتاج تحديثًا (راجع نشرات الخدمة)"
+],
+"de60d0c3":[
+"A used or wrong module was fitted",
+"تم تركيب وحدة مستعملة أو خاطئة"
+],
+"72d3ba24":[
+"Search for service bulletins or software updates for your model.",
+"ابحث عن نشرات الخدمة أو تحديثات البرمجة الخاصة بموديل سيارتك."
+],
+"02ab125b":[
+"A fault stored inside the sending module",
+"عطل مسجل داخل الوحدة المرسلة"
+]
+},
+"codes":{
+"U0001":{
+"title":[
+"High Speed CAN Communication Bus",
+"شبكة الاتصال CAN عالية السرعة"
+],
+"explain":[
+"The high-speed CAN network has a fault (open, short or noise). Many modules may lose contact at once.",
+"شبكة CAN عالية السرعة بها عطل (انقطاع أو قصر أو تشويش). قد تفقد وحدات كثيرة الاتصال في نفس الوقت."
+],
+"causes":[
+"daebb2f8",
+"e322defc",
+"6eb0827f",
+"14721ef4"
+],
+"checks":[
+"adb795db",
+"1a74c2bb",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0073",
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network",
+"multiple-codes"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0073":{
+"title":[
+"Control Module Communication Bus \"A\" Off",
+"شبكة الاتصال \"A\" متوقفة (Bus Off)"
+],
+"explain":[
+"The module switched its CAN connection off because of too many communication errors.",
+"الوحدة أوقفت اتصالها بشبكة CAN بسبب كثرة أخطاء الاتصال."
+],
+"causes":[
+"daebb2f8",
+"e322defc",
+"1def246b"
+],
+"checks":[
+"adb795db",
+"1a74c2bb",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network",
+"multiple-codes"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0100":{
+"title":[
+"Lost Communication With ECM/PCM \"A\"",
+"فقد الاتصال مع كمبيوتر المحرك ECM/PCM \"A\""
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the ECM/PCM \"A\". Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من كمبيوتر المحرك ECM/PCM \"A\". إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"red",
+"drive":"no",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"no-start",
+"stalling",
+"limp-mode",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0101":{
+"title":[
+"Lost Communication With TCM",
+"فقد الاتصال مع كمبيوتر الفتيس (TCM)"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the TCM. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من كمبيوتر الفتيس (TCM). إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"hard-shift",
+"limp-mode",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0102":{
+"title":[
+"Lost Communication With Transfer Case Control Module",
+"فقد الاتصال مع وحدة التحكم في صندوق التوزيع"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Transfer Case Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في صندوق التوزيع. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"4wd",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0103":{
+"title":[
+"Lost Communication With Gear Shift Control Module \"A\"",
+"فقد الاتصال مع وحدة التحكم في ذراع الفتيس \"A\""
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Gear Shift Control Module \"A\". Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في ذراع الفتيس \"A\". إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"hard-shift",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0104":{
+"title":[
+"Lost Communication With Cruise Control Module",
+"فقد الاتصال مع وحدة مثبت السرعة"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Cruise Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة مثبت السرعة. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"cruise",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0105":{
+"title":[
+"Lost Communication With Fuel Injector Control Module",
+"فقد الاتصال مع وحدة التحكم في الرشاشات"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Fuel Injector Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في الرشاشات. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"stalling",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0106":{
+"title":[
+"Lost Communication With Glow Plug Control Module",
+"فقد الاتصال مع وحدة التحكم في بوجيهات التسخين"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Glow Plug Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في بوجيهات التسخين. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"hard-start",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0107":{
+"title":[
+"Lost Communication With Throttle Actuator Control Module",
+"فقد الاتصال مع وحدة التحكم في مشغّل الثروتل"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Throttle Actuator Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في مشغّل الثروتل. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"limp-mode",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0109":{
+"title":[
+"Lost Communication With Fuel Pump Control Module",
+"فقد الاتصال مع وحدة التحكم في طرمبة البنزين"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Fuel Pump Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في طرمبة البنزين. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"stalling",
+"no-start",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0121":{
+"title":[
+"Lost Communication With Anti-Lock Brake System (ABS) Control Module",
+"فقد الاتصال مع وحدة التحكم في الفرامل ABS"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Anti-Lock Brake System (ABS) Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في الفرامل ABS. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"abs",
+"brakes",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0122":{
+"title":[
+"Lost Communication With Vehicle Dynamics Control Module",
+"فقد الاتصال مع وحدة التحكم في ثبات السيارة"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Vehicle Dynamics Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في ثبات السيارة. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"esp",
+"abs",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0123":{
+"title":[
+"Lost Communication With Yaw Rate Sensor Module",
+"فقد الاتصال مع وحدة حساس الانعراج (Yaw Rate)"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Yaw Rate Sensor Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة حساس الانعراج (Yaw Rate). إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"esp",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0124":{
+"title":[
+"Lost Communication With Lateral Acceleration Sensor Module",
+"فقد الاتصال مع وحدة حساس التسارع الجانبي"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Lateral Acceleration Sensor Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة حساس التسارع الجانبي. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"esp",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0126":{
+"title":[
+"Lost Communication With Steering Angle Sensor Module",
+"فقد الاتصال مع وحدة حساس زاوية الدركسيون"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Steering Angle Sensor Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة حساس زاوية الدركسيون. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"esp",
+"steering",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0127":{
+"title":[
+"Lost Communication With Tire Pressure Monitor Module",
+"فقد الاتصال مع وحدة مراقبة ضغط الإطارات"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Tire Pressure Monitor Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة مراقبة ضغط الإطارات. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"tpms",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0128":{
+"title":[
+"Lost Communication With Park Brake Control Module",
+"فقد الاتصال مع وحدة التحكم في فرامل اليد"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Park Brake Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في فرامل اليد. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"brakes",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0129":{
+"title":[
+"Lost Communication With Brake System Control Module",
+"فقد الاتصال مع وحدة التحكم في نظام الفرامل"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Brake System Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في نظام الفرامل. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"brakes",
+"abs",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0131":{
+"title":[
+"Lost Communication With Power Steering Control Module",
+"فقد الاتصال مع وحدة التحكم في الدركسيون الكهربائي"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Power Steering Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في الدركسيون الكهربائي. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"steering",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0140":{
+"title":[
+"Lost Communication With Body Control Module",
+"فقد الاتصال مع وحدة التحكم في الهيكل (BCM)"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Body Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في الهيكل (BCM). إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"electrical",
+"lights",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0151":{
+"title":[
+"Lost Communication With Restraints Control Module",
+"فقد الاتصال مع وحدة التحكم في الوسائد الهوائية (Airbag)"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Restraints Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في الوسائد الهوائية (Airbag). إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633",
+"313fe016"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"airbag",
+"network"
+],
+"pids":[],
+"safety":true,
+"emissions":false,
+"source":"generic"
+},
+"U0155":{
+"title":[
+"Lost Communication With Instrument Panel Cluster (IPC) Control Module",
+"فقد الاتصال مع وحدة لوحة العدادات"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Instrument Panel Cluster (IPC) Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة لوحة العدادات. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"gauge",
+"warning-light",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0164":{
+"title":[
+"Lost Communication With HVAC Control Module",
+"فقد الاتصال مع وحدة التحكم في التكييف"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the HVAC Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة التحكم في التكييف. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"ac",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0167":{
+"title":[
+"Lost Communication With Vehicle Immobilizer Control Module",
+"فقد الاتصال مع وحدة منع السرقة (Immobilizer)"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Vehicle Immobilizer Control Module. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من وحدة منع السرقة (Immobilizer). إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"no-start",
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0184":{
+"title":[
+"Lost Communication With Radio",
+"فقد الاتصال مع الراديو"
+],
+"explain":[
+"Modules talk to each other over the CAN network. The module that stored this code stopped receiving messages from the Radio. Either that module is not powered or is faulty, or the network wiring between them is damaged. Several 'lost communication' codes at once usually point to a shared cause (low battery, a ground, a network fault).",
+"الوحدات تتواصل مع بعضها عبر شبكة CAN. الوحدة التي سجّلت هذا الكود توقفت عن استقبال رسائل من الراديو. إما أن تلك الوحدة بدون تغذية أو تالفة، أو أن أسلاك الشبكة بينهما تالفة. ظهور عدة أكواد \"فقد اتصال\" معًا يشير غالبًا إلى سبب مشترك (بطارية ضعيفة أو أرضي أو عطل في الشبكة)."
+],
+"causes":[
+"ebc4f57c",
+"daebb2f8",
+"1def246b",
+"e322defc",
+"14721ef4"
+],
+"checks":[
+"1a74c2bb",
+"24850ab3",
+"adb795db",
+"47b06024",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"U0001",
+"U0073",
+"P0562"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0300":{
+"title":[
+"Internal Control Module Software Incompatibility",
+"عدم توافق برمجة وحدة التحكم"
+],
+"explain":[
+"Two modules have software versions that do not match (often after replacing or updating one).",
+"وحدتان لهما إصدارات برمجة غير متوافقة (غالبًا بعد تغيير أو تحديث إحداهما)."
+],
+"causes":[
+"9753cb3d",
+"de60d0c3"
+],
+"checks":[
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0401":{
+"title":[
+"Invalid Data Received From ECM/PCM \"A\"",
+"بيانات غير صالحة مستلمة من كمبيوتر المحرك"
+],
+"explain":[
+"Messages from the ECM/PCM \"A\" arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من كمبيوتر المحرك تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0402":{
+"title":[
+"Invalid Data Received From TCM",
+"بيانات غير صالحة مستلمة من كمبيوتر الفتيس"
+],
+"explain":[
+"Messages from the TCM arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من كمبيوتر الفتيس تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0415":{
+"title":[
+"Invalid Data Received From Anti-Lock Brake System (ABS) Control Module",
+"بيانات غير صالحة مستلمة من وحدة الفرامل ABS"
+],
+"explain":[
+"Messages from the Anti-Lock Brake System (ABS) Control Module arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من وحدة الفرامل ABS تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0416":{
+"title":[
+"Invalid Data Received From Vehicle Dynamics Control Module",
+"بيانات غير صالحة مستلمة من وحدة ثبات السيارة"
+],
+"explain":[
+"Messages from the Vehicle Dynamics Control Module arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من وحدة ثبات السيارة تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0422":{
+"title":[
+"Invalid Data Received From Body Control Module",
+"بيانات غير صالحة مستلمة من وحدة التحكم في الهيكل (BCM)"
+],
+"explain":[
+"Messages from the Body Control Module arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من وحدة التحكم في الهيكل (BCM) تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"U0423":{
+"title":[
+"Invalid Data Received From Instrument Panel Control Module",
+"بيانات غير صالحة مستلمة من وحدة لوحة العدادات"
+],
+"explain":[
+"Messages from the Instrument Panel Control Module arrive, but their content is invalid. Often that module has a fault of its own - scan it.",
+"الرسائل من وحدة لوحة العدادات تصل لكن محتواها غير صالح. غالبًا لدى تلك الوحدة عطل خاص بها - افحصها."
+],
+"causes":[
+"02ab125b",
+"9753cb3d",
+"daebb2f8",
+"1def246b"
+],
+"checks":[
+"1a74c2bb",
+"72d3ba24",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"U0100"
+],
+"system":"network",
+"monitor":"components",
+"tags":[
+"network"
+],
+"pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+}
+}
+}

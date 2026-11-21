@@ -369,10 +369,13 @@ def analyze(img: Image) -> dict:
 
 
 # ============================================================================ disassembly
-ARCHES = {"ppc": "PowerPC BE", "ppc-vle": "PowerPC VLE (Ghidra)", "arm-thumb": "ARM Thumb", "arm": "ARM",
+ARCHES = {"ppc": "PowerPC BE", "ppc-vle": "PowerPC VLE", "arm-thumb": "ARM Thumb", "arm": "ARM",
           "arm64": "ARM64", "tricore": "TriCore", "m68k": "68000 / CPU32", "mips": "MIPS BE", "sh": "SuperH",
-          "c166": "C166 / ST10 (Ghidra)", "hc12": "HC12 / S12", "sh2": "SuperH SH-2", "v850": "V850 (Ghidra)",
-          "8051": "8051 (Ghidra)", "x86": "x86 (16-bit)", "6502": "6502"}
+          "c166": "C166 / ST10 / XC16x", "hc12": "HC12 / S12", "sh2": "SuperH SH-2", "v850": "V850",
+          "8051": "8051", "x86": "x86 (16-bit)", "6502": "6502",
+          # built-in SLEIGH (pypcode) CPUs - radide/firmware/analysis/sleigh.py
+          "rh850": "RH850", "rl78": "RL78", "m16c": "M16C / R8C", "m32c": "M32C (M16C/80)",
+          "mcs96": "MCS-96 (80C196)", "hcs08": "HC08 / HCS08", "hcs12x": "HCS12X (global addresses)"}
 
 
 def _capstone(arch: str):

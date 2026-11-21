@@ -222,7 +222,7 @@ later maps win) and `overlaps(...)`.
 | `fill.py` | runs of one byte (0xFF erased flash, 0x00 ...) and short repeating patterns |
 | `strings.py` | ASCII + UTF-16 LE / BE strings; tags for *shapes* that look like part / software numbers, versions, dates and build tags. There is no manufacturer database and nothing is decoded. |
 | `arch.py` | CPU guess with confidence + evidence: ARM Cortex-M (Thumb / Thumb-2), ARM A32, PowerPC (Book E / e200 / MPC5xx), PowerPC e200 VLE, Infineon TriCore, Infineon C166 / ST10 / XC16x, Freescale HC12 / S12(X), Renesas SH-2 / SH-4 (BE), V850 / RH850, 68K / CPU32, 8051. Instruction-pattern statistics at the right alignment (minus what random bytes would give), vector tables / boot headers (Cortex-M vectors, MPC5xxx RCHW 0x5A + VLE bit / 0x5AA5 header, AURIX BMHD 0xB359, C166 JMPS traps, HC12 vectors at the end, SH / 68K reset vectors, V850 JR table, 8051 LJMP) and, for byte-coded CPUs, absolute calls that land after a return. Base address: candidates from the vector table, the usual flash start and the pages that many words point into, scored by how many words point exactly at string starts and vector entries (basefind method). |
-| `disasm.py` | Capstone listing: ARM / Thumb (M-class), PowerPC 32 BE, TriCore 1.6.2, M68K, SuperH (SH-2A BE, SH-4 LE), HC12 (M680X CPU12), MIPS, x86, ARM64. Labels (`sub_` / `loc_` + ELF symbols + project labels), branch targets, data references (absolute / immediate operands inside the image, ARM / Thumb literal pools with the pointed-to word, SH PC-relative MOV.L, PowerPC LIS + ADDI / ORI / loads, TriCore MOVH.A + LEA / LD). `build_xrefs` indexes calls, jumps and data references over the code regions ("which instructions use the table at 0x0800A1C0"). C166 / V850 / 8051 / VLE have no Capstone decoder: the listing says so and Ghidra is offered (V850, 8051, VLE). |
+| `disasm.py` | Capstone listing: ARM / Thumb (M-class), PowerPC 32 BE, TriCore 1.6.2, M68K, SuperH (SH-2A BE, SH-4 LE), HC12 (M680X CPU12), MIPS, x86, ARM64. Labels (`sub_` / `loc_` + ELF symbols + project labels), branch targets, data references (absolute / immediate operands inside the image, ARM / Thumb literal pools with the pointed-to word, SH PC-relative MOV.L, PowerPC LIS + ADDI / ORI / loads, TriCore MOVH.A + LEA / LD). `build_xrefs` indexes calls, jumps and data references over the code regions ("which instructions use the table at 0x0800A1C0"). C166 / V850 / RH850 / 8051 / VLE / RL78 / M16C / M32C / MCS-96 / HCS08 / HCS12X are decoded by the built-in SLEIGH backend (pypcode; see "Built-in SLEIGH disassembly" below), with the same labels and data references. |
 | `ghidra.py` | **Analyze in Ghidra**: `analyzeHeadless` with `-processor <language> -loader BinaryLoader -loader-baseAddr <base>` (raw / HEX / S-record) or Ghidra's ELF loader, a post-script that creates functions at the vector entries, then exports the function list and decompiled C (shown read-only). Uses the Ghidra + JDK the EXE importer finds (`GHIDRA_HOME`, `%LOCALAPPDATA%\RADIDE\tools\ghidra*`, `tools\jdk*`). Languages: `ARM:LE:32:Cortex`, `ARM:LE:32:v7`, `PowerPC:BE:32:e500`, `PowerPC:BE:64:VLE-32addr`, `tricore:LE:32:default`, `HCS12:BE:24:default`, `SuperH:BE:32:SH-2A`, `V850:LE:32:default`, `68000:BE:32:CPU32`, `8051:BE:16:default`. |
 | `report.py` | `analyze(memory_map)` -> `Analysis` (all of the above + `entry_points()` + `text()` report) |
 | `project.py` | Firmware / ECU Analysis project (below) |
@@ -230,6 +230,48 @@ later maps win) and `overlaps(...)`.
 
 Command line: `python -m radide.firmware.analysis info | convert | deinterleave | interleave | byteswap | split |
 merge | disasm | xrefs | ghidra | synth | build` (`--help`).
+
+### Built-in SLEIGH disassembly (no Java, no Ghidra install)
+
+CPUs that Capstone does not decode go through Ghidra's SLEIGH engine via **pypcode** (BSD-2-Clause,
+<https://github.com/angr/pypcode>; it bundles Ghidra's C++ SLEIGH library and compiled processor specs, Apache-2.0).
+`radide/firmware/analysis/sleigh.py` holds the language table, the sweep and a p-code constant propagation;
+`disasm.backend(arch)` says `capstone`, `sleigh` or `""`. Listing, labels, branch targets, the reference index, the
+analysis view's Disassembly tab and the workbench Disassembly tab use it transparently; "Analyze in Ghidra" stays for
+decompilation.
+
+| arch id | CPU | SLEIGH language | source |
+|---|---|---|---|
+| `8051` | Intel 8051 / MCS-51 | `8051:BE:16:default` | Ghidra (pypcode) |
+| `v850` / `rh850` | Renesas V850 / RH850 (V850E3v5) | `V850:LE:32:default` / `V850:LE:32:v850e3v5` | Ghidra (pypcode) |
+| `ppc-vle` | PowerPC e200 VLE | `PowerPC:BE:64:VLE-32addr` (context `vle=1`) | Ghidra (pypcode) |
+| `c166` (`st10`, `xc16x`) | Infineon C166 / C167 / ST10 | `C166:LE:16:default` | `third_party/ghidra-processors/C166` (MIT, keyhana/c166-ghidra-module) |
+| `rl78` | Renesas RL78 | `RL78:LE:16:default` | `third_party/ghidra-processors/RL78` (MIT, xyzz/ghidra-rl78) |
+| `m16c` (`r8c`) / `m32c` | Renesas M16C/60, R8C / M16C/80, M32C | `M16C/60:LE:16:default` / `M16C/80:LE:16:default` | Ghidra (pypcode) |
+| `mcs96` | Intel MCS-96 (80C196) | `MCS96:LE:16:default` | Ghidra (pypcode) |
+| `hcs08` / `hc08` | Freescale HCS08 / HC08 | `HCS08:BE:16:default` / `HC08:BE:16:default` | Ghidra (pypcode) |
+| `hcs12x` | Freescale HCS12X (24-bit global addresses: load paged flash at its global address) | `HCS12:BE:24:default` | Ghidra (pypcode) |
+
+Without Capstone, TriCore, SH-2A, 68K / CPU32, HC12 and PowerPC Book E fall back to their SLEIGH languages. Without
+pypcode those CPUs show "pip install pypcode" and the Ghidra tab. The vendored modules (`third_party/ghidra-processors`,
+upstream files unchanged + LICENSE + README with source URL and commit) are compiled on first use with the SLEIGH
+compiler inside the pypcode wheel into `%LOCALAPPDATA%\RADIDE\sleigh\<name>-<hash>` (`sleigh_build.py`; the C166
+spec needs one mechanical fix for the C++ compiler: `export` moved to the end of eight `[Rw+]` constructors).
+
+Analysis on the p-code: BRANCH / CBRANCH / CALL / RETURN give targets, calls and returns; LOAD / STORE addresses and
+direct code-space operands give data references, with values propagated through registers inside a straight-line run
+(V850 `MOVHI` + `LD`, VLE `E_LIS` + `E_LHZ`, C166 `MOV Rw,#tbl` + `MOV Rx,[Rw]`, 8051 `MOV DPTR,#tbl` ... `MOVC A,@A+DPTR`
+with an unknown index -> the table base). The reference goes on the instruction that uses the address and on the one
+that loaded the constant. C166: `mem` operands are DPP-paged (DPP0-3 reset values 0/1/2/3, `MOV DPPn,#x` tracked),
+`EXTP` / `EXTPR` / `EXTS` / `EXTSR` prefixes apply to the next n instructions, SFR / IRAM (0xF000-0xFFFF) are not
+reported as data references. The analysis view's **Show P-code** check box prints the p-code under each instruction;
+`python -m radide.firmware.analysis disasm FILE --arch c166 --pcode` does the same on the command line. The view's
+reference index also starts at the entry points that precede the first entropy "code" region.
+
+Tests: `samples/Tests/Firmware/Sleigh/test_sleigh_core.py` (synthetic 8051 / V850 / VLE / C166 images: prologues,
+every call at a function entry, every calibration-table reference; C166 DPP / EXTP / EXTS; hand-assembled RH850,
+RL78, M16C, MCS-96, HCS08, HCS12X; p-code, CLI, fallbacks, threads) and `test_sleigh_ide.py` (analysis view and
+workbench Disassembly tabs for 8051, V850, C166, VLE).
 
 ### Firmware / ECU Analysis project
 

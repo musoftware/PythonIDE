@@ -1279,7 +1279,13 @@ class FirmwareWorkbench(QMainWindow):
             base = 0
         rows = A.disassemble(self.data(), base, self.arch.currentData(), base + off, self.dis_count.value())
         self.dis_text.setPlainText("\n".join(f"{a:08X}  {b:<24} {mn:<8} {ops}" for a, b, mn, ops in rows))
-        self.dis_note.setText(f"{len(rows)} line(s) - {A.backends().get('disasm', '')}")
+        note = A.backends().get('disasm', '')
+        try:
+            from ..analysis.disasm import backend_label
+            note += f" - decoder: {backend_label(self.arch.currentData())}"
+        except Exception:  # noqa: BLE001 - the analysis slice is optional here
+            pass
+        self.dis_note.setText(f"{len(rows)} line(s) - {note}")
         self.tabs.setCurrentIndex(TAB_DISASM)
         return len(rows)
 

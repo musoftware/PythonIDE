@@ -1,10 +1,14 @@
-"""Disassembly of firmware with Capstone: a navigable listing (labels, branch targets, data references) and an
-index of cross references, e.g. "which instructions use the calibration table at 0x0800A1C0".
+"""Disassembly of firmware: a navigable listing (labels, branch targets, data references) and an index of cross
+references, e.g. "which instructions use the calibration table at 0x0800A1C0".
 
-Supported through Capstone 5: ARM (A32), Thumb / Thumb-2 (Cortex-M), PowerPC (32-bit Book E; VLE is not in
-Capstone - use "Analyze in Ghidra"), TriCore, M68K / CPU32, SuperH, HC12 / S12 (M680X CPU12), MIPS, x86.
-C166 / ST10, V850 / RH850 and 8051 have no Capstone module: the listing says so and Ghidra is offered instead
-(V850, 8051 and VLE are Ghidra languages).
+Two built-in backends, no Java / Ghidra installation needed:
+
+* Capstone 5: ARM (A32), Thumb / Thumb-2 (Cortex-M), PowerPC (32-bit Book E), TriCore, M68K / CPU32, SuperH,
+  HC12 / S12 (M680X CPU12), MIPS, x86.
+* Ghidra's SLEIGH engine through pypcode (radide/firmware/analysis/sleigh.py): 8051, V850 / RH850, PowerPC e200
+  VLE, C166 / ST10 / XC16x and RL78 (vendored community modules), M16C / R8C, M32C, MCS-96, HC08 / HCS08,
+  HCS12X - with p-code based branch targets and data references. Used for the Capstone CPUs too when Capstone is
+  missing. "Analyze in Ghidra" stays available for decompilation.
 
 Data references are recovered without full analysis: immediates / absolute operands that fall inside the image,
 ARM / Thumb literal-pool loads (LDR rX,[PC,#n] -> the word in the pool), SuperH PC-relative MOV.L, PowerPC
@@ -16,6 +20,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..formats.memmap import MemoryMap
+from . import sleigh as _sleigh
 
 try:
     import capstone as _cs
@@ -53,11 +58,35 @@ ALIASES = {"sh": "sh2", "superh": "sh2", "cortex-m": "arm-thumb", "powerpc": "pp
            "s12": "hc12", "hcs12": "hc12"}
 
 
+def backend(arch: str) -> str:
+    """'capstone', 'sleigh' or '' (no built-in disassembler)."""
+    arch = ALIASES.get(arch, arch)
+    if _spec(arch) is not None:
+        return "capstone"
+    if _sleigh.supported(arch):
+        return "sleigh"
+    if _cs is None and _sleigh.supported(_sleigh.FALLBACK.get(arch, "")):
+        return "sleigh"
+    return ""
+
+
+def _sleigh_arch(arch: str) -> str:
+    arch = ALIASES.get(arch, arch)
+    return arch if _sleigh.knows(arch) else _sleigh.FALLBACK.get(arch, arch)
+
+
 def supported(arch: str) -> bool:
-    return _spec(arch) is not None
+    return backend(arch) != ""
+
+
+def backend_label(arch: str) -> str:
+    b = backend(arch)
+    return {"capstone": "Capstone", "sleigh": "Ghidra SLEIGH (pypcode, built in)"}.get(b, "none")
 
 
 def unsupported_reason(arch: str) -> str:
+    if _sleigh.knows(_sleigh_arch(arch)):
+        return _sleigh.reason(_sleigh_arch(arch))
     if _cs is None:
         return "Capstone is not installed (pip install capstone)."
     if arch == "ppc-vle":
@@ -149,6 +178,7 @@ class Line:
     ret: bool = False
     refs: list[int] = field(default_factory=list)      # data addresses used
     comment: str = ""
+    pcode: list[str] = field(default_factory=list)     # p-code text (SLEIGH CPUs, disassemble(..., pcode=True))
 
     def text(self, labels: dict[int, str] | None = None, width: int = 8) -> str:
         labels = labels or {}
@@ -272,11 +302,15 @@ def _refs(arch: str, ins, mm: MemoryMap, tr: _Tracker, lo: int, hi: int) -> list
     return out
 
 
-def disassemble(mm: MemoryMap, arch: str, start: int, length: int = 0x400, max_lines: int = 20000) -> list[Line]:
-    """Linear sweep of [start, start+length): undecodable units become '.byte' / '.short' lines."""
+def disassemble(mm: MemoryMap, arch: str, start: int, length: int = 0x400, max_lines: int = 20000,
+                pcode: bool = False) -> list[Line]:
+    """Linear sweep of [start, start+length): undecodable units become '.byte' / '.short' lines. *pcode* keeps
+    the p-code text of every instruction (SLEIGH CPUs)."""
     arch = ALIASES.get(arch, arch)
     spec = _spec(arch)
     if spec is None:
+        if backend(arch) == "sleigh":
+            return _sleigh.sweep(mm, _sleigh_arch(arch), start, length, max_lines, _line_from_insn, keep_pcode=pcode)
         raise ValueError(unsupported_reason(arch))
     md = _cs.Cs(*spec)
     md.detail = False
@@ -329,6 +363,22 @@ def disassemble(mm: MemoryMap, arch: str, start: int, length: int = 0x400, max_l
         elif a >= chunk_end:
             a = chunk_end
     return out
+
+
+def _line_from_insn(i) -> Line:
+    return Line(i.address, i.size, i.raw, i.mnemonic, i.ops, i.target, i.call, i.ret, i.refs, i.comment,
+                _sleigh.format_pcode(i.pcode) if i.pcode else [])
+
+
+def pcode_listing(mm: MemoryMap, arch: str, start: int, count: int = 40) -> str:
+    """Instructions with their p-code (SLEIGH CPUs only)."""
+    if backend(arch) != "sleigh":
+        raise ValueError(f"p-code is available for the SLEIGH CPUs ({', '.join(sleigh_arches())}), not '{arch}'.")
+    return _sleigh.pcode_listing(mm, _sleigh_arch(arch), start, count)
+
+
+def sleigh_arches() -> list[str]:
+    return [a for a in _sleigh.LANGS if not a.startswith("sleigh:")]
 
 
 def auto_labels(lines: list[Line], symbols: dict[int, str] | None = None) -> dict[int, str]:
@@ -398,4 +448,18 @@ def code_ranges(mm: MemoryMap, regions, offset_base: int | None = None, min_size
     for r in regions:
         if r.kind == "code" and r.size >= min_size:
             out.append((base + r.start, base + r.end))
+    return out
+
+
+def extend_to_entries(ranges: list[tuple[int, int]], entries, max_gap: int = 0x1000) -> list[tuple[int, int]]:
+    """Code starts at the entry points: a range that begins up to *max_gap* bytes after an entry point (the first
+    functions often sit in a block the entropy classifier calls data) is extended back to that entry."""
+    out = sorted(ranges)
+    for e in sorted(set(entries or [])):
+        if any(a <= e < b for a, b in out):
+            continue
+        nxt = [i for i, (a, _b) in enumerate(out) if 0 < a - e <= max_gap]
+        if nxt:
+            i = nxt[0]
+            out[i] = (e, out[i][1])
     return out
