@@ -211,6 +211,12 @@ def open_target(win, path, line: int | None = None) -> None:
         if (p / Project.FILE).exists() or any(p.glob("*.radsln")):
             win.open_project(p)
             return
+        try:                                         # detect the project type, offer a project file
+            from .features.open_detect import open_folder_detect
+            if open_folder_detect(win, p):
+                return
+        except Exception as e:  # noqa: BLE001 - detection must never block opening the folder
+            win.log(f"*** project type detection failed for {p}: {e}")
         try:
             from .features.foreign_projects import is_foreign
             if is_foreign(p):

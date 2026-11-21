@@ -197,7 +197,11 @@ class FlutterPlugin(LanguagePlugin):
     # ------------------------------------------------------------ project files
     def write_project_files(self, project: Project) -> list[str]:
         """(Re)write the generated project-level files: lib/main.dart, lib/radapp.dart, pubspec.yaml /
-        analysis_options.yaml / test when missing, assets used by the forms. Returns the files written."""
+        analysis_options.yaml / test when missing, assets used by the forms. Returns the files written.
+        An existing Flutter app opened with File > Open Folder ("native_app": true in project.radproj,
+        radide/project_detect.py) keeps its own lib/main.dart and pubspec.yaml: nothing is generated."""
+        if (getattr(project, "extra", None) or {}).get("native_app") and not project.forms:
+            return []
         ensure_types()
         folder = Path(project.folder)
         (folder / "lib").mkdir(parents=True, exist_ok=True)
@@ -254,6 +258,10 @@ class FlutterPlugin(LanguagePlugin):
                                 "import 'package:flutter/material.dart';\n\nimport 'radwebview.dart';\n", 1)
             main = main.replace("void main() => runApp(const RadMobileApp());",
                                 "void main() {\n  radInstallWebView();\n  runApp(const RadMobileApp());\n}")
+        # advanced designer screens (*.fscreen.json - docs/FLUTTER_DESIGNER.md): generated + routes merged
+        from ..flutterdesign.codegen import integrate_rad_project
+        main, fs_written = integrate_rad_project(folder, main, bool(forms))
+        written += fs_written
         put("lib/main.dart", main)
         return written
 

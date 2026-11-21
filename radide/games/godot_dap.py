@@ -197,7 +197,8 @@ def start_debugging(win, godot: str) -> GodotDapSession:
     """F5 for a Godot project: export the scenes, start the session, connect it to the IDE like Session."""
     from . import godot_export
     folder = Path(win.project.folder)
-    godot_export.export_project(folder)
+    if not (getattr(win.project, "extra", None) or {}).get("native_app"):   # existing Godot project: keep its .tscn
+        godot_export.export_project(folder)
     win.output.clear()
     win.locals.clear()
     win.callstack.clear()

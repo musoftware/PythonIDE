@@ -14,6 +14,16 @@ from ..games import codegen, godot_export
 from ..model import Form, Project
 from .base import Completion, LanguagePlugin, RunSpec
 
+
+def _native_app(folder: Path) -> bool:
+    """project.radproj says "native_app": true - an existing Godot project opened with File > Open Folder
+    (radide/project_detect.py): its own project.godot / .tscn scenes are never regenerated."""
+    try:
+        import json
+        return bool(json.loads((Path(folder) / "project.radproj").read_text(encoding="utf-8")).get("native_app"))
+    except (OSError, ValueError, AttributeError):
+        return False
+
 GD_KEYWORDS = ["if", "elif", "else", "for", "while", "match", "break", "continue", "pass", "return", "class",
                "class_name", "extends", "is", "in", "as", "self", "signal", "func", "static", "const", "enum",
                "var", "await", "preload", "breakpoint", "true", "false", "null", "and", "or", "not", "super",
@@ -117,7 +127,8 @@ class GodotPlugin(LanguagePlugin):
     # ------------------------------------------------------------------ run
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         folder = Path(folder)
-        godot_export.export_project(folder)
+        if not _native_app(folder):            # an existing Godot project (File > Open Folder): its own .tscn
+            godot_export.export_project(folder)
         exe = interpreter or godot_export.godot_exe()
         if godot_export.needs_import(folder):
             godot_export.import_assets(folder, exe)
