@@ -14,7 +14,13 @@ Run: ``ruby bin/rails server -p <port> -b 127.0.0.1`` (Rails reloads code by its
 ``bundle exec ruby app.rb -p <port> -o 127.0.0.1`` (Sinatra; the IDE restarts it when a .rb file changes).
 The first run does ``bundle install`` (and for a Rails project that is still empty: ``gem install rails`` +
 ``rails new .``). Routes come from ``bin/rails routes`` (or config/routes.rb when Rails cannot run), Sinatra routes
-from ``get '/x' do`` lines. Debugger: not wired (rdbg needs a socket-only DAP client) - see the report.
+from ``get '/x' do`` lines.
+
+Debugging (F5): the server runs as ``ruby -r rails_debug.rb bin/rails server`` - that file sets up the app's bundle
+and opens the **debug** gem's remote port (``DEBUGGER__.open(nonstop: true)``, RUBY_DEBUG_PORT); when the server
+is ready the IDE attaches over DAP on that TCP port (``radide/debug_more.py`` SocketDap): breakpoints in
+controllers, models and ERB views, locals, stepping; a request from the Preview stops there.
+The IntelliSense / F12 of Rails apps is ``rails_index.py`` + ``radide/features/rails_ide.py``.
 """
 from __future__ import annotations
 
@@ -38,8 +44,8 @@ MSYS_URL = (f"https://github.com/msys2/msys2-installer/releases/download/{MSYS_V
 MSYS_PACKAGES = ["base-devel", "mingw-w64-ucrt-x86_64-gcc", "mingw-w64-ucrt-x86_64-pkgconf",
                  "mingw-w64-ucrt-x86_64-libyaml", "mingw-w64-ucrt-x86_64-sqlite3", "mingw-w64-ucrt-x86_64-libffi"]
 RAILS_NEW_FLAGS = ["--skip-git", "--skip-docker", "--skip-kamal", "--skip-thruster", "--skip-ci", "--skip-rubocop",
-                   "--skip-brakeman", "--skip-solid", "--skip-test", "--skip-system-test", "--skip-jbuilder",
-                   "--database=sqlite3"]
+                   "--skip-brakeman", "--skip-solid", "--skip-system-test", "--skip-jbuilder", "--database=sqlite3"]
+DEBUG_HOOK = Path(__file__).resolve().with_name("rails_debug.rb")
 HTTP_VERBS = ("get", "post", "put", "patch", "delete", "options", "head")
 
 
@@ -261,15 +267,17 @@ def _create_sinatra(folder: Path, name: str) -> dict:
 def _create_rails(folder: Path, name: str) -> dict:
     """The Rails skeleton is made by ``rails new`` on the first run (it needs the rails gem + DevKit, which can
     take several minutes the first time) - here only a README that says so."""
-    write_files(folder, {"README.md": f"# {name}\n\nA Ruby on Rails application. The first run (F5) installs what "
-                                      "is missing (DevKit, the rails gem), runs `rails new .` and `bundle install`, "
-                                      "then starts `bin/rails server`. Progress is shown in the Output window.\n"})
+    write_files(folder, {"README.md": f"# {name}\n\nA Ruby on Rails application. When the project opens, RAD IDE "
+                                      "installs what is missing (DevKit, the rails gem), runs `rails new .`, "
+                                      "`bundle install` and `bin/rails db:prepare` (the first F5 does the same). "
+                                      "Progress is shown in the Output window.\n"})
     return {"start": "/", "framework": "rails"}
 
 
 register_template(SiteTemplate("rails-app", "Ruby on Rails App",
-                               "A Rails application (rails new on the first run: needs the DevKit + rails gem, "
-                               "installed per user by the IDE). Routes list, rails generators panel.",
+                               "A Rails application (rails new when it opens: needs the DevKit + rails gem, "
+                               "installed per user by the IDE). SQLite / PostgreSQL / MySQL, Rails menu "
+                               "(generators, migrations, console), IntelliSense, debugger, tests.",
                                ("rails-web",), _create_rails, 10, extra={"framework": "rails"}))
 register_template(SiteTemplate("sinatra-app", "Sinatra App (pure Ruby)",
                                "A small Sinatra web application with ERB views, a form and a JSON route. Needs no "
@@ -379,7 +387,7 @@ class RailsPlugin(FrameworkPlugin):
                 "before_action", "has_many", "belongs_to", "validates", "erb", "get", "post", "redirect", "halt"]
     line_comments = ["#"]
     string_quotes = ['"', "'"]
-    supports_debug = False
+    supports_debug = True
 
     def find_interpreter(self, configured: str = "") -> str:
         if configured and Path(configured).exists():
@@ -410,15 +418,23 @@ class RailsPlugin(FrameworkPlugin):
             if not rails_bin():
                 prepare.append([ruby, "-e", "puts 'Installing the DevKit and the rails gem (first time only)...'"])
                 prepare.append(self._installer_argv("rails"))
+            from ..project import web_config
+            db = str(web_config(project).get("rails_db") or "sqlite3")
             prepare.append([ruby, str(RAILS_GEM_HOME / "bin" / "rails"), "new", ".", "--force",
-                            *RAILS_NEW_FLAGS])
+                            *[f for f in RAILS_NEW_FLAGS if not f.startswith("--database")], f"--database={db}"])
         if not (folder / ".bundle" / "config").exists():
             prepare.append(bundle + ["config", "set", "--local", "path", "vendor/bundle"])
         if not (folder / "Gemfile.lock").exists() or not (folder / "vendor" / "bundle").exists():
             prepare.append(bundle + ["install"])
         if kind == "rails":
             prepare.append([ruby, "bin/rails", "db:prepare"])        # create / migrate the SQLite database
-            argv = [ruby, "bin/rails", "server", "-p", "{port}", "-b", "127.0.0.1"]
+            # own pid file, removed first: a server.pid left by a crashed run would stop "rails server"
+            pid = folder / "tmp" / "pids" / "radide-server.pid"
+            try:
+                pid.unlink()
+            except OSError:
+                pass
+            argv = [ruby, "bin/rails", "server", "-p", "{port}", "-b", "127.0.0.1", "-P", "tmp/pids/radide-server.pid"]
             return {"argv": argv, "cwd": folder, "env": env, "prepare": prepare, "timeout": 180}
         main = "app.rb" if (folder / "app.rb").exists() else ""
         if main:
@@ -427,6 +443,32 @@ class RailsPlugin(FrameworkPlugin):
             argv = bundle + ["exec", "rackup", "-p", "{port}", "-o", "127.0.0.1"]
         return {"argv": argv, "cwd": folder, "env": env, "prepare": prepare, "timeout": 120,
                 "restart_on_change": False}
+
+    def debug_backend(self, server, port: int) -> dict:
+        """backend() with the debug gem's remote port open (RUBY_DEBUG_PORT) - see rails_debug.rb."""
+        spec = self.backend(server)
+        argv = list(spec["argv"])
+        hook = str(DEBUG_HOOK)
+        env = dict(spec.get("env") or {})
+        env.update({"RUBY_DEBUG_PORT": str(port), "RUBY_DEBUG_HOST": "127.0.0.1", "RUBY_DEBUG_NO_SIGINT_HOOK": "1",
+                    "RUBY_DEBUG_NO_COLOR": "1", "DISABLE_BOOTSNAP_COMPILE_CACHE": "1", "DISABLE_SPRING": "1"})
+        if len(argv) > 1 and argv[1] == "bin/rails":                   # ruby bin/rails server ...
+            argv[1:1] = ["-r", hook]
+        elif "exec" in argv and argv[argv.index("exec") + 1:argv.index("exec") + 2] == ["ruby"]:
+            i = argv.index("exec") + 2                                  # bundle exec ruby app.rb ...
+            argv[i:i] = ["-r", hook]
+        else:                                                           # bundle exec rackup ...
+            env["RUBYOPT"] = (env.get("RUBYOPT", "") + f" -r{hook}").strip()
+        spec["argv"], spec["env"] = argv, env
+        spec["restart_on_change"] = False
+        spec["timeout"] = max(int(spec.get("timeout") or 0), 240)
+        return spec
+
+    def start_debug(self, win, project, path=None):          # radide/web_site/debug.py start()
+        return self.debug_website(win, project, path)
+
+    def debug_website(self, win, project, path=None):
+        return debug_rails(win, self, project, path)
 
     def _installer_argv(self, what: str) -> list[str]:
         """A prepare step that runs install_rails() in a child Python (keeps DevServer's sequential output)."""
@@ -522,6 +564,8 @@ class RailsPlugin(FrameworkPlugin):
         if ext not in (".rb", ".erb"):
             return None
         sinatra = self.kind_of(project) == "sinatra"
+        if not sinatra and (Path(project.folder) / "config" / "application.rb").is_file():
+            return None      # Rails apps: radide/features/rails_ide.py (merged with ruby-lsp's items)
         if sinatra:
             m = re.search(r"\berb\s*\(?\s*:(\w*)$", before)
             if m:
@@ -546,5 +590,63 @@ class RailsPlugin(FrameworkPlugin):
 
 PLUGIN = RailsPlugin()
 
-__all__ = ["PLUGIN", "RailsPlugin", "devkit_installed", "install_devkit", "install_rails", "parse_rails_routes_output",
+
+# ============================================================================ debugging (F5)
+IVAR_NOISE = {"@marked_for_same_origin_verification", "@rendered_format", "@view_context_class", "@view_renderer",
+              "@lookup_context", "@output_buffer", "@virtual_path", "@current_template", "@view_flow"}
+
+
+def debug_rails(win, plugin, project, path=None):
+    """F5 on a Rails / Sinatra site: the server under the debug gem (rails_debug.rb), DAP over TCP."""
+    from ...bridgedebug import free_port
+    from ...debug_more import make_socket_dap
+    from . import debug_support as ds
+    ww = ds._prepare(win, project)
+    if ww is None:
+        return True
+    folder = Path(project.folder).resolve()
+    bps = win._all_breakpoints()
+    port = free_port()
+
+    def make(_pid):
+        dap_cls = make_socket_dap()
+        # nonstop must be False: the program already runs (DEBUGGER__.open(nonstop: true)), and with
+        # nonstop: true the gem queues a "continue" at configurationDone that the first breakpoint then eats
+        s = dap_cls(port, "rdbg", {"request": "attach", "nonstop": False, "localfs": True, "cwd": str(folder)},
+                    folder, bps, win)
+        s.break_on_exception = False
+        plain_emit = s._emit_stop
+
+        def emit(info):            # Locals: the @instance variables of self too (controller / view state)
+            ref = info.refs.get("%self")
+            if not ref:
+                plain_emit(info)
+                return
+
+            def got(vb, _m):
+                for v in (vb or {}).get("variables", []):
+                    n = v.get("name", "")
+                    if n.startswith("@") and not n.startswith("@_") and n not in IVAR_NOISE:
+                        info.variables.append((n, v.get("type", ""), v.get("value", "")))
+                        if v.get("variablesReference"):
+                            info.refs[n] = v["variablesReference"]
+                plain_emit(info)
+            s._request("variables", {"variablesReference": ref}, got)
+        s._emit_stop = emit
+        return s
+
+    win.log(f"------ Debug Ruby site '{project.name}' (debug gem / rdbg on 127.0.0.1:{port}) ------")
+    att = ds._Attacher(win, make, "rdbg")
+    srv = ww.run_website(win, project, debug=False, path=path,
+                         backend_hook=lambda srv, _spec: plugin.debug_backend(srv, port))
+    if srv is None:
+        return True
+    att.srv = srv
+    win._rails_attacher = att
+    srv.backendReady.connect(att.on_ready)
+    srv.stopped.connect(att.on_stopped)
+    win.statusBar().showMessage(f"Starting {project.name} under the Ruby debugger (set breakpoints with F9)...")
+    return True
+
+__all__ = ["PLUGIN", "RailsPlugin", "debug_rails", "devkit_installed", "install_devkit", "install_rails", "parse_rails_routes_output",
            "parse_routes_rb", "parse_sinatra_routes", "ruby_env", "ruby_exe"]

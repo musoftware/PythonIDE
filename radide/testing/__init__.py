@@ -1266,6 +1266,11 @@ class VBAdapter(Adapter):
 
 ADAPTERS = [PythonAdapter, NodeAdapter, GoAdapter, RustAdapter, DotnetAdapter, PhpUnitAdapter, DartAdapter,
             JavaAdapter, RingAdapter, VBAdapter]
+try:                                     # Ruby: Rails minitest / RSpec (radide/testing/ruby_tests.py)
+    from .ruby_tests import ADAPTERS as _RUBY_ADAPTERS
+    ADAPTERS += _RUBY_ADAPTERS
+except Exception:  # noqa: BLE001 - a broken adapter module must not hide the others
+    pass
 
 
 def adapters_for(root: Path, win=None) -> list[Adapter]:
