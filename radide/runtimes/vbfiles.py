@@ -288,6 +288,8 @@ class FileManager:
             return f.pos >= len(f.text)
         if f.fh is None:
             return True
+        if f.mode in ("binary", "random") and hasattr(f, "short_read"):
+            return f.short_read          # VB: True once a Get could not read a whole record
         cur = f.fh.tell()
         f.fh.seek(0, 2)
         end = f.fh.tell()
@@ -355,7 +357,10 @@ class FileManager:
     def get_value(self, num, pos, current, typ):
         f = self.get(num)
         self._position(f, pos)
-        return self.unpack(f.fh, current, typ, f.mode == "random")
+        self._short = False
+        v = self.unpack(f.fh, current, typ, f.mode == "random")
+        f.short_read = self._short
+        return v
 
     def pack(self, v, typ, random_mode=False) -> bytes:
         from .vbinterp import UDT, VBArray, to_num, to_str
@@ -403,6 +408,8 @@ class FileManager:
 
         def rd(n):
             data = fh.read(n)
+            if len(data) < n:
+                self._short = True
             return data.ljust(n, b"\0")
 
         typ = (typ or "variant").lower()

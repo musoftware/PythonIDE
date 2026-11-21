@@ -26,16 +26,34 @@ CLASS_MAP = {
     "mscomctllib.progressbar": "ProgressBar", "comctllib.progressbar": "ProgressBar",
     "mscomctllib.slider": "TrackBar", "comctllib.slider": "TrackBar",
     "mscomctl2.updown": "NumericUpDown", "comct2lib.updown": "NumericUpDown",
-    "richtextlib.richtextbox": "TextBox", "mscomctllib.listview": "ListBox", "mscomctllib.treeview": "ListBox",
-    "msflexgridlib.msflexgrid": "ListBox", "mshierarchicalflexgridlib.mshflexgrid": "ListBox",
-    "mscomctllib.tabstrip": "Panel", "tabdlg.sstab": "Panel", "mscomctllib.statusbar": "Label",
-    "mscomctllib.toolbar": "Panel", "mscomctllib.imagelist": None, "mscomdlg.commondialog": None,
-    "vb.data": None, "mswinsocklib.winsock": None, "mscommlib.mscomm": None, "vb.shape": "Panel",
-    "vb.line": None, "vb.ole": "Panel",
+    "mscomctl2.flatscrollbar": "TrackBar",
+    "richtextlib.richtextbox": "TextBox", "msmask.maskedbox": "TextBox",
+    "mscomctllib.listview": "ListView", "comctllib.listview": "ListView",
+    "mscomctllib.treeview": "TreeView", "comctllib.treeview": "TreeView",
+    # grids: MSFlexGrid / MSHFlexGrid (TextMatrix, Rows, Cols), DataGrid / DBGrid (bound to a data control)
+    "msflexgridlib.msflexgrid": "DataGridView", "mshierarchicalflexgridlib.mshflexgrid": "DataGridView",
+    "msdatagridlib.datagrid": "DataGridView", "msdbgrid.dbgrid": "DataGridView",
+    "msdatalistlib.datacombo": "ComboBox", "msdatalistlib.datalist": "ListBox",
+    "msdblib.dbcombo": "ComboBox", "msdblib.dblist": "ListBox",
+    "mscomctl2.dtpicker": "DateTimePicker", "comct2lib.dtpicker": "DateTimePicker",
+    "mscomctl2.monthview": "DateTimePicker", "msacal.calendar": "DateTimePicker",
+    "tabdlg.sstab": "TabControl", "mscomctllib.tabstrip": "TabControl", "comctllib.tabstrip": "TabControl",
+    "mscomctllib.statusbar": "Label", "comctllib.statusbar": "Label",
+    "mscomctllib.toolbar": "Panel", "comctllib.toolbar": "Panel",
+    "mscomctllib.imagelist": None, "comctllib.imagelist": None, "mscomdlg.commondialog": None,
+    # data controls: a caption bar in the designer, a working navigator at run time (radide/runtimes/vbrun.py)
+    "vb.data": "Label", "msadodclib.adodc": "Label",
+    "mswinsocklib.winsock": None, "mscommlib.mscomm": None, "vb.shape": "Panel",
+    "vb.line": "Panel", "vb.ole": "Panel",
 }
-APPROX = {"vb.drivelistbox", "vb.dirlistbox", "vb.filelistbox", "mscomctllib.listview", "mscomctllib.treeview",
-          "msflexgridlib.msflexgrid", "mshierarchicalflexgridlib.mshflexgrid", "mscomctllib.tabstrip",
-          "tabdlg.sstab", "mscomctllib.statusbar", "mscomctllib.toolbar", "vb.shape", "vb.ole"}
+APPROX = {"vb.drivelistbox", "vb.dirlistbox", "vb.filelistbox", "mscomctllib.tabstrip", "comctllib.tabstrip",
+          "mscomctllib.statusbar", "mscomctllib.toolbar", "comctllib.toolbar", "vb.shape", "vb.ole", "vb.line",
+          "msdatagridlib.datagrid", "msdbgrid.dbgrid", "mscomctl2.monthview", "msacal.calendar", "msmask.maskedbox",
+          "vb.data", "msadodclib.adodc", "msdatalistlib.datacombo", "msdatalistlib.datalist", "msdblib.dbcombo",
+          "msdblib.dblist"}
+DATA_CONTROLS = ("vb.data", "msadodclib.adodc")
+GRID_CLASSES = ("msflexgridlib.msflexgrid", "mshierarchicalflexgridlib.mshflexgrid", "msdatagridlib.datagrid",
+                "msdbgrid.dbgrid")
 
 
 def read_vb_text(path: Path) -> str:
@@ -55,6 +73,7 @@ class FrmObject:
         self.props: dict[str, object] = {}
         self.font: dict[str, object] = {}
         self.children: list[FrmObject] = []
+        self.pblocks: dict[str, object] = {}      # BeginProperty blocks (frm_writer.FrmPropBlock), when known
 
 
 def _value(raw: str):
@@ -258,14 +277,142 @@ class _FrmConverter:
                 props["FontItalic"] = _bool(f.get("italic"), False)
         if ntype == "PictureBox" and p.get("picture"):
             self.report.warnings.append(f"{self.label}: '{name}' picture is stored in .frx - set Image again")
+        _ocx_props(cls, o, props)
         form.controls.append(Control(ntype, props))
         self.report.controls += 1
-        if ctype.container:
+        if cls == "tabdlg.sstab":
+            self._sstab_children(form, o, name)
+        elif ctype.container:
             for ch in o.children:
                 self._add(form, ch, name)
         elif o.children:
             for ch in o.children:          # e.g. controls inside an SSTab placeholder
                 self._add(form, ch, parent)
+
+
+    def _sstab_children(self, form: Form, o: FrmObject, name: str) -> None:
+        """SSTab children: each goes on the page that lists it (Tab(i).Control(j) = "Name"); VB6 parks the
+        controls of the hidden pages 75000 twips to the left."""
+        from ..controls import TAB_PAGE_X, TAB_PAGE_Y
+        page_of = {}
+        for k, v in o.props.items():
+            m = re.fullmatch(r"tab\((\d+)\)\.control\((\d+)\)", k)
+            if m and isinstance(v, str):
+                page_of[v.lower().replace("(", "_").replace(")", "")] = int(m.group(1))
+        for ch in o.children:
+            n = len(form.controls)
+            self._add(form, ch, name)
+            idx = ch.props.get("index")
+            key = (ch.name if idx is None else f"{ch.name}_{idx}").lower()
+            page = page_of.get(key, page_of.get(ch.name.lower(), int(o.props.get("tab", 0) or 0)))
+            for c in form.controls[n:]:
+                if c.props.get("Parent") != name:
+                    continue
+                c.props["TabPage"] = page
+                if "Left" in c.props:
+                    left = c.props["Left"]
+                    if left < -2000:                          # -75000 twips = hidden page
+                        left += 5000
+                    c.props["Left"] = max(0, left - TAB_PAGE_X)
+                    c.props["Top"] = max(0, c.props.get("Top", 0) - TAB_PAGE_Y)
+
+
+def _pb(o: FrmObject, name: str):
+    return (getattr(o, "pblocks", None) or {}).get(name.lower())
+
+
+def _pb_props(pb) -> dict:
+    return {pr.key.lower(): pr.value for pr in getattr(pb, "props", [])} if pb is not None else {}
+
+
+def _ole_date(v) -> str:
+    try:
+        d = float(v)
+    except (TypeError, ValueError):
+        return ""
+    import datetime as _dt
+    try:
+        return (_dt.datetime(1899, 12, 30) + _dt.timedelta(days=d)).strftime("%Y-%m-%d")
+    except OverflowError:
+        return ""
+
+
+def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
+    """Type-specific properties of the VB6 / ActiveX controls mapped onto neutral controls."""
+    p = o.props
+    if cls in ("tabdlg.sstab",):
+        n = int(p.get("tabs", 3) or 3)
+        caps = [str(p.get(f"tabcaption({i})", f"Tab {i}") or f"Tab {i}").strip() or f"Tab {i}" for i in range(n)]
+        props["TabPages"] = ";".join(c.replace(";", ",") for c in caps)
+        props["SelectedIndex"] = int(p.get("tab", 0) or 0)
+    elif cls in ("mscomctllib.tabstrip", "comctllib.tabstrip"):
+        tabs = _pb(o, "Tabs")
+        caps = []
+        for b in getattr(tabs, "blocks", []) or []:
+            caps.append(str(_pb_props(b).get("caption", "") or b.name).replace(";", ","))
+        props["TabPages"] = ";".join(caps) or "Tab1"
+    elif cls in GRID_CLASSES:
+        if cls in ("msflexgridlib.msflexgrid", "mshierarchicalflexgridlib.mshflexgrid"):
+            cols = max(1, int(p.get("cols", 2) or 2))
+            rows = max(1, int(p.get("rows", 2) or 2))
+            fixed = int(p.get("fixedrows", 1) if p.get("fixedrows") is not None else 1)
+            heads = []
+            fs = p.get("formatstring")
+            if isinstance(fs, str) and fs:
+                heads = [h.lstrip("<^>").strip() for h in fs.split(";")[0].split("|")]
+            names = [(heads[i] if i < len(heads) and heads[i] else f"Column{i + 1}") for i in range(cols)]
+            props["Columns"] = ";".join(x.replace(";", ",") for x in names)
+            props["Rows"] = ";".join("|".join([""] * cols) for _ in range(max(0, rows - max(1, fixed))))
+            props["ReadOnly"] = True
+        else:
+            n = int(p.get("columncount", 2) or 2)
+            names = []
+            for i in range(n):
+                cp = _pb_props(_pb(o, f"Column{i:02d}"))
+                names.append(str(cp.get("caption") or cp.get("datafield") or f"Column{i + 1}"))
+            props["Columns"] = ";".join(x.replace(";", ",") for x in names)
+            props["Rows"] = ""
+            props["ReadOnly"] = not _bool(p.get("allowupdate"), True)
+    elif cls in ("mscomctl2.dtpicker", "comct2lib.dtpicker"):
+        fmt = int(p.get("format", 1) or 0) & 0xFF
+        props["Format"] = {0: "Long", 2: "Time"}.get(fmt, "Short")
+        props["Value"] = _ole_date(p.get("currentdate")) if p.get("currentdate") is not None else ""
+    elif cls in ("mscomctl2.monthview", "msacal.calendar"):
+        y, m, d = p.get("year"), p.get("month"), p.get("day")
+        if all(isinstance(x, int) for x in (y, m, d)):
+            props["Value"] = f"{y:04d}-{m:02d}-{d:02d}"
+        elif p.get("currentdate") is not None:
+            props["Value"] = _ole_date(p.get("currentdate"))
+        elif isinstance(p.get("value"), (int, float)):
+            props["Value"] = _ole_date(p.get("value"))
+        props["Format"] = "Long"
+    elif cls in ("mscomctllib.listview", "comctllib.listview"):
+        hdrs = []                                  # BeginProperty ColumnHeader(1) {GUID} ... Text = "x"
+        for k, pb in (getattr(o, "pblocks", None) or {}).items():
+            m = re.fullmatch(r"columnheader\((\d+)\)", k)
+            if m:
+                hdrs.append((int(m.group(1)), str(_pb_props(pb).get("text", "") or "")))
+        cols = [t.replace(";", ",") for _i, t in sorted(hdrs)]
+        props["Columns"] = ";".join(c if c.strip() else f"Column{i + 1}" for i, c in enumerate(cols))
+        props["Items"] = ""
+        props["View"] = "Details" if int(p.get("view", 0) or 0) == 3 else "List"
+    elif cls in ("mscomctllib.treeview", "comctllib.treeview"):
+        props["Nodes"] = ""
+    elif cls in DATA_CONTROLS:
+        props["Text"] = str(p.get("caption", o.name) if not isinstance(p.get("caption"), tuple) else o.name)
+        props["TextAlign"] = "Center"
+    elif cls == "vb.line":
+        try:
+            x1, x2 = float(p.get("x1", 0)), float(p.get("x2", 0))
+            y1, y2 = float(p.get("y1", 0)), float(p.get("y2", 0))
+        except (TypeError, ValueError):
+            return
+        w = max(1, int(p.get("borderwidth", 1) or 1))
+        props.update(Left=_px(min(x1, x2)), Top=_px(min(y1, y2)), Width=max(w, _px(abs(x2 - x1))),
+                     Height=max(w, _px(abs(y2 - y1))))
+        props["BackColor"] = _color(p.get("bordercolor", 0)) or "#000000"
+    elif cls == "msmask.maskedbox":
+        props["Text"] = str(p.get("text", "") or "") if not isinstance(p.get("text"), tuple) else ""
 
 
 # ======================================================================= project

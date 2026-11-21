@@ -17,8 +17,8 @@ class VBSyntaxError(Exception):
 
 # ============================================================================ lexer
 TOKEN_RX = re.compile(r"""
-    (?P<ws>[ \t]+)
-  | (?P<cont>[ \t]_[ \t]*(?:'[^\n]*)?\r?\n)
+    (?P<cont>[ \t]+_[ \t]*(?:'[^\n]*)?\r?\n)
+  | (?P<ws>[ \t]+)
   | (?P<nl>\r?\n)
   | (?P<comment>'[^\n]*)
   | (?P<str>"(?:[^"\n]|"")*")
@@ -79,6 +79,9 @@ def tokenize(src: str) -> list[Tok]:
             t = text.rstrip("%&!#@")
             toks.append(Tok("num", float(t) if any(c in t for c in ".eE") else int(t), line))
         elif kind == "id":
+            if text.endswith("!") and pos < len(src) and (src[pos].isalpha() or src[pos] in "_["):
+                text = text[:-1]                # rs!Field: a bang, not the Single type suffix
+                pos -= 1
             low = text.rstrip("$%&!#@").lower()
             if low == "rem":            # Rem comment
                 end = src.find("\n", pos)
@@ -128,6 +131,7 @@ class Module:
     declares: list = field(default_factory=list)   # Declare Function/Sub (Win32 API)
     default_member: str = ""                       # Attribute X.VB_UserMemId = 0
     enum_member: str = ""                          # Attribute X.VB_UserMemId = -4 (For Each)
+    option_explicit: bool = False                  # without it an undeclared variable reads as Empty
 
 
 @dataclass
@@ -227,6 +231,8 @@ class Parser:
                 self.st_attribute(line)
                 continue
             if self.is_id("option", "object") or (self.cur.kind == "id" and self.cur.value in DEF_WORDS):
+                if self.is_id("option") and self.peek().kind == "id" and self.peek().value == "explicit":
+                    mod.option_explicit = True
                 self._skip_line()
                 continue
             if self.is_id("implements"):
@@ -273,7 +279,7 @@ class Parser:
         kind = self.next().value
         name = self.expect_id().value
         members = []
-        value = 0
+        value = ("num", line, 0)
         self.skip_nl()
         while not (self.is_id("end") and self.peek().kind == "id" and self.peek().value == kind):
             mname = self.expect_id().value
@@ -458,7 +464,7 @@ class Parser:
             self.next()
             return ("label", line, str(tok.value))
         if tok.kind != "id":
-            if self.is_op("."):                  # .Prop = x inside With
+            if self.is_op(".", "!"):             # .Prop = x / !Field = x inside With
                 return self.parse_simple(line)
             raise VBSyntaxError(f"unexpected {tok.value!r}", line)
         w = tok.value
@@ -829,7 +835,9 @@ class Parser:
         return ("flineinput", line, num, self.parse_postfix())
 
     def _getput(self, line, kind):
-        if not (self.peek().kind == "op" and self.peek().value == "#"):
+        hashed = self.peek().kind == "op" and self.peek().value == "#"
+        bare = self.peek().kind in ("num", "id") and self.peek(2).kind == "op" and self.peek(2).value == ","
+        if not (hashed or bare):                    # Get #1, , x  /  Get 1, , x  /  Get f, , x
             return self.parse_simple(line)
         self.next()
         num = self._file_num()
@@ -1145,6 +1153,10 @@ class Parser:
             self.next()
             name = self.next()
             return ("member", line, ("withobj", line), str(name.value), name.raw or str(name.value))
+        if self.is_op("!"):                      # With rs: !Field  (default member with a string key)
+            self.next()
+            name = self.next()
+            return ("call", line, ("withobj", line), [("str", line, str(name.raw or name.value))])
         if tok.kind == "id":
             w = tok.value
             if w == "new":

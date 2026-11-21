@@ -1218,6 +1218,7 @@ class Interpreter:
                 st.types[decl[2].lower()] = decl[3]
                 self.types_global()[decl[2].lower()] = decl[3]
             elif kind == "enum":
+                self.enum_types = getattr(self, "enum_types", set()) | {decl[2].lower()}
                 for name, expr in decl[3]:
                     val = self.eval(expr, frame) if not isinstance(expr, int) else expr
                     self.globals[name] = Cell(val)
@@ -1298,6 +1299,8 @@ class Interpreter:
                 for lo, hi in bounds]
 
     def _factory(self, base):
+        if base in getattr(self, "enum_types", ()):
+            return lambda: 0
         if base in self.types_global():
             members = self.types_global()[base]
             return lambda: UDT(base, members, self._member_value)
@@ -1310,6 +1313,8 @@ class Interpreter:
             return VBArray(self._bounds(bounds, self.const_frame()), base, self._factory(base))
         if base in self.types_global():
             return UDT(base, self.types_global()[base], self._member_value)
+        if base in getattr(self, "enum_types", ()):
+            return 0
         return default_for(base)
 
     def const_frame(self):
@@ -1328,6 +1333,8 @@ class Interpreter:
             return self._instantiate(base)
         if base in self.types_global():
             return UDT(base, self.types_global()[base], self._member_value)
+        if base in getattr(self, "enum_types", ()):
+            return 0                                  # Dim m As MyEnum (a Long)
         return default_for(base)
 
     def _instantiate(self, cls):
@@ -1970,6 +1977,8 @@ class Interpreter:
         """Store a value in a variable (UDTs are copied, WithEvents variables re-bind their handlers)."""
         if isinstance(value, UDT) and not is_set:
             value = value.copy()
+        elif not is_set and getattr(value, "vb_deref_on_let", False):
+            value = default_value(value)    # x = rs!Name: the field's value, not the Field object
         elif isinstance(value, VBArray) and not is_set and isinstance(cell.value, VBArray):
             value = value.copy()
         if cell.events is not None:
@@ -2078,6 +2087,8 @@ class Interpreter:
             obj = self.host.global_object(name)
             if obj is not None:
                 return obj
+        if not getattr(getattr(frame.module, "mod", None), "option_explicit", True):
+            return EMPTY                               # no Option Explicit: an undeclared variable is Empty
         raise err(0, f"Variable not defined: '{e[3] if len(e) > 3 else name}'")
 
     def _args(self, nodes, frame):
@@ -2135,7 +2146,8 @@ class Interpreter:
                     return obj.vb_call(obj.vb_default, args)
             if name in self.builtins:
                 args, _ = self._args(arg_nodes, frame)
-                args = [EMPTY if a is _MISSING else a for a in positional(args)]
+                args = [EMPTY if a is _MISSING else default_value(a) if getattr(a, "vb_deref_on_let", False)
+                        else a for a in positional(args)]
                 try:
                     return self.builtins[name](*args)
                 except TypeError as ex:
@@ -2163,6 +2175,8 @@ class Interpreter:
             if isinstance(obj, (ErrObject, Collection)):
                 return obj.vb_call(target[3], [EMPTY if a is _MISSING else a for a in raw])
             args = [EMPTY if a is _MISSING else a for a in positional(raw)]
+            if hasattr(obj, "vb_call_cells"):          # host objects with ByRef out arguments (cn.Execute sql, n)
+                return obj.vb_call_cells(target[3], args, cells)
             if hasattr(obj, "vb_call"):
                 return obj.vb_call(target[3], args)
             raise err(424, f"Object required (.{target[4]})")

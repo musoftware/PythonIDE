@@ -1,0 +1,10 @@
+Type=Exe
+Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\Windows\SysWOW64\stdole2.tlb#OLE Automation
+Reference=*\G{00000200-0000-0010-8000-00AA006D2EA4}#2.0#0#C:\Program Files (x86)\Common Files\Systemdo\msado20.tlb#Microsoft ActiveX Data Objects 2.0 Library
+Object={5E9E78A0-531B-11CF-91F6-C2863C385E30}#1.0#0; MSFLXGRD.OCX
+Object={86CF1D34-0C5F-11D2-A9FC-0000F8754DA1}#2.0#0; MSCOMCT2.OCX
+Module=modData; modData.bas
+Form=frmGrid.frm
+Startup="Sub Main"
+Name="AdoAccessGrid"
+ExeName32="AdoAccessGrid.exe"

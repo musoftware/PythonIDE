@@ -1,0 +1,5 @@
+Type=Exe
+Module=modMain; modMain.bas
+Startup="Sub Main"
+Name="ParserAndLanguage"
+ExeName32="ParserAndLanguage.exe"

@@ -982,6 +982,8 @@ def _is_qt_widget(w) -> bool:
 def vb_get(w, prop):
     """Read a VB6 property of a Tk or Qt widget (used for control arrays and rare properties)."""
     p = str(prop).lower()
+    if hasattr(w, "SetCell") and hasattr(w, "Columns") and p in ("rows", "cols", "fixedrows", "fixedcols"):
+        return {"rows": w.RowCount + 1, "cols": len(w.Columns), "fixedrows": 1, "fixedcols": 0}[p]
     if _is_qt_widget(w):
         cls = type(w).__name__
         if p in ("text", "caption"):
@@ -1066,6 +1068,21 @@ def vb_get(w, prop):
 def vb_set(w, prop, value) -> None:
     """Set a VB6 property of a Tk or Qt widget (positions/sizes are in twips like VB6)."""
     p = str(prop).lower()
+    if hasattr(w, "SetCell") and hasattr(w, "Columns") and p in ("rows", "cols", "fixedrows", "fixedcols",
+                                                                 "formatstring", "colwidth"):
+        if p == "cols":
+            n = max(1, int(value))
+            w.SetColumns((list(w.Columns) + [f"Column{i + 1}" for i in range(len(w.Columns), n)])[:n])
+        elif p == "rows":
+            want = max(0, int(value) - 1)
+            while w.RowCount < want:
+                w.AddRow()
+            while w.RowCount > want:
+                w.RemoveRow(w.RowCount - 1)
+        elif p == "formatstring":
+            heads = [h.lstrip("<^>").strip() for h in str(value).split(";")[0].split("|")]
+            w.SetColumns(heads)
+        return None
     if _is_qt_widget(w):
         cls = type(w).__name__
         if p in ("text", "caption"):
@@ -1161,9 +1178,31 @@ def vb_set(w, prop, value) -> None:
         setattr(w, prop, value)
 
 
+def _grid_call(w, m, args):
+    if m == "textmatrix":
+        r, c = int(args[0]), int(args[1])
+        return (list(w.Columns)[c] if c < len(w.Columns) else "") if r == 0 else w.GetCell(r - 1, c)
+    if m == "additem":
+        cells = str(args[0]).split("	")
+        w.AddRow(*cells)
+        return None
+    if m == "removeitem":
+        w.RemoveRow(int(args[0]) - 1)
+        return None
+    if m == "clear":
+        w.Clear()
+        return None
+    if m == "colwidth":
+        return int(w.column(f"c{int(args[0])}", "width")) * 15
+    raise AttributeError(m)
+
+
 def vb_call(w, method, *args):
     """AddItem / RemoveItem / Clear / SetFocus / List(i) on a Tk or Qt widget."""
     m = str(method).lower()
+    if hasattr(w, "SetCell") and hasattr(w, "Columns") and m in ("textmatrix", "additem", "removeitem", "clear",
+                                                                 "colwidth"):
+        return _grid_call(w, m, args)
     if _is_qt_widget(w):
         cls = type(w).__name__
         if m == "additem":
@@ -1218,3 +1257,78 @@ def Rnd(_n=None) -> float:
 
 def Randomize(seed=None) -> None:
     _random.seed(seed)
+
+
+# ----------------------------------------------------------------------------- databases / COM objects
+def CreateObject(progid, _server=""):
+    """ADODB.Connection / Recordset / Command and DAO.DBEngine from vbado.py (works with Access .mdb files
+    without a 64-bit driver); Scripting.Dictionary; any other ProgID through pywin32."""
+    p = str(progid).strip()
+    if p.lower() == "scripting.dictionary":
+        return {}
+    try:
+        import vbado as _vbado
+        obj = _vbado.create(p, _os.path.dirname(_os.path.abspath(_sys.argv[0] or ".")))
+        if obj is not None:
+            return obj
+    except ImportError:
+        pass
+    import win32com.client  # type: ignore  # pip install pywin32
+    return win32com.client.Dispatch(p)
+
+
+def OpenDatabase(name, options=None, read_only=None, connect=None):
+    """DAO OpenDatabase (vbado.py)."""
+    import vbado as _vbado
+    return _vbado.open_database(name, options, read_only, connect,
+                                base=_os.path.dirname(_os.path.abspath(_sys.argv[0] or ".")))
+
+
+def _grid_cell_set(g, r, c, value):
+    cols = list(g.Columns)
+    while len(cols) <= c:
+        cols.append(f"Column{len(cols) + 1}")
+    if len(cols) != len(g.Columns):
+        g.SetColumns(cols)
+    if r == 0:
+        cols[c] = str(value)
+        g.Columns = cols
+        g.heading(f"c{c}", text=cols[c])
+        return
+    while g.RowCount < r:
+        g.AddRow()
+    g.SetCell(r - 1, c, str(value))
+
+
+def vb_setindexed(obj, member, args, value) -> None:
+    """obj.Member(i) = value (rs.Fields(0) = x, li.SubItems(1) = x, Grid.TextMatrix(r, c) = x)."""
+    m = str(member).lower()
+    if hasattr(obj, "SetCell") and hasattr(obj, "Columns"):          # MSFlexGrid migrated to the grid widget
+        if m == "textmatrix":
+            return _grid_cell_set(obj, int(args[0]), int(args[1]), value)
+        if m == "colwidth":
+            try:
+                obj.column(f"c{int(args[0])}", width=max(0, int(float(value) / 15)))
+            except Exception:  # noqa: BLE001
+                pass
+            return None
+        if m in ("colalignment", "rowheight", "coldata", "rowdata"):
+            return None
+    if hasattr(obj, "vb_setindexed"):
+        return obj.vb_setindexed(str(member).lower(), list(args), value)
+    target = getattr(obj, member)
+    key = args[0] if len(args) == 1 else tuple(args)
+    if hasattr(target, "__setitem__"):
+        target[key] = value
+        return None
+    setter = getattr(obj, "Set" + member, None)
+    if callable(setter):
+        return setter(*args, value)
+    raise TypeError(f"{member}(...) cannot be assigned")
+
+
+try:                                       # adOpenStatic, adLockOptimistic, dbOpenDynaset ... (ADO / DAO)
+    import vbado as _vbado_consts
+    globals().update({k: v for k, v in _vbado_consts.CANONICAL_CONSTANTS.items() if k not in globals()})
+except ImportError:
+    pass

@@ -301,7 +301,12 @@ class PyTranslator:
                 return f"{mi.name}()", "obj", P_ATOM
             if low in ("dictionary",):
                 return "{}", "dict", P_ATOM
-            raise Untranslatable(f"New {node[2]} (COM object)")
+            # ADODB / DAO objects come from vbado.py (copied next to the program); other COM objects from
+            # pywin32 - both through vb6compat.CreateObject
+            progid = node[2] if "." in node[2] else {"connection": "ADODB.Connection", "recordset": "ADODB.Recordset",
+                                                     "command": "ADODB.Command"}.get(low, node[2])
+            self.note("approx", node[1], f"New {node[2]} became CreateObject(\"{progid}\") (vbado.py / pywin32)")
+            return f"CreateObject({pystr(progid)})", "obj", P_ATOM
         if k == "typeof":
             raise Untranslatable("TypeOf ... Is")
         if k == "withobj":
@@ -959,6 +964,17 @@ class PyTranslator:
                 ref = self.obj_ref(func[2])
                 if ref[0] == "control":
                     raise Untranslatable(f"{ref[1].name}.List(i) = ...")
+            if func[0] == "member":             # rs.Fields(0) = x / li.SubItems(1) = x (indexed property)
+                ref = self.obj_ref(func[2])
+                if ref[0] in ("control", "element"):      # Grid.TextMatrix(r, c) = x / Grid.ColWidth(i) = x
+                    w = f"self.{ref[1].name}" if ref[0] == "control" else ref[1]
+                    args = ", ".join(self.ex(a) for a in target[3])
+                    self.note("approx", line, f".{self.ctx.spell(func[3])}(...) = set with vb_setindexed()")
+                    return [f"vb_setindexed({w}, {pystr(self.ctx.spell(func[3]))}, ({args},), {v})"]
+                if ref[0] == "expr":
+                    args = ", ".join(self.ex(a) for a in target[3])
+                    return [f"vb_setindexed({self.wrap(ref[1], P_ATOM)}, {pystr(self.spell(func[3], func[4]))}, "
+                            f"({args},), {v})"]
             inner = self.ex(target)
             return [f"{inner} = {v}"]
         raise Untranslatable("assignment target")
@@ -1354,6 +1370,8 @@ class PyTranslator:
                         self.indent(self.block(handler) if handler else ["pass"])
         if proc.kind in ("function", "get"):
             out.append("return _ret")
+        if not any(ln.strip() and not ln.lstrip().startswith("#") for ln in out):
+            out.append("pass")                    # an empty Sub
         return out
 
     def proc_params(self, proc, skip=0) -> list[str]:
@@ -1431,6 +1449,14 @@ def _collect_module_decls(tr: PyTranslator, mod) -> list[str]:
             for nm, e in d[2]:
                 disp = tr.spell(nm)
                 ck = None
+                saved = tr.consts
+                if tr.kind != "bas":            # class body: other constants are plain names, not self.X
+
+                    def _bare(v):
+                        if isinstance(v, tuple):
+                            return (v[0][5:] if str(v[0]).startswith("self.") else v[0], *v[1:])
+                        return v[5:] if isinstance(v, str) and v.startswith("self.") else v
+                    tr.consts = {k: _bare(v) for k, v in saved.items()}
                 try:
                     ce = tr.exp(e)
                     ck = ce[1]
@@ -1438,6 +1464,8 @@ def _collect_module_decls(tr: PyTranslator, mod) -> list[str]:
                 except Untranslatable as ex:
                     out.append(f"{disp} = None  # TODO: {ex}")
                     tr.note("manual", line, f"Const {disp}: {ex}")
+                finally:
+                    tr.consts = saved
                 tr.consts[nm] = (disp if tr.kind == "bas" else f"self.{disp}", ck)
         elif d[0] == "enum":
             tr.note("rules", line, f"Enum {tr.spell(d[2])} became module constants")

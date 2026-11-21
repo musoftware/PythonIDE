@@ -495,6 +495,7 @@ def _frm_objects(doc: FrmDoc, frx: Frx, encoding: str, scale: int):
         if font is not None:
             for p in font.props:
                 o.font[p.key.lower()] = p.value
+        o.pblocks = {pb.name.lower(): pb for pb in b.pblocks}     # ColumnHeaders, Column00, Tabs ...
         for c in b.children:
             o.children.append(build(c, False))
         return o
@@ -703,6 +704,20 @@ def _prop_edits(ed: _Editor, b_cls: str, ctrl: Control, key: str, value) -> list
     or None when the property cannot be represented in a .frm."""
     t = ctrl.type
     cls = b_cls.lower()
+    if cls == "vb.line" and key in ("Left", "Top", "Width", "Height", "BackColor"):
+        return None                                 # a Line has X1/Y1/X2/Y2, shown as a thin Panel
+    if key == "TabPage":
+        return None
+    if key in ("Left", "Top") and "TabPage" in ctrl.props:        # on an SSTab page (see vb6_import._sstab_children)
+        par = ed.doc.find(str(ctrl.props.get("Parent") or ""))
+        if par is not None and par.cls.lower() == "tabdlg.sstab":
+            from ..controls import TAB_PAGE_X, TAB_PAGE_Y
+            v = int(round(float(value))) + (TAB_PAGE_X if key == "Left" else TAB_PAGE_Y)
+            units = v if ed.scale_pixels else v * TWIP
+            cur = par.get("Tab", 0)
+            if key == "Left" and int(ctrl.props.get("TabPage") or 0) != (cur if isinstance(cur, int) else 0):
+                units -= 5000 if ed.scale_pixels else 75000          # VB6 parks hidden pages' controls left
+            return [(key, str(units))]
     if key in ("Left", "Top", "Width", "Height"):
         if CONTROL_TYPES[t].nonvisual:
             return []

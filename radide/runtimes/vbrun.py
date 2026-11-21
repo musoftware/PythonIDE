@@ -428,6 +428,18 @@ def _set_state(w, on):
             _set_state(child, on)
 
 
+def _photo(path: str):
+    """LoadPicture: Tk reads PNG/GIF; BMP/JPG/ICO (common in VB6 programs) go through Pillow."""
+    try:
+        return tk.PhotoImage(file=path)
+    except tk.TclError:
+        try:
+            from PIL import Image, ImageTk
+            return ImageTk.PhotoImage(Image.open(path))
+        except Exception:  # noqa: BLE001
+            raise err(481, f"Invalid picture: {path}") from None
+
+
 # ============================================================================ controls
 class VBControl:
     vb_default = "text"
@@ -482,6 +494,10 @@ class VBControl:
     # -- protocol
     def vb_get(self, name):
         w, t = self.w, self.type
+        if name == "maxlength":
+            return getattr(self, "_maxlength", int(self.ctrl.props.get("MaxLength", 0) or 0))
+        if name in ("datasource", "datamember", "datafield"):
+            return getattr(self, "_" + name, NOTHING if name == "datasource" else "")
         if t in VB_EXT:
             v = self._ext_get(name)
             if v is not _NA:
@@ -600,6 +616,16 @@ class VBControl:
 
     def vb_set(self, name, value):
         w, t = self.w, self.type
+        if name in ("datasource", "datamember", "datafield"):          # bound grids / controls (vbdata.py)
+            if name == "datasource" and t == "DataGridView":
+                from .vbdata import set_datasource
+                set_datasource(self, value)
+            else:
+                setattr(self, "_" + name, to_str(value) if not hasattr(value, "vb_get") else value)
+            return
+        if name == "maxlength":
+            self._maxlength = int(to_num(value))
+            return
         if t in VB_EXT and self._ext_set(name, value) is not _NA:
             return
         if t == "Timer":
@@ -721,7 +747,7 @@ class VBControl:
         if name == "picture" and t == "PictureBox":
             path = to_str(value)
             if path:
-                img = tk.PhotoImage(file=self.form.runtime.resolve(path))
+                img = _photo(self.form.runtime.resolve(path))
                 w.configure(image=img)
                 setattr(self.form.ui, f"{self.name}_image", img)
             else:
@@ -901,6 +927,8 @@ class VBControl:
                 return _VBColumns(self)
             if name == "selecteditem":
                 sel = w.selection()
+                if not sel and w.get_children():          # VB6: the first item is the focused/selected one
+                    sel = (w.get_children()[0],)
                 return _VBListItem(self, sel[0]) if sel else NOTHING
             if name in ("text", "caption"):
                 sel = w.selection()
@@ -1032,7 +1060,18 @@ class VBControl:
             if name in ("readonly", "locked"):
                 w.ReadOnly = to_bool(value)
                 return None
-            if name in ("fixedrows", "fixedcols", "colwidth", "gridlines", "allowuserresizing"):
+            if name in ("fixedrows", "fixedcols", "colwidth", "gridlines", "allowuserresizing", "selectionmode",
+                        "focusrect", "highlight", "scrollbars", "wordwrap", "redraw", "backcolorfixed",
+                        "forecolorfixed", "backcolorsel", "forecolorsel", "gridcolor", "fillstyle", "mergecells",
+                        "allowbigselection", "colsel", "rowsel", "toprow", "leftcol", "cellalignment",
+                        "cellfontbold", "cellbackcolor", "cellforecolor", "allowupdate", "allowaddnew",
+                        "allowdelete", "caption", "headlines", "rowheight", "datamember"):
+                return None
+            if name == "formatstring":
+                heads = [h.lstrip("<^>").strip() for h in to_str(value).split(";")[0].split("|")]
+                self._grid_resize(cols=len(heads))
+                for i, h in enumerate(heads):
+                    self._ext_setindexed("textmatrix", [0, i], h)
                 return None
         elif t == "DateTimePicker":
             if name == "value":
@@ -1074,6 +1113,13 @@ class VBControl:
             if name == "textmatrix":
                 r, c = self._grid_cell(args)
                 return w.Columns[c] if r == 0 else w.GetCell(r - 1, c)
+            if name == "textarray":
+                cols = max(1, w.ColumnCount)
+                return self._ext_call("textmatrix", [_int(args[0]) // cols, _int(args[0]) % cols])
+            if name == "colwidth":
+                return int(w.column(f"c{_int(args[0])}", "width")) * 15
+            if name in ("colalignment", "rowheight", "coldata", "rowdata", "colisvisible"):
+                return 0
             if name == "additem":
                 cells = to_str(args[0]).split("\t")
                 if len(args) > 1 and _given(args[1]):
@@ -1095,6 +1141,18 @@ class VBControl:
 
     def _ext_setindexed(self, name, args, value):
         w, t = self.w, self.type
+        if t == "DataGridView" and name in ("colwidth", "colalignment", "rowheight", "colformat", "coldata",
+                                            "rowdata", "mergecol", "mergerow", "colisvisible"):
+            if name == "colwidth" and 0 <= _int(args[0]) < w.ColumnCount:          # twips -> pixels
+                w.column(f"c{_int(args[0])}", width=max(0, int(to_num(value) / 15)))
+            elif name == "colalignment" and 0 <= _int(args[0]) < w.ColumnCount:
+                a = _int(value)
+                w.column(f"c{_int(args[0])}", anchor="w" if a in (0, 1, 2) else "center" if a in (3, 4, 5)
+                         else "e" if a in (6, 7, 8) else "w")
+            return True
+        if t == "DataGridView" and name == "textarray":
+            cols = max(1, w.ColumnCount)
+            return self._ext_setindexed("textmatrix", [_int(args[0]) // cols, _int(args[0]) % cols], value)
         if t == "DataGridView" and name == "textmatrix":
             r, c = self._grid_cell(args)
             if r == 0:
@@ -1238,10 +1296,19 @@ class VBForm:
                 self.controls.setdefault(k, v)
         except ImportError:
             pass
+        datas = []
+        try:                    # VB6 Data / ADO Data controls, bound controls and grids (native .frm)
+            from .vbdata import install
+            datas = install(self)
+        except Exception as ex:  # noqa: BLE001
+            print(f"[VB6] data controls of {self.name}: {ex}", file=sys.stderr, flush=True)
         menu = self.model.menu()
         if menu is not None and hasattr(self.ui, menu.name):
             self._map_menu(getattr(self.ui, menu.name), menu.props.get("Items", []))
         self.runtime.fire(self, "Form", "Load")
+        if datas and self.loaded:
+            from .vbdata import after_load
+            after_load(datas)
 
     def _map_menu(self, tkmenu, items):
         idx = 0
@@ -1517,6 +1584,13 @@ class Runtime:
         self.folder = folder
         self.interp = Interpreter(host=self)
         self.interp.output = lambda s: (print(s, flush=True))
+        from . import vbado                  # ADO / DAO (Access .mdb through a 32-bit ADO helper)
+        vbado.SEARCH_ROOTS.append(folder)
+        from . import vbinterp as _vbi
+        for _k, _v in vbado.CONSTANTS.items():
+            _vbi.CONSTANTS.setdefault(_k, _v)
+        self._dbengine = None
+        self.interp.builtins["opendatabase"] = lambda *a: vbado.open_database(*a[:4], base=self.folder)
         self.forms: dict[str, VBForm] = {}
         self.root: tk.Tk | None = None
         self.startup_form: VBForm | None = None
@@ -1542,12 +1616,23 @@ class Runtime:
             it.objects[name.lower()] = vf
         it.objects.update(app=App(self), screen=Screen(self), clipboard=Clipboard(self),
                           forms=_FormsColl(self))
+        if self.native is not None:          # DataEnvironment / DataReport designers (.Dsr)
+            from .vbdata import load_designers
+            load_designers(self)
         # solution references: <Lib>.ref.bas proxy modules first, so the project's own procedures win
         from ..languages._refs import proxy_files
         listed = {m.lower() for m in self.project.modules}
         for path in proxy_files(self.folder, "*.ref.bas"):
             if path.name.lower() not in listed:
                 self._load_code(path, path.name[:-len(".ref.bas")], False)
+        # Enum type names of every module first: "Dim m As MyEnum" (declared anywhere) is a Long
+        import re as _re
+        srcs = [self.native.module_text(m) if self.native else (self.folder / m).read_text(
+                    encoding="utf-8-sig", errors="replace") if (self.folder / m).is_file() else ""
+                for m in self.project.modules]
+        srcs += [self.native.form_code(n) if self.native else "" for n in self.project.forms]
+        it.enum_types = {m.lower() for src in srcs
+                         for m in _re.findall(r"(?im)^\s*(?:public\s+|private\s+)?enum\s+(\w+)", src)}
         # class modules first, so module-level "Dim x As New CFoo" / "As CFoo" know the class
         for mod in sorted(self.project.modules, key=lambda m: not m.lower().endswith(".cls")):
             path = self.native.module_path(mod) if self.native else self.folder / mod
@@ -1660,9 +1745,24 @@ class Runtime:
         elif event == "FormClosing":
             cell = Cell(0)
             args, cells = [cell.value], [cell]
+        if event == "SelectedIndexChanged" and not args and index is None:
+            c = vf.controls.get(vbname.rsplit("_", 1)[0].lower())
+            if getattr(c, "type", "") == "TabControl":      # SSTab_Click(PreviousTab As Integer)
+                cur = c.vb_get("tab")
+                args = [getattr(c, "_prev_tab", 0)]
+                c._prev_tab = cur
+            elif getattr(c, "type", "") in ("ListView", "TreeView"):   # ItemClick(Item) / NodeClick(Node)
+                args = [c.vb_get("selecteditem")]
         if index is not None:                     # control array: Index As Integer comes first
             args = [index, *args]
             cells = [None, *cells] if cells else []
+        st = self.interp.modules.get(vf.name.lower())
+        proc = st.mod.procs.get(vbname.lower()) if st is not None else None
+        if proc is not None:                      # VB passes every declared argument (Button, Shift, X, Y ...)
+            need = [p for p in proc.params if not p.optional and not getattr(p, "paramarray", False)]
+            if len(args) < len(need):
+                args = list(args) + [0] * (len(need) - len(args))
+                cells = (list(cells) + [None] * (len(args) - len(cells))) if cells else []
         try:
             self.interp.call_by_name(vf.name, vbname, args, me=vf, arg_cells=cells or None)
         except EndProgram:
@@ -1752,6 +1852,11 @@ class Runtime:
             sys.stdout.flush()
         except Exception:  # noqa: BLE001
             pass
+        try:                                    # database helpers (vbado.py) release the .mdb files
+            from .vbado import _close_all
+            _close_all()
+        except Exception:  # noqa: BLE001
+            pass
         os._exit(0)
 
     # -- host services for the interpreter
@@ -1789,11 +1894,16 @@ class Runtime:
                 raise EndProgram() from None
 
     def new_object(self, cls):
-        return None
+        from . import vbado                  # New ADODB.Recordset / New Connection / DAO objects
+        return vbado.create(cls, self.folder)
 
     def create_object(self, progid):
         from .vbfso import create as _builtin_object      # Scripting.FileSystemObject without COM
         obj = _builtin_object(str(progid), self.folder)
+        if obj is not None:
+            return obj
+        from . import vbado                  # ADODB.* / DAO.DBEngine without 64-bit providers
+        obj = vbado.create(str(progid), self.folder)
         if obj is not None:
             return obj
         try:
@@ -1803,7 +1913,13 @@ class Runtime:
         return COMObject(win32com.client.Dispatch(progid))
 
     def global_object(self, name):
-        return self.interp.objects.get(name)
+        obj = self.interp.objects.get(name)
+        if obj is None and name in ("dbengine", "workspaces"):          # DAO globals
+            from . import vbado
+            if self._dbengine is None:
+                self._dbengine = vbado.DBEngine(self.folder)
+            obj = self._dbengine if name == "dbengine" else self._dbengine.Workspaces
+        return obj
 
     def stop_statement(self, frame):
         if self.debugger is not None:

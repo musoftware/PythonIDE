@@ -661,6 +661,31 @@ def _insert_body(code: str, line: int, body: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+DATA_EXTS = (".mdb", ".accdb", ".mdw", ".db", ".sqlite", ".sqlite3", ".dbf")
+
+
+def _copy_data_files(src, dest: Path, notes) -> None:
+    """Databases of the VB6 program (App.Path & "/x.mdb", "/data/x.mdb" ...) are copied to the same place."""
+    base = src.folder.resolve()
+    n = 0
+    for f in base.rglob("*"):
+        if not f.is_file() or f.suffix.lower() not in DATA_EXTS or f.name.lower() == "thumbs.db":
+            continue
+        try:
+            rel = f.resolve().relative_to(base)
+        except ValueError:
+            continue
+        if len(rel.parts) > 4 or n >= 50:
+            continue
+        out = dest / rel
+        if out.exists():
+            continue
+        out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, out)
+        n += 1
+        notes.add("exact", str(rel), 0, f"database {rel} copied next to the program (App.Path)")
+
+
 def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
     from ..languages import get_plugin
     plugin = get_plugin(target)
@@ -757,6 +782,11 @@ def _write_rad_project(src, target, dest, notes, stats, progress, opts) -> Path:
             shutil.copy2(RUNTIME / rt, dest / rt)
             if rt not in project.modules:
                 project.modules.append(rt)
+        if src.language == "vb6":               # ADO / DAO for database programs (CreateObject / OpenDatabase)
+            shutil.copy2(Path(__file__).resolve().parent.parent / "runtimes" / "vbado.py", dest / "vbado.py")
+            if "vbado.py" not in project.modules:
+                project.modules.append("vbado.py")
+            _copy_data_files(src, dest, notes)
         notes.add("info", "vb6compat.py", 0, "vb6compat.py + vb6format.py: VB6 functions used by the translated code "
                                              "(Val, CStr, Format, MsgBox, file channels, Collection ...)")
     project.save()

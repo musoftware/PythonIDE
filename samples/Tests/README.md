@@ -115,6 +115,12 @@ File > Open Project.
 |---|---|---|---|
 | [`Imaging/FormIconDemo`](Imaging/FormIconDemo/) | python-tk: Icon Editor, Form Icon, Resources | A 32x32 icon drawn pixel by pixel in the Icon Editor, all sizes generated (16-256) into one .ico, set as Form1.Icon and application/installer icon; Resources with a string, an image and the icon, generated `resources.py`. | F5: the window shows the icon in its title bar. Double-click Resources > AppIcon.ico to edit it; Project > Resources. |
 
+## VB6 compatibility (real-world programs)
+
+| Folder | Language / feature | What it tests | How to try it |
+|---|---|---|---|
+| [`VB6Compat`](VB6Compat/) | VB6 opened in place / F5 / Migrate | Reproductions of the gaps found with 8 downloaded VB6 database programs: line continuation, `rs!Field`, Enums, ADO and DAO over Access `.mdb` (32-bit ADO helper), Data control + bound controls, MSFlexGrid / SSTab / DTPicker / ListView / TreeView / MonthView / Line in the designer and runtime, DataEnvironment + DataReport. | Open a `.vbp` in `VB6Compat/<Folder>` and press F5; expected output in [`VB6Compat/README.md`](VB6Compat/README.md). |
+
 ## Not in the front door (yet)
 
 - **GUI-Bridge forms with controls** exist in the test runs only for C++, Rust, Fortran and TypeScript (above); the C,
