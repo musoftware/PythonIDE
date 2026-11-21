@@ -58,6 +58,8 @@ DOS_FUNCS = {0x00, 0x01, 0x02, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0
              0x54, 0x56, 0x57, 0x59, 0x5A, 0x5B, 0x62, 0x65, 0x66, 0x67, 0x68, 0x6C}
 DOS_INT_WRITES = {0x2A: ("rcx", "rdx"), 0x2C: ("rcx", "rdx"), 0x35: ("rbx",), 0x36: ("rbx", "rcx", "rdx"),
                   0x30: ("rbx", "rcx"), 0x48: ("rbx",), 0x59: ("rbx", "rcx")}
+HLL = {".if", ".elseif", ".else", ".endif", ".while", ".endw", ".repeat", ".until", ".untilcxz", ".break",
+       ".continue"}
 FLAG_NAMES = {"CF", "PF", "AF", "ZF", "SF", "OF", "DF", "IF", "TF"}
 _ALLF = frozenset({"CF", "PF", "AF", "ZF", "SF", "OF"})
 
@@ -529,8 +531,6 @@ class Flow:
                     cur.labels.append(lb)
                 if hll:
                     cur.labels.append(st.mnem)
-                    if blk is not blocks[0] and blocks[blk.idx - 1].term in ("jmp", "ret", "exit", "tail"):
-                        pass
                 label_block[st.line] = cur.idx
             cur.stmts.append(pos)
             if st.kind == "data":
@@ -966,7 +966,7 @@ class Flow:
             return
         if b.term != "fall-out" or not b.stmts:
             return
-        if b.term_info == "seeded":
+        if b.term_info == "seeded" or getattr(u, "hll", False):
             return
         instrs = [p.stmts[u.stmts[x]] for x in b.stmts if p.stmts[u.stmts[x]].kind in ("instr", "macro")]
         if not instrs:
@@ -1011,8 +1011,85 @@ class Flow:
             self.add("ASM302", last, last.mcol, last.end_col, [fx], where=f"'{u.name}'", where_ar=f"'{u.name}'",
                      need="RET", need_ar="RET")
 
+    def pop_in_loop(self, u: Unit) -> bool:
+        """True when a POP sits in a loop (push digits in one loop, pop them in another: depths differ on
+        purpose)."""
+        p = self.p
+        n = len(u.blocks)
+        index = [-1] * n
+        low = [0] * n
+        on = [False] * n
+        stack: list[int] = []
+        counter = 0
+        cyclic = set()
+        for root in range(n):
+            if index[root] >= 0:
+                continue
+            work = [(root, 0)]
+            while work:
+                v, k = work.pop()
+                if k == 0:
+                    index[v] = low[v] = counter
+                    counter += 1
+                    stack.append(v)
+                    on[v] = True
+                succ = u.blocks[v].succ
+                if k < len(succ):
+                    work.append((v, k + 1))
+                    w = succ[k]
+                    if index[w] < 0:
+                        work.append((w, 0))
+                    elif on[w]:
+                        low[v] = min(low[v], index[w])
+                    continue
+                for w in succ:
+                    if on[w] or index[w] > index[v]:
+                        low[v] = min(low[v], low[w])
+                if low[v] == index[v]:
+                    comp = []
+                    while True:
+                        w = stack.pop()
+                        on[w] = False
+                        comp.append(w)
+                        if w == v:
+                            break
+                    if len(comp) > 1 or v in u.blocks[v].succ:
+                        cyclic.update(comp)
+        for bi in cyclic:
+            for x in u.blocks[bi].stmts:
+                st = p.stmts[u.stmts[x]]
+                if st.kind == "instr" and st.mnem in ("pop", "popa", "popad"):
+                    return True
+        return False
+
+    def shared_tail(self, last: Stmt, nxt: Unit) -> bool:
+        """'mov al, "@"' falling into a helper that uses AL: deliberate shared code, not a missing RET."""
+        if last.kind != "instr":
+            return False
+        wrote = {GP[n][0] for n, _k, _v, _s in self.effects(last)[1]}
+        if not wrote:
+            return False
+        p = self.p
+        written: set[str] = set()
+        for i in nxt.stmts[:12]:
+            st = p.stmts[i]
+            if st.kind != "instr":
+                continue
+            reads, writes = self.effects(st)
+            if st.mnem == "int":
+                reads = reads + ["ax"]
+            for r in reads:
+                if r in GP and GP[r][0] in wrote and GP[r][0] not in written:
+                    return True
+            written |= {GP[n][0] for n, _k, _v, _s in writes}
+            if st.mnem in ("ret", "jmp", "call"):
+                break
+        return False
+
     def unreachable(self, u: Unit) -> None:
         p = self.p
+        if getattr(u, "hll", False):
+            return
         for b in u.blocks:
             if b.state is not None or b.labels or not b.stmts:
                 continue
@@ -1053,7 +1130,7 @@ class Flow:
             o = next((o for o in st.ops if o.kind == "reg" and GP.get(o.reg, ("",))[0] == f), None)
             col, end = (o.col, o.end) if o else (st.mcol, st.end_col)
             self.add("ASM503", st, col, end, proc=u.name, reg=reg.upper(), conv=CONV_NAME.get(self.abi, ""),
-                     alt=alt)
+                     alt=alt, severity="info" if u.entry else "")
 
     # ------------------------------------------------------------ one instruction
     def step(self, u: Unit, b: Block, pos: int, S: State, report: bool) -> bool:

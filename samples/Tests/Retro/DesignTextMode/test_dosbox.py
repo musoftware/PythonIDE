@@ -152,6 +152,17 @@ def test_target(work: Path, target: str, download: bool) -> None:
         check(f"{target}: {name}", not d, d[:4])
 
 
+def test_qbasic_dialect(work: Path, download: bool) -> None:
+    """The QBasic 1.1 dialect (no mouse, no COMMAND$ - so no screen dump) still builds with FreeBASIC."""
+    if not have_compiler("freebasic", download):
+        return
+    folder = work / "qbasic11"
+    tp.create(folder, "Q11", "qbasic")
+    log = []
+    ok, _exe = tp.build(folder, log.append, download)
+    check("QBasic 1.1 dialect builds with FreeBASIC", ok, "\n".join(log[-15:]))
+
+
 def test_sizes(work: Path, download: bool) -> None:
     """80x43 and 80x50 screens (EGA / VGA 8x8 font) in the C and asm programs."""
     for target in ("c", "asm"):
@@ -208,6 +219,7 @@ def main() -> None:
             for t in targets:
                 test_target(work, t, download)
             test_sizes(work, download)
+            test_qbasic_dialect(work, download)
     except Exception as e:  # noqa: BLE001
         import traceback
         traceback.print_exc()
