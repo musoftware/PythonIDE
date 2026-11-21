@@ -1,4 +1,4 @@
-# ---- Python
+﻿# ---- Python
 .venv/
 venv/
 __pycache__/
@@ -43,6 +43,7 @@ target/
 # ---- Language package folders
 node_modules/
 bin/
+!radide/flutterdesign/dart_tools/bin/
 obj/
 vendor/
 !radide/web_site/templates/**/vendor/
@@ -122,3 +123,38 @@ pgdata/
 
 # Browser automation output
 .playwright-mcp/
+
+# ---- Tests, coverage, notebooks
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+TestResults/
+.ipynb_checkpoints/
+
+# ---- Front-end build caches (Next, Nuxt, Angular, Vite, Svelte, Parcel)
+.next/
+.nuxt/
+.angular/
+.svelte-kit/
+.vite/
+.parcel-cache/
+
+# ---- Dart / Flutter extras
+*.dill
+.flutter-plugins-dependencies
+ios/Pods/
+ios/.symlinks/
+
+# ---- Delphi / Lazarus / VB6 IDE state
+__history/
+__recovery/
+*.dcu
+*.ppu
+*.compiled
+*.vbw
+!samples/Tests/ForeignProjects/**/*.vbw
+*.scc
+
+# ---- RAD IDE release build output (tools/build_ide_release.py)
+build-ide/
