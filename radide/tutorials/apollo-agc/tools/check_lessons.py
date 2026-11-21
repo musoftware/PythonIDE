@@ -14,6 +14,7 @@ Block kinds (fence info strings):
       "show": ["SUM"]         erasable / fixed symbols, printed as signed decimal (ones' complement)
       "octal": ["MASKED"]     the same in octal
       "dsky": true            the DSKY line (PROG VERB NOUN R1 R2 R3 [lamps])
+      "dsky_at": [0.5, 3.5]   the DSKY line at these emulated times (instead of "seconds")
       "restarts": true        how many times the hardware alarms restarted the AGC
       "alarms": true          keep the hardware alarms on (default off, like "agc": {"alarms": false})
       "base": "hello_dsky"    start from the files of radide/agc/examples/hello_dsky; the block replaces
@@ -69,11 +70,18 @@ def run_agc(main: Path, spec: dict) -> tuple[bool, str, object]:
         return False, "\n".join(f"{Path(d.file).name}:{d.line}: {d.text('en')}" for d in prog.errors), prog
     m = AgcMachine(prog)
     m.cpu.alarms = bool(spec.get("alarms", False))
-    m.run_seconds(float(spec.get("seconds", 0.1)))
+    out = []
+    if spec.get("dsky_at"):                      # DSKY snapshots at these emulated times (seconds)
+        now = 0.0
+        for t in spec["dsky_at"]:
+            m.run_seconds(float(t) - now)
+            now = float(t)
+            out.append(f"t={t}s DSKY: " + m.dsky.summary())
+    else:
+        m.run_seconds(float(spec.get("seconds", 0.1)))
     if spec.get("keys"):
         m.keys(spec["keys"])
         m.run_seconds(float(spec.get("after", 1.0)))
-    out = []
     for name in spec.get("show", []):
         sv = m.symbol_value(name)
         out.append(f"{name} = {signed(sv[1]) if sv else '(unknown)'}")
@@ -175,8 +183,10 @@ def main(argv):
                         print("    --- got ---\n    " + got.replace("\n", "\n    "))
                         print("    --- expected ---\n    " + str(exp).strip().replace("\n", "\n    "))
     shutil.rmtree(work_root, ignore_errors=True)
-    print(f"\n{total - failed}/{total} blocks OK" + (f" ({yayul_checked} AGC blocks also identical in yaYUL)"
-                                                    if yayul_checked else " (yaYUL not installed: built-in only)"))
+    from radide.agc import toolchain
+    note = (f" ({yayul_checked} AGC blocks also identical in yaYUL)" if yayul_checked else
+            "" if toolchain.find("yayul") else " (yaYUL not installed: built-in assembler only)")
+    print(f"\n{total - failed}/{total} blocks OK{note}")
     return 1 if failed else 0
 
 
