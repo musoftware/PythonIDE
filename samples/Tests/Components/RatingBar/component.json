@@ -1,0 +1,54 @@
+{
+  "$schema": "../../../../docs/component.schema.json",
+  "schemaVersion": 1,
+  "name": "RatingBar",
+  "displayName": "Rating Bar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE Samples",
+  "description": "A row of stars the user clicks to rate something - one package, a runtime for every target.",
+  "license": "MIT",
+  "keywords": ["rating", "stars", "multi-target"],
+  "category": "Rating & Input",
+  "order": 20,
+  "icon": "icon.png",
+  "prefix": "rate",
+  "defaultSize": [140, 28],
+  "kind": "visual",
+  "hasText": false,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {"name": "Value", "type": "int", "default": 3, "min": 0, "max": 10, "category": "Behavior",
+     "description": "The rating shown (0 = no star)."},
+    {"name": "MaxStars", "type": "int", "default": 5, "min": 1, "max": 10, "category": "Behavior",
+     "description": "How many stars are drawn."},
+    {"name": "ReadOnly", "type": "bool", "default": false, "category": "Behavior",
+     "description": "True = the user cannot change the rating."},
+    {"name": "StarColor", "type": "color", "default": "#FFB400", "category": "Appearance",
+     "description": "Colour of the selected stars."},
+    {"name": "EmptyColor", "type": "color", "default": "#C8CDD5", "category": "Appearance",
+     "description": "Colour of the other stars."}
+  ],
+  "events": [
+    {"name": "ValueChanged", "description": "The user (or code) changed the Value."}
+  ],
+  "methods": [
+    {"name": "Reset", "signature": "Reset()", "description": "Sets Value to 0."},
+    {"name": "SetValue", "signature": "SetValue(value)", "description": "Sets Value (clamped to 0..MaxStars)."}
+  ],
+  "targets": {
+    "python-tk": {"file": "runtime/ratingbar_tk.py", "class": "RatingBar",
+                  "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language"},
+    "python-qt": {"file": "runtime/ratingbar_qt.py", "class": "RatingBar"},
+    "ring-qt": {"file": "runtime/ratingbar.ring", "class": "RatingBar"},
+    "flutter": {"files": ["runtime/rating_bar.dart"],
+                "template": {"widget": "RatingBar(value: {Value}, maxStars: {MaxStars}, readOnly: {ReadOnly}, starColor: {StarColor}, emptyColor: {EmptyColor}, onChanged: () {{{on_ValueChanged} }})"}},
+    "web": {"template": {
+      "html": "<span id=\"{name}\" class=\"rad-rating\" data-value=\"{Value_raw}\" data-max=\"{MaxStars_raw}\" data-readonly=\"{ReadOnly_raw}\" style=\"--on:{StarColor_raw};--off:{EmptyColor_raw}\"></span>",
+      "css": ".rad-rating span{cursor:pointer;font-size:20px;color:var(--off)} .rad-rating span.on{color:var(--on)}",
+      "js": "radRating(document.getElementById({name!r}));",
+      "files": ["runtime/ratingbar.js"]}}
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "requires": {"radide": ">=1.0"}
+}

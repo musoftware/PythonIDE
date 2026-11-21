@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "name": "MImage",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Shows a picture.",
+  "category": "Mobile",
+  "order": 1080,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Image",
+  "defaultSize": [
+    160,
+    120
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Image",
+      "type": "file",
+      "default": "",
+      "category": "Appearance",
+      "description": "Image file (asset) - .png / .jpg."
+    },
+    {
+      "name": "Fit",
+      "type": "enum",
+      "default": "Cover",
+      "category": "Appearance",
+      "description": "How the picture fills the box.",
+      "choices": [
+        "Cover",
+        "Contain",
+        "Fill",
+        "FitWidth",
+        "FitHeight",
+        "None"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Tap",
+      "description": "The user tapped the control (MListView / Drawer: e.Index = the item)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

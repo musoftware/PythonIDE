@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "MTabBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Material tabs.",
+  "category": "Mobile",
+  "order": 1110,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "TabBar",
+  "defaultSize": [
+    360,
+    48
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11,
+    "Dock": "Top",
+    "Anchor": "Top, Left, Right"
+  },
+  "properties": [
+    {
+      "name": "Tabs",
+      "type": "list",
+      "default": "Tab 1;Tab 2;Tab 3",
+      "category": "Data",
+      "description": "Tab captions separated by ;"
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Selected tab (0 = first)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Changed",
+      "description": "The value changed (Switch, Slider, TextField, BottomNav / TabBar index)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

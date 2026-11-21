@@ -45,5 +45,21 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComCtl2.DTPicker",
+    "library": "MSComCtl2",
+    "imports": [
+      "comct2lib.dtpicker",
+      "msacal.calendar",
+      "mscomctl2.dtpicker",
+      "mscomctl2.monthview"
+    ],
+    "approx": [
+      "msacal.calendar",
+      "mscomctl2.monthview"
+    ]
   }
 }

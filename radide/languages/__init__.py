@@ -38,7 +38,8 @@ def get_plugin(plugin_id: str) -> LanguagePlugin:
 
 
 # preferred plugin when several share an extension and none is the project default
-PREFERRED_FOR_EXT = {".py": "python-tk", ".pyw": "python-tk", ".ring": "ring-qt", ".bas": "vb-basic"}
+PREFERRED_FOR_EXT = {".py": "python-tk", ".pyw": "python-tk", ".ring": "ring-qt", ".bas": "vb-basic",
+                     ".asm": "asm-nasm"}         # asm-fasm / asm-masm / emu8086 win when they are the project language
 
 
 def plugins_for_ext(ext: str) -> list[LanguagePlugin]:

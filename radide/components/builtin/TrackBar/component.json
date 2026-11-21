@@ -44,5 +44,22 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.HScrollBar",
+    "imports": [
+      "comctllib.slider",
+      "mscomctl2.flatscrollbar",
+      "mscomctllib.slider",
+      "vb.hscrollbar",
+      "vb.vscrollbar"
+    ],
+    "properties": {
+      "Minimum": "Min",
+      "Maximum": "Max",
+      "Value": "Value"
+    }
   }
 }

@@ -37,5 +37,22 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.Label",
+    "imports": [
+      "comctllib.statusbar",
+      "msadodclib.adodc",
+      "mscomctllib.statusbar",
+      "vb.data",
+      "vb.label"
+    ],
+    "approx": [
+      "msadodclib.adodc",
+      "mscomctllib.statusbar",
+      "vb.data"
+    ]
   }
 }

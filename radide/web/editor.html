@@ -224,6 +224,61 @@ require(['vs/editor/editor.main'], function () {
       });
     };
 
+    // A full Monarch grammar from Python (plugin.monaco_language: assembly dialects, radide/asm_intel/monarch.py).
+    // Regular expressions arrive as strings (Monarch compiles them); folding = block start/end pairs, sections,
+    // label bodies and runs of 3+ comment lines.
+    function radFoldRanges(lines, f) {
+      const pairs = (f.pairs || []).map(p => [new RegExp(p[0], 'i'), new RegExp(p[1], 'i'), p[1]]);
+      const sec = f.section ? new RegExp(f.section, 'i') : null, lab = f.label ? new RegExp(f.label) : null;
+      const lc = f.lineComment || [';'];
+      const strip = s => { let q = ''; for (let i = 0; i < s.length; i++) { const c = s[i];
+        if (q) { if (c === q) q = ''; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (lc.some(p => s.startsWith(p, i))) return s.substring(0, i); } return s; };
+      const m = lines.map(strip), out = [], stack = [];
+      let lastSec = -1, lastLab = -1, lastCode = 0, run = -1;
+      const prevCode = i => { let j = i - 1; while (j > 0 && !m[j].trim()) j--; return j; };
+      const add = (s, e, kind) => { if (e > s) out.push({ start: s + 1, end: e + 1, kind: kind }); };
+      const COMMENT = monaco.languages.FoldingRangeKind.Comment;
+      for (let i = 0; i < m.length; i++) {
+        const t = m[i];
+        if (t.trim()) lastCode = i;
+        let closed = false;
+        for (const p of pairs) if (p[1].test(t)) {
+          for (let j = stack.length - 1; j >= 0; j--) if (stack[j][0][2] === p[2]) { add(stack[j][1], i); stack.length = j; break; }
+          closed = true; break;
+        }
+        if (!closed) for (const p of pairs) if (p[0].test(t)) { stack.push([p, i]); break; }
+        if (sec && sec.test(t)) {
+          if (lastSec >= 0) add(lastSec, prevCode(i));
+          if (lastLab >= 0) { add(lastLab, prevCode(i)); lastLab = -1; }
+          lastSec = i;
+        } else if (lab && lab.test(t) && !/^\s*\./.test(t)) {
+          if (lastLab >= 0) add(lastLab, prevCode(i));
+          lastLab = i;
+        }
+        const raw = lines[i].trim(), isC = !!raw && lc.some(p => raw.startsWith(p));
+        if (isC && run < 0) run = i;
+        else if (!isC && run >= 0) { if (i - run >= 3) add(run, i - 1, COMMENT); run = -1; }
+      }
+      if (lastSec >= 0) add(lastSec, lastCode);
+      if (lastLab >= 0) add(lastLab, lastCode);
+      if (run >= 0 && m.length - run >= 3) add(run, m.length - 1, COMMENT);
+      return out;
+    }
+    window.radRegisterMonarch = function (spec) {
+      if (monaco.languages.getLanguages().some(l => l.id === spec.id)) return;
+      monaco.languages.register({ id: spec.id, aliases: spec.aliases || [] });
+      try { monaco.languages.setMonarchTokensProvider(spec.id, spec.monarch); }
+      catch (e) { console.error('monarch ' + spec.id + ': ' + e); }
+      const conf = Object.assign({}, spec.conf || {});
+      if (typeof conf.wordPattern === 'string') conf.wordPattern = new RegExp(conf.wordPattern, 'g');
+      monaco.languages.setLanguageConfiguration(spec.id, conf);
+      if (spec.folding) monaco.languages.registerFoldingRangeProvider(spec.id, {
+        provideFoldingRanges: model => radFoldRanges(model.getLinesContent(), spec.folding) });
+      if (spec.triggers) ensureProviders(spec.id, spec.triggers);
+    };
+
     // ---------------- AI (docs/CONTRACTS.md 9.4, Python side: radide/features/ai_editor.py)
     // Inline completions (ghost text): debounced, Tab accepts, Esc dismisses (Monaco's own keys).
     const inline = { on: false, delay: 450 };

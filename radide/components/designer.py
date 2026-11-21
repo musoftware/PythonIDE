@@ -65,12 +65,14 @@ class ComponentPreview(QWidget):
         if callable(fn) and not self.error:
             try:
                 fn(p, QRect(r), dict(self.props), self.ctx)
+                draw_target_badge(p, r, pkg)
                 p.end()
                 return
             except Exception:  # noqa: BLE001
                 self.error = traceback.format_exc(limit=2).strip().splitlines()[-1]
         draw_default(p, r, self.ctx.type if self.ctx else "?", self.props, self.error,
                      missing=pkg is None)
+        draw_target_badge(p, r, pkg)
         p.end()
 
 
@@ -97,6 +99,26 @@ def draw_default(p: QPainter, r: QRect, type_name: str, props: dict, error: str 
     top = 0 if r.height() < 40 else 4
     p.drawText(QRect(x, top, max(4, r.width() - x - 4), r.height() - top if r.height() < 40 else 16),
                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, label)
+
+
+def draw_target_badge(p: QPainter, r: QRect, pkg) -> None:
+    """Design-time warning: a red strip "no <target> runtime" when the package has no runtime for the language
+    of the form being designed (the Toolbox target, radide/components/targets.py)."""
+    try:
+        from ..toolbox import TOOL_STATE
+        from .targets import supports
+        target = TOOL_STATE.target
+        if pkg is None or pkg.builtin or not target or supports(pkg, target) or r.height() < 14:
+            return
+    except Exception:  # noqa: BLE001
+        return
+    h = 14
+    band = QRect(0, r.height() - h, r.width(), h)
+    p.fillRect(band, QColor(192, 64, 64, 210))
+    p.setPen(QColor("#FFFFFF"))
+    p.setFont(QFont("Segoe UI", 7))
+    p.drawText(band.adjusted(3, 0, -3, 0), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+               f"no {target} runtime")
 
 
 def _design_flags(w: QWidget) -> None:

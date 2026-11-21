@@ -32,7 +32,7 @@
 
 ### 1) إنشاء المشروع
 
-1. **File ← New Project...** ← **Native** ← **Go (GUI Bridge)**.
+1. **File > New Project...** > **Native** > **Go (GUI Bridge)**.
 2. القالب **Windows Application** (تطبيق Windows)، والاسم `HelloForm`.
 3. يفتح **Form1** في وضع التصميم، ومعه ملف الكود `Form1.go`.
 
@@ -50,6 +50,7 @@
 
 انقر مرتين على الزر فتنشئ الـ IDE الدالة `btnHello_Click` وتنقلك إليها:
 
+<!-- test: {"set": {"txtName.Text": "Mona"}, "events": ["btnHello Click"], "expect": {"lblOut.Text": "أهلًا يا Mona!"}} -->
 ```go form run
 package main
 
@@ -96,6 +97,7 @@ func btnHello_Click(e RadEvent) {
 | `Label` | `lblResult` | (فارغ) |
 | `ListBox` | `lstHistory` | |
 
+<!-- test: {"events": [{"txtValue.Text": "100", "optToF.Checked": "True"}, "btnConvert Click", {"txtValue.Text": "abc"}, "btnConvert Click"], "expect": {"lblResult.Text": "212.0 F", "lstHistory.Items": "100.0 => 212.0 F"}, "msgbox": ["اكتب رقمًا صحيحًا"]} -->
 ```go form run
 package main
 
@@ -166,6 +168,7 @@ func btnClear_Click(e RadEvent) {
 }
 ```
 
+<!-- test: {"items": {"lstHistory": ["a", "b"]}, "set": {"lblResult.Text": "x"}, "events": ["btnClear Click"], "expect": {"lstHistory.ListCount": "0", "lblResult.Text": ""}} -->
 ```go form solution
 package main
 

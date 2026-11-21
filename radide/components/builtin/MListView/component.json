@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "MListView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A scrolling list of tiles; e.Index tells which row was tapped.",
+  "category": "Mobile",
+  "order": 1040,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "ListView",
+  "defaultSize": [
+    360,
+    240
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "Item 1|First item;Item 2|Second item;Item 3|Third item",
+      "category": "Data",
+      "description": "Rows separated by ; with fields separated by | (matching ItemTemplate)."
+    },
+    {
+      "name": "ItemTemplate",
+      "type": "str",
+      "default": "title|subtitle",
+      "category": "Data",
+      "description": "Fields of a row: title, subtitle, icon, trailing - separated by | (e.g. icon|title|subtitle)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Tap",
+      "description": "The user tapped the control (MListView / Drawer: e.Index = the item)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "Fab",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Floating action button for the main action of the screen.",
+  "category": "Mobile",
+  "order": 1020,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Fab",
+  "defaultSize": [
+    56,
+    56
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11,
+    "Anchor": "Bottom, Right"
+  },
+  "properties": [
+    {
+      "name": "Icon",
+      "type": "enum",
+      "default": "add",
+      "category": "Appearance",
+      "description": "Material icon of the button.",
+      "choicesFrom": "radide.mobile.material_icons:icon_names"
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

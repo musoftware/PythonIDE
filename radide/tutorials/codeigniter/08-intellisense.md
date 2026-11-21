@@ -25,7 +25,7 @@
 | `service('` | أسماء الخدمات (`request` و`session` و`validation`...) |
 | `model('` | أصناف النماذج: `ProductModel`... |
 | `->where('` و`->like('` و`->orderBy('` و`$row['` | أعمدة الجدول (من الترحيلات و`$allowedFields` وقاعدة SQLite نفسها) |
-| `'price' => 'required|` (في قواعد التحقق) | أسماء القواعد مع شرح كل قاعدة: `decimal` و`min_length[]`... |
+| `'price' => 'required` ثم الفاصل العمودي (في قواعد التحقق) | أسماء القواعد مع شرح كل قاعدة: `decimal` و`min_length[]`... |
 | `env('` | مفاتيح ملف `.env` |
 | `$routes->get('x', '` (في `Routes.php`) | `Controller::method` لكل دوال متحكماتك |
 

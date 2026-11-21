@@ -91,7 +91,7 @@ Omar    45.0  راسب
 
 ## الجزء الثاني: النافذة
 
-أنشئ مشروعًا جديدًا: **File ← New Project ← Native ← C (GUI Bridge, gcc / MSVC)**، القالب **Windows Application**، والاسم `GradeBook`. ثم ارسم:
+أنشئ مشروعًا جديدًا: **File > New Project > Native > C (GUI Bridge, gcc / MSVC)**، القالب **Windows Application**، والاسم `GradeBook`. ثم ارسم:
 
 | الأداة | Name | Text |
 |---|---|---|
@@ -109,6 +109,7 @@ Omar    45.0  راسب
 
 انسخ المنطق نفسه إلى `Form1.c`، واربطه بالأحداث:
 
+<!-- test: {"set": {"txtName.Text": "Sara", "txtMark.Text": "91"}, "events": ["btnAdd Click", {"txtName.Text": "Omar", "txtMark.Text": "45"}, "btnAdd Click", {"txtName.Text": "", "txtMark.Text": "70"}, "btnAdd Click"], "expect": {"lstStudents.Items": "Sara - 91.0 - ممتاز|Omar - 45.0 - راسب", "lblStats.Text": "العدد 2 | المتوسط 68.00 | الأعلى 91.0 | الناجحون 1", "txtMark.Text": "70"}, "msgbox": ["اكتب اسم الطالب"]} -->
 ```c form run
 #include <stdio.h>
 #include <string.h>

@@ -44,5 +44,20 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComCtl2.UpDown",
+    "library": "MSComCtl2",
+    "imports": [
+      "comct2lib.updown",
+      "mscomctl2.updown"
+    ],
+    "properties": {
+      "Minimum": "Min",
+      "Maximum": "Max",
+      "Value": "Value"
+    }
   }
 }

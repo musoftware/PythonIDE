@@ -36,5 +36,15 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComctlLib.TreeView",
+    "library": "MSComctlLib",
+    "imports": [
+      "comctllib.treeview",
+      "mscomctllib.treeview"
+    ]
   }
 }

@@ -687,15 +687,58 @@ class LivePreview(QObject):
         self.exact = ExactRunner(project_dir, route, self)
         self.exact.output.connect(self.buildOutput.emit)
         self.exact.status.connect(self.statusChanged.emit)
-        self.exact.urlReady.connect(lambda url: self.view.setUrl(QUrl(url)))
+        self.exact.urlReady.connect(self._exact_load)
         self.exact.finished.connect(lambda code: self.statusChanged.emit(f"Exact preview stopped ({code})"))
         self.is_ready = False
         self.exact.start()
+
+    EXACT_WATCHDOG_S = 25
+
+    def _exact_load(self, url: str) -> None:
+        """Load the served app. A watchdog reloads the page (twice at most) when the app connected to
+        flutter run but has not created its Flutter view 25 s later - QtWebEngine sometimes keeps the first
+        debug load blank. (Before the connection the debug compile is still running: no reload then.)"""
+        self.view.setUrl(QUrl(url))
+        self._exact_t0 = 0.0
+        self._exact_reloads = 0
+        if getattr(self, "_exact_timer", None) is None:
+            self._exact_timer = QTimer(self)
+            self._exact_timer.setInterval(2000)
+            self._exact_timer.timeout.connect(self._exact_watch)
+        self._exact_timer.start()
+
+    def _exact_watch(self) -> None:
+        sess = self.exact.session if self.exact is not None else None
+        if sess is None:
+            self._exact_timer.stop()
+            return
+        if not sess.ready:
+            return
+        if not self._exact_t0:
+            self._exact_t0 = time.time()
+
+        def seen(has_view) -> None:
+            if not self._exact_timer.isActive() or self.exact is None:
+                return
+            if has_view:
+                self._exact_timer.stop()
+            elif time.time() - self._exact_t0 > self.EXACT_WATCHDOG_S:
+                if self._exact_reloads >= 2:
+                    self._exact_timer.stop()
+                    self.statusChanged.emit("Exact preview: the app did not start - see the build output")
+                    return
+                self._exact_reloads += 1
+                self._exact_t0 = time.time()
+                self.statusChanged.emit("Exact preview: reloading the page...")
+                self.view.reload()
+        self.page.runJavaScript("!!document.querySelector('flutter-view, flt-glass-pane')", seen)
 
     def exact_reload(self) -> bool:
         return self.exact.reload() if self.exact is not None else False
 
     def stop_exact(self, load_host: bool = True) -> None:
+        if getattr(self, "_exact_timer", None) is not None:
+            self._exact_timer.stop()
         if self.exact is not None:
             self.exact.stop()
             self.exact = None

@@ -17,7 +17,7 @@ egui مكتبة واجهات من نوع **الوضع الفوري** (immediate 
 
 ## إنشاء المشروع
 
-1. **File ← New Project...** ← **Native** ← **Rust (Cargo)**.
+1. **File > New Project...** > **Native** > **Rust (Cargo)**.
 2. اختر القالب **egui Desktop App** وسمّه `todo_app`.
 3. تنشئ الـ IDE `Cargo.toml` وفيه `eframe = "0.31"`، و`src/main.rs` فيه تطبيق تجريبي.
 4. اضغط **Ctrl+F5**. **أول بناء** يحمّل eframe ومكتباتها ويترجمها، وقد يستغرق بضع دقائق (يلزم اتصال بالإنترنت مرة واحدة). البناءات التالية سريعة.

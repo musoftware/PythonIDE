@@ -1,0 +1,377 @@
+{
+ "version": 1,
+ "name": "SignIn",
+ "route": "/signin",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFFFFFFF"
+  },
+  "slots": {
+   "body": {
+    "id": "w9",
+    "type": "SingleChildScrollView",
+    "slots": {
+     "child": {
+      "id": "w10",
+      "type": "Column",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.stretch"
+      },
+      "children": [
+       {
+        "id": "w11",
+        "type": "Container",
+        "props": {
+         "height": 400,
+         "decoration": {
+          "gradient": {
+           "type": "linear",
+           "begin": "Alignment.topCenter",
+           "end": "Alignment.bottomCenter",
+           "colors": [
+            "#FF6A5AE0",
+            "#FF8F94FB"
+           ]
+          },
+          "borderRadius": {
+           "bl": 48,
+           "br": 48
+          }
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w12",
+          "type": "Stack",
+          "children": [
+           {
+            "id": "w13",
+            "type": "Positioned",
+            "props": {
+             "left": 30,
+             "top": 0,
+             "width": 80,
+             "height": 200
+            },
+            "slots": {
+             "child": {
+              "id": "w14",
+              "type": "Image",
+              "ctor": "asset",
+              "props": {
+               "src": "assets/images/lamp_long.png",
+               "fit": "BoxFit.contain"
+              }
+             }
+            },
+            "anim": {
+             "type": "fadeInDown",
+             "delayMs": 200,
+             "durationMs": 800
+            }
+           },
+           {
+            "id": "w15",
+            "type": "Positioned",
+            "props": {
+             "left": 140,
+             "top": 0,
+             "width": 80,
+             "height": 150
+            },
+            "slots": {
+             "child": {
+              "id": "w16",
+              "type": "Image",
+              "ctor": "asset",
+              "props": {
+               "src": "assets/images/lamp_short.png",
+               "fit": "BoxFit.contain"
+              }
+             }
+            },
+            "anim": {
+             "type": "fadeInDown",
+             "delayMs": 400,
+             "durationMs": 800
+            }
+           },
+           {
+            "id": "w17",
+            "type": "Positioned",
+            "props": {
+             "top": 40,
+             "right": 40
+            },
+            "slots": {
+             "child": {
+              "id": "w18",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.access_time_filled",
+               "size": 64,
+               "color": "#E6FFFFFF"
+              }
+             }
+            },
+            "anim": {
+             "type": "fadeIn",
+             "delayMs": 600,
+             "durationMs": 800
+            }
+           },
+           {
+            "id": "w19",
+            "type": "Positioned",
+            "props": {
+             "left": 0,
+             "right": 0,
+             "bottom": 70
+            },
+            "slots": {
+             "child": {
+              "id": "w20",
+              "type": "Text",
+              "props": {
+               "data": "Login",
+               "textAlign": "TextAlign.center",
+               "style": {
+                "color": "#FFFFFFFF",
+                "fontSize": 40,
+                "fontWeight": "FontWeight.bold"
+               }
+              }
+             }
+            },
+            "anim": {
+             "type": "fadeInUp",
+             "delayMs": 800,
+             "durationMs": 800
+            }
+           }
+          ]
+         }
+        }
+       },
+       {
+        "id": "w21",
+        "type": "Padding",
+        "props": {
+         "padding": {
+          "all": 30
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w22",
+          "type": "Column",
+          "props": {
+           "crossAxisAlignment": "CrossAxisAlignment.stretch"
+          },
+          "children": [
+           {
+            "id": "w23",
+            "type": "Container",
+            "props": {
+             "decoration": {
+              "color": "#FFFFFFFF",
+              "borderRadius": 12,
+              "boxShadow": [
+               {
+                "color": "#338F94FB",
+                "blur": 20,
+                "offset": [
+                 0,
+                 10
+                ]
+               }
+              ]
+             },
+             "padding": {
+              "all": 5
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w24",
+              "type": "Column",
+              "children": [
+               {
+                "id": "w25",
+                "type": "Container",
+                "props": {
+                 "decoration": {
+                  "border": {
+                   "bottom": {
+                    "color": "#FFEEEEEE",
+                    "width": 1
+                   }
+                  }
+                 },
+                 "padding": {
+                  "all": 8
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w26",
+                  "type": "TextField",
+                  "name": "txtEmail",
+                  "props": {
+                   "decoration": {
+                    "hintText": "Email or phone number",
+                    "prefixIcon": "Icons.email_outlined",
+                    "border": "none",
+                    "hintStyle": {
+                     "color": "#FF9E9E9E"
+                    }
+                   },
+                   "keyboardType": "TextInputType.emailAddress"
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w27",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "all": 8
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w28",
+                  "type": "TextField",
+                  "name": "txtPassword",
+                  "props": {
+                   "decoration": {
+                    "hintText": "Password",
+                    "prefixIcon": "Icons.lock_outline",
+                    "suffixIcon": "Icons.visibility_off_outlined",
+                    "border": "none",
+                    "hintStyle": {
+                     "color": "#FF9E9E9E"
+                    }
+                   },
+                   "obscureText": true
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            },
+            "anim": {
+             "type": "fadeInUp",
+             "delayMs": 1000,
+             "durationMs": 700
+            }
+           },
+           {
+            "id": "w29",
+            "type": "SizedBox",
+            "props": {
+             "height": 30
+            }
+           },
+           {
+            "id": "w30",
+            "type": "InkWell",
+            "name": "btnLogin",
+            "props": {
+             "borderRadius": 12
+            },
+            "slots": {
+             "child": {
+              "id": "w31",
+              "type": "Container",
+              "props": {
+               "height": 52,
+               "decoration": {
+                "gradient": {
+                 "type": "linear",
+                 "begin": "Alignment.centerLeft",
+                 "end": "Alignment.centerRight",
+                 "colors": [
+                  "#FF6A5AE0",
+                  "#FF8F94FB"
+                 ]
+                },
+                "borderRadius": 12
+               },
+               "alignment": "Alignment.center"
+              },
+              "slots": {
+               "child": {
+                "id": "w32",
+                "type": "Text",
+                "props": {
+                 "data": "Login",
+                 "style": {
+                  "color": "#FFFFFFFF",
+                  "fontSize": 18,
+                  "fontWeight": "FontWeight.bold"
+                 }
+                }
+               }
+              }
+             }
+            },
+            "events": {
+             "onTap": "onLogin"
+            },
+            "anim": {
+             "type": "fadeInUp",
+             "delayMs": 1200,
+             "durationMs": 700
+            }
+           },
+           {
+            "id": "w33",
+            "type": "SizedBox",
+            "props": {
+             "height": 16
+            }
+           },
+           {
+            "id": "w34",
+            "type": "TextButton",
+            "slots": {
+             "child": {
+              "id": "w35",
+              "type": "Text",
+              "props": {
+               "data": "Forgot password?",
+               "style": {
+                "color": "#FF6A5AE0",
+                "fontWeight": "FontWeight.w600"
+               }
+              }
+             }
+            },
+            "events": {
+             "onPressed": "onForgot"
+            },
+            "anim": {
+             "type": "fadeIn",
+             "delayMs": 1400,
+             "durationMs": 700
+            }
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

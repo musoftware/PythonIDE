@@ -40,5 +40,20 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComctlLib.ProgressBar",
+    "library": "MSComctlLib",
+    "imports": [
+      "comctllib.progressbar",
+      "mscomctllib.progressbar"
+    ],
+    "properties": {
+      "Minimum": "Min",
+      "Maximum": "Max",
+      "Value": "Value"
+    }
   }
 }

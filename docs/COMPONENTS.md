@@ -109,6 +109,8 @@ plus a warning.
 | `targets` | object | Section 6. |
 | `designer`, `editors`, `help` | files | Sections 7, 8, 9. |
 | `overrideBuiltin` | bool | Allows a package to replace a built-in control of the same name (otherwise it is ignored with a conflict message). |
+| `mobile` | bool | A mobile control (the Toolbox "Mobile" group of phone forms; drawn by `radide/mobile/render.py`). Used by the built-in AppBar, BottomNav, Fab, Card, MListView, Switch, MSlider, MTextField, MImage, MIcon, Drawer, MTabBar, MWebView, Column, Row, Stack. |
+| `vb6` | object | VB6 `.frm` import / export mapping: `class` (written for a new control, e.g. `VB.CommandButton`), `library` (its OCX, e.g. `MSComctlLib`), `imports` (VB6 / ActiveX classes imported as this control, any case, e.g. `mscomctllib.listview`), `approx` (the imports that are approximations - the importer warns), `properties` (neutral -> VB6 name of plain integer properties, e.g. `{"Minimum": "Min"}`). Read by `radide/components/vb6map.py` for `radide/importers/vb6_import.py` and `radide/foreign/frm_writer.py`. |
 | `requires.radide` | `">=1.0"` | Minimum component API version (`radide.components.API_VERSION`). |
 | `x-...` | anything | Vendor data, ignored by the IDE. |
 
@@ -200,8 +202,17 @@ have (never `(Name)`), and a change is applied to every selected control in one 
 }
 ```
 
-* `file` is the module that defines `class`; `files` are extra files copied with it. Lookup order: the exact id,
-  then `python` for any `python-*` id, then `*`.
+* `file` is the module that defines `class`; `files` are extra files copied with it. Lookup order
+  (`radide/components/targets.py`, `chain()`): the plugin id, its toolkit family (`python-tk` for Tk-based
+  plugins such as pygame, `python-qt`, `ring-qt`), `python` for every Python toolkit, `bridge` for every GUI
+  Bridge language, then the **renderer**: VB6 forms (`vb-basic`, run by the VB runtime) and the GUI Bridge
+  languages (C#, Java, JavaScript, C, C++, Go, Rust, Dart, Lua, Perl, PHP, PowerShell, Ruby, Fortran) are drawn
+  by the IDE's Tk runtime, so a `python-tk` runtime class serves them too ("via python-tk"), then `*`.
+* An entry is one of: `{"native": true}` (built-ins: the language plugin generates it - the per-target code
+  of the built-in controls lives in their package folder, `builtin/<Type>/runtime/python_tk.py`,
+  `python_qt.py`, `ring_qt.py`, each with `emit(g)`), `{"file", "class"}` (a runtime class),
+  `{"emit": "runtime/gen.py"}` (a generator module, any target) or `{"template": {...}}` (declarative
+  snippets, any target) - see "Generators and templates" below.
 * When the project is saved (Save All / Run), the runtime files of the components its forms use are copied into
   the project folder, so the project runs without the IDE. The generated import falls back to the installed
   package folder (for a user package through `%APPDATA%`/`RADIDE_COMPONENTS_DIR`, for a project package
@@ -231,9 +242,80 @@ self.rateFood.place(...)          # tk (Anchor/Dock handled by the form)  /  set
 4. Expose the properties as Python attributes (properties with setters that redraw) and the methods by name,
    so user code can write `self.rateFood.Value = 4` and `self.rateFood.Reset()`.
 
-Other languages: a runtime for a non-Python target uses the same keys (`file`, `class`); until that language's
-generator supports packages, the placeholder is generated (see `radide/components/codegen.py`,
-`NATIVE_TARGETS`).
+**VB6 and the GUI Bridge languages** use the python-tk runtime class: VB code and bridge programs reach its
+members by their manifest names, case-insensitively - `rate1.Value = 4`, `x = rate1.MaxStars`, `rate1.Reset`
+in VB; `set("rate1", "Value", 4)`, `get("rate1", "Value")`, `call("rate1", "SetValue", 2)` over the bridge
+(`VBControl._comp_get/_comp_set/_comp_call` in `radide/runtimes/vbrun.py`; values are converted to the
+property's type). Package events call `<Control>_<Event>` (a `Sub rate1_ValueChanged()` / `function
+rate1_ValueChanged(e)`); an event raised while a bridge handler runs (e.g. by `call("rate1", "Reset")`) is
+sent after that handler's `DONE`.
+
+**Runtime contract (ring-qt)** - `"ring-qt": {"file": "runtime/x.ring", "class": "X"}`; the designer file
+`load`s the file (copied next to the form on Save All) and writes:
+
+```ring
+rate1 = new RatingBar(Form1)                     # init(oParent)
+rate1.setValue(3)                                # set<Prop>(value) per property (+ changed common ones)
+rate1.radBind("ValueChanged", "rate1_ValueChanged()")   # Ring code to eval when the event happens
+rate1.setGeometry(12, 40, 160, 30)
+```
+
+The class needs `init(oParent)`, `set<Prop>`, `radBind(cEvent, cCode)` (every event with a handler, common
+ones included) and the QWidget methods the form uses (`setGeometry`, `show`, `hide`, `raise`,
+`setToolTip`, `setEnabled`): a subclass of a RingQt widget or a class that forwards them (Ring copies objects
+on assignment: keep shared state in a global list, as `samples/Tests/Components/RatingBar/runtime/ratingbar.ring`
+does).
+
+**Flutter** - a `template` with `widget`: a Dart expression; `{Prop}` is the Dart literal of a property,
+`{on_<Event>}` the statements that call the handler; `files` (Dart files) are copied into `lib/` and exported
+from `lib/radapp.dart` (the screen designers are `part`s of libraries that import it):
+
+```json
+"flutter": {"files": ["runtime/rating_bar.dart"],
+            "template": {"widget": "RatingBar(value: {Value}, maxStars: {MaxStars}, onChanged: () {{{on_ValueChanged} }})"}}
+```
+
+**Web pages** - a `template` with `html`, `css`, `js` (and `files`); `radide.components.codegen.web_snippet(control)`
+returns them filled in, for web page generators (the web workspace has no control-based form designer yet).
+
+### Generators and templates (any target)
+
+`{"emit": "runtime/gen.py"}` - the IDE imports the module at generation time and calls `emit(ctx)`; it returns
+the lines (a list) or `{"lines": [...], "handled": ["Event", ...]}` (events it wired itself; the generator
+binds the others the usual way). `ctx` (`radide.components.codegen.EmitContext`): `target` (plugin id), `via`
+(entry id used), `lang` (`python`/`ring`/`dart`/`js`/`vb`/`json`), `name`, `type`, `props` (all properties,
+defaults filled in), `parent` (parent expression), `used` (events with a handler), `entry`, `package`,
+`plugin`, `lit(value)` (literal of the target language), `handler(event)`, `add_import(line)` (once per file:
+Python imports go before the control's lines, Ring `load`s to the top of the file), `warn(text)`.
+
+`{"template": {...}}` - declarative snippets with `{name}`, `{parent}`, `{left}`, `{top}`, `{width}`, `{height}`,
+`{<Prop>}` (literal), `{<Prop>_raw}` (text) placeholders (`{{`/`}}` = a brace):
+
+| key | meaning |
+|---|---|
+| `imports` | file-level lines, written once (Python: before the control) |
+| `create` | lines that create the control |
+| `props` | `{"Prop": "setter", "*": "{name}.set{Prop}({value})"}` - one per property (`propsMode: "changed"` = only the ones that differ from the default); common properties only when changed and named |
+| `events` | `{"Event": "wiring with {handler} / {event}", "*": ...}` for the events that have a handler |
+| `after` | lines written after the setters/events |
+| `widget` / `html`, `css`, `js` | Flutter / web (above) |
+
+The generator then adds geometry, ToolTip, Visible and the common events. Errors in package code become a
+`WARNING` comment and an Output window warning; generation goes on.
+
+### No runtime for a target
+
+* **Toolbox**: the component is greyed when the shown form's language has no runtime for it; every package's
+  tooltip lists "Runs on: ..." / "No runtime for: ..." (`targets.support_text`).
+* **Designer**: the control gets a red strip "no <target> runtime", and the Output window names the controls
+  (`[components] warning: Form1.rate1 (RatingBar) has no runtime for ...`).
+* **Build**: the generated code has a `WARNING` comment and a placeholder label `[RatingBar] no <target> runtime`
+  (python-tk, python-qt, ring-qt, Flutter); other plugins get a Label in its place
+  (`codegen.placeholder_form`), and the Output window shows the warning on Save All / Run.
+
+Complete multi-target example: `samples/Tests/Components/RatingBar` (python-tk, python-qt, ring-qt, Flutter,
+web; VB6 and the bridge languages through python-tk) and the projects `RatingBar_PythonTk`, `_PythonQt`, `_VB`,
+`_Ring`, `_JavaScript` next to it.
 
 ## 7. Designer drawing (`designer.py`)
 
@@ -257,6 +339,16 @@ def apply(widget, props, ctx):                 # update the widget made by creat
   `Name (Type)`. If package code raises, the default renderer is used with the error in red - the IDE keeps
   working. The module is re-imported when the file changes (hot reload).
 * `designer.py` runs inside the IDE, so it uses **PyQt6** (the IDE toolkit), whatever the target language.
+* The built-in controls draw themselves the same way: `radide/components/builtin/Button/designer.py` creates a
+  `QPushButton`, `TabControl/designer.py` a tab bar with a page area, and so on; `radide/preview.py` only
+  dispatches (mobile controls and classic controls on a phone form go to `radide/mobile/render.py`, user
+  controls to `radide/usercontrols.py`, everything else to the package). The VB look they share (text,
+  alignment, Checked, Items, Minimum/Maximum/Value, font, colours, Enabled, the light form palette) is
+  `radide.components.classic.apply_classic(widget, props, ctx, special=None, rules=())` - a package that
+  wants to look like a built-in control can call it too: `special(widget, props, ctx)` replaces the generic
+  "set the text" step, `rules` adds style-sheet declarations (a list, or a function of `props`).
+* A property whose value decides which widget `create()` builds (TextBox `Multiline`: `QLineEdit` or
+  `QPlainTextEdit`) says `"rebuildPreview": true`; changing it rebuilds the preview.
 
 ## 8. Custom property editors (`editors.py`)
 

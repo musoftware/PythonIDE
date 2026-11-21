@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "name": "MTextField",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Material outlined text field with a hint.",
+  "category": "Mobile",
+  "order": 1070,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "TextField",
+  "defaultSize": [
+    300,
+    56
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11,
+    "Text": ""
+  },
+  "properties": [
+    {
+      "name": "Hint",
+      "type": "str",
+      "default": "Enter text",
+      "category": "Appearance",
+      "description": "Label shown while the field is empty."
+    },
+    {
+      "name": "Password",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Hide the characters."
+    }
+  ],
+  "events": [
+    {
+      "name": "Changed",
+      "description": "The value changed (Switch, Slider, TextField, BottomNav / TabBar index)."
+    },
+    {
+      "name": "Submitted",
+      "description": "The user pressed Done / Enter on the keyboard."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

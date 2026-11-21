@@ -1004,10 +1004,10 @@ def _steps_for(project: VsProject, cfg: str, plat: str, verb: str = "build") -> 
             exe.parent.mkdir(parents=True, exist_ok=True)
             srcs = [str(project.folder / f.rel) for f in ms.files() if f.kind == "ClCompile"]
             flags = (["-g", "-O0"] if cfg.lower() == "debug" else ["-O2"]) + ["-static-libgcc", "-static-libstdc++"]
-            return [Step([gpp, *flags, "-o", str(exe), *srcs], ms.folder, {"PATH": str(Path(gpp).parent) + os.pathsep +
-                                                                         os.environ.get("PATH", "")},
-                         f"g++ (MinGW) -> {exe.name}")], \
-                "Visual C++ build tools were not found: the sources are compiled with MinGW g++ (fallback)"
+            pre, objs, note = _masm_steps(project, exe)
+            return pre + [Step([gpp, *flags, "-o", str(exe), *srcs, *objs], ms.folder, {"PATH": str(Path(gpp).parent) + os.pathsep + os.environ.get("PATH", "")},
+                               f"g++ (MinGW) -> {exe.name}")], \
+                "Visual C++ build tools were not found: the sources are compiled with MinGW g++ (fallback)" + note
         return [], ("cannot build a .vcxproj: install Visual Studio Build Tools with the C++ workload (MSBuild + "
                     "cl) or MinGW-w64 (g++)")
     if msb:
@@ -1018,6 +1018,27 @@ def _steps_for(project: VsProject, cfg: str, plat: str, verb: str = "build") -> 
             "" if MB.msbuild_is_full(msb) else "using the .NET Framework 4 MSBuild (install VS Build Tools for full support)"
     return [], ("this is a .NET Framework project: it needs MSBuild from Visual Studio / Build Tools "
                 "(winget install Microsoft.VisualStudio.2022.BuildTools)")
+
+
+def _masm_steps(project: VsProject, exe: Path) -> tuple[list, list, str]:
+    """MinGW fallback of a .vcxproj with MASM (.asm) items: assemble them with ml64 / ml of an installed
+    Visual Studio (never downloaded) into COFF objects that g++ links. (steps, objects, note)."""
+    from ._others_base import Step
+    asm = [f for f in project.ms.files() if f.kind == "MASM"]
+    if not asm:
+        return [], [], ""
+    from .asm_folder import find_masm
+    ml, _bat = find_masm(64)
+    if not ml:
+        return [], [], (f"; {len(asm)} MASM source(s) are skipped: MASM (ml64) comes with Visual Studio's C++ "
+                        "workload")
+    steps, objs = [], []
+    for f in asm:
+        obj = exe.parent / (Path(f.rel).stem + ".obj")
+        steps.append(Step([ml, "/nologo", "/c", "/Zi", f"/Fo{obj}", str(project.folder / f.rel)], project.ms.folder,
+                          {}, f"ml64 {Path(f.rel).name}"))
+        objs.append(str(obj))
+    return steps, objs, f"; MASM sources assembled with {Path(ml).name}"
 
 
 def _mingw_exe(project: VsProject, cfg: str) -> Path:

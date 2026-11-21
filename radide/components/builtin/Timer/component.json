@@ -40,5 +40,15 @@
     "*": {
       "native": true
     }
+  },
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.Timer",
+    "imports": [
+      "vb.timer"
+    ],
+    "properties": {
+      "Interval": "Interval"
+    }
   }
 }

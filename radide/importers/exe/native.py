@@ -1352,6 +1352,13 @@ def run(path, info, workdir, progress, ai_translate: bool = False) -> ImportResu
     result.modules.append((f"{safe_name(path.stem, 'Program')}_native.py",
                            stubs_module(an, funcs, decomp, translated, program), "python"))
     result.modules.append(("native_report.txt", report_text(an, funcs), "text"))
+    try:                      # NASM-syntax listing (asm_listing.py) -> _original/recovered/<Program>_disasm.asm
+        from .asm_listing import nasm_listing
+        result.modules.append((f"{safe_name(path.stem, 'Program')}_disasm.asm", nasm_listing(path, an), "asm"))
+        result.add("info", f"Disassembly listing (NASM syntax): {safe_name(path.stem, 'Program')}_disasm.asm in "
+                           "_original/recovered (open that folder with File > Open Folder to browse it)")
+    except Exception as e:  # noqa: BLE001
+        result.add("warn", f"No disassembly listing: {e}")
     n_missing = len(funcs) - len(translated)
     if n_missing:
         result.add("missing", f"{n_missing} program function(s) kept as documented stubs "

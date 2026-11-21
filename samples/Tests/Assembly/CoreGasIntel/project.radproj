@@ -1,0 +1,15 @@
+{
+  "name": "CoreGasIntel",
+  "language": "asm-gas",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.s"
+  ],
+  "asm": {
+    "assembler": "gas",
+    "arch": "x64",
+    "linker": "gcc",
+    "entry": "main"
+  }
+}

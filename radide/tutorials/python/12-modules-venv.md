@@ -111,7 +111,7 @@ def format_money(amount):
 نسبة الضريبة: 14
 ```
 
-> **في الأمثلة:** السطر `# #file: helpers.py` علامة في هذه الدروس فقط تفصل الملفات؛ زر «جرّبه» ينشئ ملفين في المشروع. أما في مشروعك فأضف الملف من **Project ← Add Module...** (مشروع ← إضافة وحدة برمجية...)، واكتب اسمه، فتنشئه الـ IDE وتضيف سطر الاستيراد إلى ملف البداية تلقائيًا.
+> **في الأمثلة:** السطر `# #file: helpers.py` علامة في هذه الدروس فقط تفصل الملفات؛ زر «جرّبه» ينشئ ملفين في المشروع. أما في مشروعك فأضف الملف من **Project > Add Module...** (مشروع ← إضافة وحدة برمجية...)، واكتب اسمه، فتنشئه الـ IDE وتضيف سطر الاستيراد إلى ملف البداية تلقائيًا.
 
 ### فائدة `if __name__ == "__main__":`
 
@@ -189,8 +189,8 @@ True
 
 ### تثبيت مكتبة من داخل RAD IDE
 
-1. افتح مشروعك، ثم **Project ← Manage Packages...** (مشروع ← إدارة الحزم...).
-2. في الأعلى اختر **Install into:** ← **Project virtual environment (.venv) - recommended**.
+1. افتح مشروعك، ثم **Project > Manage Packages...** (مشروع ← إدارة الحزم...).
+2. في الأعلى اختر **Install into:** > **Project virtual environment (.venv) - recommended**.
 3. اكتب اسم المكتبة في خانة البحث، مثلًا `python-dateutil`، واضغط **Search** أو Enter.
 4. اختر الإصدار واضغط **Install**.
 
@@ -321,5 +321,5 @@ print(Counter(text.split()).most_common(3))
 ## الخلاصة
 
 - `import` و`from ... import` و`as` لاستيراد الوحدات، والمكتبة القياسية غنية جدًا.
-- قسّم برنامجك إلى ملفات (Project ← Add Module...)، والحزمة مجلد فيه `__init__.py`.
-- المكتبات الخارجية من PyPI تُثبّت بـ pip في `.venv` المشروع عبر **Project ← Manage Packages...**، وتُسجَّل في `requirements.txt`.
+- قسّم برنامجك إلى ملفات (Project > Add Module...)، والحزمة مجلد فيه `__init__.py`.
+- المكتبات الخارجية من PyPI تُثبّت بـ pip في `.venv` المشروع عبر **Project > Manage Packages...**، وتُسجَّل في `requirements.txt`.

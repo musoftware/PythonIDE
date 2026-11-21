@@ -54,31 +54,31 @@ def parse_listing(text: str, source_lines: list[str] | None = None,
     The listing comes from ``nasm -l`` of the module assembled with the anchor pre-included (``-P``):
     the anchor file shows up at depth <1> before the first line of the module."""
     rows: list[tuple[int, int]] = []
-    section = ".text"
+    section = ".text"            # current section
+    user_section = ".text"       # what __?SECT?__ goes back to (the last "section x" without brackets)
     end = 0
     last_top = 0                 # last top-level line (macro calls own their expansion)
     top_is_include = False
-    module_started = False
-    prev_depth0_line = 0
     for raw in text.splitlines():
         m = _LST_RX.match(raw)
         if not m:
             continue
         line_no, off, hexpart, depth, src = int(m.group(1)), m.group(2), m.group(3), m.group(4), m.group(5)
+        body = src
         if depth is None:
-            if not module_started or line_no < prev_depth0_line:
-                module_started = True
-            prev_depth0_line = line_no
             last_top = line_no
-            body = src
             if source_lines is not None and 0 < line_no <= len(source_lines):
                 body = source_lines[line_no - 1]
             top_is_include = bool(re.match(r"^\s*%\s*include\b", body, re.I))
-            sm = _SECTION_RX.match(body)
-            if sm:
-                section = sm.group(1).lower()
-                continue
-        if not module_started:
+        code = body.split(";", 1)[0]
+        sm = _SECTION_RX.match(code)
+        if sm:
+            section = sm.group(1).lower()
+            if not code.lstrip().startswith("["):
+                user_section = section
+            continue
+        if re.search(r"__\??SECT\??__", code):
+            section = user_section
             continue
         off = off.strip()
         if not re.fullmatch(r"[0-9A-Fa-f]{8}", off):
@@ -91,7 +91,7 @@ def parse_listing(text: str, source_lines: list[str] | None = None,
         o = int(off, 16)
         n = _byte_count(hexpart)
         end = max(end, o + n)
-        if n and (not rows or rows[-1] != (target, o)) and not (rows and rows[-1][1] == o and rows[-1][0] == target):
+        if n:
             rows.append((target, o))
     # one row per address: keep the first line that starts at an address
     seen: set[int] = set()
@@ -102,7 +102,8 @@ def parse_listing(text: str, source_lines: list[str] | None = None,
         seen.add(o)
         out.append((ln, o))
     out.sort(key=lambda r: r[1])
-    return out, end
+    compact = [r for i, r in enumerate(out) if i == 0 or out[i - 1][0] != r[0]]   # a row when the line changes
+    return compact, end
 
 
 def _sleb(v: int) -> str:

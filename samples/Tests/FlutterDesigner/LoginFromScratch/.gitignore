@@ -1,0 +1,10 @@
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+
+# QA script output
+qa/work/
+qa/out/

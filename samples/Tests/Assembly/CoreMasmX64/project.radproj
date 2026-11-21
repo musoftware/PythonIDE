@@ -1,0 +1,15 @@
+{
+  "name": "CoreMasmX64",
+  "language": "asm-masm",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ],
+  "asm": {
+    "assembler": "masm",
+    "arch": "x64",
+    "linker": "link",
+    "entry": "main"
+  }
+}

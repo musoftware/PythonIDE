@@ -21,7 +21,7 @@
 
 ## الخطوة 2: المنطق في `tasks.py` واختباره في الكونسول
 
-أنشئ مشروع **Windows Application** باسم `TaskManager` (Python (Tkinter))، ثم أضف وحدة جديدة من **Project ← Add Module...** باسم `tasks`. لنختبر المنطق أولًا ببرنامج كونسول صغير:
+أنشئ مشروع **Windows Application** باسم `TaskManager` (Python (Tkinter))، ثم أضف وحدة جديدة من **Project > Add Module...** باسم `tasks`. لنختبر المنطق أولًا ببرنامج كونسول صغير:
 
 ```python run
 # #file: main.py
@@ -279,7 +279,7 @@ class TaskList:
 - **تاريخ استحقاق** لكل مهمة بأداة `DateTimePicker`، وتلوين المتأخر منها.
 - **بحث** بـ `TextBox` وحدث `TextChanged` يعرض المهام المطابقة فقط.
 - **نسخة PySide6**: أنشئ مشروع Python (PySide6 / Qt) واستخدم نفس `tasks.py` دون تغيير حرف واحد! هذه فائدة فصل المنطق عن الواجهة.
-- **تحويله إلى برنامج exe** لتوزيعه على أصدقائك من **Build ← Publish** (تبني الـ IDE نسخة جاهزة بـ PyInstaller).
+- **تحويله إلى برنامج exe** لتوزيعه على أصدقائك من **Build > Publish** (تبني الـ IDE نسخة جاهزة بـ PyInstaller).
 
 ## تمارين
 

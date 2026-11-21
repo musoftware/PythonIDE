@@ -127,7 +127,9 @@ def _compiler_kind(plugin) -> str:
 
 def engine_for(plugin) -> str | None:
     """Debug engine of a bridge language (None = no debugger for it)."""
-    eng = ENGINES.get(getattr(plugin, "id", ""))
+    eng = ENGINES.get(getattr(plugin, "id", "")) or getattr(plugin, "debug_engine", None)
+    if eng is None and callable(getattr(plugin, "debug_info", None)):
+        eng = "gdb"                      # assembly plugins (asm_base.debug_info): radide/nativedbg.py
     if eng == "gdb" and hasattr(plugin, "compiler_kind") and _compiler_kind(plugin) == "msvc":
         return None                      # cl.exe builds: PDB debug info, not readable by gdb
     return eng
@@ -589,7 +591,12 @@ class BridgeDebugSession(QObject):
             args = {"pid": self.pid}
             if exe:
                 args["program"] = exe
-            d = AttachDap([gdb, "-i", "dap"], "gdb", args, cwd, gdb_env(gdb), bps, self)
+            d = None
+            if callable(getattr(self.plugin, "debug_info", None)):     # assembly: .asm line table, nativedbg.py
+                from .nativedbg import bridge_attach_dap
+                d = bridge_attach_dap(self.plugin, [gdb, "-i", "dap"], args, cwd, gdb_env(gdb), bps, exe, self)
+            if d is None:
+                d = AttachDap([gdb, "-i", "dap"], "gdb", args, cwd, gdb_env(gdb), bps, self)
         elif eng == "netcoredbg":
             d = AttachDap([find_netcoredbg(), "--interpreter=vscode"], "coreclr",
                           {"type": "coreclr", "request": "attach", "processId": self.pid, "justMyCode": True},

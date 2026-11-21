@@ -274,6 +274,15 @@ class RingQtPlugin(LanguagePlugin):
 
     # ------------------------------------------------------------ generation
     def generate_designer(self, form: Form, user_code: str) -> str:
+        from ..components import codegen as _comp      # component packages: runtime `load`s go to the top
+        _comp.begin(form, self.id)
+        text = self._generate_designer(form, user_code)
+        loads = _comp.take_imports()
+        if loads:
+            text = _comp.insert_imports(text, loads, marker="load ")
+        return text
+
+    def _generate_designer(self, form: Form, user_code: str) -> str:
         n, fp = form.name, form.props
         q = lambda s: quote(s, RING_QUOTES)
         has = lambda h: self.find_handler(user_code, h) >= 0
@@ -476,6 +485,9 @@ class RingQtPlugin(LanguagePlugin):
 
     def _control(self, parent: str, c, form: Form, user_code: str) -> list[str]:
         p, n, t = c.props, c.name, c.type
+        from ..components import codegen as _comp      # component packages (radide/components)
+        if _comp.handles(t):
+            return _comp.ring_control_lines(self, parent, c, form, user_code)
         q = lambda s: quote(s, RING_QUOTES)
         cls = QT_CLASS[t]
         multiline = t == "TextBox" and p.get("Multiline")
@@ -569,56 +581,16 @@ class RingQtPlugin(LanguagePlugin):
         return line
 
     def _new_control(self, c, fmt: str) -> list[str]:
-        """Content of the controls of CONTRACTS section 4."""
-        q = lambda s: quote(s, RING_QUOTES)
-        p, n, t = c.props, c.name, c.type
-        out: list[str] = []
-        if t == "TabControl":
-            for i, title in enumerate(self._pages(c)):
-                out += [f"{n}_Page{i} = new qWidget()", f"{n}.addTab({n}_Page{i}, {q(title)})"]
-            idx = int(p.get("SelectedIndex") or 0)
-            if 0 < idx < len(self._pages(c)):
-                out.append(f"{n}.setCurrentIndex({idx})")
-        elif t == "TreeView":
-            out.append(f"{n}.setHeaderHidden(true)")
-            var: dict[str, str] = {}
-            for k, (path, text) in enumerate(tree_paths(p.get("Nodes", "")), 1):
-                v = var[path] = f"oNode{k}"
-                parent = var.get(path.rpartition("/")[0])
-                out += [f"{v} = new qTreeWidgetItem()", f"{v}.setText(0, {q(text)})",
-                        f"{parent}.addChild({v})" if parent else f"{n}.addTopLevelItem({v})"]
-            if var:
-                out.append(f"{n}.expandAll()")
-        elif t in ("ListView", "DataGridView"):
-            cols = split_items(p.get("Columns", ""))
-            rows = split_rows(p.get("Items" if t == "ListView" else "Rows", ""))
-            if t == "ListView" and p.get("View") == "List":
-                cols, rows = cols[:1] or [""], [r[:1] for r in rows]
-                out.append(f"{n}.horizontalHeader().hide()")
-            out += [f"{n}.setColumnCount({max([len(cols)] + [len(r) for r in rows])})",
-                    f"{n}.setRowCount({len(rows)})"]
-            out += [f"{n}.setHorizontalHeaderItem({i}, new qTableWidgetItem({q(col)}))"
-                    for i, col in enumerate(cols)]
-            out += [f"{n}.setItem({r}, {k}, new qTableWidgetItem({q(cell)}))"
-                    for r, row in enumerate(rows) for k, cell in enumerate(row)]
-            out.append(f"{n}.horizontalHeader().setStretchLastSection(true)")
-            if t == "ListView":
-                out += [f"{n}.verticalHeader().hide()", f"{n}.setShowGrid(false)",
-                        f"{n}.setEditTriggers(0)", f"{n}.setSelectionBehavior(1)    # SelectRows",
-                        f"{n}.setSelectionMode(1)    # SingleSelection"]
-            elif p.get("ReadOnly"):
-                out.append(f"{n}.setEditTriggers(0)")
-        elif t == "DateTimePicker":
-            out.append(f"{n}.setDisplayFormat({q(DATE_FORMATS.get(fmt, DATE_FORMATS['Short']))})")
-            v = _date_value(p.get("Value", ""), fmt)
-            if fmt == "Time":
-                out.append(f"{n}.setTime(new qTime().fromString({q(v)}, \"HH:mm:ss\"))" if v
-                           else f"{n}.setTime(new qTime().currentTime())")
-            else:
-                out.append(f"{n}.setCalendarPopup(true)")
-                out.append(f"{n}.setDate(new qDate().fromString({q(v)}, \"yyyy-MM-dd\"))" if v
-                           else f"{n}.setDate(new qDate().currentDate())")
-        return out
+        """Content of the controls of CONTRACTS section 4: ``runtime/ring_qt.py`` of their
+        component packages (radide/components/builtin/<Type>/)."""
+        from types import SimpleNamespace
+        from ..components import codegen as _comp
+        g = SimpleNamespace(q=lambda s: quote(s, RING_QUOTES), c=c, p=c.props, n=c.name, t=c.type, fmt=fmt,
+                            out=[],
+                            pages=self._pages, split_items=split_items, split_rows=split_rows, tree_paths=tree_paths,
+                            DATE_FORMATS=DATE_FORMATS, date_value=_date_value)
+        _comp.builtin_emit("ring_qt", c, g)
+        return g.out
 
     def new_code(self, form: Form, is_startup: bool) -> str:
         n = form.name

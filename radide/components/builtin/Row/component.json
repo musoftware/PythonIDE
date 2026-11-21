@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "name": "Row",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lays out its children left to right (drag a child to reorder).",
+  "category": "Mobile",
+  "order": 1140,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Row",
+  "defaultSize": [
+    320,
+    64
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Spacing",
+      "type": "int",
+      "default": 8,
+      "category": "Layout",
+      "description": "Gap between the children in dp."
+    },
+    {
+      "name": "Align",
+      "type": "enum",
+      "default": "Start",
+      "category": "Layout",
+      "description": "Start / Center / End / Stretch: where the children sit across the container (Stretch = full width in a Column, full height in a Row). SpaceBetween / SpaceAround: spread the children along the container.",
+      "choices": [
+        "Start",
+        "Center",
+        "End",
+        "Stretch",
+        "SpaceBetween",
+        "SpaceAround"
+      ]
+    },
+    {
+      "name": "Padding",
+      "type": "int",
+      "default": 8,
+      "category": "Layout",
+      "description": "Space inside the edges in dp."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

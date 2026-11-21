@@ -140,81 +140,13 @@ EVENT_HELP.setdefault("Changed", "The value changed (Switch, Slider, TextField, 
 EVENT_HELP.setdefault("Submitted", "The user pressed Done / Enter on the keyboard.")
 
 
-def _ct(name, prefix, size, events, extra=(), *, text=False, container=False, overrides=(), desc=""):
-    return ControlType(name, prefix, size, list(events), list(extra), has_text=text, container=container,
-                       common_events=False, description=desc,
-                       overrides=(("FontSize", 11), *overrides))
+# The mobile controls are built-in component packages ("mobile": true) like the desktop ones:
+# radide/components/builtin/<AppBar|BottomNav|Fab|Card|MListView|Switch|MSlider|MTextField|MImage|MIcon|Drawer|
+# MTabBar|MWebView|Column|Row|Stack>/component.json (docs/COMPONENTS.md). Their design-time look is drawn by
+# radide/mobile/render.py (Material 3), their code by the mobile language plugins (Flutter, Kivy ...).
+from ..components import builtin_mobile_types as _builtin_mobile_types  # noqa: E402
 
-
-_SPACING = [_p("Spacing", "int", 8, "Gap between the children in dp.", category="Layout"),
-            _p("Align", "enum", "Start", "Start / Center / End / Stretch: where the children sit across the "
-               "container (Stretch = full width in a Column, full height in a Row). SpaceBetween / SpaceAround: "
-               "spread the children along the container.", ALIGNS, category="Layout"),
-            _p("Padding", "int", 8, "Space inside the edges in dp.", category="Layout")]
-
-MOBILE_CONTROL_TYPES: dict[str, ControlType] = {t.name: t for t in [
-    _ct("AppBar", "AppBar", (360, 56), ["Click"],
-        [_p("Title", "str", "Title", "Text shown in the bar.", category="Appearance"),
-         _p("Actions", "list", "search;more_vert", "Action buttons separated by ; - a Material icon name "
-            "(search, share ...) or a word. Each raises <AppBar>_Click with e.Action.", category="Data")],
-        overrides=(("Dock", "Top"), ("Anchor", "Top, Left, Right"), ("FontSize", 15)),
-        desc="Material top app bar with a title and action buttons."),
-    _ct("BottomNav", "BottomNav", (360, 80), ["Changed"],
-        [_p("Items", "list", "Home;Search;Profile", "Destinations separated by ;", category="Data"),
-         _p("SelectedIndex", "int", 0, "Selected destination (0 = first).", category="Behavior")],
-        overrides=(("Dock", "Bottom"), ("Anchor", "Bottom, Left, Right"), ("FontSize", 9)),
-        desc="Bottom navigation bar to switch between the main screens."),
-    _ct("Fab", "Fab", (56, 56), ["Click"],
-        [_p("Icon", "enum", "add", "Material icon of the button.", ICON_NAMES, category="Appearance")],
-        overrides=(("Anchor", "Bottom, Right"),),
-        desc="Floating action button for the main action of the screen."),
-    _ct("Card", "Card", (320, 120), ["Tap"],
-        [_p("Elevation", "int", 1, "Shadow depth (0 - 8).", category="Appearance")],
-        container=True, desc="A rounded surface that groups other controls."),
-    _ct("MListView", "ListView", (360, 240), ["Tap"],
-        [_p("Items", "list", "Item 1|First item;Item 2|Second item;Item 3|Third item",
-            "Rows separated by ; with fields separated by | (matching ItemTemplate).", category="Data"),
-         _p("ItemTemplate", "str", "title|subtitle", "Fields of a row: title, subtitle, icon, trailing - "
-            "separated by | (e.g. icon|title|subtitle).", category="Data")],
-        desc="A scrolling list of tiles; e.Index tells which row was tapped."),
-    _ct("Switch", "Switch", (52, 32), ["Changed"],
-        [_p("Checked", "bool", False, "On / off.", category="Appearance")],
-        desc="Material on/off switch."),
-    _ct("MSlider", "Slider", (240, 40), ["Changed"],
-        [_p("Minimum", "int", 0, category="Behavior"), _p("Maximum", "int", 100, category="Behavior"),
-         _p("Value", "int", 50, category="Behavior")],
-        desc="Material slider to pick a value."),
-    _ct("MTextField", "TextField", (300, 56), ["Changed", "Submitted"],
-        [_p("Hint", "str", "Enter text", "Label shown while the field is empty.", category="Appearance"),
-         _p("Password", "bool", False, "Hide the characters.", category="Behavior")],
-        text=True, overrides=(("Text", ""),),
-        desc="Material outlined text field with a hint."),
-    _ct("MImage", "Image", (160, 120), ["Tap"],
-        [_p("Image", "file", "", "Image file (asset) - .png / .jpg.", category="Appearance"),
-         _p("Fit", "enum", "Cover", "How the picture fills the box.", FITS, category="Appearance")],
-        desc="Shows a picture."),
-    _ct("MIcon", "Icon", (32, 32), ["Tap"],
-        [_p("Icon", "enum", "star", "Material icon name.", ICON_NAMES, category="Appearance")],
-        desc="A Material icon."),
-    _ct("Drawer", "Drawer", (280, 400), ["Tap"],
-        [_p("Items", "list", "Home;Settings;About", "Menu entries separated by ;", category="Data")],
-        overrides=(("Dock", "Left"), ("Anchor", "Top, Bottom, Left")),
-        desc="Navigation drawer opened from the AppBar menu button (shown open in the designer)."),
-    _ct("MTabBar", "TabBar", (360, 48), ["Changed"],
-        [_p("Tabs", "list", "Tab 1;Tab 2;Tab 3", "Tab captions separated by ;", category="Data"),
-         _p("SelectedIndex", "int", 0, "Selected tab (0 = first).", category="Behavior")],
-        overrides=(("Dock", "Top"), ("Anchor", "Top, Left, Right")),
-        desc="Material tabs."),
-    _ct("MWebView", "WebView", (360, 300), ["Load"],
-        [_p("Url", "str", "https://flutter.dev", "Page shown in the view.", category="Behavior")],
-        desc="Shows a web page inside the app."),
-    _ct("Column", "Column", (320, 200), [], _SPACING, container=True,
-        desc="Lays out its children top to bottom (drag a child to reorder)."),
-    _ct("Row", "Row", (320, 64), [], _SPACING, container=True,
-        desc="Lays out its children left to right (drag a child to reorder)."),
-    _ct("Stack", "Stack", (200, 200), [], [*_SPACING[1:]], container=True,
-        desc="Children on top of each other (Align Start = free positions)."),
-]}
+MOBILE_CONTROL_TYPES: dict[str, ControlType] = _builtin_mobile_types()
 
 MOBILE_TYPES = tuple(MOBILE_CONTROL_TYPES)
 LAYOUT_TYPES = ("Column", "Row", "Stack")

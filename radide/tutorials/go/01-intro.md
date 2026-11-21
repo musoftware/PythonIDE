@@ -20,7 +20,7 @@
 
 ## أول مشروع Go في الـ IDE
 
-1. **File ← New Project...** (ملف ← مشروع جديد).
+1. **File > New Project...** (ملف ← مشروع جديد).
 2. **Native** (أصلي) ← **Go (GUI Bridge)**.
 3. القالب: **Console Application** (تطبيق طرفية)، والاسم `HelloGo`.
 4. يفتح الملف `Program.go`. امسح ما فيه واكتب:
@@ -98,6 +98,6 @@ Go
 ## الخلاصة
 
 - Go لغة بسيطة وسريعة من Google.
-- المشروع: **File ← New Project ← Native ← Go (GUI Bridge)**، والقالب **Console Application**.
+- المشروع: **File > New Project > Native > Go (GUI Bridge)**، والقالب **Console Application**.
 - البرنامج يبدأ من `func main()` في `package main`.
 - **Ctrl+F5** للتشغيل والناتج في **Output**.

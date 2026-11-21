@@ -46,5 +46,21 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.ComboBox",
+    "imports": [
+      "msdatalistlib.datacombo",
+      "msdblib.dbcombo",
+      "vb.combobox",
+      "vb.drivelistbox"
+    ],
+    "approx": [
+      "msdatalistlib.datacombo",
+      "msdblib.dbcombo",
+      "vb.drivelistbox"
+    ]
   }
 }

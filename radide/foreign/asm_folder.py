@@ -70,6 +70,12 @@ def _strip_comments(text: str) -> str:
 def guess_dialect(text: str, filename: str = "") -> str:
     """'nasm' | 'masm' | 'fasm' | 'gas' | '8086' for an assembly source."""
     body = _strip_comments(text or "")
+    try:                                            # the emulator's own test (radide/emu8086/detect.py)
+        from ..emu8086.detect import is_dos16_source
+        if is_dos16_source(text or ""):
+            return "8086"
+    except Exception:  # noqa: BLE001 - emulator not installed: the regex below
+        pass
     if _DOS_RX.search(body) and not re.search(r"\b(rax|rbx|rcx|rdx|rsp|rbp|r8|r9)\b", body, re.I):
         return "8086"
     scores = {}
@@ -133,7 +139,14 @@ def entry_point(text: str, dialect: str) -> str:
 
 # ===================================================================== tools
 def _plugin_tool(name: str) -> str:
-    """The Assembly language plugin's finder for *name* (when that plugin is installed)."""
+    """The Assembly support's own finders (radide/asm/toolchain.py) when they are installed."""
+    try:
+        from ..asm import toolchain as tc
+        hit = tc.find(name)
+        if hit:
+            return str(hit)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from ..languages import plugins_for_ext
         for p in plugins_for_ext(".asm"):
@@ -182,12 +195,16 @@ def find_tool(name: str) -> str:
 def find_masm(bits: int = 64) -> tuple[str, str]:
     """(ml64.exe / ml.exe, vcvars bat) of a Visual Studio installation, or ("", "") - never downloaded."""
     name = "ml64.exe" if bits == 64 else "ml.exe"
-    w = shutil.which(name)
     try:
         from ..languages.c_bridge import find_vcvars
         bat = find_vcvars()
     except Exception:  # noqa: BLE001
         bat = ""
+    try:
+        from ..asm import toolchain as tc
+        w = tc.find_masm("x64" if bits == 64 else "x86")
+    except Exception:  # noqa: BLE001
+        w = shutil.which(name)
     if w:
         return w, bat
     if not bat:
@@ -207,6 +224,25 @@ def sasm_include() -> str:
             if (p / "io64.inc").is_file() or (p / "io.inc").is_file():
                 return str(p)
     return ""
+
+
+PLUGIN_IDS = {"nasm": "asm-nasm", "masm": "asm-masm", "fasm": "asm-fasm", "gas": "asm-gas", "8086": "emu8086"}
+
+
+def plugin_for_dialect(dialect: str) -> str:
+    """The Assembly language plugin of a dialect (radide/languages/asm_*.py), "" when it is not installed."""
+    try:
+        from ..languages import all_plugins, get_plugin
+        try:
+            return get_plugin(PLUGIN_IDS.get(dialect, "asm-nasm")).id
+        except KeyError:
+            if dialect == "8086":
+                hit = next((p.id for p in all_plugins() if "8086" in p.id or "emu" in p.id), "")
+                if hit:
+                    return hit
+            return get_plugin("asm-nasm").id
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 # ===================================================================== folder scan
@@ -303,8 +339,8 @@ def read_ide_project(path: Path) -> dict:
         for k, v in sorted(files.items(), key=lambda kv: (len(kv[0]), kv[0])):
             if k.isdigit() and v.strip():
                 out["files"].append(v.strip().replace("\\", "/"))
-        out["make"] = [v for k, v in _section(cp, "MakeFiles").items() if v.strip()][:12] + \
-            [v for k, v in _section(cp, "MakeDef").items() if v.strip()][:12]
+        out["make"] = [v.split(",", 2)[-1].rsplit(",", 1)[0] for k, v in _section(cp, "MakeDef").items()
+                       if k.isdigit() and v.strip()][:12]          # "4,O,$B\nasm -f win64 $C,1" -> the command
     else:                                                # WinAsm Studio
         proj = _section(cp, "PROJECT")
         out["assembler"] = "masm"
@@ -332,13 +368,6 @@ class AsmFolderAdapter(ForeignAdapter):
         super().__init__(native, native if native.is_dir() else native.parent)
         self.info_scan: AsmFolderInfo | None = None
         self.ide: dict = {}
-        try:
-            from ..languages import plugins_for_ext
-            cands = plugins_for_ext(".asm")
-            if cands:
-                self.base_language = cands[0].id
-        except Exception:  # noqa: BLE001
-            pass
 
     def scan(self) -> None:
         files = None
@@ -348,6 +377,9 @@ class AsmFolderAdapter(ForeignAdapter):
             self.title = ("RadASM project" if self.native.suffix.lower() == ".rap" else "WinAsm Studio project")
             self.name = self.native.stem
         self.info_scan = info = scan_folder(self.root, files)
+        pid = plugin_for_dialect(info.dialect)
+        if pid:
+            self.base_language = pid
         if files is None:
             self.title = f"Assembly sources ({info.title()})"
         self.modules = info.sources + info.includes
@@ -429,11 +461,17 @@ class AsmFolderAdapter(ForeignAdapter):
             ml, bat = find_masm(bits)
             ent = entry or "main"
             sub = "windows" if ent.lower().startswith("winmain") else "console"
-            cmd = (f'"{ml or "ml64"}" /nologo /Zi /Fo"{obj}" "{src}" /link /subsystem:{sub} /entry:{ent} '
-                   f'/out:"{exe}" kernel32.lib user32.lib legacy_stdio_definitions.lib ucrt.lib msvcrt.lib')
-            if bat:
-                cmd = f'call "{bat}" >nul && {cmd}'
-            return [Step(["cmd", "/c", cmd], self.root, {}, "ml64" if bits == 64 else "ml")]
+            # main / WinMain: the C runtime start-up calls it (and flushes printf at exit); else a raw entry
+            crt = ent.lower() in ("main", "winmain", "wwinmain")
+            entry_opt = "" if crt else f" /entry:{ent}"
+            libs = "msvcrt.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib " if crt else ""
+            cmd = (f'"{ml or "ml64"}" /nologo /Zi /Fo"{obj}" "{src}" /link /subsystem:{sub}{entry_opt} '
+                   f'/out:"{exe}" {libs}kernel32.lib user32.lib')
+            script = exe.with_name(exe.stem + "_masm.bat")         # quotes survive in a batch file
+            script.write_text("@echo off\r\n" + (f'call "{bat}" >nul\r\n' if bat else "") + cmd + "\r\n",
+                              encoding="mbcs" if os.name == "nt" else "utf-8", errors="replace")
+            # cwd = the state folder: ml writes its response file (mllink$.lnk) into the current folder
+            return [Step(["cmd", "/c", str(script)], exe.parent, {}, "ml64" if bits == 64 else "ml")]
         return []
 
     def run_step(self, target, debug):
@@ -468,22 +506,45 @@ class AsmFolderAdapter(ForeignAdapter):
 
 
 def open_emulator(win, path: Path) -> bool:
-    """Open an 8086 program in the teaching emulator (the emulator slice's entry point, docs/ASSEMBLY.md)."""
-    import importlib
-    for mod, fn in (("radide.features.asm_emulator", "open_emulator"), ("radide.asm.emu_ui", "open_emulator"),
-                    ("radide.emu8086.ui", "open_emulator"), ("radide.features.emu8086", "open_emulator")):
-        try:
-            m = importlib.import_module(mod)
-        except ImportError:
-            continue
-        f = getattr(m, fn, None)
-        if callable(f):
-            return bool(f(win, Path(path)))
+    """Fallback run step of an 8086 target when the emulator session could not start (see _hook_emulator)."""
     try:
-        win.log(f"[assembly] {Path(path).name} is an 8086 / DOS program: the 8086 emulator is not installed")
+        import importlib.util
+        have = importlib.util.find_spec("radide.emu8086.ui") is not None
+    except (ImportError, ValueError):
+        have = False
+    try:
+        win.log(f"[assembly] {Path(path).name} is an 8086 / DOS program: " +
+                ("press F5 to run it in the 8086 emulator" if have else "the 8086 emulator is not installed"))
     except Exception:  # noqa: BLE001
         pass
     return False
+
+
+def _hook_emulator(project: ForeignProject) -> None:
+    """Run / Debug of an 8086 target -> the 8086 emulator session (radide/emu8086/ui.py Emu8086Session),
+    like an emu8086 project; the other targets keep the build + run chain of the adapter."""
+    try:
+        from ..languages import get_plugin
+        plugin = get_plugin(project.language)
+    except Exception:  # noqa: BLE001
+        return
+    adapter, orig = project.adapter, plugin.make_session
+
+    def make_session(win, spec, debug, _orig=orig):
+        t = adapter.target(win.project.startup if getattr(win, "project", None) is not None else "")
+        if t is not None and t.kind == "emu":
+            try:
+                from ..emu8086.ui import Emu8086Session
+                src = adapter.root / t.data["file"]
+                try:
+                    bps = win._all_breakpoints()
+                except Exception:  # noqa: BLE001
+                    bps = []
+                return Emu8086Session(win, src.parent, src.name, debug, bps)
+            except ImportError:
+                pass
+        return _orig(win, spec, debug)
+    plugin.make_session = make_session
 
 
 def open_asm(win, path: Path) -> bool:
@@ -496,6 +557,8 @@ def open_asm(win, path: Path) -> bool:
     a.win = win
     if not a.modules:
         return False
+    if any(t.kind == "emu" for t in a.targets):
+        _hook_emulator(project)
     return show_projects(win, [project], project.name, Path(path))
 
 

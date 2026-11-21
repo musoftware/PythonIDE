@@ -184,7 +184,7 @@ g++ -std=c++20 main.cpp mathutils.cpp -o app.exe
 ### في الـ IDE
 
 1. من قائمة **Project** اختر **Add Module** واكتب `mathutils`، فتُنشأ `mathutils.cpp` وتُضاف إلى المشروع.
-2. أنشئ ملف `mathutils.h` في مجلد المشروع نفسه (**Project ← Open Project Folder**).
+2. أنشئ ملف `mathutils.h` في مجلد المشروع نفسه (**Project > Open Project Folder**).
 3. عند الضغط على **F5** تترجم الـ IDE كل ملفات `.cpp` في المشروع وتربطها معًا تلقائيًا.
 
 ### `#pragma once` (حارس الترويسة)

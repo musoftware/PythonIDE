@@ -38,7 +38,7 @@
 
 ## أول مشروع C في الـ IDE
 
-1. من القائمة **File ← New Project...** (ملف ← مشروع جديد).
+1. من القائمة **File > New Project...** (ملف ← مشروع جديد).
 2. في شجرة اللغات اختر **Native** (أصلي)، ثم **C (GUI Bridge, gcc / MSVC)**.
 3. من قائمة **Template** (القالب) اختر **Console Application** (تطبيق طرفية)، وسمّ المشروع `HelloC`.
 4. تفتح الـ IDE الملف `Program.c`. امسح ما فيه واكتب البرنامج التالي.
@@ -132,5 +132,5 @@ C
 
 - لغة C سريعة وقريبة من الجهاز، ومنها وُلدت C++.
 - الـ IDE تترجم برامج C بالمترجم gcc من MinGW.
-- مشروع C جديد: **File ← New Project ← Native ← C**، والقالب **Console Application**.
+- مشروع C جديد: **File > New Project > Native > C**، والقالب **Console Application**.
 - **Ctrl+F5** للتشغيل، والناتج يظهر في نافذة **Output**.

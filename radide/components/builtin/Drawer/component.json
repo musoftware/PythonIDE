@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "name": "Drawer",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Navigation drawer opened from the AppBar menu button (shown open in the designer).",
+  "category": "Mobile",
+  "order": 1100,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Drawer",
+  "defaultSize": [
+    280,
+    400
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11,
+    "Dock": "Left",
+    "Anchor": "Top, Bottom, Left"
+  },
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "Home;Settings;About",
+      "category": "Data",
+      "description": "Menu entries separated by ;"
+    }
+  ],
+  "events": [
+    {
+      "name": "Tap",
+      "description": "The user tapped the control (MListView / Drawer: e.Index = the item)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

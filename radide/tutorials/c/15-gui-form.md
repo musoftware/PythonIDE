@@ -40,7 +40,7 @@
 
 ### 1) إنشاء المشروع
 
-1. **File ← New Project...** (ملف ← مشروع جديد).
+1. **File > New Project...** (ملف ← مشروع جديد).
 2. **Native** (أصلي) ← **C (GUI Bridge, gcc / MSVC)**، والقالب **Windows Application** (تطبيق Windows).
 3. سمّ المشروع `HelloForm`. يفتح النموذج **Form1** في وضع التصميم، ومعه ملف الكود `Form1.c`.
 
@@ -60,6 +60,7 @@
 
 **انقر مرتين** على الزر في المصمم، فتنشئ الـ IDE الدالة `void btnHello_Click(void)` وتنقلك إليها في `Form1.c`. اكتب:
 
+<!-- test: {"set": {"txtName.Text": "Mona"}, "events": ["btnHello Click"], "expect": {"lblOut.Text": "أهلًا يا Mona!"}} -->
 ```c form run
 #include <stdio.h>
 #include "radgui.h"
@@ -107,6 +108,7 @@ void btnHello_Click(void)             /* تعمل عند الضغط على ال�
 
 لاحظ الدالة المساعدة `calculate` التي تمنع تكرار الكود في الأزرار الأربعة:
 
+<!-- test: {"set": {"txtA.Text": "7", "txtB.Text": "2"}, "events": ["btnMul Click", {"txtB.Text": "0"}, "btnDiv Click"], "expect": {"lblResult.Text": "14"}, "msgbox": ["لا يمكن القسمة على صفر"]} -->
 ```c form run
 #include "radgui.h"
 
@@ -173,6 +175,7 @@ void btnClear_Click(void)
 }
 ```
 
+<!-- test: {"set": {"txtA.Text": "5", "txtB.Text": "9", "lblResult.Text": "14"}, "events": ["btnClear Click"], "expect": {"txtA.Text": "0", "txtB.Text": "0", "lblResult.Text": ""}} -->
 ```c form solution
 #include "radgui.h"
 

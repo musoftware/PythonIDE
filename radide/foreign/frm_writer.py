@@ -29,6 +29,7 @@ import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..components import vb6map as _vb6map
 from ..controls import CONTROL_TYPES
 from ..model import Control, Form
 
@@ -51,20 +52,9 @@ OCX = {
 }
 FONT_GUID = "{0BE35203-8F91-11CE-9DE3-00AA004BB851}"
 
-# neutral type -> VB6 class written for NEW controls
-NEW_CLASS = {
-    "Button": "VB.CommandButton", "Label": "VB.Label", "TextBox": "VB.TextBox", "CheckBox": "VB.CheckBox",
-    "RadioButton": "VB.OptionButton", "ListBox": "VB.ListBox", "ComboBox": "VB.ComboBox",
-    "PictureBox": "VB.PictureBox", "Panel": "VB.PictureBox", "GroupBox": "VB.Frame", "Timer": "VB.Timer",
-    "TrackBar": "VB.HScrollBar", "LinkLabel": "VB.Label",
-    "ProgressBar": "MSComctlLib.ProgressBar", "NumericUpDown": "MSComCtl2.UpDown",
-    "TreeView": "MSComctlLib.TreeView", "ListView": "MSComctlLib.ListView",
-    "StatusBar": "MSComctlLib.StatusBar", "DateTimePicker": "MSComCtl2.DTPicker",
-    "TabControl": "TabDlg.SSTab", "DataGridView": "MSFlexGridLib.MSFlexGrid",
-    "OpenFileDialog": "MSComDlg.CommonDialog", "SaveFileDialog": "MSComDlg.CommonDialog",
-    "ColorDialog": "MSComDlg.CommonDialog", "FontDialog": "MSComDlg.CommonDialog",
-    "FolderBrowserDialog": "MSComDlg.CommonDialog",
-}
+# neutral type -> VB6 class written for NEW controls: "vb6": {"class": ...} of the component manifests
+# (radide/components/builtin/<Type>/component.json, radide/components/vb6map.py)
+NEW_CLASS = _vb6map.new_class_map()
 _TEXT_CLASSES = ("vb.textbox", "vb.combobox", "richtextlib.richtextbox")
 
 
@@ -760,6 +750,9 @@ def _prop_edits(ed: _Editor, b_cls: str, ctrl: Control, key: str, value) -> list
         return []
     if key == "DropDownStyle":
         return [("Style", "2  'Dropdown List" if value == "DropDownList" else None)]
+    vb_name = _vb6map.property_name(t, key)          # "vb6": {"properties": {"Minimum": "Min", ...}}
+    if vb_name:
+        return [(vb_name, str(int(value)))]
     if key == "Minimum":
         return [("Min", str(int(value)))]
     if key == "Maximum":

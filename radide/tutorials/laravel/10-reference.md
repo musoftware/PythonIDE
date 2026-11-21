@@ -94,7 +94,7 @@ DELETE  /books/{book}        books.destroy
 | Mass assignment / `$fillable` | الإسناد الجماعي | الأعمدة المسموح ملؤها من مصفوفة واحدة |
 | Relationship | علاقة | `hasMany` و`belongsTo` بين النماذج |
 | Route model binding | ربط النموذج بالمسار | Laravel يجلب `{book}` من قاعدة البيانات تلقائيًا |
-| Validation | التحقق | فحص المدخلات بقواعد مثل `required|max:200` |
+| Validation | التحقق | فحص المدخلات بقواعد مثل `required` و`max:200` |
 | Form Request | طلب نموذج | صنف مستقل لقواعد التحقق |
 | Flash message | رسالة فلاش | رسالة في الجلسة تظهر في الطلب التالي فقط |
 | CSRF token | رمز CSRF | قيمة سرية في كل نموذج (`@csrf`) تمنع الطلبات المزوّرة |

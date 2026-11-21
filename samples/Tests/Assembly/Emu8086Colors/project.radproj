@@ -1,0 +1,9 @@
+{
+  "name": "Emu8086Colors",
+  "language": "emu8086",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ]
+}

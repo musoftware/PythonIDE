@@ -36,6 +36,9 @@ LANG_NAMES.update({"js": "JavaScript", "ts": "TypeScript"})
 # Flutter screens / pygame scenes (guides flutter-mobile, games: tutorials/flutter_support.py, game_support.py)
 LEXERS.update({"flutter": "dart", "game": "python"})
 LANG_NAMES.update({"flutter": "Flutter", "game": "لعبة pygame"})
+# Assembly course: NASM x64 and 8086 programs (radide/tutorials/asm_support.py)
+LEXERS.update({"asm": "nasm", "asm16": "nasm"})
+LANG_NAMES.update({"asm": "Assembly", "asm16": "8086"})
 
 try:
     import markdown as _markdown
@@ -121,6 +124,7 @@ blockquote { margin: 1em 0; padding: 8px 14px; background: var(--quote); border-
 blockquote p { margin: 0.3em 0; }
 table { border-collapse: collapse; margin: 1em 0; width: 100%%; }
 th, td { border: 1px solid var(--border); padding: 5px 9px; vertical-align: top; }
+td code { word-break: break-all; }
 th { background: var(--chip); }
 .meta { color: var(--muted); font-size: 0.85em; margin-bottom: 4px; }
 .blk { border: 1px solid var(--border); border-radius: 8px; margin: 14px 0; background: var(--card); overflow: hidden; }
@@ -213,10 +217,10 @@ _ARABIC = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 
 
 def _inline(text: str) -> str:
-    """Quiz text: escaped, `code` spans as <code> (left-to-right inside Arabic sentences)."""
+    """Quiz text: escaped, `code` spans as <code> (left-to-right inside Arabic sentences), **bold** as <b>."""
     parts = re.split(r"(`[^`]+`)", text)
     return "".join(f"<code>{html.escape(p[1:-1])}</code>" if p.startswith("`") and p.endswith("`") and len(p) > 1
-                   else html.escape(p) for p in parts)
+                   else re.sub(r"\*\*(\S(?:.*?\S)?)\*\*", r"<b>\1</b>", html.escape(p)) for p in parts)
 
 
 def _dir(text: str) -> str:

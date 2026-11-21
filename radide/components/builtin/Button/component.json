@@ -37,5 +37,13 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.CommandButton",
+    "imports": [
+      "vb.commandbutton"
+    ]
   }
 }

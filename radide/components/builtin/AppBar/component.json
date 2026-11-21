@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "name": "AppBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Material top app bar with a title and action buttons.",
+  "category": "Mobile",
+  "order": 1000,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "AppBar",
+  "defaultSize": [
+    360,
+    56
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 15,
+    "Dock": "Top",
+    "Anchor": "Top, Left, Right"
+  },
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "Title",
+      "category": "Appearance",
+      "description": "Text shown in the bar."
+    },
+    {
+      "name": "Actions",
+      "type": "list",
+      "default": "search;more_vert",
+      "category": "Data",
+      "description": "Action buttons separated by ; - a Material icon name (search, share ...) or a word. Each raises <AppBar>_Click with e.Action."
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

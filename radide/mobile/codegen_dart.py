@@ -235,6 +235,9 @@ class DartFormGen:
             return fn(c, s, p, en)
         if t in ("Column", "Row", "Stack", "Panel"):
             return self.container(c)
+        from ..components import codegen as _comp      # component packages: their "flutter" target
+        if _comp.handles(t):
+            return _comp.dart_widget(self, c)
         # unknown control: a labelled box, so the screen still builds
         return (f"Container(decoration: BoxDecoration(border: Border.all(color: Colors.grey)), "
                 f"alignment: Alignment.center, child: Text({dstr(t + ' ' + s)}))")

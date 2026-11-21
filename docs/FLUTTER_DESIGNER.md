@@ -263,3 +263,33 @@ model.apply_patch(screen, model.invert(p))                 # undo
 Primitive changes are JSON (`{"op": "put", "parent": id|None, "where": {...}, "old": node|None, "new":
 node|None}` and `{"op": "set", "id": id, "field": "props"|"events"|"anim"|"name"|"ctor", "key": k, "old": v,
 "new": v}`), so patches can also travel to the preview host.
+
+## 8. Live preview (preview_host/ + live.py)
+
+- **Host**: `radide/flutterdesign/preview_host/` is a Flutter web app (`lib/factory.dart` builds real widgets for
+  every catalog type, `values.dart` decodes section 2 values, `theme.dart` themes / fonts, `fx.dart` the entrance
+  animations, `nodebox.dart` the per-node wrapper). It is built once with `flutter build web --release` into
+  `%LOCALAPPDATA%\RADIDE\flutter-preview-host\<flutter version>-<source hash>\build\web` (about 2 minutes; rebuilt
+  only when the host sources or the Flutter version change) - `live.host_ready()`, `live.build_host_sync()`,
+  `live.HostBuilder` (async, used by the UI).
+- **Server + bridge**: `live.PreviewServer` serves the host at `/` and the project folder at `/project/` (assets,
+  fonts). Messages go in through `window.radHost.deliver(json)` and come back through the
+  QWebChannel object `radBridge`; the protocol is documented at the top of
+  `preview_host/lib/main.dart`. Python sends the whole screen once and then only model patches (section 6),
+  debounced (`LivePreview.DEBOUNCE_MS`); a property change is rendered and its new rects are back in about
+  50-100 ms.
+- **Host -> IDE**: `rects` (global rect of every built node, device rect, zoom), `click` / `dblclick` / `context`
+  (deepest node first, with the path to the root), `hover`, `issues` (per node: render errors, unbounded sizes,
+  invalid property combinations), `event` (interact mode), `rendered` (latency).
+- **Every node** is wrapped in a `NodeBox` (`ValueKey('rad:<id>')`) whose RenderBox is registered by id: rects,
+  design-mode hit testing (a click anywhere in a box selects it, Spacers are widened to the Row/Column), error
+  mapping. A child that asks for an infinite size (e.g. an `InkWell` without a child inside a `ListView`) is
+  given a 48 px error box and reported as an error issue on its node instead of breaking the whole preview.
+- **Device**: size / orientation / text scale / dark / RTL / frame (`LivePreview.set_device`, `rotate`), design
+  vs interact mode (`set_mode`), `play()` / `stop_animations()`, `select(id, reveal=True)` (scrolls lazy lists
+  until the node is built and opens the drawer that contains it).
+- **Exact mode**: `LivePreview.start_exact(project, route)` runs `codegen.write_all` + `flutter run -d web-server`
+  and shows the real app in the same view; `exact_reload()` (PreviewPane.screen_saved) regenerates and hot
+  reloads. The first debug compile takes 40-90 s; a watchdog reloads the page (twice at most) when the app
+  connected but created no Flutter view within 25 s.
+- `live.PreviewPane` is the ready-made widget (tool bar + view) used by the designer.

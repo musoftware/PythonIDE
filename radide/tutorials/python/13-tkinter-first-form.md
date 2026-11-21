@@ -16,8 +16,8 @@
 
 ### 1) إنشاء المشروع
 
-1. **File ← New Project** (ملف ← مشروع جديد...).
-2. اختر **Python ← Python (Tkinter)**، والقالب **Windows Application** (تطبيق Windows).
+1. **File > New Project** (ملف ← مشروع جديد...).
+2. اختر **Python > Python (Tkinter)**، والقالب **Windows Application** (تطبيق Windows).
 3. سمّ المشروع `HelloForm` واضغط **OK**.
 
 تفتح الـ IDE النموذج **Form1** في **المصمم** (Designer)، وفي **مستكشف الحلول** (Solution Explorer) ترى ثلاثة ملفات للنموذج:
@@ -305,7 +305,7 @@ if __name__ == "__main__":
 
 ## الخلاصة
 
-- مشروع النوافذ: **File ← New Project ← Python (Tkinter) ← Windows Application**.
+- مشروع النوافذ: **File > New Project > Python (Tkinter) > Windows Application**.
 - ارسم الأدوات من **Toolbox**، وسمّها من **Properties**، وانقر مرتين لتنشئ معالج الحدث.
 - كودك في `Form1.py` داخل صنف يرث من `Form1Designer`، والدالة `اسمالأداة_الحدث`.
 - `get()` لقراءة مربع النص، و`config(text=...)` لتغيير النصوص، و`messagebox` للرسائل.

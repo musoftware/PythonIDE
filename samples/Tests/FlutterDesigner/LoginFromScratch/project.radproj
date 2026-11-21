@@ -1,0 +1,11 @@
+{
+  "name": "QaLogin",
+  "language": "flutter",
+  "forms": [],
+  "startup": "Login",
+  "modules": [],
+  "mobile": {
+    "device": "chrome"
+  },
+  "designer": "widget-tree"
+}

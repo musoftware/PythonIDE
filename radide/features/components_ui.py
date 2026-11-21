@@ -31,6 +31,7 @@ class ComponentsFeature:
         self._timer.setInterval(300)
         self._timer.timeout.connect(self.hot_reload)
         self._warned = 0
+        self._target_warned: set = set()
 
     # ------------------------------------------------------------ loading
     def load(self) -> None:
@@ -94,6 +95,38 @@ class ComponentsFeature:
         self._watch()                      # files replaced by editors are watched again
         return False
 
+    # ------------------------------------------------------------ design-time target check
+    def check_target(self, target=None) -> list[str]:
+        """The shown form's language changed (or a form was shown): say in the Output window which component
+        controls have no runtime for it (the generated program gets a placeholder). Returns the messages."""
+        from ..components.targets import support_text, unsupported_controls
+        from ..toolbox import TOOL_STATE
+        target = target or TOOL_STATE.target
+        dv = self.win._current_designer() if hasattr(self.win, "_current_designer") else None
+        doc = getattr(dv, "doc", None)
+        form = getattr(doc, "form", None)
+        if form is None or not target:
+            return []
+        out = []
+        for c in unsupported_controls(form, target):
+            from ..components import package_of
+            pkg = package_of(c.type)
+            where = support_text(pkg).replace("\n", "; ") if pkg is not None else "package not installed"
+            msg = (f"[components] warning: {form.name}.{c.name} ({c.type}) has no runtime for {target} - "
+                   f"the program will show a placeholder ({where})")
+            key = (form.name, c.name, target)
+            if key not in self._target_warned:
+                self._target_warned.add(key)
+                self.win.log(msg)
+            out.append(msg)
+        if out:
+            try:
+                self.win.statusBar().showMessage(f"{len(out)} component control(s) have no {target} runtime "
+                                                 f"(see Output)", 8000)
+            except Exception:  # noqa: BLE001
+                pass
+        return out
+
     # ------------------------------------------------------------ save / run
     def after_save(self) -> None:
         prj = getattr(self.win, "project", None)
@@ -149,6 +182,11 @@ def install(win) -> None:
         pass
     feat.load()
     feat._watch()
+    try:                                    # design time: controls without a runtime for the form's language
+        from ..toolbox import TOOL_STATE
+        TOOL_STATE.targetChanged.connect(lambda t: QTimer.singleShot(0, lambda: feat.check_target(t)))
+    except Exception as e:  # noqa: BLE001
+        win.log(f"[components] {e}")
 
     orig_activate = win.activate_project
 

@@ -1,0 +1,26 @@
+{
+  "id": "assembly",
+  "title_ar": "تعلّم لغة التجميع (Assembly) من الصفر",
+  "title_en": "Learn Assembly from Scratch",
+  "language": "asm",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في لغة التجميع لمعالجات x86-64 على ويندوز بالمجمّع NASM: كيف يعمل المعالج والذاكرة والمسجلات، والأنظمة العددية (الثنائي والسادس عشر)، والبيانات والمتغيرات، والعمليات الحسابية والمنطقية، والأعلام والقفزات، والحلقات والمصفوفات وطرق العنونة، والمكدس والإجراءات واتفاقية الاستدعاء في ويندوز، والنصوص، واستدعاء دوال لغة C وواجهة Win32، ونموذج رسومي عبر GUI Bridge، ثم برامج 8086 في المحاكي التعليمي، وتصحيح الأخطاء بنوافذ المسجلات والتفكيك والذاكرة، ومشروع نهائي وقاموس مصطلحات.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما هي لغة التجميع؟ برنامجك الأول", "minutes": 30},
+    {"id": "02-numbers", "file": "02-numbers.md", "title_ar": "الأنظمة العددية: الثنائي والسادس عشر", "minutes": 40},
+    {"id": "03-registers-memory", "file": "03-registers-memory.md", "title_ar": "المعالج والمسجلات والذاكرة", "minutes": 40},
+    {"id": "04-data", "file": "04-data.md", "title_ar": "البيانات والمتغيرات والأقسام", "minutes": 40},
+    {"id": "05-arithmetic", "file": "05-arithmetic.md", "title_ar": "العمليات الحسابية والمنطقية", "minutes": 45},
+    {"id": "06-flags-jumps", "file": "06-flags-jumps.md", "title_ar": "الأعلام والمقارنة والقفزات", "minutes": 45},
+    {"id": "07-loops", "file": "07-loops.md", "title_ar": "حلقات التكرار", "minutes": 40},
+    {"id": "08-arrays", "file": "08-arrays.md", "title_ar": "المصفوفات وطرق العنونة", "minutes": 45},
+    {"id": "09-stack-procedures", "file": "09-stack-procedures.md", "title_ar": "المكدس والإجراءات واتفاقية الاستدعاء", "minutes": 55},
+    {"id": "10-strings", "file": "10-strings.md", "title_ar": "النصوص (Strings)", "minutes": 45},
+    {"id": "11-c-winapi", "file": "11-c-winapi.md", "title_ar": "استدعاء دوال C وواجهة Win32", "minutes": 45},
+    {"id": "12-gui-form", "file": "12-gui-form.md", "title_ar": "نموذج رسومي بلغة التجميع عبر GUI Bridge", "minutes": 45},
+    {"id": "13-emu8086", "file": "13-emu8086.md", "title_ar": "معالج 8086 في المحاكي التعليمي", "minutes": 50},
+    {"id": "14-debugging", "file": "14-debugging.md", "title_ar": "تصحيح الأخطاء: المسجلات والتفكيك والذاكرة", "minutes": 40},
+    {"id": "15-final-project", "file": "15-final-project.md", "title_ar": "المشروع النهائي: محلّل الأعداد", "minutes": 90},
+    {"id": "16-glossary", "file": "16-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 15}
+  ]
+}

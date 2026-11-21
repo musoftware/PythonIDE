@@ -43,6 +43,8 @@ class BridgeRuntime(Runtime):
         self.handler_names = {h.lower() for h in handlers}
         self.proc: subprocess.Popen | None = None
         self.lines: queue.Queue = queue.Queue()
+        self._serving = False                    # an EVENT is being handled by the program
+        self._pending: list = []                 # events raised meanwhile (sent after its DONE)
 
     # -- process
     def start_program(self):
@@ -137,11 +139,24 @@ class BridgeRuntime(Runtime):
 
     # -- events
     def event(self, owner: str, ev: str, e=None):
+        # an event raised while the program's handler is running (e.g. CALL rate1 Reset -> ValueChanged of a
+        # component package control) is sent after DONE: the program is waiting for the CALL's answer
+        if getattr(self, "_serving", False):
+            self._pending.append((owner, ev, e))
+            return None
         args = ""
         if e is not None and hasattr(e, "X"):
             args = f"{e.X} {e.Y} {e.Button} {e.KeyCode} {e.KeyChar}".strip()
         self.send(f"EVENT {owner} {ev} {args}".rstrip())
-        return self.serve()
+        self._serving = True
+        try:
+            r = self.serve()
+        finally:
+            self._serving = False
+        pending, self._pending = list(getattr(self, "_pending", [])), []
+        for o, v, x in pending:
+            self.event(o, v, x)
+        return r
 
     def serve(self):
         """Handle commands until the program says DONE (or exits)."""

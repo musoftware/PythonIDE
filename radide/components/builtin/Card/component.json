@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "Card",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A rounded surface that groups other controls.",
+  "category": "Mobile",
+  "order": 1030,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Card",
+  "defaultSize": [
+    320,
+    120
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Elevation",
+      "type": "int",
+      "default": 1,
+      "category": "Appearance",
+      "description": "Shadow depth (0 - 8)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Tap",
+      "description": "The user tapped the control (MListView / Drawer: e.Index = the item)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

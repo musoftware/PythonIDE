@@ -29,5 +29,6 @@
     "*": {
       "native": true
     }
-  }
+  },
+  "help": "help.md"
 }

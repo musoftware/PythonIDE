@@ -8,7 +8,7 @@
 
 rust-analyzer هو **خادم اللغة** الرسمي لـ Rust، والـ IDE تتحدث معه لتعطيك IntelliSense.
 
-1. **Tools ← Rust Settings...** (أدوات ← إعدادات Rust...).
+1. **Tools > Rust Settings...** (أدوات ← إعدادات Rust...).
 2. إن ظهر أنه غير مثبت اضغط **Install** (ينفذ `rustup component add rust-analyzer rust-src`).
 3. من نفس النافذة يمكنك اختيار:
    - **Check on save:** الفحص عند الحفظ بـ `cargo check` أو بـ `clippy` (أدق وينصحك بكتابة أفضل).
@@ -32,7 +32,7 @@ rust-analyzer هو **خادم اللغة** الرسمي لـ Rust، والـ IDE
 
 ## 3) قائمة الأخطاء (Error List)
 
-افتح **View ← Error List** (قائمة الأخطاء). تعرض أخطاء وتحذيرات **كل** ملفات المشروع، حتى المغلقة، مع رمز الخطأ:
+افتح **View > Error List** (قائمة الأخطاء). تعرض أخطاء وتحذيرات **كل** ملفات المشروع، حتى المغلقة، مع رمز الخطأ:
 
 ```text
 error   [rustc E0382]  borrow of moved value: `name`        src/main.rs  12
@@ -110,7 +110,7 @@ let total = dbg!(a + b) * 2;
 
 ## أخطاء شائعة
 
-- **IntelliSense لا يعمل:** rust-analyzer غير مثبت أو ما زال يفهرس. انظر شريط الحالة و**Tools ← Rust Settings...**.
+- **IntelliSense لا يعمل:** rust-analyzer غير مثبت أو ما زال يفهرس. انظر شريط الحالة و**Tools > Rust Settings...**.
 - **نقطة التوقف لا تتوقف:** شغلت بـ **Ctrl+F5** (بلا تصحيح) بدل **F5**، أو `gdb` غير موجود.
 - **المتغيرات تظهر `<optimized out>`:** أنت تصحح نسخة `--release`. صحح نسخة debug العادية.
 
@@ -162,7 +162,7 @@ fn main() {
 
 ## الخلاصة
 
-- **Tools ← Rust Settings...** لتثبيت rust-analyzer وضبط الفحص والتنسيق.
+- **Tools > Rust Settings...** لتثبيت rust-analyzer وضبط الفحص والتنسيق.
 - **Ctrl+Space** و**F12** و**F2** و**Ctrl+.** تسرّع الكتابة، و**Error List** تجمع كل الأخطاء.
 - **F9** ثم **F5** للتصحيح، و**F10**/**F11** للتنقل، و**Locals**/**Watch**/**Call Stack** لمشاهدة الحالة.
 - `dbg!` للتتبع السريع.

@@ -211,6 +211,7 @@ class FlutterPlugin(LanguagePlugin):
         (folder / "lib").mkdir(parents=True, exist_ok=True)
         written = []
         forms, webview, images = [], False, set()
+        loaded = []                       # Form objects (component packages used by the forms)
         for name in project.forms:
             try:
                 form = Form.load(project.form_path(name))
@@ -219,6 +220,7 @@ class FlutterPlugin(LanguagePlugin):
             if project.form_language(name) != self.id:
                 continue
             forms.append((name, Path(self.code_file(name)).name, cg.form_route(form)))
+            loaded.append(form)
             for c in form.controls:
                 if c.type == "MWebView":
                     webview = True
@@ -252,7 +254,8 @@ class FlutterPlugin(LanguagePlugin):
         put("test/widget_test.dart", cg.widget_test(pkg), only_missing=True)
         put(".gitignore", ".dart_tool/\nbuild/\n.flutter-plugins\n.flutter-plugins-dependencies\n*.iml\n.idea/\n",
             only_missing=True)
-        put("lib/radapp.dart", cg.RADAPP)
+        from ..components.codegen import flutter_radapp     # + exports of the component packages' Dart files
+        put("lib/radapp.dart", flutter_radapp(cg.RADAPP, folder, loaded))
         if webview:
             put("lib/radwebview.dart", cg.RADWEBVIEW)
         seed = str(project.extra.get("theme_color") or "")

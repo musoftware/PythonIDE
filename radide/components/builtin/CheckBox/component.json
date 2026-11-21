@@ -32,5 +32,13 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.CheckBox",
+    "imports": [
+      "vb.checkbox"
+    ]
   }
 }

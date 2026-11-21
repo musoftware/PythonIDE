@@ -146,14 +146,12 @@ class ComponentPackage:
         return t if isinstance(t, dict) else {}
 
     def runtime(self, target: str) -> dict | None:
-        """The runtime entry for language plugin *target* ({"native": True} for built-ins), or None."""
-        t = self.targets
-        entry = t.get(target)
-        if entry is None and target.startswith("python-"):
-            entry = t.get("python")                  # one runtime for every Python toolkit
-        if entry is None:
-            entry = t.get("*")
-        return entry if isinstance(entry, dict) else None
+        """The runtime entry for language plugin *target* ({"native": True} for built-ins), or None. Lookup
+        (radide/components/targets.py): the id, its toolkit family, ``python`` for every Python toolkit,
+        ``bridge``, the renderer's runtime (vb-basic and GUI Bridge languages -> python-tk), then ``*``."""
+        from .targets import resolve
+        r = resolve(self, target)
+        return r.entry if r else None
 
     def supports(self, target: str) -> bool:
         return self.runtime(target) is not None
@@ -176,6 +174,8 @@ class ComponentPackage:
     # ---------------------------------------------------------------- python parts (designer / editors)
     def module(self, key: str):
         """The package's designer.py / editors.py module (re-imported when the file changed), or None."""
+        if self.builtin and key in self._modules:      # built-ins are not hot reloaded: no stat() per call
+            return self._modules[key][1]
         path = self.file(key)
         if path is None:
             return None
@@ -229,6 +229,8 @@ def _propdef(p: dict):
     raw = str(p.get("type") or "str")
     kind = proptypes.normalize(raw)
     choices = tuple(p.get("choices") or ())
+    if not choices and p.get("choicesFrom"):
+        choices = _choices_from(str(p["choicesFrom"]))
     if raw.lower() == "dock" and not choices:
         choices = DOCKS
     if kind == "alignment" and not choices:
@@ -240,12 +242,32 @@ def _propdef(p: dict):
                    choices, str(p.get("category") or "Misc"), str(p.get("editor") or ""), meta or None)
 
 
+def _choices_from(spec: str) -> tuple:
+    """``"radide.mobile.material_icons:icon_names"`` -> the values that function returns (a long or computed
+    enum list a manifest does not repeat; only modules of the IDE itself)."""
+    mod_name, _, fn_name = spec.partition(":")
+    if not mod_name.startswith("radide.") or not fn_name:
+        return ()
+    try:
+        import importlib
+        return tuple(str(x) for x in getattr(importlib.import_module(mod_name), fn_name)())
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+        return ()
+
+
+# property names whose change makes the designer build a new preview widget (TextBox Multiline: QLineEdit ->
+# QPlainTextEdit); a manifest property says "rebuildPreview": true (radide/document.py reads this set)
+REBUILD_PROPS: set = set()
+
+
 def control_type_of(pkg: ComponentPackage):
     """The ControlType of a package (manifest -> catalogue entry)."""
     from ..controls import ControlType
     m = pkg.manifest
     kind = m.get("kind", "visual")
     extra = [_propdef(p) for p in m.get("properties") or [] if isinstance(p, dict) and p.get("name")]
+    REBUILD_PROPS.update(d.name for d in extra if d.meta and d.meta.get("rebuildPreview"))
     events = [str(e["name"]) for e in m.get("events") or [] if isinstance(e, dict) and e.get("name")]
     de = m.get("defaultEvent")
     if de:                                    # the default event comes first (double-click in the designer)
@@ -338,11 +360,24 @@ def builtin_packages() -> dict[str, ComponentPackage]:
 
 
 def builtin_control_types() -> dict:
-    """The built-in control types in Toolbox order (called by radide.controls while it is imported)."""
+    """The built-in desktop control types in Toolbox order (called by radide.controls while it is imported)."""
     out = {}
     for name, pkg in builtin_packages().items():
+        if pkg.manifest.get("mobile"):
+            continue
         out[name] = control_type_of(pkg)
         _event_meta(pkg)
+    return out
+
+
+def builtin_mobile_types() -> dict:
+    """The built-in mobile control types (``"mobile": true`` packages: AppBar, BottomNav, ... - radide/mobile)
+    in Toolbox order (called by radide.mobile.controls while it is imported)."""
+    out = {}
+    for name, pkg in builtin_packages().items():
+        if pkg.manifest.get("mobile"):
+            out[name] = control_type_of(pkg)
+            _event_meta(pkg)
     return out
 
 
@@ -813,7 +848,7 @@ class {Name}(QLabel):
 
 __all__ = ["MANIFEST", "PACKAGE_EXT", "API_VERSION", "SCHEMA", "SCHEMA_VERSION", "SOURCES", "CATEGORY_ORDER",
            "ComponentError", "ComponentPackage", "Registry", "REGISTRY", "read_package", "builtin_packages",
-           "builtin_control_types", "control_type_of", "missing_type", "is_missing", "package_of",
+           "builtin_control_types", "builtin_mobile_types", "REBUILD_PROPS", "control_type_of", "missing_type", "is_missing", "package_of",
            "is_component_type", "help_file", "event_help", "ensure_types", "used_packages", "copy_runtimes",
            "install_package", "uninstall_package", "export_package", "new_package", "user_components_dir",
            "project_components_dir", "dev_dirs", "validate_manifest", "version_key"]

@@ -544,7 +544,8 @@ class TutorialsPanel(QWidget):
                     or (b.lang == "php" and "web" not in b.info.lower().split())
                     or (b.lang in getattr(T, "SCRIPT", ()) and not b.form)
                     or (b.lang in getattr(T, "JSL", ()) and not b.form)
-                    or (b.lang in getattr(T, "NATIVE", ()) and not b.gui)):
+                    or (b.lang in getattr(T, "NATIVE", ()) and not b.gui)
+                    or (b.lang == "asm" and not b.gui)):
             stdin = b.check_target().stdin if b.role != "plain" else None
             if stdin is None and b.reads_stdin():
                 text, ok = QInputDialog.getMultiLineText(

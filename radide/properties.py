@@ -158,6 +158,8 @@ class PropertiesPanel(QWidget):
         try:        # the toolbox shows the control names of the form's toolkit (e.g. WinForms)
             from .toolbox import TOOL_STATE
             TOOL_STATE.set_profile(getattr(plugin, "designer_profile", None) if doc is not None else None)
+            # component packages without a runtime for the form's language are greyed (components/targets.py)
+            TOOL_STATE.set_target(getattr(plugin, "id", None) if doc is not None else None)
         except Exception:  # noqa: BLE001
             pass
         if doc is not None:

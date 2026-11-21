@@ -1,0 +1,42 @@
+; hello.fasm - FASM 32-bit Windows GUI program (fasm hello.fasm).
+; RAD IDE IntelliSense test: format / entry / section / import, proc ... endp, macro { }.
+
+format PE GUI 4.0
+entry start
+
+include 'win32a.inc'
+
+TIMES_TO_SHOW = 2
+
+macro show_box text, caption
+{
+    invoke MessageBox, HWND_DESKTOP, text, caption, MB_OK
+}
+
+section '.data' data readable writeable
+    caption     db 'RAD IDE', 0
+    greeting    db 'Hello from FASM!', 0
+    shown       dd 0
+
+section '.text' code readable executable
+
+start:
+    stdcall ShowGreeting, TIMES_TO_SHOW
+    invoke  ExitProcess, 0
+
+proc ShowGreeting count
+    mov     ecx, [count]
+  .next:
+    push    ecx
+    show_box greeting, caption
+    inc     [shown]
+    pop     ecx
+    loop    .next
+    ret
+endp
+
+section '.idata' import data readable writeable
+    library kernel32, 'KERNEL32.DLL', \
+            user32, 'USER32.DLL'
+    import  kernel32, ExitProcess, 'ExitProcess'
+    import  user32, MessageBox, 'MessageBoxA'

@@ -51,9 +51,8 @@ def _viewer_props(w, p: dict, ctrl) -> None:
 
 
 def register_preview() -> None:
-    from .. import preview
-    preview._FACTORY.setdefault("ReportViewer", _viewer_preview)
-    preview._SPECIAL.setdefault("ReportViewer", _viewer_props)
+    """Nothing to register any more: the built-in ReportViewer package's designer.py
+    (radide/components/builtin/ReportViewer) uses _viewer_preview / _viewer_props."""
 
 
 # ------------------------------------------------------------------ manager

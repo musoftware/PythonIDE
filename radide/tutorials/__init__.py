@@ -30,7 +30,7 @@ COURSE_ORDER = ("vb-basic", "cpp")
 FENCE = re.compile(r"^```([^\n`]*)\n(.*?)^```[ \t]*$", re.M | re.S)
 TEST = re.compile(r"<!--\s*test:\s*(\{.*?\})\s*-->\s*$", re.S)
 COMMENT = re.compile(r"<!--.*?-->", re.S)
-FILE_MARK = re.compile(r"^\s*(?:'|//|#|!)\s*#file:\s*(\S+)\s*$")
+FILE_MARK = re.compile(r"^\s*(?:'|//|#|!|;)\s*#file:\s*(\S+)\s*$")
 CODE_LANGS = {"vb": "vb", "basic": "vb", "vba": "vb", "cpp": "cpp", "c++": "cpp", "ring": "ring", "python": "py", "py": "py"}
 # C / Rust / Go / Fortran lessons: radide/tutorials/native.py
 NATIVE = ("c", "rust", "go", "fortran")
@@ -51,6 +51,9 @@ CODE_LANGS.update({"flutter": "flutter", "game": "game"})
 # JavaScript / TypeScript lessons (Node.js console + GUI Bridge forms): radide/tutorials/js_support.py
 JSL = ("js", "ts")
 CODE_LANGS.update({"js": "js", "javascript": "js", "node": "js", "ts": "ts", "typescript": "ts"})
+# Assembly lessons (NASM x64 console / GUI Bridge forms, asm16 = 8086 emulator): radide/tutorials/asm_support.py
+ASML = ("asm", "asm16")
+CODE_LANGS.update({"asm": "asm", "nasm": "asm", "asm16": "asm16", "8086": "asm16"})
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
 
@@ -80,6 +83,8 @@ class Block:
     def runnable(self) -> bool:
         if self.lang in NATIVE or self.lang in SCRIPT or self.lang in CSJAVA or self.lang in PHPL or self.lang in JSL:
             return self.role in ("run", "solution")
+        if self.lang in ASML:
+            return self.role in ("run", "solution")
         if self.lang in MOBGAME:
             return self.role in ("run", "solution")
         return self.lang in ("vb", "cpp", "ring", "py") and self.role in ("run", "solution")
@@ -90,6 +95,9 @@ class Block:
         if self.lang in NATIVE:
             from .native import is_gui
             return is_gui(self)
+        if self.lang in ASML:
+            from .asm_support import is_gui as _asm_gui
+            return _asm_gui(self)
         if self.lang in CSJAVA:
             from .csjava_support import is_gui as _cj_gui
             return _cj_gui(self)
@@ -101,6 +109,9 @@ class Block:
         return self.solution if self.role == "exercise" and self.solution is not None else self
 
     def reads_stdin(self) -> bool:
+        if self.lang in ASML:
+            from .asm_support import reads_stdin as _asm_stdin
+            return _asm_stdin(self)
         if self.lang in JSL:
             from .js_support import reads_stdin as _js_stdin
             return _js_stdin(self)
@@ -266,9 +277,9 @@ def parse(md: str) -> list[tuple[str, object]]:
         items.append(("md", rest))
     # attach output / input to the code block before them, exercises to their solutions
     for i, b in enumerate(blocks):
-        if b.lang in ("vb", "cpp", "ring", "py", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME) and b.role in ("run", "solution", "exercise"):
+        if b.lang in ("vb", "cpp", "ring", "py", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML) and b.role in ("run", "solution", "exercise"):
             for nxt in blocks[i + 1:]:
-                if nxt.lang in ("vb", "cpp", "ring", "py", "quiz", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME):
+                if nxt.lang in ("vb", "cpp", "ring", "py", "quiz", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML):
                     break
                 if nxt.role == "output" and b.expected is None:
                     b.expected = nxt.code
@@ -302,6 +313,9 @@ def split_files(code: str, default: str) -> dict[str, str]:
 
 
 def default_file(block: Block) -> str:
+    if block.lang in ASML:
+        from .asm_support import default_file as asm_default
+        return asm_default(block)
     if block.lang == "flutter":
         from .flutter_support import default_file as flutter_default
         return flutter_default(block)
@@ -396,6 +410,9 @@ def make_project(block: Block, dest: Path, code: str | None = None, name: str = 
         from . import flutter_support, game_support
         mod = flutter_support if block.lang == "flutter" else game_support
         return mod.make_project(block_files(block, code), block.check_target().spec, dest, name)
+    if block.lang in ASML:
+        from . import asm_support
+        return asm_support.make_project(block, block_files(block, code), dest, name)
     raise ValueError(f"block '{block.info}' cannot be run")
 
 
@@ -679,6 +696,9 @@ def check(block: Block, code: str | None = None, folder: Path | None = None, wor
         from . import flutter_support, game_support
         mod = flutter_support if block.lang == "flutter" else game_support
         return mod.check(block, code, folder, work, norm, CheckResult)
+    if block.lang in ASML:
+        from . import asm_support
+        return asm_support.check(block, code, folder, work, norm, CheckResult, block_files)
     return CheckResult(False, "", None, ["هذه الكتلة لا تُشغَّل"])
 
 

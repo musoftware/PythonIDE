@@ -1,0 +1,18 @@
+[Project]
+Assembler=nasm
+Type=Console App
+Description=Hello (RadASM)
+Backup=$P\Bak\
+
+[MakeDef]
+Menu=1,1,1,1,1,1,1,0,0,0
+1=4,O,$B\nasm -f win64 $C,1
+2=3,O,$B\golink /console $C,2
+
+[MakeFiles]
+0=Hello.rap
+1=Hello.exe
+
+[Files]
+1=Hello.asm
+2=Readme.txt

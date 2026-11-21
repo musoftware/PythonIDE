@@ -1,0 +1,11 @@
+[PROJECT]
+Type=0
+ReleaseCommandLine=
+
+[MAKE]
+CompileRC=rc /v
+Assemble=ml /c /coff /Cp /nologo
+Link=/SUBSYSTEM:WINDOWS /RELEASE
+
+[FILES]
+1=Hello.asm

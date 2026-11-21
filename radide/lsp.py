@@ -65,14 +65,18 @@ SERVERS: dict[str, tuple[list[list[str]], str]] = {
     # Django / Jinja templates (radide/features/python_web.py): HTML IntelliSense from the HTML server
     "django-html": (_HTML, _WEB_HINT),
     "jinja-html": (_HTML, _WEB_HINT),
+    # assembly editors (radide/asm_intel): asm-lsp when installed (radide/lsp_servers.py asks asm_intel.lsp first)
+    **{f"rad-asm-{d}": ([], "Tools > Language Servers... (asm-lsp, optional)")
+       for d in ("nasm", "masm", "fasm", "gas")},
 }
 
 # languages that share one server process (per project root)
 SERVER_GROUP = {"scss": "css", "less": "css", "typescript": "javascript", "django-html": "html",
-                "jinja-html": "html"}
+                "jinja-html": "html", **{f"rad-asm-{d}": "rad-asm" for d in ("nasm", "masm", "fasm", "gas")}}
 
 # Monaco language id -> LSP languageId sent in didOpen
-LSP_LANGUAGE_ID = {"rad-fortran-bridge": "fortran", "django-html": "html", "jinja-html": "html"}
+LSP_LANGUAGE_ID = {"rad-fortran-bridge": "fortran", "django-html": "html", "jinja-html": "html",
+                   **{f"rad-asm-{d}": "asm" for d in ("nasm", "masm", "fasm", "gas")}}
 
 
 def server_key(language: str) -> str:

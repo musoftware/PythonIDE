@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "Switch",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Material on/off switch.",
+  "category": "Mobile",
+  "order": 1050,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Switch",
+  "defaultSize": [
+    52,
+    32
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "On / off."
+    }
+  ],
+  "events": [
+    {
+      "name": "Changed",
+      "description": "The value changed (Switch, Slider, TextField, BottomNav / TabBar index)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

@@ -54,5 +54,7 @@
     "*": {
       "native": true
     }
-  }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
 }

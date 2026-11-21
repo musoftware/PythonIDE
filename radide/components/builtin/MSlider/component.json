@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "name": "MSlider",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Material slider to pick a value.",
+  "category": "Mobile",
+  "order": 1060,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Slider",
+  "defaultSize": [
+    240,
+    40
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Minimum",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    },
+    {
+      "name": "Maximum",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior"
+    },
+    {
+      "name": "Value",
+      "type": "int",
+      "default": 50,
+      "category": "Behavior"
+    }
+  ],
+  "events": [
+    {
+      "name": "Changed",
+      "description": "The value changed (Switch, Slider, TextField, BottomNav / TabBar index)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

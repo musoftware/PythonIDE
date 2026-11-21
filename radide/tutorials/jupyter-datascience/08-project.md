@@ -10,7 +10,7 @@
 ## الخطوة 0: تجهيز المشروع
 
 1. أنشئ مجلدًا للتحليل، أو مشروعًا جديدًا، وضع فيه ملف البيانات `sales_q1.csv`.
-2. **File ← New Notebook ← Blank Notebook (.ipynb)...** واحفظه باسم `sales_analysis.ipynb` في نفس المجلد.
+2. **File > New Notebook > Blank Notebook (.ipynb)...** واحفظه باسم `sales_analysis.ipynb` في نفس المجلد.
 3. اكتب في أول خلية **Markdown** عنوان التحليل وهدفه. التقرير الجيد يشرح نفسه.
 
 ## الدفتر كاملًا
@@ -158,7 +158,7 @@ month
 
 وملف `.ipynb` نفسه يُفتح في Jupyter وVS Code وGoogle Colab وGitHub (يعرضه GitHub بالنتائج مباشرة).
 
-> **العكس أيضًا ممكن:** إذا كان عندك سكربت `.py` مقسم بـ `# %%`، فافتحه دفترًا بأمر **File ← New Notebook ← Import Python Script as Notebook...**.
+> **العكس أيضًا ممكن:** إذا كان عندك سكربت `.py` مقسم بـ `# %%`، فافتحه دفترًا بأمر **File > New Notebook > Import Python Script as Notebook...**.
 
 ## أفكار للتوسع
 

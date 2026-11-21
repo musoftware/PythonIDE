@@ -21,5 +21,13 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.Frame",
+    "imports": [
+      "vb.frame"
+    ]
   }
 }

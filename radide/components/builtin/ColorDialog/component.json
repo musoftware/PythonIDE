@@ -29,5 +29,10 @@
     "*": {
       "native": true
     }
+  },
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComDlg.CommonDialog",
+    "library": "MSComDlg"
   }
 }

@@ -76,6 +76,18 @@ def vb_to_color(v) -> str:
 
 # ============================================================================ new controls (CONTRACTS 4)
 _NA = object()          # "not handled here" marker of VBControl._ext_get / _ext_set / _ext_call
+
+
+def _is_comp(type_name: str) -> bool:
+    """A control of a (non built-in) component package (radide/components): VBControl reaches its runtime
+    object's properties and methods by their manifest names (VB code and GUI Bridge SET/GET/CALL)."""
+    try:
+        from ..components import is_component_type
+        return is_component_type(type_name)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 VB_TYPENAME = {"Button": "CommandButton", "RadioButton": "OptionButton", "GroupBox": "Frame",
                "NumericUpDown": "UpDown", "TrackBar": "Slider", "PictureBox": "PictureBox",
                "TabControl": "SSTab", "DataGridView": "MSFlexGrid", "DateTimePicker": "DTPicker",
@@ -494,6 +506,10 @@ class VBControl:
     # -- protocol
     def vb_get(self, name):
         w, t = self.w, self.type
+        if _is_comp(t):          # a component package control (radide/components)
+            v = self._comp_get(name)
+            if v is not _NA:
+                return v
         if name == "maxlength":
             return getattr(self, "_maxlength", int(self.ctrl.props.get("MaxLength", 0) or 0))
         if name in ("datasource", "datamember", "datafield"):
@@ -616,6 +632,8 @@ class VBControl:
 
     def vb_set(self, name, value):
         w, t = self.w, self.type
+        if _is_comp(t) and self._comp_set(name, value):     # component package control
+            return
         if name in ("datasource", "datamember", "datafield"):          # bound grids / controls (vbdata.py)
             if name == "datasource" and t == "DataGridView":
                 from .vbdata import set_datasource
@@ -760,6 +778,10 @@ class VBControl:
 
     def vb_call(self, name, args):
         w, t = self.w, self.type
+        if _is_comp(t):          # a component package control: its methods / properties
+            v = self._comp_call(name, args)
+            if v is not _NA:
+                return v
         if t in VB_EXT:
             v = self._ext_call(name, args)
             if v is not _NA:
@@ -815,6 +837,64 @@ class VBControl:
             self._timer().Enabled = name == "start"
             return EMPTY
         return self.vb_get(name)
+
+    # -- component package controls (radide/components): the runtime object's members by manifest name
+    def _comp_member(self, name):
+        try:
+            from ..components.targets import member
+            return member(self.type, name)
+        except Exception:  # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _comp_value(v):
+        if isinstance(v, bool) or v is None or isinstance(v, (int, float, str)):
+            return EMPTY if v is None else v
+        return to_str(v)
+
+    def _comp_get(self, name):
+        m = self._comp_member(name)
+        obj = getattr(self.form.ui, self.name, None)
+        if m is None or obj is None:
+            return _NA
+        kind, real, _ptype = m
+        try:
+            v = getattr(obj, real)
+        except AttributeError:
+            return _NA
+        if kind == "method" and callable(v):
+            return self._comp_value(v())
+        return self._comp_value(v() if callable(v) else v)
+
+    def _comp_set(self, name, value) -> bool:
+        m = self._comp_member(name)
+        obj = getattr(self.form.ui, self.name, None)
+        if m is None or obj is None or m[0] != "prop":
+            return False
+        _kind, real, ptype = m
+        if ptype in ("int",):
+            value = int(to_num(value))
+        elif ptype in ("float",):
+            value = float(to_num(value))
+        elif ptype in ("bool",):
+            value = bool(to_bool(value))
+        elif ptype not in ("custom",):
+            value = to_str(value)
+        elif not isinstance(value, (int, float, bool)):
+            value = to_str(value)
+        setattr(obj, real, value)
+        return True
+
+    def _comp_call(self, name, args):
+        m = self._comp_member(name)
+        obj = getattr(self.form.ui, self.name, None)
+        if m is None or obj is None:
+            return _NA
+        kind, real, _ptype = m
+        attr = getattr(obj, real, None)
+        if kind == "method" and callable(attr):
+            return self._comp_value(attr(*[a if isinstance(a, (int, float, bool)) else to_str(a) for a in args]))
+        return _NA
 
     # -- new controls (TabControl, TreeView, ListView, DataGridView, DateTimePicker, dialogs, ...)
     def node_key(self, iid):

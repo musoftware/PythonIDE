@@ -16,11 +16,11 @@
 
 ## إنشاء مشروع PySide6
 
-1. **File ← New Project**.
-2. اختر **Python ← Python (PySide6 / Qt)** والقالب **Windows Application**.
+1. **File > New Project**.
+2. اختر **Python > Python (PySide6 / Qt)** والقالب **Windows Application**.
 3. سمّ المشروع `QtHello`.
 
-إذا لم تكن PySide6 مثبتة في Python التي يعمل بها المشروع، فثبّتها من **Project ← Manage Packages...** كما تعلمنا في الدرس 12 (ابحث عن `PySide6`). المفسّر المدمج مع RAD IDE فيه PySide6 جاهزة غالبًا.
+إذا لم تكن PySide6 مثبتة في Python التي يعمل بها المشروع، فثبّتها من **Project > Manage Packages...** كما تعلمنا في الدرس 12 (ابحث عن `PySide6`). المفسّر المدمج مع RAD IDE فيه PySide6 جاهزة غالبًا.
 
 ستجد نفس الملفات الثلاثة: `Form1.form` و`Form1_designer.py` (مولَّد) و`Form1.py` (كودك). لكن الكود المولَّد الآن يستخدم أدوات Qt:
 
@@ -314,7 +314,7 @@ if __name__ == "__main__":
 
 ## الخلاصة
 
-- مشروع Qt: **Python (PySide6 / Qt) ← Windows Application**، ونفس المصمم ونفس أسماء الأحداث.
+- مشروع Qt: **Python (PySide6 / Qt) > Windows Application**، ونفس المصمم ونفس أسماء الأحداث.
 - القراءة `text()` / `isChecked()` / `currentText()` / `value()`، والتغيير بـ `setText()` وأخواتها.
 - `QMessageBox` للرسائل، و`QApplication` + `app.exec()` لتشغيل البرنامج.
 - Qt مثالية للعربية: `app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)`.

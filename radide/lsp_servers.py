@@ -48,7 +48,8 @@ RELEASES = {
 }
 
 NAMES = {"go": "gopls", "ruby": "ruby-lsp", "lua": "lua-language-server",
-         "powershell": "PowerShell Editor Services", "perl": "PLS (Perl Language Server)"}
+         "powershell": "PowerShell Editor Services", "perl": "PLS (Perl Language Server)",
+         "asm": "asm-lsp"}          # assembly (rad-asm-* editors): radide/asm_intel/lsp.py
 
 
 # ====================================================================== toolchains
@@ -204,6 +205,9 @@ def pses_args(stdio_mode: str = "-Stdio", session_file: Path | None = None) -> l
 
 def server_command(language: str) -> list[str] | None:
     """argv of the server for *language* found in the IDE's tools folder (or PATH), else None."""
+    if language == "asm" or language.startswith("rad-asm"):
+        from .asm_intel import lsp as asm_lsp
+        return asm_lsp.server_command()
     if language == "go":
         p = find_gopls()
         return [p] if p else None
@@ -294,7 +298,7 @@ def workspace_settings() -> dict:
 def status() -> list[dict]:
     """[{language, name, found (argv or None), hint, installable}] for the Language Servers dialog."""
     out = []
-    for lang in ("go", "ruby", "lua", "powershell", "perl"):
+    for lang in ("go", "ruby", "lua", "powershell", "perl", "asm"):
         argv = server_command(lang)
         out.append({"language": lang, "name": NAMES[lang], "found": argv, "hint": install_hint(lang),
                     "installable": can_install(lang)})
@@ -308,11 +312,16 @@ def install_hint(language: str) -> str:
         "lua": "official lua-language-server release zip -> tools\\lua-language-server",
         "powershell": "official PowerShellEditorServices release zip -> tools\\pses",
         "perl": "cpanm PLS into tools\\perl-pls (Linux / macOS - PLS needs fork())",
+        "asm": "cargo install asm-lsp (official crate) into tools\\asm-lsp - the built-in assembly IntelliSense "
+               "works without it",
     }.get(language, "")
 
 
 def can_install(language: str) -> str:
     """'' when install(language) can run here, else the reason it cannot."""
+    if language == "asm":
+        from .asm_intel import lsp as asm_lsp
+        return asm_lsp.can_install()
     if language == "go":
         return "" if find_go() else "Go was not found"
     if language == "ruby":
@@ -386,6 +395,9 @@ def install(language: str, log=print) -> bool:
     if why:
         log(f"Cannot install {NAMES.get(language, language)}: {why}")
         return False
+    if language == "asm":
+        from .asm_intel import lsp as asm_lsp
+        return asm_lsp.install(log)
     if language == "go":
         GOPLS_DIR.mkdir(parents=True, exist_ok=True)
         env = {"GOBIN": str(GOPLS_DIR), "GOPATH": str(GOPLS_DIR / "gopath"), "GOCACHE": str(GOPLS_DIR / "gocache"),

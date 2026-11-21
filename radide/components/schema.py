@@ -37,6 +37,28 @@ _PROPERTY = {
         "filter": {"type": "string", "description": "file / image: dialog filter, e.g. 'CSV (*.csv)'."},
         "browsable": {"type": "boolean", "description": "false = not shown in the Properties window."},
         "designOnly": {"type": "boolean", "description": "true = not passed to the runtime."},
+        "choicesFrom": {"type": "string", "pattern": r"^radide\.[A-Za-z0-9_.]+:[A-Za-z_][A-Za-z0-9_]*$",
+                        "description": "enum values computed by an IDE function ('radide.module:function'), "
+                                       "instead of a long 'choices' list (built-in packages)."},
+        "rebuildPreview": {"type": "boolean", "description": "true = a change builds a new design-time widget "
+                                                             "(designer.py create() depends on it)."},
+    },
+}
+_VB6 = {
+    "type": "object", "additionalProperties": False,
+    "description": "VB6 .frm import / export of this control (radide/importers/vb6_import.py, "
+                   "radide/foreign/frm_writer.py).",
+    "properties": {
+        "class": {"type": "string", "description": "VB6 class written for a new control, e.g. VB.CommandButton."},
+        "library": {"type": "string", "description": "OCX library of 'class' (frm 'Object =' line), e.g. "
+                                                     "MSComctlLib."},
+        "imports": {"type": "array", "items": _STR, "description": "VB6 / ActiveX classes (ProgIDs, any case) "
+                                                                    "imported as this control."},
+        "approx": {"type": "array", "items": _STR, "description": "The imports that are approximations (the "
+                                                                   "importer warns)."},
+        "properties": {"type": "object", "additionalProperties": _STR,
+                       "description": "Neutral property -> VB6 property for plain integer values "
+                                      "(e.g. Minimum -> Min)."},
     },
 }
 _EVENT = {
@@ -61,6 +83,19 @@ _TARGET = {
         "file": {"type": "string", "description": "Runtime module copied into the project."},
         "files": {"type": "array", "items": {"type": "string"}, "description": "Extra files copied with it."},
         "class": {"type": "string", "pattern": IDENT, "description": "Class (or factory) the form creates."},
+        "emit": {"type": "string", "description": "Python module run by the IDE at generation time: "
+                                                  "emit(ctx) returns the lines to write (any target)."},
+        "template": {"type": "object", "description": "Declarative code snippets (any target): imports, create, "
+                                                      "props {Prop|*: setter}, events {Event|*: wiring}, after, "
+                                                      "propsMode; flutter: widget; web: html, css, js; files.",
+                     "properties": {
+                         "imports": {"type": ["string", "array"]}, "create": {"type": ["string", "array"]},
+                         "props": {"type": "object"}, "events": {"type": "object"},
+                         "after": {"type": ["string", "array"]},
+                         "propsMode": {"type": "string", "enum": ["all", "changed"]},
+                         "widget": _STR, "html": {"type": ["string", "array"]}, "css": {"type": ["string", "array"]},
+                         "js": {"type": ["string", "array"]},
+                         "files": {"type": "array", "items": {"type": "string"}}}},
         "notes": _STR,
     },
 }
@@ -101,6 +136,9 @@ SCHEMA = {
         "designer": {"type": "string", "description": "designer.py: create()/apply() for the design surface."},
         "editors": {"type": "string", "description": "editors.py: EDITORS = {id: editor}."},
         "help": {"type": "string", "description": "help.md shown by F1."},
+        "mobile": {"type": "boolean", "description": "A mobile control (Toolbox 'Mobile' group of phone forms, "
+                                                     "drawn by radide/mobile/render.py)."},
+        "vb6": _VB6,
         "requires": {"type": "object", "additionalProperties": False,
                      "properties": {"radide": {"type": "string", "pattern": r"^\s*>=?\s*\d+(\.\d+)?\s*$"}}},
     },
@@ -187,7 +225,8 @@ def validate_manifest(data, folder: Path | None = None, api: str = "1.0") -> lis
             errs.append(f"{where}: unknown type {kind!r} (known: {', '.join(proptypes.KINDS)})")
             continue
         nk = proptypes.normalize(kind)
-        if nk in ("enum", "flags") and not p.get("choices") and str(kind).lower() != "dock":
+        if nk in ("enum", "flags") and not p.get("choices") and not p.get("choicesFrom") and \
+                str(kind).lower() != "dock":
             errs.append(f"{where}: an {nk} property needs 'choices'")
         if "default" in p:
             if not proptypes.check_default(nk, p["default"]):
@@ -218,6 +257,12 @@ def validate_manifest(data, folder: Path | None = None, api: str = "1.0") -> lis
                     errs.append(f"targets.{tid}: 'class' is required with 'file'")
             for j, f in enumerate(tgt.get("files") or []):
                 files.append((f"targets.{tid}.files[{j}]", f))
+            if tgt.get("emit"):
+                files.append((f"targets.{tid}.emit", tgt["emit"]))
+            tpl = tgt.get("template")
+            if isinstance(tpl, dict):
+                for j, f in enumerate(tpl.get("files") or []):
+                    files.append((f"targets.{tid}.template.files[{j}]", f))
     for key, rel in files:
         if not isinstance(rel, str):
             continue

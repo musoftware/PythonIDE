@@ -33,8 +33,8 @@
 
 ### 1) إنشاء المشروع
 
-1. **File ← New Project...** (ملف ← مشروع جديد...).
-2. **Native** ← **Rust (Cargo)** ← القالب **GUI App (RAD form)**. (أو **Native** ← **Rust (GUI Bridge, cargo)** ← **Windows Application**.)
+1. **File > New Project...** (ملف ← مشروع جديد...).
+2. **Native** > **Rust (Cargo)** ← القالب **GUI App (RAD form)**. (أو **Native** > **Rust (GUI Bridge, cargo)** > **Windows Application**.)
 3. سمّ المشروع `HelloForm`. يفتح **Form1** في وضع التصميم، ومعه ملف الكود `Form1.rs`.
 
 ### 2) رسم النافذة
@@ -51,6 +51,7 @@
 
 انقر مرتين على الزر في المصمم، فتنشئ الـ IDE الدالة `btnHello_Click` في `Form1.rs` وتنقلك إليها:
 
+<!-- test: {"set": {"txtName.Text": "Mona"}, "events": ["btnHello Click"], "expect": {"lblOut.Text": "أهلًا يا Mona!"}} -->
 ```rust form run
 use crate::radgui::*;
 
@@ -93,6 +94,7 @@ pub fn btnHello_Click() {
 | `Label` | `lblResult` | (فارغ) |
 | `ListBox` | `lstHistory` | |
 
+<!-- test: {"set": {"txtA.Text": "6", "txtB.Text": "3"}, "events": [{"cboOp.ListIndex": "2"}, "btnCalc Click", {"txtB.Text": "0", "cboOp.ListIndex": "3"}, "btnCalc Click"], "expect": {"lblResult.Text": "لا يمكن القسمة على صفر", "lstHistory.Items": "6 × 3 = 18", "cboOp.ListCount": "4"}} -->
 ```rust form run
 use crate::radgui::*;
 
@@ -142,7 +144,7 @@ pub fn btnCalc_Click() {
 
 ## إضافة وحدة مساعدة
 
-**Project ← Add Module...** (مشروع ← إضافة وحدة...) ثم اكتب `helpers.rs`. تضيف الـ IDE السطر `mod helpers;` في البرنامج المولّد، فتستخدم دوالها من النموذج بـ `crate::helpers::اسم_الدالة()`.
+**Project > Add Module...** (مشروع ← إضافة وحدة...) ثم اكتب `helpers.rs`. تضيف الـ IDE السطر `mod helpers;` في البرنامج المولّد، فتستخدم دوالها من النموذج بـ `crate::helpers::اسم_الدالة()`.
 
 ## أحداث مفيدة
 
@@ -176,6 +178,7 @@ pub fn btnClear_Click() {
 }
 ```
 
+<!-- test: {"items": {"lstHistory": ["a", "b"]}, "set": {"lblResult.Text": "x"}, "events": ["btnClear Click"], "expect": {"lstHistory.ListCount": "0", "lblResult.Text": ""}} -->
 ```rust form solution
 use crate::radgui::*;
 

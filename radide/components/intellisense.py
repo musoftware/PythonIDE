@@ -49,4 +49,12 @@ def member_completions(code: str, line: int, col: int, names: dict | None) -> li
     return [c for c in members(type_name) if c.name.lower().startswith(prefix)] if prefix else members(type_name)
 
 
-__all__ = ["members", "member_completions"]
+def monaco_completions(editor, line: int, col: int) -> list[dict]:
+    """``MonacoEditor.completion_providers`` entry (the default code editor): the same members as
+    :func:`member_completions`, as Monaco items (they come before the plugin's / language server's items)."""
+    from ..monaco_editor import KIND
+    items = member_completions(getattr(editor, "_text", "") or "", line, col, getattr(editor, "names", None))
+    return [{"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind} for c in items]
+
+
+__all__ = ["members", "member_completions", "monaco_completions"]

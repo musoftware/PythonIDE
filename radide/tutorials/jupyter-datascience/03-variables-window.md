@@ -6,8 +6,8 @@
 
 أي طريقة من هذه:
 
-- **View ← Other Windows ← Notebook Variables** (عرض ← ... ← متغيرات الدفتر).
-- **Notebook ← Variables Window** (والدفتر هو التبويب الحالي).
+- **View > Other Windows > Notebook Variables** (عرض ← ... ← متغيرات الدفتر).
+- **Notebook > Variables Window** (والدفتر هو التبويب الحالي).
 - في تخطيط VS Code أو Agent: أيقونة **Variables** في اللوحة السفلية.
 
 تظهر النافذة في أسفل الـ IDE، وفيها رسالة «Run a notebook cell to see its variables» حتى تشغّل أول خلية.
@@ -104,6 +104,6 @@ print(b)
 
 ## الخلاصة
 
-- **View ← Other Windows ← Notebook Variables** أو **Notebook ← Variables Window**.
+- **View > Other Windows > Notebook Variables** أو **Notebook > Variables Window**.
 - الأعمدة: الاسم والنوع والحجم والقيمة، وتتحدث بعد كل خلية.
 - النقر المزدوج يعرض المتغير كاملًا في خلية جديدة، والجداول بشكل منسق.

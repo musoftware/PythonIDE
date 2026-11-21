@@ -25,5 +25,25 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.PictureBox",
+    "imports": [
+      "comctllib.toolbar",
+      "mscomctllib.toolbar",
+      "vb.line",
+      "vb.ole",
+      "vb.picturebox",
+      "vb.shape"
+    ],
+    "approx": [
+      "comctllib.toolbar",
+      "mscomctllib.toolbar",
+      "vb.line",
+      "vb.ole",
+      "vb.shape"
+    ]
   }
 }

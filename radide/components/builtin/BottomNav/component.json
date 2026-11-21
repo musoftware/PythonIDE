@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "BottomNav",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Bottom navigation bar to switch between the main screens.",
+  "category": "Mobile",
+  "order": 1010,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "BottomNav",
+  "defaultSize": [
+    360,
+    80
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 9,
+    "Dock": "Bottom",
+    "Anchor": "Bottom, Left, Right"
+  },
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "Home;Search;Profile",
+      "category": "Data",
+      "description": "Destinations separated by ;"
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Selected destination (0 = first)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Changed",
+      "description": "The value changed (Switch, Slider, TextField, BottomNav / TabBar index)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

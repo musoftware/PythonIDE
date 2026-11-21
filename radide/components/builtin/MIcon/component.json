@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "MIcon",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A Material icon.",
+  "category": "Mobile",
+  "order": 1090,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "Icon",
+  "defaultSize": [
+    32,
+    32
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Icon",
+      "type": "enum",
+      "default": "star",
+      "category": "Appearance",
+      "description": "Material icon name.",
+      "choicesFrom": "radide.mobile.material_icons:icon_names"
+    }
+  ],
+  "events": [
+    {
+      "name": "Tap",
+      "description": "The user tapped the control (MListView / Drawer: e.Index = the item)."
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

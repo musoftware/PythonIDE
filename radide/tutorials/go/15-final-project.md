@@ -150,7 +150,7 @@ func main() {
 
 ## الخطوة 2: تصميم النافذة
 
-مشروع جديد: **File ← New Project ← Native ← Go (GUI Bridge)**، القالب **Windows Application**، والاسم `TodoApp`. ارسم:
+مشروع جديد: **File > New Project > Native > Go (GUI Bridge)**، القالب **Windows Application**، والاسم `TodoApp`. ارسم:
 
 | الأداة | Name | Text |
 |---|---|---|
@@ -163,8 +163,9 @@ func main() {
 
 ## الخطوة 3: ربط المنطق بالنافذة
 
-ضع النوع `TodoList` ودواله في ملف مستقل `todo.go` (**Project ← Add Module...**)، وضع الأحداث في `Form1.go`. كل الملفات في `package main` فيرى بعضها بعضًا:
+ضع النوع `TodoList` ودواله في ملف مستقل `todo.go` (**Project > Add Module...**)، وضع الأحداث في `Form1.go`. كل الملفات في `package main` فيرى بعضها بعضًا:
 
+<!-- test: {"events": [{"txtTask.Text": "Read"}, "btnAdd Click", {"txtTask.Text": "Code"}, "btnAdd Click", {"lstTasks.ListIndex": "0"}, "btnToggle Click", {"txtTask.Text": "  "}, "btnAdd Click"], "expect": {"lstTasks.Items": "[x] Read|[ ] Code", "lblStatus.Text": "المهام: 2 | المتبقي: 1"}, "msgbox": ["عنوان المهمة فارغ"]} -->
 ```go form run
 // #file: Form1.go
 package main

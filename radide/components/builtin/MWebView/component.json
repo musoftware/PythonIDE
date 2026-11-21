@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "name": "MWebView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Shows a web page inside the app.",
+  "category": "Mobile",
+  "order": 1120,
+  "builtin": true,
+  "mobile": true,
+  "prefix": "WebView",
+  "defaultSize": [
+    360,
+    300
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": false,
+  "overrides": {
+    "FontSize": 11
+  },
+  "properties": [
+    {
+      "name": "Url",
+      "type": "str",
+      "default": "https://flutter.dev",
+      "category": "Behavior",
+      "description": "Page shown in the view."
+    }
+  ],
+  "events": [
+    {
+      "name": "Load"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "help": "help.md"
+}

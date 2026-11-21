@@ -22,7 +22,7 @@ rustup component add rust-analyzer rust-src
 
 3. أعد تشغيل الـ IDE. تبحث الـ IDE عن `cargo` في `PATH` وفي `%USERPROFILE%\.cargo\bin`.
 
-ويمكنك أيضًا فتح **Tools ← Rust Settings...** لمعرفة حالة rust-analyzer وتثبيته بضغطة زر.
+ويمكنك أيضًا فتح **Tools > Rust Settings...** لمعرفة حالة rust-analyzer وتثبيته بضغطة زر.
 
 ## ما هو cargo؟
 
@@ -41,7 +41,7 @@ rustup component add rust-analyzer rust-src
 
 ## أول مشروع Rust في الـ IDE
 
-1. **File ← New Project...** (ملف ← مشروع جديد).
+1. **File > New Project...** (ملف ← مشروع جديد).
 2. **Native** (أصلي) ← **Rust (Cargo)**.
 3. اختر القالب **Console App** (تطبيق طرفية) وسمّ المشروع `hello_rust`.
 4. تنشئ الـ IDE مشروع cargo عاديًا فيه:
@@ -135,4 +135,4 @@ Rust
 
 - Rust آمنة وسريعة، والمترجم يمنع أخطاء الذاكرة.
 - `cargo` يدير المشروع، و`Cargo.toml` إعداداته، و`src/main.rs` الكود.
-- مشروع جديد: **File ← New Project ← Native ← Rust (Cargo) ← Console App**، و**Ctrl+F5** للتشغيل.
+- مشروع جديد: **File > New Project > Native > Rust (Cargo) > Console App**، و**Ctrl+F5** للتشغيل.

@@ -70,7 +70,7 @@ pub fn word_count(s: &str) -> usize {
 4
 ```
 
-**في الـ IDE:** اضغط بالزر الأيمن على المشروع في **Solution Explorer** (مستكشف الحلول) ← **Add** ← **Module...** واكتب `src/textutil.rs` (أو أنشئ الملف في مجلد `src` بأي طريقة؛ الـ IDE تعرض ملفات المشروع كما هي على القرص). ثم أضف السطر `mod textutil;` في `main.rs`. إن نسيته يذكرك rust-analyzer بتحذير «file not included in module tree».
+**في الـ IDE:** اضغط بالزر الأيمن على المشروع في **Solution Explorer** (مستكشف الحلول) ← **Add** > **Module...** واكتب `src/textutil.rs` (أو أنشئ الملف في مجلد `src` بأي طريقة؛ الـ IDE تعرض ملفات المشروع كما هي على القرص). ثم أضف السطر `mod textutil;` في `main.rs`. إن نسيته يذكرك rust-analyzer بتحذير «file not included in module tree».
 
 ## استخدام crate من crates.io
 
@@ -78,7 +78,7 @@ pub fn word_count(s: &str) -> usize {
 
 **الطريقة في الـ IDE:**
 
-1. **Project ← Manage Packages...** (مشروع ← إدارة الحزم...).
+1. **Project > Manage Packages...** (مشروع ← إدارة الحزم...).
 2. ابحث عن `serde_json` واضغط **Install**. تنفذ الـ IDE الأمر `cargo add serde_json`، فيُضاف السطر إلى `[dependencies]` في `Cargo.toml`.
 3. أول بناء يحمّل المكتبة ويترجمها (قد يأخذ دقيقة)، وبعدها يصبح سريعًا.
 

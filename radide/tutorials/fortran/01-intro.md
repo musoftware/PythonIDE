@@ -21,7 +21,7 @@
 
 ## أول مشروع Fortran في الـ IDE
 
-1. **File ← New Project...** (ملف ← مشروع جديد...).
+1. **File > New Project...** (ملف ← مشروع جديد...).
 2. في شجرة اللغات: **Native** (أصلي) ← **Fortran (GUI Bridge, gfortran)**.
 3. من **Template** (القالب) اختر **Console Application** (تطبيق طرفية)، وسمّ المشروع `HelloFortran`.
 4. تفتح الـ IDE الملف `Program.f90`. امسح ما فيه واكتب:
@@ -133,6 +133,6 @@ end program me
 ## الخلاصة
 
 - Fortran لغة الحسابات العلمية، والمترجم `gfortran` من MinGW.
-- مشروع جديد: **Native ← Fortran (GUI Bridge, gfortran)** ← **Console Application**.
+- مشروع جديد: **Native > Fortran (GUI Bridge, gfortran)** > **Console Application**.
 - البرنامج بين `program اسم` و`end program اسم`، ومعه دائمًا `implicit none`.
 - `print *, ...` تطبع، و`!` للتعليقات، و`**` للأُس.

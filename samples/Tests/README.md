@@ -127,6 +127,7 @@ File > Open Project.
 |---|---|---|---|
 | [`Components/StarRating`](Components/StarRating/) | Component package (docs/COMPONENTS.md) | A complete external control: manifest (custom-editor property, enum, color, padding, design-only text, events, methods), `designer.py` paint, inline Properties editor in `editors.py`, python-tk and python-qt runtimes, help, icon; `Components/StarRating.radcomp` to install it. | Tools > Component Packages > Install Component Package (.radcomp)... > `StarRating.radcomp`: the Toolbox gets "Rating & Input" > Star Rating. |
 | [`Components/StarRating_PythonTk`](Components/StarRating_PythonTk/), [`Components/StarRating_PythonQt`](Components/StarRating_PythonQt/) | python-tk / python-qt | A form with two StarRatings (ValueChanged handlers, `Reset()` / `SetValue()` methods); the runtime copied into the project. | Install the package, open the folder, F5, click the stars and Reset. |
+| [`Components/RatingBar`](Components/RatingBar/) and `Components/RatingBar_PythonTk`, `_PythonQt`, `_VB`, `_Ring`, `_JavaScript` | python-tk, python-qt, vb-basic, ring-qt, javascript (+ Flutter / web templates) | Code generation through the packages: one package with a runtime per target (VB6 and the bridge languages through the python-tk runtime), the same form in five languages. A target without a runtime gets a greyed Toolbox item, a red "no <target> runtime" strip in the designer, an Output warning and a placeholder in the generated code. | Open a project, F5, click the stars / Reset. |
 
 ## Not in the front door (yet)
 

@@ -1,0 +1,108 @@
+{
+ "version": 1,
+ "name": "Profile",
+ "route": "/profile",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "code": {
+  "prelude": "final greeting = 'Hello #$_taps';",
+  "members": "int _taps = 0;\n\nWidget _badge(String text) {\n  return Container(\n    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),\n    decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(20)),\n    child: Text(text),\n  );\n}"
+ },
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Profile"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "Padding",
+    "props": {
+     "padding": {
+      "all": 24
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "Column",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.start"
+      },
+      "children": [
+       {
+        "id": "w6",
+        "type": "CircleAvatar",
+        "props": {
+         "radius": 56,
+         "backgroundColor": "#FFE91E63"
+        }
+       },
+       {
+        "id": "w7",
+        "type": "SizedBox",
+        "props": {
+         "height": 16
+        }
+       },
+       {
+        "id": "w8",
+        "type": "Text",
+        "props": {
+         "data": {
+          "$code": "greeting"
+         },
+         "style": {
+          "fontSize": 22,
+          "fontWeight": "FontWeight.bold"
+         }
+        }
+       },
+       {
+        "id": "w9",
+        "type": "Code",
+        "props": {
+         "code": "_badge('PRO')"
+        }
+       },
+       {
+        "id": "w10",
+        "type": "ElevatedButton",
+        "props": {
+         "onPressed": {
+          "$code": "() => setState(() => _taps++)"
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w11",
+          "type": "Text",
+          "props": {
+           "data": "Tap me"
+          }
+         }
+        }
+       },
+       {
+        "id": "w12",
+        "type": "Divider"
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

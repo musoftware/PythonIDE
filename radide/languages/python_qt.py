@@ -623,49 +623,14 @@ class PythonQtPlugin(PythonTkPlugin):
         return out
 
     def _new_control(self, c, fmt: str) -> list[str]:
-        """Content of the controls of CONTRACTS section 4."""
-        p, n, t = c.props, c.name, c.type
-        out: list[str] = []
-        if t == "TabControl":
-            pages = split_items(p.get("TabPages", "")) or ["TabPage1"]
-            for i, title in enumerate(pages):
-                out += [f"self.{n}_Page{i} = QWidget()",
-                        f"self.{n}.addTab(self.{n}_Page{i}, {title!r})"]
-            idx = int(p.get("SelectedIndex") or 0)
-            if 0 < idx < len(pages):
-                out.append(f"self.{n}.setCurrentIndex({idx})")
-        elif t == "TreeView":
-            out.append(f"self.{n}.setHeaderHidden(True)")
-            nodes = tree_paths(p.get("Nodes", ""))
-            if nodes:
-                out.append(f"_fill_tree(self.{n}, {nodes!r})")
-        elif t in ("ListView", "DataGridView"):
-            cols = split_items(p.get("Columns", ""))
-            rows = split_rows(p.get("Items" if t == "ListView" else "Rows", ""))
-            if t == "ListView" and p.get("View") == "List":
-                cols, rows = cols[:1] or [""], [r[:1] for r in rows]
-                out.append(f"self.{n}.horizontalHeader().hide()")
-            out.append(f"_fill_table(self.{n}, {cols!r}, {rows!r})")
-            out.append(f"self.{n}.horizontalHeader().setStretchLastSection(True)")
-            if t == "ListView":
-                out += [f"self.{n}.verticalHeader().hide()",
-                        f"self.{n}.setShowGrid(False)",
-                        f"self.{n}.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)",
-                        f"self.{n}.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)",
-                        f"self.{n}.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)"]
-            elif p.get("ReadOnly"):
-                out.append(f"self.{n}.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)")
-        elif t == "DateTimePicker":
-            out.append(f"self.{n}.setDisplayFormat({DATE_FORMATS.get(fmt, DATE_FORMATS['Short'])!r})")
-            v = _date_value(p.get("Value", ""), fmt)
-            if fmt == "Time":
-                out.append(f"self.{n}.setTime(QTime.fromString({v!r}, 'HH:mm:ss'))" if v
-                           else f"self.{n}.setTime(QTime.currentTime())")
-            else:
-                out.append(f"self.{n}.setCalendarPopup(True)")
-                out.append(f"self.{n}.setDate(QDate.fromString({v!r}, 'yyyy-MM-dd'))" if v
-                           else f"self.{n}.setDate(QDate.currentDate())")
-        return out
+        """Content of the controls of CONTRACTS section 4: ``runtime/python_qt.py`` of their
+        component packages (radide/components/builtin/<Type>/)."""
+        from types import SimpleNamespace
+        from ..components import codegen as _comp
+        g = SimpleNamespace(p=c.props, n=c.name, t=c.type, fmt=fmt, out=[], split_items=split_items, split_rows=split_rows,
+                            tree_paths=tree_paths, DATE_FORMATS=DATE_FORMATS, date_value=_date_value)
+        _comp.builtin_emit("python_qt", c, g)
+        return g.out
 
     def _filter_ctrl(self, c, used):
         table: dict[str, list[str]] = {}

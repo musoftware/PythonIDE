@@ -620,6 +620,8 @@ def _dotnet(folder: Path) -> list:
         text = _read(p, 40_000)
         tfm = _version_of(text, r"<TargetFrameworks?>([^<]+)<")
         lang = {".csproj": "C#", ".vbproj": "VB.NET", ".fsproj": "F#", ".vcxproj": "C++"}[p.suffix.lower()]
+        if lang == "C++" and re.search(r"masm\.(props|targets)|<MASM\s+Include=", text, re.I):
+            lang = "C++ / MASM"                         # Visual Studio project with the masm build customization
         web = "Microsoft.NET.Sdk.Web" in text
         winforms = "<UseWindowsForms>true" in text or "<UseWPF>true" in text
         kind_t = ("ASP.NET Core web app" if web else "Windows Forms app" if "<UseWindowsForms>true" in text else
@@ -874,7 +876,7 @@ def _asm(folder: Path) -> list:
     ide = [f for f in files if "/" not in f and f.lower().endswith((".rap", ".wap"))]
     if not srcs and not ide:
         return []
-    from .foreign.asm_folder import DIALECT_TITLES, scan_folder
+    from .foreign.asm_folder import DIALECT_TITLES, PLUGIN_IDS, plugin_for_dialect, scan_folder
     info = scan_folder(folder, [f for f in files if f.lower().endswith((".asm", ".s", ".nasm", ".fasm", ".masm",
                                                                         ".inc", ".mac"))][:600])
     others = [f for f in files if f.lower().endswith((".c", ".cpp", ".cc", ".rs", ".go", ".cs", ".pas", ".dpr"))]
@@ -886,22 +888,21 @@ def _asm(folder: Path) -> list:
         title = f"Assembly program ({info.title()}, {where}" + \
             (f", entry {info.programs[0].file}" if info.programs else "") + ")"
     conf = 0.9 if ide else (0.85 if info.programs and len(srcs) >= len(others) else 0.55)
-    pid = ""
-    try:
-        from .languages import plugins_for_ext
-        cands = plugins_for_ext(".asm")
-        pid = cands[0].id if cands else ""
-    except Exception:  # noqa: BLE001
-        pass
+    pid = plugin_for_dialect(d)
     c = Candidate("asm", title, pid, "app", folder, conf, (ide or []) + srcs[:3],
                   startup=Path(info.programs[0].file).with_suffix("").as_posix() if info.programs else "",
                   modules=info.sources + info.includes, inplace="loose",
-                  inplace_file=ide[0] if ide else "", can_create=bool(pid) and d in ("nasm", "masm", "fasm", "gas"))
+                  inplace_file=ide[0] if ide else "",
+                  can_create=bool(pid) and pid == PLUGIN_IDS.get(d) and not ide)
     c.extra["_prefer_inplace"] = True
-    c.extra["asm_dialect"] = d
-    c.notes.append(f"Dialect: {DIALECT_TITLES.get(d, d)} (guessed from the code). Opens in place: each program "
-                   "with an entry point is a run target, built in the IDE state folder"
-                   + ("; 8086 / DOS programs run in the 8086 emulator." if "8086" in info.dialects else "."))
+    c.extra["_asm_dialect"] = d
+    main = next((p for p in info.programs if p.dialect == d), None)
+    if main is not None and d != "8086":       # radide/asm/build.py settings of a created project.radproj
+        c.extra["asm"] = {"assembler": d, "arch": "x86" if main.bits == 32 else "x64", "entry": main.entry}
+    c.notes.append(f"Dialect: {DIALECT_TITLES.get(d, d)} (guessed from the code).")
+    c.notes.append("Opens in place: each program with an entry point is a run target, built in the IDE state folder.")
+    if "8086" in info.dialects:
+        c.notes.append("8086 / DOS programs run in the 8086 emulator.")
     if any(p.sasm for p in info.programs):
         c.notes.append("SASM programs (%include \"io64.inc\"): SASM's include folder is used when SASM is installed.")
     return [c]

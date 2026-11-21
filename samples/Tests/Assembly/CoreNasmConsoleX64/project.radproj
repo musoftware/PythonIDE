@@ -1,0 +1,15 @@
+{
+  "name": "CoreNasmConsoleX64",
+  "language": "asm-nasm",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ],
+  "asm": {
+    "assembler": "nasm",
+    "arch": "x64",
+    "linker": "gcc",
+    "entry": "main"
+  }
+}

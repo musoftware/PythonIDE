@@ -393,12 +393,39 @@ def project_files(lang: str, folder: Path) -> dict[str, str]:
     return out
 
 
+def form_test(lang: str, work: Path, spec: dict):
+    """Run a built form project (build_gui) headless with the hidden ``<!-- test: {...} -->`` of its block:
+    {"set": {"txtA.Text": "5"}, "events": ["btnGo Click", {"txtA.Text": "x"}, ...], "input": [...],
+    "expect": {"lblOut.Text": "...", "lstLog.Items": "a|b"}, "msgbox": [...]} (see csjava_support.FakeHost)."""
+    from . import CheckResult
+    from ..model import Project
+    from .csjava_support import FakeHost
+    argv = _plugin(lang).run_command(work, Project.load(work))
+    host = FakeHost(argv, work, spec)
+    host.run()
+    problems = []
+    for k, v in (spec.get("expect") or {}).items():
+        got = host.value(k)
+        if got != str(v) and not (str(v).startswith("re:") and re.fullmatch(str(v)[3:], got)):
+            problems.append(f"{k}: المتوقع «{v}» والناتج «{got}»")
+    if "msgbox" in spec and host.msgbox != spec["msgbox"]:
+        problems.append("رسائل MsgBox: المتوقع " + " | ".join(spec["msgbox"]) + " ، الناتج " + " | ".join(host.msgbox))
+    out = "\n".join(host.output + [f"[MsgBox] {m}" for m in host.msgbox] + host.err)
+    for k in (spec.get("expect") or {}):
+        out += f"\n{k} = {host.value(k)}"
+    return CheckResult(not problems, out.strip(), None, problems,
+                       "نجح البناء، وجرّبنا الأزرار آليًا فأعطت النتائج المطلوبة." if not problems else "")
+
+
 def check(block, files: dict[str, str], work: Path):
     """The "تحقق" of a native block (files = the learner's files)."""
     from . import CheckResult, block_files, norm
     target = block.check_target()
     if is_window(block, files) or is_window(target, block_files(target)):
         ok, out = build_gui(block.lang, files, work)
+        spec = target.spec or block.spec
+        if ok and spec and is_gui(block) and any(f.startswith("Form1") for f in _norm_files(block.lang, files)):
+            return form_test(block.lang, work, spec)
         return CheckResult(ok, out, None, [] if ok else ["فشل البناء"],
                            "نجح البناء. هذا برنامج بواجهة رسومية: اضغط «جرّبه» وجرّب الأزرار بنفسك." if ok else "")
     expected = target.expected

@@ -1,0 +1,16 @@
+{
+  "name": "CourseNumberAnalyzer",
+  "language": "asm-nasm",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm",
+    "stats.asm"
+  ],
+  "asm": {
+    "assembler": "nasm",
+    "arch": "x64",
+    "linker": "gcc",
+    "entry": "main"
+  }
+}

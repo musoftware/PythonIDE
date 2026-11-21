@@ -193,7 +193,7 @@ true
 |---|---|---|
 | `the trait bound Foo: Shape is not satisfied` | النوع لا يطبق السمة | اكتب `impl Shape for Foo` |
 | `binary operation > cannot be applied to type T` | نوع عام بلا قيد مقارنة | أضف `T: PartialOrd` |
-| `not all trait items implemented, missing: area` | نسيت تابعًا مطلوبًا | اكتب التابع (أو اضغط **Ctrl+.** ← «Implement missing members») |
+| `not all trait items implemented, missing: area` | نسيت تابعًا مطلوبًا | اكتب التابع (أو اضغط **Ctrl+.** > «Implement missing members») |
 | `doesn't implement std::fmt::Display` | طباعة بـ `{}` لنوعك | طبّق `Display` أو استخدم `{:?}` مع `Debug` |
 
 ## تمارين

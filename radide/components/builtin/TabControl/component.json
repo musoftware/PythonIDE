@@ -40,5 +40,20 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "TabDlg.SSTab",
+    "library": "TabDlg",
+    "imports": [
+      "comctllib.tabstrip",
+      "mscomctllib.tabstrip",
+      "tabdlg.sstab"
+    ],
+    "approx": [
+      "comctllib.tabstrip",
+      "mscomctllib.tabstrip"
+    ]
   }
 }

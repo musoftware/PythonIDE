@@ -51,6 +51,17 @@ class ToolState(QObject):
         self.profile = profile
         self.profileChanged.emit(profile)
 
+    # language plugin id of the shown form: component packages without a runtime for it are greyed
+    # (radide/components/targets.py)
+    targetChanged = pyqtSignal(object)
+    target = None
+
+    def set_target(self, target) -> None:
+        if target == self.target:
+            return
+        self.target = target
+        self.targetChanged.emit(target)
+
 
 TOOL_STATE = ToolState()
 
@@ -358,6 +369,7 @@ class Toolbox(QListWidget):
         TOOL_STATE.changed.connect(self._on_tool_reset)
         TOOL_STATE.modeChanged.connect(self._on_mode)
         TOOL_STATE.profileChanged.connect(lambda _p: self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported))
+        TOOL_STATE.targetChanged.connect(lambda _t: self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported))
         try:
             from .components import REGISTRY
             REGISTRY.on_change(self._registry_changed)
@@ -468,7 +480,31 @@ class Toolbox(QListWidget):
             text += f"\n{pkg.summary()}"
             if pkg.publisher:
                 text += f" - {pkg.publisher}"
+            try:                  # targets with / without a runtime (radide/components/targets.py)
+                from .components.targets import support_text
+                sup = support_text(pkg)
+                if sup:
+                    text += "\n" + sup
+            except Exception:  # noqa: BLE001
+                pass
         return text
+
+    @staticmethod
+    def _target_ok(name: str) -> tuple[bool, str]:
+        """(usable, reason): a component package without a runtime for the shown form's language is greyed."""
+        target = TOOL_STATE.target
+        ctype = CONTROL_TYPES.get(name)
+        pkg = getattr(ctype, "package", None) if ctype is not None else None
+        if not target or pkg is None or pkg.builtin:
+            return True, ""
+        try:
+            from .components.targets import supports
+            if supports(pkg, target):
+                return True, ""
+        except Exception:  # noqa: BLE001
+            return True, ""
+        return False, (f"{name}: no runtime for {target} - the generated program would show a placeholder."
+                       f"\n{Toolbox._tooltip(name)}")
 
     def select_tool(self, name: str) -> bool:
         for row in range(self.count()):
@@ -533,7 +569,11 @@ class Toolbox(QListWidget):
             else:
                 hide = False
                 ok = not mobile or name in allowed
-            label = (prof.get("labels") or {}).get(name, self._label(name)) if prof else self._label(name)
+            tok, why = self._target_ok(name)
+            if mobile and not ok and tok and TOOL_STATE.target and getattr(
+                    getattr(ctype, "package", None), "builtin", True) is False:
+                ok = True                                  # a package with a runtime for this mobile toolkit
+            label =(prof.get("labels") or {}).get(name, self._label(name)) if prof else self._label(name)
             if it.text() != label:
                 it.setText(label)
             if prof and prof.get("allowed") is not None and name not in prof["allowed"]:
@@ -547,6 +587,9 @@ class Toolbox(QListWidget):
             it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
                         if ok else Qt.ItemFlag.NoItemFlags)
             it.setToolTip(desc if ok else f"{name}: Windows only - not available in mobile apps.")
+            if ok and not tok:                             # no runtime for the form's language: greyed
+                it.setFlags(Qt.ItemFlag.NoItemFlags)
+                it.setToolTip(why)
             if not hide:
                 visible_in[cat] = visible_in.get(cat, 0) + 1
             if not hide and cat in self._collapsed and not query:

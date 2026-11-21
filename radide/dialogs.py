@@ -27,6 +27,7 @@ LANGUAGE_GROUPS = [
              "aspnet-web", "spring-web", "rails-web", "nestjs-web"]),  # backend frameworks (web_site/frameworks)
     ("Web & Script", ["javascript", "typescript", "php"]),
     ("Native", ["c-bridge", "cpp-bridge", "rust-bridge", "rust-cargo", "fortran-bridge", "go-bridge"]),
+    ("Assembly", ["asm-nasm", "asm-fasm", "asm-masm", "asm-gas", "emu8086"]),     # docs/ASSEMBLY.md
     ("Scripting", ["lua-bridge", "ruby-bridge", "perl-bridge", "dart-bridge"]),
     ("Mobile", ["flutter", "kivy", "expo"]),                   # mobile apps (CONTRACTS 10.1)
     ("Games", ["pygame", "godot", "html5-game", "python-arcade", "ring-game",   # game projects (CONTRACTS 10.2)
@@ -37,6 +38,8 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "java-bridge": ("J", "#B07219"), "javascript": ("JS", "#C9A400"), "typescript": ("TS", "#3178C6"),
          "php": ("PHP", "#4F5D95"), "c-bridge": ("C", "#555555"), "cpp-bridge": ("C++", "#F34B7D"),
          "rust-bridge": ("Rs", "#B7410E"), "rust-cargo": ("Rs", "#DEA584"), "fortran-bridge": ("F", "#4D41B1"), "go-bridge": ("Go", "#00ADD8"),
+         "asm-nasm": ("ASM", "#6E4C13"), "asm-fasm": ("FA", "#8B5A2B"), "asm-masm": ("ML", "#5C3D99"),
+         "asm-gas": ("as", "#4E5A65"), "emu8086": ("86", "#9A4D00"),
          "lua-bridge": ("Lua", "#000080"), "ruby-bridge": ("Rb", "#CC342D"), "perl-bridge": ("Pl", "#0298C3"),
          "dart-bridge": ("Dt", "#00B4AB"), "php-web": ("PHP", "#777BB3"), "static-web": ("H5", "#E34F26"),
          "node-web": ("N", "#3C873A"), "pygame": ("Pg", "#2E7D32"), "godot": ("Gd", "#478CBF"),

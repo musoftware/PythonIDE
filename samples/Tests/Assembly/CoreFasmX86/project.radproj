@@ -1,0 +1,15 @@
+{
+  "name": "CoreFasmX86",
+  "language": "asm-fasm",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ],
+  "asm": {
+    "assembler": "fasm",
+    "arch": "x86",
+    "linker": "none",
+    "entry": "start"
+  }
+}

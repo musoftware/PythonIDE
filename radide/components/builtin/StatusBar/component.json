@@ -29,5 +29,11 @@
   "overrides": {
     "Dock": "Bottom",
     "Text": "Ready"
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComctlLib.StatusBar",
+    "library": "MSComctlLib"
   }
 }

@@ -10,6 +10,7 @@ import re
 import shutil
 from pathlib import Path
 
+from ..components import vb6map as _vb6map
 from ..controls import CONTROL_TYPES
 from ..languages import get_plugin
 from ..model import Control, Form, Project
@@ -17,40 +18,13 @@ from .python_import import ImportReport
 
 TWIP = 15
 
-CLASS_MAP = {
-    "vb.commandbutton": "Button", "vb.label": "Label", "vb.textbox": "TextBox", "vb.checkbox": "CheckBox",
-    "vb.optionbutton": "RadioButton", "vb.listbox": "ListBox", "vb.combobox": "ComboBox",
-    "vb.frame": "GroupBox", "vb.picturebox": "Panel", "vb.image": "PictureBox", "vb.timer": "Timer",
-    "vb.hscrollbar": "TrackBar", "vb.vscrollbar": "TrackBar", "vb.drivelistbox": "ComboBox",
-    "vb.dirlistbox": "ListBox", "vb.filelistbox": "ListBox",
-    "mscomctllib.progressbar": "ProgressBar", "comctllib.progressbar": "ProgressBar",
-    "mscomctllib.slider": "TrackBar", "comctllib.slider": "TrackBar",
-    "mscomctl2.updown": "NumericUpDown", "comct2lib.updown": "NumericUpDown",
-    "mscomctl2.flatscrollbar": "TrackBar",
-    "richtextlib.richtextbox": "TextBox", "msmask.maskedbox": "TextBox",
-    "mscomctllib.listview": "ListView", "comctllib.listview": "ListView",
-    "mscomctllib.treeview": "TreeView", "comctllib.treeview": "TreeView",
-    # grids: MSFlexGrid / MSHFlexGrid (TextMatrix, Rows, Cols), DataGrid / DBGrid (bound to a data control)
-    "msflexgridlib.msflexgrid": "DataGridView", "mshierarchicalflexgridlib.mshflexgrid": "DataGridView",
-    "msdatagridlib.datagrid": "DataGridView", "msdbgrid.dbgrid": "DataGridView",
-    "msdatalistlib.datacombo": "ComboBox", "msdatalistlib.datalist": "ListBox",
-    "msdblib.dbcombo": "ComboBox", "msdblib.dblist": "ListBox",
-    "mscomctl2.dtpicker": "DateTimePicker", "comct2lib.dtpicker": "DateTimePicker",
-    "mscomctl2.monthview": "DateTimePicker", "msacal.calendar": "DateTimePicker",
-    "tabdlg.sstab": "TabControl", "mscomctllib.tabstrip": "TabControl", "comctllib.tabstrip": "TabControl",
-    "mscomctllib.statusbar": "Label", "comctllib.statusbar": "Label",
-    "mscomctllib.toolbar": "Panel", "comctllib.toolbar": "Panel",
-    "mscomctllib.imagelist": None, "comctllib.imagelist": None, "mscomdlg.commondialog": None,
-    # data controls: a caption bar in the designer, a working navigator at run time (radide/runtimes/vbrun.py)
-    "vb.data": "Label", "msadodclib.adodc": "Label",
-    "mswinsocklib.winsock": None, "mscommlib.mscomm": None, "vb.shape": "Panel",
-    "vb.line": "Panel", "vb.ole": "Panel",
-}
-APPROX = {"vb.drivelistbox", "vb.dirlistbox", "vb.filelistbox", "mscomctllib.tabstrip", "comctllib.tabstrip",
-          "mscomctllib.statusbar", "mscomctllib.toolbar", "comctllib.toolbar", "vb.shape", "vb.ole", "vb.line",
-          "msdatagridlib.datagrid", "msdbgrid.dbgrid", "mscomctl2.monthview", "msacal.calendar", "msmask.maskedbox",
-          "vb.data", "msadodclib.adodc", "msdatalistlib.datacombo", "msdatalistlib.datalist", "msdblib.dbcombo",
-          "msdblib.dblist"}
+# VB6 / ActiveX class (lower case) -> control type: the "vb6" sections of the component manifests
+# (radide/components/builtin/<Type>/component.json: "imports", "approx"; radide/components/vb6map.py).
+# Classes without an equivalent yet (skipped with a warning):
+UNMAPPED = ("mscomctllib.imagelist", "comctllib.imagelist", "mscomdlg.commondialog", "mswinsocklib.winsock",
+            "mscommlib.mscomm")
+CLASS_MAP: dict = {**_vb6map.import_map(), **{c: None for c in UNMAPPED}}
+APPROX = _vb6map.approx_classes()
 DATA_CONTROLS = ("vb.data", "msadodclib.adodc")
 GRID_CLASSES = ("msflexgridlib.msflexgrid", "mshierarchicalflexgridlib.mshflexgrid", "msdatagridlib.datagrid",
                 "msdbgrid.dbgrid")

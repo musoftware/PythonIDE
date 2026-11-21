@@ -94,7 +94,7 @@ def language_for_path(path: Path) -> str:
         return "dockerfile"
     return MONACO_LANG.get(p.suffix.lower(), "custom")
 
-KIND = {"keyword": 17, "function": 1, "method": 0, "class": 5, "variable": 4, "property": 9,
+KIND = {"snippet": 27, "keyword": 17, "function": 1, "method": 0, "class": 5, "variable": 4, "property": 9,
         "module": 8, "control": 4, "event": 10, "param": 4, "instance": 4, "statement": 17}
 
 
@@ -182,6 +182,11 @@ class MonacoEditor(QWebEngineView):
     # Laravel routes / views / config ...): fn(editor, line, col) -> list[item dict] | None. Server items with
     # the same label are dropped; an item with "exclusive": True means "only the extra items here".
     completion_providers: list = []
+    # plugin overlays: fn(plugin, path) -> plugin-like object | None. The first non-None result replaces the
+    # editor's plugin for that one file (radide/asm_intel/plugin.py: assembly IntelliSense for .asm / .s files
+    # opened by any project's plugin). A plugin may also offer monaco_language(path) -> {"id", "monarch", "conf",
+    # "folding", "triggers"} for a full Monarch grammar (radRegisterMonarch in radide/web/editor.html).
+    plugin_overlays: list = []
     # AI inline completions (set by radide/features/ai_editor.py):
     #   inline_provider(editor, req, line, col, explicit) -> later editor.resolve_inline(req, text)
     #   inline_cancel(editor, req)
@@ -199,8 +204,18 @@ class MonacoEditor(QWebEngineView):
 
     def __init__(self, plugin, path: Path, parent=None):
         super().__init__(parent)
+        for _overlay in list(MonacoEditor.plugin_overlays):
+            try:
+                _wrapped = _overlay(plugin, Path(path))
+            except Exception as e:  # noqa: BLE001 - an overlay must never break the editor
+                print(f"[monaco] plugin overlay failed: {e}")
+                _wrapped = None
+            if _wrapped is not None:
+                plugin = _wrapped
+                break
         self.plugin = plugin
         self.path = Path(path)
+        self._spec_cache = None                  # plugin.monaco_language(path), see _custom_spec
         self.names: dict[str, str] = {}
         self._lsp = None                     # radide.lsp.LspClient (optional), see the lsp property
         self._lang_override = language_overrides().get(_path_key(self.path))   # "Open as ..." choice
@@ -243,7 +258,7 @@ class MonacoEditor(QWebEngineView):
         self._ready = True
         lang = self.language()
         if lang == "custom":
-            self.page().runJavaScript(f"radRegisterLanguage({json.dumps(self._monarch())});")
+            self._register_custom(self.page().runJavaScript)
         self.page().runJavaScript(f"radSetText({json.dumps(self._text)}, {json.dumps(self.language_id())});"
                                   f"radSetReadOnly({json.dumps(self._readonly)});")
         for code in self._pending:
@@ -297,7 +312,7 @@ class MonacoEditor(QWebEngineView):
             self._lsp = None
         new = self.language_id()
         if self.language() == "custom":
-            self._js(f"radRegisterLanguage({json.dumps(self._monarch())});")
+            self._register_custom(self._js)
         self._js(f"radSetMarkers([]); radSetLanguage({json.dumps(new)});")
         self.languageChanged.emit(new)
 
@@ -335,6 +350,8 @@ class MonacoEditor(QWebEngineView):
         lang = getattr(self, "_lang_override", None)
         if lang:
             return lang
+        if self._custom_spec():                  # the plugin's own Monarch grammar (assembly ...)
+            return "custom"
         if self.path.name.lower() in MONACO_FILENAMES:
             return MONACO_FILENAMES[self.path.name.lower()]
         if self.path.name.lower() == "dockerfile":
@@ -343,7 +360,31 @@ class MonacoEditor(QWebEngineView):
 
     def language_id(self) -> str:
         lang = self.language()
-        return f"rad-{self.plugin.id}" if lang == "custom" else lang
+        if lang == "custom":
+            spec = self._custom_spec()
+            return spec["id"] if spec else f"rad-{self.plugin.id}"
+        return lang
+
+    def _custom_spec(self) -> dict | None:
+        """plugin.monaco_language(path) (cached): a full Monarch grammar for this file, or None."""
+        if getattr(self, "_spec_cache", None) is None:
+            spec = None
+            fn = getattr(self.plugin, "monaco_language", None)
+            if callable(fn):
+                try:
+                    spec = fn(self.path)
+                except Exception as e:  # noqa: BLE001 - fall back to the simple tokenizer
+                    print(f"[monaco] monaco_language failed: {e}")
+                    spec = None
+            self._spec_cache = spec if isinstance(spec, dict) and spec.get("id") else False
+        return self._spec_cache or None
+
+    def _register_custom(self, run) -> None:
+        spec = self._custom_spec()
+        if spec:
+            run(f"radRegisterMonarch({json.dumps(spec)});")
+        else:
+            run(f"radRegisterLanguage({json.dumps(self._monarch())});")
 
     def _monarch(self) -> dict:
         """A Monarch tokenizer built from the plugin's syntax settings (Ring, Fortran, ...)."""
@@ -555,7 +596,17 @@ class MonacoEditor(QWebEngineView):
                                                          f"{json.dumps(self._merge_completions(extra, res))});"))
                 return
             for c in self.plugin.completions(self._text, line, col, self.path, self.names)[:400]:
-                items.append({"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind})
+                item = {"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind}
+                # optional fields (radide/asm_intel AsmCompletion): docs, snippets, sort key, extra edits
+                for attr, key in (("doc", "documentation"), ("insert", "insertText"), ("sort", "sortText")):
+                    val = getattr(c, attr, None)
+                    if val:
+                        item[key] = val
+                if getattr(c, "snippet", False):
+                    item["snippet"] = True
+                if getattr(c, "edits", None):
+                    item["additionalTextEdits"] = c.edits
+                items.append(item)
         except Exception:  # noqa: BLE001 - completion must never break typing
             items = []
         self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
@@ -593,6 +644,9 @@ class MonacoEditor(QWebEngineView):
             tip = self.plugin.calltip(self._text, line, col, self.path, self.names) or ""
         except Exception:  # noqa: BLE001
             tip = ""
+        if isinstance(tip, dict):         # {label, documentation, parameters, activeParameter} (assembly ...)
+            self._js(f"radResolve({req}, {json.dumps(tip)});")
+            return
         tip = re.sub(r"<[^>]+>", "", tip)
         self._js(f"radResolve({req}, {json.dumps(tip)});")
 
@@ -711,3 +765,12 @@ class MonacoEditor(QWebEngineView):
         m.addAction("Command Palette...", lambda: self._js("radEditor.focus(); radEditor.trigger('rad', 'editor.action.quickCommand');"))
         self.contextMenuAboutToShow.emit(m)
         m.exec(self.mapToGlobal(QPoint(x, y)))
+
+
+def _component_members(editor, line: int, col: int) -> list[dict]:
+    """IntelliSense members of component package controls (radide/components/intellisense.py)."""
+    from .components.intellisense import monaco_completions
+    return monaco_completions(editor, line, col)
+
+
+MonacoEditor.completion_providers.append(_component_members)

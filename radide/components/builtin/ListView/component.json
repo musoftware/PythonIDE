@@ -54,5 +54,15 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSComctlLib.ListView",
+    "library": "MSComctlLib",
+    "imports": [
+      "comctllib.listview",
+      "mscomctllib.listview"
+    ]
   }
 }

@@ -50,7 +50,7 @@ func add(a, b int) int {
 2 + 3 = 5
 ```
 
-في الـ IDE أضف الملف من **Project ← Add Module...** (إضافة وحدة برمجية)، فيُنشأ بالسطر `package main` جاهزًا.
+في الـ IDE أضف الملف من **Project > Add Module...** (إضافة وحدة برمجية)، فيُنشأ بالسطر `package main` جاهزًا.
 
 ## حزمة خاصة بنا في مجلد فرعي
 
@@ -130,9 +130,9 @@ true
 
 آلاف المكتبات المجانية موجودة على موقع **pkg.go.dev**. لإضافة مكتبة:
 
-**من الـ IDE:** **Project ← Manage Packages...** (إدارة الحزم)، ابحث عن المكتبة واضغط تثبيت. تنفذ الـ IDE في الخلفية الأمر `go get`.
+**من الـ IDE:** **Project > Manage Packages...** (إدارة الحزم)، ابحث عن المكتبة واضغط تثبيت. تنفذ الـ IDE في الخلفية الأمر `go get`.
 
-**من الطرفية** (**View ← Terminal** = الطرفية):
+**من الطرفية** (**View > Terminal** = الطرفية):
 
 ```text
 go get github.com/fatih/color@latest
@@ -178,7 +178,7 @@ func TestMax(t *testing.T) {
 }
 ```
 
-وتشغلها بالأمر `go test ./...` من الطرفية. وإذا فتحت مجلد وحدة Go بـ **File ← Open Folder...** (فتح مجلد) تظهر في قائمة **Native** أوامر جاهزة: `go build ./...` و`go vet ./...` و`go test ./...` و`go mod tidy`.
+وتشغلها بالأمر `go test ./...` من الطرفية. وإذا فتحت مجلد وحدة Go بـ **File > Open Folder...** (فتح مجلد) تظهر في قائمة **Native** أوامر جاهزة: `go build ./...` و`go vet ./...` و`go test ./...` و`go mod tidy`.
 
 ## أخطاء شائعة
 

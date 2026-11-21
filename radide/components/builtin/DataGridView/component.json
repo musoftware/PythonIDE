@@ -50,5 +50,21 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "MSFlexGridLib.MSFlexGrid",
+    "library": "MSFlexGridLib",
+    "imports": [
+      "msdatagridlib.datagrid",
+      "msdbgrid.dbgrid",
+      "msflexgridlib.msflexgrid",
+      "mshierarchicalflexgridlib.mshflexgrid"
+    ],
+    "approx": [
+      "msdatagridlib.datagrid",
+      "msdbgrid.dbgrid"
+    ]
   }
 }

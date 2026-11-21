@@ -538,3 +538,18 @@ tree-op/undo API, codegen and importer contracts: **docs/FLUTTER_DESIGNER.md** (
 radide/flutterdesign/model.py, codegen.py, importer.py, dart_tools/; ui - designer.py, inspector.py, palette.py,
 radide/features/flutter_designer.py; render - preview_host/, live.py; assets - assets.py, themes.py,
 animations.py, templates/).
+
+### 10.7 Assembly (NASM, FASM, MASM, GNU as, 8086 emulator)
+Plugins `asm-nasm` / `asm-fasm` / `asm-masm` (`.asm`) and `asm-gas` (`.s`): `radide/languages/asm_*.py` (base
+`asm_base.py`); toolchains (NASM / FASM / GoLink downloaded from the official sites, MinGW-w64 as / ld / gcc /
+gdb reused, MASM only from Visual Studio), build `python -m radide.asm.build <folder>` -> `_radapp.exe` +
+`_build\diagnostics.json`, error parsing, templates, GUI Bridge forms (`Form1.inc` / `_radmain.asm` /
+`radgui.inc`) and the DWARF line information gdb reads for NASM objects: `radide/asm/`. Project settings: the
+`"asm"` key of project.radproj. Editor intelligence, native debugger, 8086 emulator, samples and course have
+their own sections - all in **docs/ASSEMBLY.md** (owners: asm-core - radide/asm/, languages/asm_*.py,
+features/asm_build_ui.py; the other parts as listed there).
+Editor intelligence (owner: asm-intel - radide/asm_intel/, features/asm_ide.py; targeted edits in
+radide/monaco_editor.py, radide/web/editor.html, radide/lsp.py, radide/lsp_servers.py) added generic Monaco hooks
+any language may use: `MonacoEditor.plugin_overlays`, `plugin.monaco_language(path)` (full Monarch grammar via
+`radRegisterMonarch`), completion items with `doc` / `insert` / `snippet` / `sort` / `edits`, and dict calltips
+(docs/ASSEMBLY.md, "Editor intelligence").

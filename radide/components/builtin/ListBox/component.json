@@ -33,5 +33,23 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.ListBox",
+    "imports": [
+      "msdatalistlib.datalist",
+      "msdblib.dblist",
+      "vb.dirlistbox",
+      "vb.filelistbox",
+      "vb.listbox"
+    ],
+    "approx": [
+      "msdatalistlib.datalist",
+      "msdblib.dblist",
+      "vb.dirlistbox",
+      "vb.filelistbox"
+    ]
   }
 }

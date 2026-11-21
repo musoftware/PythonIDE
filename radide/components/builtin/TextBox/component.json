@@ -21,7 +21,8 @@
       "type": "bool",
       "default": false,
       "category": "Behavior",
-      "description": "Allow several lines of text."
+      "description": "Allow several lines of text.",
+      "rebuildPreview": true
     },
     {
       "name": "ReadOnly",
@@ -53,5 +54,18 @@
     "*": {
       "native": true
     }
+  },
+  "designer": "designer.py",
+  "help": "help.md",
+  "vb6": {
+    "class": "VB.TextBox",
+    "imports": [
+      "msmask.maskedbox",
+      "richtextlib.richtextbox",
+      "vb.textbox"
+    ],
+    "approx": [
+      "msmask.maskedbox"
+    ]
   }
 }

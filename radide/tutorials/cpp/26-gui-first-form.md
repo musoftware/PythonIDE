@@ -39,7 +39,7 @@
 
 ### 1) إنشاء المشروع
 
-1. **File ← New Project**.
+1. **File > New Project**.
 2. اختر **C++ (GUI Bridge, g++ / MSVC)**، وسمّ المشروع `HelloForm`.
 3. ستفتح الـ IDE النموذج **Form1** في وضع التصميم، ومعه ملف الكود `Form1.cpp`.
 
