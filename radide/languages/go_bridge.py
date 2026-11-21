@@ -168,7 +168,22 @@ class GoBridgePlugin(ScriptBridgePlugin):
                 out.append((name, True))
         return out
 
+    def console_program(self, project: Project) -> bool:
+        """Console application (Go lessons): no forms and a module with its own func main(). It is built
+        without radlib.go / radmain_gen.go and runs as a plain console program (runtimes/bridge.py)."""
+        if project.forms:
+            return False
+        for m in project.modules:
+            p = Path(project.folder) / m
+            if not m.lower().endswith(".go") or not p.exists():
+                continue
+            if re.search(r"^func\s+main\s*\(\s*\)", p.read_text(encoding="utf-8", errors="replace"), re.M):
+                return True
+        return False
+
     def main_source(self, project: Project):
+        if self.console_program(project):
+            return None
         entries, seen = [], set()
         for f in self.code_files(project):
             p = project.folder / f
@@ -186,7 +201,16 @@ class GoBridgePlugin(ScriptBridgePlugin):
         return "radmain_gen.go", "\n".join(L)
 
     def prepare(self, folder: Path, project: Project) -> None:
-        super().prepare(folder, project)
+        if self.console_program(project):
+            for name, src in [("radmain_gen.go", None), *self.client_files().items()]:
+                p = Path(folder) / name                # GUI Bridge files would clash with the user's main
+                try:
+                    if p.exists() and (src is None or p.read_bytes() == src.read_bytes()):
+                        p.unlink()
+                except OSError:
+                    pass
+        else:
+            super().prepare(folder, project)
         self._ensure_gomod(folder)
 
     def build_command(self, folder: Path, project: Project) -> str | None:

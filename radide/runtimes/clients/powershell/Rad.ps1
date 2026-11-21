@@ -8,6 +8,8 @@
 
 $script:RadUtf8 = New-Object System.Text.UTF8Encoding $false
 try { [Console]::OutputEncoding = $script:RadUtf8 } catch { }
+# console scripts read the keyboard with [Console]::ReadLine(): UTF-8 too (the IDE sends UTF-8)
+try { [Console]::InputEncoding = $script:RadUtf8 } catch { }
 $script:RadIn = New-Object System.IO.StreamReader([Console]::OpenStandardInput(), $script:RadUtf8)
 $script:RadOut = New-Object System.IO.StreamWriter([Console]::OpenStandardOutput(), $script:RadUtf8)
 $script:RadOut.AutoFlush = $true

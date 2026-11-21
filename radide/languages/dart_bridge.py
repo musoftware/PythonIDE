@@ -174,7 +174,7 @@ class DartBridgePlugin(ScriptBridgePlugin):
         return None
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [self.tool() or "dart", "_radmain.dart"]
+        return [self.tool() or "dart", self.console_script(project) or "_radmain.dart"]
 
     # ------------------------------------------------------------ worker
     def worker_argv(self, tool: str, folder: Path, module_rel: str) -> list[str]:

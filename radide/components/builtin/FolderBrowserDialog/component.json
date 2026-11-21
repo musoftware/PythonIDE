@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "FolderBrowserDialog",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lets the user pick a folder: ShowDialog() returns \"OK\" or \"Cancel\".",
+  "category": "Dialogs",
+  "order": 280,
+  "builtin": true,
+  "prefix": "FolderBrowserDialog",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "SelectedPath",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "The chosen folder (after ShowDialog)."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

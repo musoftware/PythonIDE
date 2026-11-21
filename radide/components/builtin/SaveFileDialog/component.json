@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "SaveFileDialog",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Asks the user where to save a file: ShowDialog() returns \"OK\" or \"Cancel\".",
+  "category": "Dialogs",
+  "order": 250,
+  "builtin": true,
+  "prefix": "SaveFileDialog",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "Save As",
+      "category": "Appearance"
+    },
+    {
+      "name": "Filter",
+      "type": "str",
+      "default": "All files|*.*",
+      "category": "Behavior",
+      "description": "Pairs of description|pattern, e.g. Text files|*.txt|All|*.*"
+    },
+    {
+      "name": "FileName",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "The chosen file (after ShowDialog)."
+    },
+    {
+      "name": "InitialDirectory",
+      "type": "str",
+      "default": "",
+      "category": "Behavior"
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

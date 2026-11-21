@@ -1,0 +1,20 @@
+{
+  "id": "ide-basics",
+  "kind": "guide",
+  "title_ar": "دليل RAD IDE: أساسيات بيئة العمل",
+  "title_en": "RAD IDE Guide: Workbench Basics",
+  "language": "vb-basic",
+  "level": "beginner",
+  "description_ar": "دليل عربي خطوة بخطوة لبيئة RAD IDE نفسها: جولة في النافذة، والمشروعات والحلول ومستكشف الحلول، وفتح المجلدات، والنوافذ المتعددة، وتخطيطات Visual Studio و VS Code و Agent، ولوحة الأوامر، والسمات، والواجهة العربية، والإعدادات، والتكامل مع ويندوز، مع أمثلة تجرّبها بزر «جرّبه».",
+  "lessons": [
+    {"id": "01-tour", "file": "01-tour.md", "title_ar": "جولة في نافذة RAD IDE", "minutes": 20},
+    {"id": "02-projects-solutions", "file": "02-projects-solutions.md", "title_ar": "المشروعات والحلول ومستكشف الحلول", "minutes": 30},
+    {"id": "03-open-folder-windows", "file": "03-open-folder-windows.md", "title_ar": "فتح مجلد، وفتح ملف، ونافذة جديدة", "minutes": 20},
+    {"id": "04-layouts", "file": "04-layouts.md", "title_ar": "تخطيطات منطقة العمل: Visual Studio و VS Code و Agent", "minutes": 25},
+    {"id": "05-command-palette", "file": "05-command-palette.md", "title_ar": "لوحة الأوامر والتنقل السريع والاختصارات", "minutes": 25},
+    {"id": "06-themes-arabic", "file": "06-themes-arabic.md", "title_ar": "السمات والواجهة العربية وإمكانية الوصول", "minutes": 20},
+    {"id": "07-options", "file": "07-options.md", "title_ar": "نافذة الخيارات والإعدادات", "minutes": 25},
+    {"id": "08-windows-integration", "file": "08-windows-integration.md", "title_ar": "التكامل مع ويندوز وسطر الأوامر والتعليمات", "minutes": 20},
+    {"id": "09-cheatsheet", "file": "09-cheatsheet.md", "title_ar": "ورقة الاختصارات وقاموس المصطلحات", "minutes": 15}
+  ]
+}

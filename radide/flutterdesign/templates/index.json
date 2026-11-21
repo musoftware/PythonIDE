@@ -1,0 +1,137 @@
+{
+ "version": 1,
+ "templates": [
+  {
+   "id": "login",
+   "title": "Login",
+   "category": "Authentication",
+   "description": "Wave header artwork, a shadowed input card, gradient sign-in button, social row and staggered fade-in animations.",
+   "file": "screens/Login.fscreen.json",
+   "thumbnail": "thumbs/login.png",
+   "assets": [
+    "login_waves.png"
+   ],
+   "fonts": [
+    "Poppins"
+   ]
+  },
+  {
+   "id": "signup",
+   "title": "Sign up",
+   "category": "Authentication",
+   "description": "Full-screen gradient with translucent blobs, a rounded white sheet with outlined fields, a terms checkbox and a solid call to action.",
+   "file": "screens/SignUp.fscreen.json",
+   "thumbnail": "thumbs/signup.png",
+   "assets": [
+    "signup_blobs.png"
+   ],
+   "fonts": [
+    "Nunito"
+   ]
+  },
+  {
+   "id": "onboarding",
+   "title": "Onboarding",
+   "category": "Onboarding",
+   "description": "Three swipeable pages with original illustrations, page dots and a round gradient next button.",
+   "file": "screens/Onboarding.fscreen.json",
+   "thumbnail": "thumbs/onboarding.png",
+   "assets": [
+    "onboarding_1.png",
+    "onboarding_2.png",
+    "onboarding_3.png"
+   ],
+   "fonts": [
+    "Outfit"
+   ]
+  },
+  {
+   "id": "profile",
+   "title": "Profile",
+   "category": "Social",
+   "description": "Cover artwork with an overlapping avatar, stats card, follow / message buttons and a gradient grid of recent work.",
+   "file": "screens/Profile.fscreen.json",
+   "thumbnail": "thumbs/profile.png",
+   "assets": [
+    "profile_cover.png",
+    "avatar_2.png"
+   ],
+   "fonts": [
+    "Poppins"
+   ]
+  },
+  {
+   "id": "dashboard",
+   "title": "Dashboard",
+   "category": "Finance",
+   "description": "Greeting header, gradient balance card, quick actions, a bar chart built from containers and recent transactions with a bottom navigation bar.",
+   "file": "screens/Dashboard.fscreen.json",
+   "thumbnail": "thumbs/dashboard.png",
+   "assets": [
+    "avatar_1.png"
+   ],
+   "fonts": [
+    "Manrope"
+   ]
+  },
+  {
+   "id": "shop",
+   "title": "Product list",
+   "category": "Shopping",
+   "description": "Search field, promo banner, horizontal category chips and a two-column product grid with original product artwork.",
+   "file": "screens/Shop.fscreen.json",
+   "thumbnail": "thumbs/shop.png",
+   "assets": [
+    "product_headphones.png",
+    "product_watch.png",
+    "product_speaker.png",
+    "product_plant.png"
+   ],
+   "fonts": [
+    "DM Sans"
+   ]
+  },
+  {
+   "id": "product",
+   "title": "Product details",
+   "category": "Shopping",
+   "description": "Large product artwork on a radial glow (Hero), rating stars, colour swatches, quantity stepper and an add-to-cart button on a rounded sheet.",
+   "file": "screens/ProductDetails.fscreen.json",
+   "thumbnail": "thumbs/product.png",
+   "assets": [
+    "product_headphones.png"
+   ],
+   "fonts": [
+    "DM Sans"
+   ]
+  },
+  {
+   "id": "settings",
+   "title": "Settings",
+   "category": "Utility",
+   "description": "Gradient account card and grouped rounded sections with tinted icon boxes, switches, a slider and a log-out action.",
+   "file": "screens/Settings.fscreen.json",
+   "thumbnail": "thumbs/settings.png",
+   "assets": [
+    "avatar_3.png"
+   ],
+   "fonts": [
+    "Inter"
+   ]
+  },
+  {
+   "id": "chat",
+   "title": "Chat",
+   "category": "Social",
+   "description": "Conversation with gradient / white bubbles that slide in from their side, a typing indicator and a rounded message bar.",
+   "file": "screens/Chat.fscreen.json",
+   "thumbnail": "thumbs/chat.png",
+   "assets": [
+    "avatar_4.png"
+   ],
+   "fonts": [
+    "Plus Jakarta Sans"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "Button",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Raises an event when the user clicks it.",
+  "category": "Common Controls",
+  "order": 10,
+  "builtin": true,
+  "prefix": "Button",
+  "defaultSize": [
+    75,
+    23
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "TextAlign",
+      "type": "enum",
+      "default": "Center",
+      "category": "Appearance",
+      "choices": [
+        "Left",
+        "Center",
+        "Right"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

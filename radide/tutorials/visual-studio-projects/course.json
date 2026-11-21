@@ -1,0 +1,58 @@
+{
+  "id": "visual-studio-projects",
+  "title_ar": "دليل مشاريع Visual Studio في RAD IDE",
+  "title_en": "Visual Studio Projects in RAD IDE (Guide)",
+  "language": "csharp-bridge",
+  "level": "beginner",
+  "description_ar": "دليل عملي خطوة بخطوة: افتح حلول ومشاريع Visual Studio (.sln و.csproj و.vbproj) في مكانها دون تحويل، وصمّم نماذج Windows Forms ذهابًا وإيابًا مع ملف Designer، وابنِ وشغّل وصحّح الأخطاء، وأدر حزم NuGet والمراجع، ثم حوّل مشروعًا قديمًا بمعالج الترحيل.",
+  "lessons": [
+    {
+      "id": "01-overview",
+      "file": "01-overview.md",
+      "title_ar": "ما معنى «فتح المشروع في مكانه»؟",
+      "minutes": 15
+    },
+    {
+      "id": "02-open-solution",
+      "file": "02-open-solution.md",
+      "title_ar": "فتح .sln و.csproj ومستكشف الحلول",
+      "minutes": 25
+    },
+    {
+      "id": "03-build-run",
+      "file": "03-build-run.md",
+      "title_ar": "البناء والتشغيل والإعدادات (Debug / Release)",
+      "minutes": 30
+    },
+    {
+      "id": "04-winforms-designer",
+      "file": "04-winforms-designer.md",
+      "title_ar": "مصمم Windows Forms ذهابًا وإيابًا",
+      "minutes": 35
+    },
+    {
+      "id": "05-vbnet-projects",
+      "file": "05-vbnet-projects.md",
+      "title_ar": "مشاريع VB.NET (.vbproj)",
+      "minutes": 25
+    },
+    {
+      "id": "06-nuget-references",
+      "file": "06-nuget-references.md",
+      "title_ar": "حزم NuGet والمراجع",
+      "minutes": 25
+    },
+    {
+      "id": "07-debugging",
+      "file": "07-debugging.md",
+      "title_ar": "تصحيح الأخطاء بـ netcoredbg",
+      "minutes": 30
+    },
+    {
+      "id": "08-migration-wizard",
+      "file": "08-migration-wizard.md",
+      "title_ar": "معالج الترحيل: تحويل مشروع إلى RAD IDE",
+      "minutes": 30
+    }
+  ]
+}

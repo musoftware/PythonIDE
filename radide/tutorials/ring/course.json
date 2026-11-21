@@ -1,0 +1,27 @@
+{
+  "id": "ring",
+  "title_ar": "تعلّم لغة Ring من الصفر",
+  "title_en": "Learn Ring from Scratch",
+  "language": "ring-qt",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في لغة Ring: المتغيرات، والشروط، وحلقات التكرار، والقوائم، والنصوص، والدوال، والأصناف والكائنات، وأساسيات البرمجة الطبيعية، والملفات والأخطاء، ثم النوافذ الرسومية بمصمم نماذج RingQt، وقواعد بيانات SQLite والإنترنت بـ RingLibCurl، ولعبة بـ RingRayLib، ومعرض أمثلة Ring وتعليمات F1، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Ring: برنامجك الأول", "minutes": 25},
+    {"id": "02-variables", "file": "02-variables.md", "title_ar": "المتغيرات وأنواع البيانات والإدخال", "minutes": 35},
+    {"id": "03-conditions", "file": "03-conditions.md", "title_ar": "العمليات والشروط واتخاذ القرار", "minutes": 35},
+    {"id": "04-loops", "file": "04-loops.md", "title_ar": "حلقات التكرار", "minutes": 35},
+    {"id": "05-lists", "file": "05-lists.md", "title_ar": "القوائم (Lists) والقواميس", "minutes": 45},
+    {"id": "06-strings", "file": "06-strings.md", "title_ar": "النصوص (Strings)", "minutes": 35},
+    {"id": "07-functions", "file": "07-functions.md", "title_ar": "الدوال (Functions)", "minutes": 40},
+    {"id": "08-classes", "file": "08-classes.md", "title_ar": "الأصناف والكائنات (Classes and Objects)", "minutes": 45},
+    {"id": "09-natural", "file": "09-natural.md", "title_ar": "الوراثة والأقواس وأساسيات البرمجة الطبيعية", "minutes": 45},
+    {"id": "10-errors-files", "file": "10-errors-files.md", "title_ar": "الأخطاء والملفات", "minutes": 35},
+    {"id": "11-first-form", "file": "11-first-form.md", "title_ar": "أول نافذة RingQt في مصمم النماذج", "minutes": 45},
+    {"id": "12-controls", "file": "12-controls.md", "title_ar": "أدوات أكثر: القوائم والاختيارات والمؤقت", "minutes": 50},
+    {"id": "13-sqlite-curl", "file": "13-sqlite-curl.md", "title_ar": "قواعد البيانات SQLite والإنترنت بـ RingLibCurl", "minutes": 45},
+    {"id": "14-raylib-game", "file": "14-raylib-game.md", "title_ar": "لعبتك الأولى بـ RingRayLib", "minutes": 50},
+    {"id": "15-samples-help", "file": "15-samples-help.md", "title_ar": "معرض أمثلة Ring وتعليمات F1 والمنقّح", "minutes": 30},
+    {"id": "16-final-project", "file": "16-final-project.md", "title_ar": "المشروع النهائي: دفتر العناوين", "minutes": 90},
+    {"id": "17-glossary", "file": "17-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 15}
+  ]
+}

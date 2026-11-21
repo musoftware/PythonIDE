@@ -18,7 +18,24 @@ ACT = "https://radtut.action/"
 FONT_FILE = "NotoNaskhArabic-wght.ttf"
 FONT_FAMILY = "Noto Naskh Arabic RAD"
 LEXERS = {"vb": "vbnet", "cpp": "cpp"}
-LANG_NAMES = {"vb": "BASIC", "cpp": "C++‎"}     # LRM: "مثال C++" must not read "مثال ++C"
+LANG_NAMES = {"vb": "BASIC", "cpp": "C++‎", "ring": "Ring"}     # LRM: "مثال C++" must not read "مثال ++C"
+# C / Rust / Go / Fortran courses (radide/tutorials/native.py)
+LEXERS.update({"c": "c", "rust": "rust", "go": "go", "fortran": "fortran"})
+LANG_NAMES.update({"c": "C", "rust": "Rust", "go": "Go", "fortran": "Fortran"})
+LEXERS["py"], LANG_NAMES["py"] = "python", "Python"      # Python course / Jupyter guide (radide/tutorials/pyrun.py)
+# C# / Java courses (radide/tutorials/csjava_support.py); LRM keeps "#" after the C in a right-to-left tag
+LEXERS.update({"cs": "csharp", "java": "java"})
+LANG_NAMES.update({"cs": "C#‎", "java": "Java"})
+LEXERS["php"], LANG_NAMES["php"] = "html+php", "PHP"     # PHP course / Laravel / CodeIgniter (tutorials/php_support.py)
+# Ruby / Lua / Perl / PowerShell / Dart courses (radide/tutorials/scripting.py)
+LEXERS.update({"ruby": "ruby", "lua": "lua", "perl": "perl", "powershell": "powershell", "dart": "dart"})
+LANG_NAMES.update({"ruby": "Ruby", "lua": "Lua", "perl": "Perl", "powershell": "PowerShell", "dart": "Dart"})
+# JavaScript / TypeScript course and the Node.js front-end guide (radide/tutorials/js_support.py)
+LEXERS.update({"js": "javascript", "ts": "typescript"})
+LANG_NAMES.update({"js": "JavaScript", "ts": "TypeScript"})
+# Flutter screens / pygame scenes (guides flutter-mobile, games: tutorials/flutter_support.py, game_support.py)
+LEXERS.update({"flutter": "dart", "game": "python"})
+LANG_NAMES.update({"flutter": "Flutter", "game": "لعبة pygame"})
 
 try:
     import markdown as _markdown
@@ -47,7 +64,11 @@ def highlight(code: str, lang: str) -> str:
         from pygments import highlight as _hl
         from pygments.formatters import HtmlFormatter
         from pygments.lexers import get_lexer_by_name
-        lexer = get_lexer_by_name(LEXERS.get(lang, "text"))
+        if lang == "ring":                     # Pygments has no Ring lexer
+            from .ring_support import lexer as _ring_lexer
+            lexer = _ring_lexer()
+        else:
+            lexer = get_lexer_by_name(LEXERS.get(lang, "text"))
         return _hl(code, lexer, HtmlFormatter(nowrap=True))
     except Exception:  # noqa: BLE001
         return html.escape(code)
@@ -250,7 +271,8 @@ def block_html(b: Block, chm: bool = False, saved_code: str | None = None, quiz_
         tag = {"output": "الناتج", "input": "المدخلات (ما يكتبه المستخدم)"}.get(b.role, "")
         bar = f'<div class="bar"><span class="tag">{tag}</span></div>' if tag else ""
         return f'<div class="blk">{bar}<pre class="out">{_out_text(b.code.rstrip(), chm)}</pre></div>'
-    if b.lang not in ("vb", "cpp"):
+    if b.lang not in ("vb", "cpp", "ring", "c", "rust", "go", "fortran", "py", "cs", "java", "ruby", "lua", "perl", "powershell", "dart") \
+            and b.lang not in LEXERS:                  # every language with a lexer gets the code block bar
         return f'<div class="blk"><pre class="hl">{html.escape(b.code.rstrip())}</pre></div>'
     code_html = f'<pre class="hl">{highlight(b.code.rstrip(), b.lang)}</pre>'
     if b.role == "exercise":

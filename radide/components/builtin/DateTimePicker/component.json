@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "name": "DateTimePicker",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lets the user pick a date or a time.",
+  "category": "Common Controls",
+  "order": 200,
+  "builtin": true,
+  "prefix": "DateTimePicker",
+  "defaultSize": [
+    200,
+    20
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Value",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Date as YYYY-MM-DD (time as HH:MM:SS); empty = today."
+    },
+    {
+      "name": "Format",
+      "type": "enum",
+      "default": "Short",
+      "category": "Appearance",
+      "description": "Short = 2024-01-31, Long = Wednesday, 31 January 2024, Time = 13:45:00.",
+      "choices": [
+        "Short",
+        "Long",
+        "Time"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

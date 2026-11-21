@@ -1,0 +1,18 @@
+{
+  "id": "ai",
+  "title_ar": "دليل الذكاء الاصطناعي في RAD IDE",
+  "title_en": "AI in RAD IDE (Arabic guide)",
+  "language": "python",
+  "level": "beginner",
+  "description_ar": "دليل عملي خطوة بخطوة لكل أدوات الذكاء الاصطناعي في RAD IDE: مزودو الذكاء الاصطناعي (Ollama على جهازك، Claude Code، Gemini CLI، مفاتيح API)، ومحادثة الذكاء الاصطناعي، والإكمال المضمّن، والتعديل بـ Ctrl+I، ومدير الوكلاء، ومحادثات الويب، مع أمثلة آمنة تعمل دون إنترنت.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما الذي يقدمه الذكاء الاصطناعي في RAD IDE؟", "minutes": 15},
+    {"id": "02-providers", "file": "02-providers.md", "title_ar": "إعداد المزودين: Ollama وClaude Code وGemini CLI", "minutes": 30},
+    {"id": "03-chat", "file": "03-chat.md", "title_ar": "نافذة محادثة الذكاء الاصطناعي والإشارات @", "minutes": 25},
+    {"id": "04-editor", "file": "04-editor.md", "title_ar": "الذكاء الاصطناعي داخل المحرر: الإكمال المضمّن وCtrl+I", "minutes": 30},
+    {"id": "05-agents", "file": "05-agents.md", "title_ar": "مدير الوكلاء: مهام ينفذها الوكيل وأنت تراجع", "minutes": 30},
+    {"id": "06-web-chats", "file": "06-web-chats.md", "title_ar": "محادثات الويب داخل البيئة", "minutes": 20},
+    {"id": "07-prompts-safety", "file": "07-prompts-safety.md", "title_ar": "كتابة طلبات جيدة، والخصوصية، والعمل دون إنترنت", "minutes": 25},
+    {"id": "08-project", "file": "08-project.md", "title_ar": "مشروع عملي: برنامج بنافذة نصنعه مع الذكاء الاصطناعي", "minutes": 40}
+  ]
+}

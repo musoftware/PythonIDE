@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "Timer",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Raises Tick at a regular interval.",
+  "category": "Components",
+  "order": 140,
+  "builtin": true,
+  "prefix": "Timer",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Interval",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior",
+      "description": "Milliseconds between Tick events."
+    },
+    {
+      "name": "Enabled",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Start the timer when the form loads."
+    }
+  ],
+  "events": [
+    {
+      "name": "Tick"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

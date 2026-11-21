@@ -1,0 +1,17 @@
+{
+  "id": "extensions",
+  "title_ar": "دليل الإضافات في RAD IDE",
+  "title_en": "Extensions in RAD IDE (Arabic guide)",
+  "language": "python",
+  "level": "beginner",
+  "description_ar": "دليل خطوة بخطوة للإضافات: تثبيت إضافات VS Code من متجر Open VSX أو من ملف VSIX، والسمات اللونية وسمات الأيقونات والقواعد اللغوية، ثم كتابة إضافتك الأولى لـ RAD IDE بلغة Python باستخدام واجهة الإضافات (activate(api))، وتثبيتها ومشاركتها بأمان.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما الإضافات؟ نوعان في RAD IDE", "minutes": 15},
+    {"id": "02-open-vsx", "file": "02-open-vsx.md", "title_ar": "متجر Open VSX: البحث والتثبيت والتحديث", "minutes": 25},
+    {"id": "03-themes-icons", "file": "03-themes-icons.md", "title_ar": "السمات اللونية وسمات أيقونات الملفات", "minutes": 25},
+    {"id": "04-grammars-snippets", "file": "04-grammars-snippets.md", "title_ar": "اللغات والقواعد اللغوية والمقتطفات", "minutes": 25},
+    {"id": "05-first-extension", "file": "05-first-extension.md", "title_ar": "إضافتك الأولى: سمة لونية بلا كود", "minutes": 30},
+    {"id": "06-extension-api", "file": "06-extension-api.md", "title_ar": "واجهة الإضافات: أوامر ونوافذ وشريط الحالة", "minutes": 40},
+    {"id": "07-share-manage", "file": "07-share-manage.md", "title_ar": "إدارة الإضافات ومشاركتها بأمان", "minutes": 25}
+  ]
+}

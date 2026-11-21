@@ -1,0 +1,12 @@
+{
+  "name": "FsApp",
+  "language": "flutter",
+  "forms": [
+    "MainScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "mobile": {
+    "device": "windows"
+  }
+}

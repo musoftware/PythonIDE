@@ -41,6 +41,8 @@ foreach ($__radBlock in $__radBlocks) {
     try { . $__radBlock[1].GetScriptBlock() }
     catch { [Console]::Error.WriteLine("$($__radBlock[0]): $($_.Exception.Message) $($_.InvocationInfo.PositionMessage)") }
 }
+# console mode: a project without forms is a script - its modules ran above, nothing waits for events
+if (-not $Worker -and -not ($RadFiles | Where-Object { $_ -like '*_designer.ps1' })) { exit 0 }
 
 function RadWriteOutput($Items) {
     foreach ($o in @($Items)) {

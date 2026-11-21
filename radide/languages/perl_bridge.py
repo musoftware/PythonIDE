@@ -157,7 +157,7 @@ class PerlBridgePlugin(ScriptBridgePlugin):
         return "_radmain.pl", "\n".join(L)
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [self.tool() or "perl", "_radmain.pl"]
+        return [self.tool() or "perl", self.console_script(project) or "_radmain.pl"]
 
     # ------------------------------------------------------------ references (CONTRACTS 7)
     def exported_functions(self, path: Path, text: str, module: str | None = None,

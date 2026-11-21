@@ -1,0 +1,11 @@
+name: fsimport
+description: RAD IDE Flutter designer - parses widget build() methods into a JSON expression tree.
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  # pinned: the AST API changes between majors; resolved offline from the pub cache when possible
+  analyzer: '>=9.0.0 <11.0.0'

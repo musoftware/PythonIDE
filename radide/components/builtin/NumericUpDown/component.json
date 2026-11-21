@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "name": "NumericUpDown",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A number with up/down arrows.",
+  "category": "Common Controls",
+  "order": 100,
+  "builtin": true,
+  "prefix": "NumericUpDown",
+  "defaultSize": [
+    120,
+    20
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Minimum",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    },
+    {
+      "name": "Maximum",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior"
+    },
+    {
+      "name": "Value",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

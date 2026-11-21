@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "name": "FontDialog",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lets the user pick a font: ShowDialog() returns \"OK\" or \"Cancel\".",
+  "category": "Dialogs",
+  "order": 270,
+  "builtin": true,
+  "prefix": "FontDialog",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "FontName",
+      "type": "font",
+      "default": "Segoe UI",
+      "category": "Behavior",
+      "description": "The chosen font family."
+    },
+    {
+      "name": "FontSize",
+      "type": "int",
+      "default": 9,
+      "category": "Behavior",
+      "description": "The chosen size in points."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

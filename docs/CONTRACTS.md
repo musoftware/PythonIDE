@@ -529,3 +529,12 @@ notice in the wizard).
 | game-runtime | radide/languages/pygame_game.py, godot.py, radide/games/runtime/radgame.py, codegen, Godot export, templates, samples/HelloGame |
 | exe-core | radide/importers/exe/base.py, native.py, pe_resources.py, radide/features/exe_import.py (wizard + report) |
 | exe-managed | radide/importers/exe/dotnet.py, vb6.py, pyexe.py, java.py, electron.py |
+
+### 10.6 Advanced Flutter designer (widget trees, FlutterFlow style)
+Screens as real widget trees in `<Screen>.fscreen.json` (Scaffold/Container/BoxDecoration/Stack/Positioned/...,
+~90 catalog widgets, animations), generated to `lib/screens/<screen>.dart` + user part file
+`<screen>_events.dart`, imported back from Dart with a package:analyzer CLI. Schema, catalog, value encodings,
+tree-op/undo API, codegen and importer contracts: **docs/FLUTTER_DESIGNER.md** (owners: model -
+radide/flutterdesign/model.py, codegen.py, importer.py, dart_tools/; ui - designer.py, inspector.py, palette.py,
+radide/features/flutter_designer.py; render - preview_host/, live.py; assets - assets.py, themes.py,
+animations.py, templates/).

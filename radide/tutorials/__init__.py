@@ -30,8 +30,27 @@ COURSE_ORDER = ("vb-basic", "cpp")
 FENCE = re.compile(r"^```([^\n`]*)\n(.*?)^```[ \t]*$", re.M | re.S)
 TEST = re.compile(r"<!--\s*test:\s*(\{.*?\})\s*-->\s*$", re.S)
 COMMENT = re.compile(r"<!--.*?-->", re.S)
-FILE_MARK = re.compile(r"^\s*(?:'|//)\s*#file:\s*(\S+)\s*$")
-CODE_LANGS = {"vb": "vb", "basic": "vb", "vba": "vb", "cpp": "cpp", "c++": "cpp"}
+FILE_MARK = re.compile(r"^\s*(?:'|//|#|!)\s*#file:\s*(\S+)\s*$")
+CODE_LANGS = {"vb": "vb", "basic": "vb", "vba": "vb", "cpp": "cpp", "c++": "cpp", "ring": "ring", "python": "py", "py": "py"}
+# C / Rust / Go / Fortran lessons: radide/tutorials/native.py
+NATIVE = ("c", "rust", "go", "fortran")
+CODE_LANGS.update({"c": "c", "rust": "rust", "rs": "rust", "go": "go", "golang": "go", "fortran": "fortran", "f90": "fortran"})
+# Ruby / Lua / Perl / PowerShell / Dart lessons: radide/tutorials/scripting.py
+SCRIPT = ("ruby", "lua", "perl", "powershell", "dart")
+CODE_LANGS.update({"ruby": "ruby", "rb": "ruby", "lua": "lua", "perl": "perl", "pl": "perl", "powershell": "powershell",
+                   "ps1": "powershell", "pwsh": "powershell", "dart": "dart"})
+# C# / Java lessons: radide/tutorials/csjava_support.py
+CSJAVA = ("cs", "java")
+CODE_LANGS.update({"csharp": "cs", "cs": "cs", "c#": "cs", "java": "java"})
+# PHP lessons (php run = CLI script, php web run = web pages served by php -S): radide/tutorials/php_support.py
+PHPL = ("php",)
+CODE_LANGS.update({"php": "php"})
+# Flutter screens / pygame scenes (guides flutter-mobile, games): radide/tutorials/flutter_support.py, game_support.py
+MOBGAME = ("flutter", "game")
+CODE_LANGS.update({"flutter": "flutter", "game": "game"})
+# JavaScript / TypeScript lessons (Node.js console + GUI Bridge forms): radide/tutorials/js_support.py
+JSL = ("js", "ts")
+CODE_LANGS.update({"js": "js", "javascript": "js", "node": "js", "ts": "ts", "typescript": "ts"})
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
 
@@ -59,11 +78,21 @@ class Block:
 
     @property
     def runnable(self) -> bool:
-        return self.lang in ("vb", "cpp") and self.role in ("run", "solution")
+        if self.lang in NATIVE or self.lang in SCRIPT or self.lang in CSJAVA or self.lang in PHPL or self.lang in JSL:
+            return self.role in ("run", "solution")
+        if self.lang in MOBGAME:
+            return self.role in ("run", "solution")
+        return self.lang in ("vb", "cpp", "ring", "py") and self.role in ("run", "solution")
 
     @property
     def gui(self) -> bool:
         """A C++ GUI Bridge block (Form1.cpp with event handlers)."""
+        if self.lang in NATIVE:
+            from .native import is_gui
+            return is_gui(self)
+        if self.lang in CSJAVA:
+            from .csjava_support import is_gui as _cj_gui
+            return _cj_gui(self)
         return self.lang == "cpp" and ("radgui.hpp" in self.code or bool(re.search(r"\bvoid\s+\w+_(Click|Load)\s*\(",
                                                                                    self.code)))
 
@@ -72,6 +101,25 @@ class Block:
         return self.solution if self.role == "exercise" and self.solution is not None else self
 
     def reads_stdin(self) -> bool:
+        if self.lang in JSL:
+            from .js_support import reads_stdin as _js_stdin
+            return _js_stdin(self)
+        if self.lang in PHPL:
+            from .php_support import reads_stdin as _php_stdin
+            return _php_stdin(self)
+        if self.lang in SCRIPT:
+            from .scripting import reads_stdin
+            return not self.form and reads_stdin(self.lang, self.code)
+        if self.lang in NATIVE:
+            from .native import reads_stdin
+            return reads_stdin(self)
+        if self.lang in CSJAVA:
+            from .csjava_support import reads_stdin as _cj_stdin
+            return not self.gui and _cj_stdin(self)
+        if self.lang == "py":
+            return not self.form and bool(re.search(r"\binput\s*\(", self.code))
+        if self.lang == "ring":
+            return not self.form and bool(re.search(r"^\s*give\b", self.code, re.M | re.I))
         return self.lang == "cpp" and bool(re.search(r"\bstd::cin\b|\bcin\s*>>|\bgetline\s*\(|\bscanf\s*\(", self.code))
 
 
@@ -148,6 +196,14 @@ def course(course_id: str) -> Course | None:
     return next((c for c in courses() if c.id == course_id), None)
 
 
+CHM_NAMES = {"vb-basic": "RADIDE_BASIC_ar.chm", "cpp": "RADIDE_CPP_ar.chm"}
+
+
+def chm_file(course_id: str) -> str:
+    """The CHM file name of a course in docs/chm (tools/build_chm.py, Help > Help Files (CHM))."""
+    return CHM_NAMES.get(course_id) or f"RADIDE_{re.sub(r'[^A-Za-z0-9]+', '_', course_id).upper()}_ar.chm"
+
+
 # ===================================================================== parsing
 def _classify(info: str) -> tuple[str, str, bool]:
     words = info.split()
@@ -210,9 +266,9 @@ def parse(md: str) -> list[tuple[str, object]]:
         items.append(("md", rest))
     # attach output / input to the code block before them, exercises to their solutions
     for i, b in enumerate(blocks):
-        if b.lang in ("vb", "cpp") and b.role in ("run", "solution", "exercise"):
+        if b.lang in ("vb", "cpp", "ring", "py", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME) and b.role in ("run", "solution", "exercise"):
             for nxt in blocks[i + 1:]:
-                if nxt.lang in ("vb", "cpp", "quiz"):
+                if nxt.lang in ("vb", "cpp", "ring", "py", "quiz", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME):
                     break
                 if nxt.role == "output" and b.expected is None:
                     b.expected = nxt.code
@@ -246,12 +302,39 @@ def split_files(code: str, default: str) -> dict[str, str]:
 
 
 def default_file(block: Block) -> str:
+    if block.lang == "flutter":
+        from .flutter_support import default_file as flutter_default
+        return flutter_default(block)
+    if block.lang == "game":
+        return "Scene.py"
+    if block.lang in JSL:
+        from .js_support import default_file as js_default
+        return js_default(block)
+    if block.lang in PHPL:
+        from .php_support import default_file as php_default
+        return php_default(block)
+    if block.lang in SCRIPT:
+        from .scripting import default_file as script_default
+        return script_default(block.lang, block.form)
+    if block.lang in NATIVE:
+        from .native import default_file as native_default
+        return native_default(block)
+    if block.lang in CSJAVA:
+        from .csjava_support import default_file as cj_default
+        return cj_default(block)
     if block.lang == "vb":
         return "Form1.frm" if block.form else "Module1.bas"
+    if block.lang == "ring":
+        return "Form1.ring" if block.form else "main.ring"
+    if block.lang == "py":
+        return "Form1.py" if block.form else "main.py"
     return "Form1.cpp" if block.gui else "main.cpp"
 
 
 def block_files(block: Block, code: str | None = None) -> dict[str, str]:
+    if block.lang in SCRIPT:         # also -- #file: (Lua)
+        from .scripting import split_files as script_split
+        return script_split(block.code if code is None else code, default_file(block))
     return split_files(block.code if code is None else code, default_file(block))
 
 
@@ -283,6 +366,36 @@ def make_project(block: Block, dest: Path, code: str | None = None, name: str = 
         if block.gui:
             return _make_cpp_gui(files, dest, name)
         return _make_cpp_console(files, dest, name)
+    if block.lang == "ring":
+        from . import ring_support as R
+        files = block_files(block, code)
+        target = block.check_target()
+        return (R.make_form(files, dest, name, target.spec) if block.form or target.form
+                else R.make_console(files, dest, name))
+    if block.lang == "py":
+        from .pyrun import make_py_project
+        return make_py_project(block, block_files(block, code), dest, name)
+    if block.lang in NATIVE:
+        from . import native
+        return native.make_project(block, block_files(block, code), dest, name)
+    if block.lang in SCRIPT:
+        from . import scripting
+        target = block.check_target()
+        return scripting.make_project(block.lang, block_files(block, code), dest, name, block.form or target.form,
+                                      target.spec)
+    if block.lang in CSJAVA:
+        from . import csjava_support
+        return csjava_support.make_project(block, block_files(block, code), dest, name)
+    if block.lang in PHPL:
+        from . import php_support
+        return php_support.make_project(block, block_files(block, code), dest, name)
+    if block.lang in JSL:
+        from . import js_support
+        return js_support.make_project(block, block_files(block, code), dest, name)
+    if block.lang in MOBGAME:
+        from . import flutter_support, game_support
+        mod = flutter_support if block.lang == "flutter" else game_support
+        return mod.make_project(block_files(block, code), block.check_target().spec, dest, name)
     raise ValueError(f"block '{block.info}' cannot be run")
 
 
@@ -539,6 +652,33 @@ def check(block: Block, code: str | None = None, folder: Path | None = None, wor
         if r.get("msgbox"):
             out += ("\n" if out else "") + "\n".join(f"[MsgBox] {m}" for m in r["msgbox"])
         return CheckResult(not problems, out, expected, problems)
+    if block.lang == "ring":
+        from . import ring_support as R
+        return R.check(block, code, folder, work, norm, CheckResult, block_files)
+    if block.lang == "py":
+        from .pyrun import check_py
+        files = _project_files(folder, ".py") if folder else block_files(block, code)
+        return check_py(block, files, work)
+    if block.lang in NATIVE:
+        from . import native
+        files = native.project_files(block.lang, folder) if folder else block_files(block, code)
+        return native.check(block, files, work)
+    if block.lang in SCRIPT:
+        from . import scripting
+        return scripting.check(block, code, folder, work)
+    if block.lang in CSJAVA:
+        from . import csjava_support
+        return csjava_support.check(block, code, folder, work, norm, CheckResult, block_files)
+    if block.lang in PHPL:
+        from . import php_support
+        return php_support.check(block, code, folder, work, norm, CheckResult, block_files)
+    if block.lang in JSL:
+        from . import js_support
+        return js_support.check(block, code, folder, work, norm, CheckResult, block_files)
+    if block.lang in MOBGAME:
+        from . import flutter_support, game_support
+        mod = flutter_support if block.lang == "flutter" else game_support
+        return mod.check(block, code, folder, work, norm, CheckResult)
     return CheckResult(False, "", None, ["هذه الكتلة لا تُشغَّل"])
 
 
@@ -585,5 +725,6 @@ def search(query: str) -> list[tuple[Course, Lesson, str]]:
     return out
 
 
-__all__ = ["Block", "CheckResult", "Course", "Lesson", "check", "course", "courses", "gui_controls", "make_project",
+__all__ = ["Block", "CheckResult", "Course", "Lesson", "check", "chm_file", "course", "courses", "gui_controls",
+           "make_project",
            "parse", "run_folder", "runs_root", "search", "split_files"]

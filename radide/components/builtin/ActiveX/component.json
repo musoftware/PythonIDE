@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "ActiveX",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Hosts a Windows ActiveX (COM) control.",
+  "category": "Components",
+  "order": 290,
+  "builtin": true,
+  "prefix": "ActiveX",
+  "defaultSize": [
+    100,
+    50
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "ProgID",
+      "type": "str",
+      "default": "Shell.Explorer.2",
+      "category": "Behavior",
+      "description": "COM ProgID of the ActiveX control (e.g. Shell.Explorer.2, MSCAL.Calendar)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

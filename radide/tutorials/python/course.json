@@ -1,0 +1,28 @@
+{
+  "id": "python",
+  "title_ar": "تعلّم Python من الصفر حتى النوافذ الرسومية",
+  "title_en": "Learn Python from Scratch to Desktop Apps",
+  "language": "python",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في لغة Python: المتغيرات، والشروط، وحلقات التكرار، والقوائم والقواميس، والنصوص، والدوال، والأخطاء والملفات، والأصناف، والوحدات والحزم مع البيئة الافتراضية .venv، ثم النوافذ الرسومية بمصمم النماذج في Tkinter وPySide6 (Qt)، وتصحيح الأخطاء بنقاط التوقف، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-setup", "file": "01-setup.md", "title_ar": "مرحبًا بك في Python: أول مشروع وأول برنامج", "minutes": 25},
+    {"id": "02-variables", "file": "02-variables.md", "title_ar": "المتغيرات وأنواع البيانات", "minutes": 30},
+    {"id": "03-input-operators", "file": "03-input-operators.md", "title_ar": "الإدخال والعمليات الحسابية", "minutes": 30},
+    {"id": "04-conditions", "file": "04-conditions.md", "title_ar": "الشروط: if و elif و else", "minutes": 30},
+    {"id": "05-loops", "file": "05-loops.md", "title_ar": "حلقات التكرار: for و while", "minutes": 35},
+    {"id": "06-lists-tuples", "file": "06-lists-tuples.md", "title_ar": "القوائم والصفوف (list و tuple)", "minutes": 35},
+    {"id": "07-dicts-sets", "file": "07-dicts-sets.md", "title_ar": "القواميس والمجموعات (dict و set)", "minutes": 35},
+    {"id": "08-strings", "file": "08-strings.md", "title_ar": "التعامل مع النصوص", "minutes": 30},
+    {"id": "09-functions", "file": "09-functions.md", "title_ar": "الدوال (Functions)", "minutes": 40},
+    {"id": "10-errors-files", "file": "10-errors-files.md", "title_ar": "الأخطاء والاستثناءات والملفات", "minutes": 40},
+    {"id": "11-classes", "file": "11-classes.md", "title_ar": "الأصناف والكائنات (Classes)", "minutes": 45},
+    {"id": "12-modules-venv", "file": "12-modules-venv.md", "title_ar": "الوحدات والحزم والبيئة الافتراضية .venv", "minutes": 40},
+    {"id": "13-tkinter-first-form", "file": "13-tkinter-first-form.md", "title_ar": "أول نافذة بـ Tkinter في مصمم النماذج", "minutes": 45},
+    {"id": "14-tkinter-controls", "file": "14-tkinter-controls.md", "title_ar": "الأدوات والأحداث: القوائم والاختيارات والمؤقت", "minutes": 50},
+    {"id": "15-pyside6-forms", "file": "15-pyside6-forms.md", "title_ar": "نماذج PySide6 (Qt)", "minutes": 45},
+    {"id": "16-debugging", "file": "16-debugging.md", "title_ar": "تصحيح الأخطاء بنقاط التوقف", "minutes": 35},
+    {"id": "17-final-project", "file": "17-final-project.md", "title_ar": "المشروع النهائي: مدير المهام", "minutes": 75},
+    {"id": "18-glossary", "file": "18-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 15}
+  ]
+}

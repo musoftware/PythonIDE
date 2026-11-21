@@ -1,11 +1,12 @@
 """Build the CHM help files: the Arabic courses of radide/tutorials and the IDE manual.
 
-    python tools/build_chm.py                 # all three -> docs/chm/
-    python tools/build_chm.py basic cpp       # only some (basic | cpp | manual)
+    python tools/build_chm.py                 # every book -> docs/chm/
+    python tools/build_chm.py basic cpp       # only some (basic | cpp | manual | <course id>)
     python tools/build_chm.py --encoding utf-8 --out <dir>      # experiment with the page encoding
     python tools/build_chm.py --verify        # also decompile every CHM with hh.exe -decompile and check it
 
-Output: docs/chm/RADIDE_BASIC_ar.chm, RADIDE_CPP_ar.chm, RADIDE_Manual.chm.
+Output: docs/chm/RADIDE_BASIC_ar.chm, RADIDE_CPP_ar.chm, RADIDE_Manual.chm, and RADIDE_<COURSE_ID>_ar.chm for
+every other course folder of radide/tutorials (radide.tutorials.chm_file()).
 
 Compiler: hhc.exe (Microsoft HTML Help Workshop) when installed, else chmcmd (Free Pascal), looked up in
 %LOCALAPPDATA%\\RADIDE\\toolchains\\lazarus\\fpc\\<ver>\\bin\\<target>, %LOCALAPPDATA%\\RADIDE\\toolchains\\fpc\\...,
@@ -45,6 +46,9 @@ FONT_LICENCE = REPO / "radide" / "web" / "fonts" / "NotoNaskhArabic-OFL.txt"
 HELP_DIR = REPO / "radide" / "features" / "help"
 BOOKS = {"basic": ("vb-basic", "RADIDE_BASIC_ar.chm"), "cpp": ("cpp", "RADIDE_CPP_ar.chm"),
          "manual": (None, "RADIDE_Manual.chm")}
+# every other course folder of radide/tutorials is a book too (key = course id, file = T.chm_file(id))
+BOOKS.update({c.id: (c.id, T.chm_file(c.id)) for c in T.courses()
+              if c.id not in {cid for cid, _f in BOOKS.values()}})
 LANG_ID = "0x401 Arabic (Saudi Arabia)"
 FPC_URL = "https://sourceforge.net/projects/freepascal/files/Win32/3.2.2/fpc-3.2.2.win32.and.win64.exe/download"
 
@@ -360,14 +364,14 @@ def verify(chm: Path, key: str, enc: str, work: Path, log=print) -> list[str]:
             problems.append(f"{chm.name}: {name} differs after decompile")
         text = got.read_bytes().decode("cp1256" if enc == "cp1256" else "utf-8")
         text = html.unescape(text)
-        if key in ("basic", "cpp") and name != "index.html":
+        if BOOKS[key][0] and name != "index.html":
             les = T.course(BOOKS[key][0]).lesson(name[:-5])
             if les is not None and les.title_ar not in text:
                 problems.append(f"{chm.name}: {name} does not contain its Arabic title")
     hhc = next(iter(dest.glob("*.hhc")), None)
     if hhc is None:
         problems.append(f"{chm.name}: no .hhc after decompile")
-    elif key in ("basic", "cpp"):
+    elif BOOKS[key][0]:
         toc = html.unescape(hhc.read_bytes().decode("cp1256"))
         for les in T.course(BOOKS[key][0]).lessons:
             if toc_name(les.title_ar) not in toc:
@@ -379,7 +383,7 @@ def verify(chm: Path, key: str, enc: str, work: Path, log=print) -> list[str]:
 # ===================================================================== main
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("books", nargs="*", default=list(BOOKS), help="basic | cpp | manual (default: all)")
+    ap.add_argument("books", nargs="*", default=list(BOOKS), help="basic | cpp | manual | <course id> (default: all)")
     ap.add_argument("--encoding", choices=("cp1256", "utf-8"), default="cp1256", help="page encoding")
     ap.add_argument("--out", default=str(OUT), help="where the .chm files go (default docs/chm)")
     ap.add_argument("--work", default=str(WORK), help="build folder")

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "name": "ListView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A list of items with columns.",
+  "category": "Common Controls",
+  "order": 180,
+  "builtin": true,
+  "prefix": "ListView",
+  "defaultSize": [
+    200,
+    97
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Columns",
+      "type": "list",
+      "default": "Column1;Column2",
+      "category": "Data",
+      "description": "Column headers separated by ;"
+    },
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "",
+      "category": "Data",
+      "description": "Rows separated by ; with cells separated by | (a|b;c|d)."
+    },
+    {
+      "name": "View",
+      "type": "enum",
+      "default": "Details",
+      "category": "Appearance",
+      "description": "Details shows columns with headers.",
+      "choices": [
+        "Details",
+        "List"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    },
+    {
+      "name": "DoubleClick"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

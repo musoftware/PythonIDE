@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "LinkLabel",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A label that looks and acts like a hyperlink.",
+  "category": "Common Controls",
+  "order": 210,
+  "builtin": true,
+  "prefix": "LinkLabel",
+  "defaultSize": [
+    60,
+    17
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "LinkColor",
+      "type": "color",
+      "default": "#0066CC",
+      "category": "Appearance",
+      "description": "Colour of the link text."
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

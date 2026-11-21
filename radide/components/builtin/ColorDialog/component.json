@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "ColorDialog",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lets the user pick a colour: ShowDialog() returns \"OK\" or \"Cancel\".",
+  "category": "Dialogs",
+  "order": 260,
+  "builtin": true,
+  "prefix": "ColorDialog",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Color",
+      "type": "color",
+      "default": "#000000",
+      "category": "Behavior",
+      "description": "The chosen colour (after ShowDialog)."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

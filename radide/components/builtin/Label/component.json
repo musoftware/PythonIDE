@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "Label",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Displays read-only text.",
+  "category": "Common Controls",
+  "order": 20,
+  "builtin": true,
+  "prefix": "Label",
+  "defaultSize": [
+    60,
+    17
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "TextAlign",
+      "type": "enum",
+      "default": "Left",
+      "category": "Appearance",
+      "choices": [
+        "Left",
+        "Center",
+        "Right"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

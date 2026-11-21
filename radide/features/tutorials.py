@@ -9,7 +9,8 @@
 * Exercises are editable; "تحقق" runs the learner's code headless and compares it with the expected output /
   the hidden test of the solution (radide.tutorials.check).  Solutions stay hidden until clicked.  Quizzes give
   instant feedback.  Progress (lessons done, quizzes, exercises passed, code drafts) lives in QSettings.
-* Help > Help Files (CHM) opens docs/chm/*.chm (tools/build_chm.py) with hh.exe.
+* Help > Help Files (CHM) opens docs/chm/*.chm (tools/build_chm.py) with hh.exe: BASIC, C++, every other course
+  whose CHM is built (radide.tutorials.chm_file()), the manual.
 """
 from __future__ import annotations
 
@@ -41,6 +42,18 @@ CHM_DIR = REPO / "docs" / "chm"
 CHM_FILES = (("RADIDE_BASIC_ar.chm", "BASIC course (Arabic, CHM)"),
              ("RADIDE_CPP_ar.chm", "C++ course (Arabic, CHM)"),
              ("RADIDE_Manual.chm", "RAD IDE Manual (CHM)"))
+
+
+def chm_files() -> list[tuple[str, str]]:
+    """CHM_FILES + one entry per other course whose CHM is built (tools/build_chm.py), the manual last."""
+    out = list(CHM_FILES[:2])
+    known = {f for f, _t in CHM_FILES}
+    for c in T.courses():
+        f = T.chm_file(c.id)
+        if f not in known and (CHM_DIR / f).is_file():
+            out.append((f, f"{c.title_en} (Arabic, CHM)"))
+            known.add(f)
+    return out + list(CHM_FILES[2:])
 KEY = "tutorials/"
 SHORTCUT = "Ctrl+Shift+F1"
 ROLE_REF = int(Qt.ItemDataRole.UserRole) + 1
@@ -524,7 +537,14 @@ class TutorialsPanel(QWidget):
         if code is not None and b.role == "exercise":
             PROGRESS.set_code(les.course.id, les.id, n, code)
         stdin = None
-        if run and b.lang == "cpp" and not b.gui:
+        notebook = b.lang == "py" and "notebook" in b.info.split()
+        if run and ((b.lang == "cpp" and not b.gui) or (b.lang == "ring" and not b.form)
+                    or (b.lang == "py" and not b.form and not notebook)
+                    or (b.lang in ("cs", "java") and not b.gui)
+                    or (b.lang == "php" and "web" not in b.info.lower().split())
+                    or (b.lang in getattr(T, "SCRIPT", ()) and not b.form)
+                    or (b.lang in getattr(T, "JSL", ()) and not b.form)
+                    or (b.lang in getattr(T, "NATIVE", ()) and not b.gui)):
             stdin = b.check_target().stdin if b.role != "plain" else None
             if stdin is None and b.reads_stdin():
                 text, ok = QInputDialog.getMultiLineText(
@@ -551,6 +571,16 @@ class TutorialsPanel(QWidget):
             return False                           # the user cancelled "Save changes?"
         self.last_run = {"folder": str(folder), "block": n, "stdin": stdin, "run": run}
         win.log(f"[Tutorials] {les.course.id} / {les.id} block {n} -> {folder}")
+        if notebook and (folder / "notebook.ipynb").exists():     # Python notebook cells: the notebook editor
+            view = win.open_any_file(str(folder / "notebook.ipynb"))
+            if run and view is not None and hasattr(view, "run_all"):
+                def go(tries=40):
+                    if tries <= 0 or getattr(view, "is_ready", lambda: True)():
+                        view.run_all()
+                    else:
+                        QTimer.singleShot(250, lambda: go(tries - 1))
+                QTimer.singleShot(300, go)
+            return True
         if run:
             QTimer.singleShot(150, lambda: self._run(stdin))
         return True
@@ -709,11 +739,17 @@ def install(win) -> None:
     chm_menu = QMenu("Help Files (CHM)", help_menu)
     help_menu.insertMenu(before, chm_menu)
     win.tutorials_chm_menu = chm_menu
-    for fname, title in CHM_FILES:
-        a = QAction(title, win)
-        a.triggered.connect(lambda _=False, f=fname: open_chm(win, f))
-        chm_menu.addAction(a)
-        sub_acts.append(a)
+
+    def fill_chm_menu():
+        chm_menu.clear()
+        sub_acts.clear()
+        for fname, title in chm_files():
+            a = QAction(title, win)
+            a.triggered.connect(lambda _=False, f=fname: open_chm(win, f))
+            chm_menu.addAction(a)
+            sub_acts.append(a)
+    fill_chm_menu()
+    chm_menu.aboutToShow.connect(fill_chm_menu)          # CHMs built while the IDE runs show up too
     win.a_tutorials = act
     win.a_tutorials_chm = sub_acts
     win.addAction(act)
@@ -731,4 +767,5 @@ def install(win) -> None:
         win.log(f"[Tutorials] activity bar: {e}")
 
 
-__all__ = ["PROGRESS", "TutorialsPanel", "book_icon", "ensure_dock", "install", "open_chm", "show_tutorials"]
+__all__ = ["PROGRESS", "TutorialsPanel", "book_icon", "chm_files", "ensure_dock", "install", "open_chm",
+           "show_tutorials"]

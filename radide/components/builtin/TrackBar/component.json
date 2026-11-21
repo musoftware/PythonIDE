@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "name": "TrackBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A slider to pick a value.",
+  "category": "Common Controls",
+  "order": 110,
+  "builtin": true,
+  "prefix": "TrackBar",
+  "defaultSize": [
+    104,
+    45
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Minimum",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    },
+    {
+      "name": "Maximum",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior"
+    },
+    {
+      "name": "Value",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

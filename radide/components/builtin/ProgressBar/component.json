@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "ProgressBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Shows the progress of an operation.",
+  "category": "Common Controls",
+  "order": 90,
+  "builtin": true,
+  "prefix": "ProgressBar",
+  "defaultSize": [
+    100,
+    23
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Minimum",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    },
+    {
+      "name": "Maximum",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior"
+    },
+    {
+      "name": "Value",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior"
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

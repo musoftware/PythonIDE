@@ -175,7 +175,7 @@ class LuaBridgePlugin(ScriptBridgePlugin):
         return "_radmain.lua", "\n".join(L)
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [self.tool() or "lua", *self._prefix(), "_radmain.lua"]
+        return [self.tool() or "lua", *self._prefix(), self.console_script(project) or "_radmain.lua"]
 
     def worker_argv(self, tool: str, folder: Path, module_rel: str) -> list[str]:
         return [tool, *self._prefix(), self.worker_script, module_rel]

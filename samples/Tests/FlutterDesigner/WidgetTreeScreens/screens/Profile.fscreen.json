@@ -1,0 +1,403 @@
+{
+ "version": 1,
+ "name": "Profile",
+ "route": "/profile",
+ "theme": {
+  "seedColor": "#FF5B6CF9"
+ },
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "props": {
+     "centerTitle": true,
+     "elevation": 0
+    },
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Profile"
+      }
+     },
+     "leading": {
+      "id": "w4",
+      "type": "IconButton",
+      "slots": {
+       "icon": {
+        "id": "w5",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.arrow_back"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "back"
+      }
+     },
+     "actions": [
+      {
+       "id": "w6",
+       "type": "IconButton",
+       "slots": {
+        "icon": {
+         "id": "w7",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.settings"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "nav:/settings"
+       }
+      },
+      {
+       "id": "w8",
+       "type": "IconButton",
+       "slots": {
+        "icon": {
+         "id": "w9",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.share"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "onShare"
+       }
+      }
+     ]
+    }
+   },
+   "body": {
+    "id": "w10",
+    "type": "ListView",
+    "props": {
+     "padding": {
+      "h": 16,
+      "v": 12
+     }
+    },
+    "children": [
+     {
+      "id": "w11",
+      "type": "Card",
+      "props": {
+       "elevation": 2,
+       "shape": {
+        "type": "rounded",
+        "radius": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w12",
+        "type": "Padding",
+        "props": {
+         "padding": {
+          "all": 20
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w13",
+          "type": "Row",
+          "children": [
+           {
+            "id": "w14",
+            "type": "CircleAvatar",
+            "props": {
+             "radius": 36,
+             "backgroundImage": {
+              "source": "network",
+              "src": "https://picsum.photos/200"
+             }
+            }
+           },
+           {
+            "id": "w15",
+            "type": "SizedBox",
+            "props": {
+             "width": 16
+            }
+           },
+           {
+            "id": "w16",
+            "type": "Expanded",
+            "slots": {
+             "child": {
+              "id": "w17",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.start"
+              },
+              "children": [
+               {
+                "id": "w18",
+                "type": "Text",
+                "props": {
+                 "data": "Sara Ahmed",
+                 "style": {
+                  "fontSize": 20,
+                  "fontWeight": "FontWeight.bold"
+                 }
+                }
+               },
+               {
+                "id": "w19",
+                "type": "Text",
+                "props": {
+                 "data": "Product designer",
+                 "style": {
+                  "color": "Colors.grey"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           },
+           {
+            "id": "w20",
+            "type": "Chip",
+            "props": {
+             "backgroundColor": "#FFE3E7FF"
+            },
+            "slots": {
+             "label": {
+              "id": "w21",
+              "type": "Text",
+              "props": {
+               "data": "PRO"
+              }
+             }
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w22",
+      "type": "SizedBox",
+      "props": {
+       "height": 12
+      }
+     },
+     {
+      "id": "w23",
+      "type": "ListTile",
+      "slots": {
+       "leading": {
+        "id": "w24",
+        "type": "CircleAvatar",
+        "props": {
+         "backgroundColor": "#FFE3E7FF"
+        },
+        "slots": {
+         "child": {
+          "id": "w25",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.person_outline",
+           "color": "#FF5B6CF9"
+          }
+         }
+        }
+       },
+       "title": {
+        "id": "w26",
+        "type": "Text",
+        "props": {
+         "data": "Account"
+        }
+       },
+       "subtitle": {
+        "id": "w27",
+        "type": "Text",
+        "props": {
+         "data": "Name, email, phone"
+        }
+       },
+       "trailing": {
+        "id": "w28",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.chevron_right"
+        }
+       }
+      },
+      "events": {
+       "onTap": "onTile"
+      }
+     },
+     {
+      "id": "w29",
+      "type": "ListTile",
+      "slots": {
+       "leading": {
+        "id": "w30",
+        "type": "CircleAvatar",
+        "props": {
+         "backgroundColor": "#FFE3E7FF"
+        },
+        "slots": {
+         "child": {
+          "id": "w31",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.notifications_none",
+           "color": "#FF5B6CF9"
+          }
+         }
+        }
+       },
+       "title": {
+        "id": "w32",
+        "type": "Text",
+        "props": {
+         "data": "Notifications"
+        }
+       },
+       "subtitle": {
+        "id": "w33",
+        "type": "Text",
+        "props": {
+         "data": "Sounds and badges"
+        }
+       },
+       "trailing": {
+        "id": "w34",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.chevron_right"
+        }
+       }
+      },
+      "events": {
+       "onTap": "onTile"
+      }
+     },
+     {
+      "id": "w35",
+      "type": "ListTile",
+      "slots": {
+       "leading": {
+        "id": "w36",
+        "type": "CircleAvatar",
+        "props": {
+         "backgroundColor": "#FFE3E7FF"
+        },
+        "slots": {
+         "child": {
+          "id": "w37",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.lock_outline",
+           "color": "#FF5B6CF9"
+          }
+         }
+        }
+       },
+       "title": {
+        "id": "w38",
+        "type": "Text",
+        "props": {
+         "data": "Privacy"
+        }
+       },
+       "subtitle": {
+        "id": "w39",
+        "type": "Text",
+        "props": {
+         "data": "Who can see you"
+        }
+       },
+       "trailing": {
+        "id": "w40",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.chevron_right"
+        }
+       }
+      },
+      "events": {
+       "onTap": "onTile"
+      }
+     },
+     {
+      "id": "w41",
+      "type": "Divider"
+     },
+     {
+      "id": "w42",
+      "type": "Code",
+      "props": {
+       "code": "Builder(builder: (context) => Text('Version ${1 + 1}.0', textAlign: TextAlign.center))"
+      }
+     }
+    ]
+   },
+   "floatingActionButton": {
+    "id": "w43",
+    "type": "FloatingActionButton",
+    "ctor": "extended",
+    "slots": {
+     "icon": {
+      "id": "w44",
+      "type": "Icon",
+      "props": {
+       "icon": "Icons.edit"
+      }
+     },
+     "label": {
+      "id": "w45",
+      "type": "Text",
+      "props": {
+       "data": "Edit"
+      }
+     }
+    },
+    "events": {
+     "onPressed": "push:Settings"
+    }
+   },
+   "bottomNavigationBar": {
+    "id": "w46",
+    "type": "BottomNavigationBar",
+    "name": "navMain",
+    "props": {
+     "currentIndex": 2,
+     "items": [
+      {
+       "icon": "Icons.home_outlined",
+       "label": "Home"
+      },
+      {
+       "icon": "Icons.search",
+       "label": "Search"
+      },
+      {
+       "icon": "Icons.person",
+       "label": "Me"
+      }
+     ]
+    },
+    "events": {
+     "onTap": "onNavTap"
+    }
+   }
+  }
+ }
+}

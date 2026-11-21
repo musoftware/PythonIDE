@@ -1,0 +1,27 @@
+{
+  "id": "javascript",
+  "title_ar": "تعلّم JavaScript وTypeScript مع Node.js",
+  "title_en": "Learn JavaScript and TypeScript with Node.js",
+  "language": "javascript",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في JavaScript الحديثة على Node.js: المتغيرات، والشروط، وحلقات التكرار، والدوال، والمصفوفات، والكائنات وJSON، والأصناف، والأخطاء، والبرمجة غير المتزامنة، ووحدات Node وحزم npm، ثم TypeScript، ثم برامج بنوافذ وأزرار بمصمم النماذج عبر GUI Bridge، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في JavaScript وNode.js", "minutes": 20},
+    {"id": "02-variables", "file": "02-variables.md", "title_ar": "المتغيرات وأنواع البيانات", "minutes": 30},
+    {"id": "03-operators", "file": "03-operators.md", "title_ar": "العمليات الحسابية والمقارنة والمنطق", "minutes": 30},
+    {"id": "04-conditions", "file": "04-conditions.md", "title_ar": "الشروط واتخاذ القرار", "minutes": 30},
+    {"id": "05-loops", "file": "05-loops.md", "title_ar": "حلقات التكرار", "minutes": 35},
+    {"id": "06-functions", "file": "06-functions.md", "title_ar": "الدوال (Functions)", "minutes": 40},
+    {"id": "07-arrays", "file": "07-arrays.md", "title_ar": "المصفوفات (Arrays)", "minutes": 40},
+    {"id": "08-objects", "file": "08-objects.md", "title_ar": "الكائنات وJSON والنصوص", "minutes": 40},
+    {"id": "09-classes", "file": "09-classes.md", "title_ar": "الأصناف والكائنات (Classes)", "minutes": 40},
+    {"id": "10-errors-async", "file": "10-errors-async.md", "title_ar": "الأخطاء والبرمجة غير المتزامنة (async/await)", "minutes": 45},
+    {"id": "11-node-modules", "file": "11-node-modules.md", "title_ar": "وحدات Node.js: الملفات والإدخال وتقسيم البرنامج", "minutes": 45},
+    {"id": "12-npm", "file": "12-npm.md", "title_ar": "حزم npm وملف package.json", "minutes": 35},
+    {"id": "13-typescript", "file": "13-typescript.md", "title_ar": "مقدمة في TypeScript", "minutes": 45},
+    {"id": "14-gui-first-form", "file": "14-gui-first-form.md", "title_ar": "أول نافذة بـ JavaScript في مصمم النماذج", "minutes": 45},
+    {"id": "15-gui-controls", "file": "15-gui-controls.md", "title_ar": "الأدوات والأحداث: القوائم والاختيارات والمؤقت", "minutes": 50},
+    {"id": "16-final-project", "file": "16-final-project.md", "title_ar": "المشروع النهائي: مدير المهام", "minutes": 80},
+    {"id": "17-glossary", "file": "17-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 15}
+  ]
+}

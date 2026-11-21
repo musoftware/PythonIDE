@@ -1,0 +1,25 @@
+{
+  "id": "ruby",
+  "title_ar": "تعلّم Ruby من الصفر ثم Ruby on Rails",
+  "title_en": "Learn Ruby from Scratch, then Ruby on Rails",
+  "language": "ruby-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في لغة Ruby: المتغيرات والشروط وحلقات التكرار والمصفوفات والدوال والكتل والأصناف والملفات، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير، ثم دليل عملي لتطبيقات Ruby on Rails داخل RAD IDE: قائمة Rails، والمولّدات، وقاعدة البيانات، وقوالب ERB، والتنقيح، والطرفية التفاعلية، والاختبارات.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Ruby: برنامجك الأول", "minutes": 20},
+    {"id": "02-variables-input", "file": "02-variables-input.md", "title_ar": "المتغيرات والأنواع والإدخال", "minutes": 30},
+    {"id": "03-conditions", "file": "03-conditions.md", "title_ar": "الشروط واتخاذ القرار", "minutes": 30},
+    {"id": "04-loops", "file": "04-loops.md", "title_ar": "حلقات التكرار", "minutes": 30},
+    {"id": "05-arrays-hashes", "file": "05-arrays-hashes.md", "title_ar": "المصفوفات (Array) والقواميس (Hash)", "minutes": 40},
+    {"id": "06-methods-blocks", "file": "06-methods-blocks.md", "title_ar": "الدوال والكتل (Blocks)", "minutes": 40},
+    {"id": "07-classes", "file": "07-classes.md", "title_ar": "الأصناف والكائنات والوحدات", "minutes": 40},
+    {"id": "08-errors-files", "file": "08-errors-files.md", "title_ar": "معالجة الأخطاء والملفات", "minutes": 35},
+    {"id": "09-gui-form", "file": "09-gui-form.md", "title_ar": "أول نافذة Ruby في مصمم النماذج", "minutes": 40},
+    {"id": "10-gui-project", "file": "10-gui-project.md", "title_ar": "مشروع: قائمة المهام بنافذة رسومية", "minutes": 50},
+    {"id": "11-rails-intro", "file": "11-rails-intro.md", "title_ar": "Rails 1: أول تطبيق ويب وقائمة Rails", "minutes": 40},
+    {"id": "12-rails-generators-db", "file": "12-rails-generators-db.md", "title_ar": "Rails 2: المولّدات وقاعدة البيانات", "minutes": 45},
+    {"id": "13-rails-erb-views", "file": "13-rails-erb-views.md", "title_ar": "Rails 3: قوالب ERB والعروض", "minutes": 40},
+    {"id": "14-rails-debug-console", "file": "14-rails-debug-console.md", "title_ar": "Rails 4: التنقيح والطرفية التفاعلية والاختبارات", "minutes": 45},
+    {"id": "15-glossary", "file": "15-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 10}
+  ]
+}

@@ -1,0 +1,148 @@
+{
+ "version": 1,
+ "name": "IosDemo",
+ "route": "/ios",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "imports": [
+  "dart:math"
+ ],
+ "code": {
+  "prelude": "final size = MediaQuery.of(context).size;",
+  "members": "double get half => 0.5;"
+ },
+ "tree": {
+  "id": "w1",
+  "type": "CupertinoPageScaffold",
+  "slots": {
+   "navigationBar": {
+    "id": "w2",
+    "type": "CupertinoNavigationBar",
+    "slots": {
+     "middle": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "iOS"
+      }
+     }
+    }
+   },
+   "child": {
+    "id": "w4",
+    "type": "SafeArea",
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "Column",
+      "props": {
+       "spacing": 12
+      },
+      "children": [
+       {
+        "id": "w6",
+        "type": "CupertinoTextField",
+        "name": "txtName",
+        "props": {
+         "placeholder": "Name",
+         "padding": {
+          "all": 12
+         }
+        }
+       },
+       {
+        "id": "w7",
+        "type": "CupertinoSwitch",
+        "name": "swtOn",
+        "props": {
+         "value": true
+        }
+       },
+       {
+        "id": "w8",
+        "type": "CupertinoSlider",
+        "name": "sldA"
+       },
+       {
+        "id": "w9",
+        "type": "CupertinoButton",
+        "ctor": "filled",
+        "slots": {
+         "child": {
+          "id": "w10",
+          "type": "Text",
+          "props": {
+           "data": "Go"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "onGo"
+        }
+       },
+       {
+        "id": "w11",
+        "type": "CupertinoActivityIndicator"
+       },
+       {
+        "id": "w12",
+        "type": "SizedBox",
+        "props": {
+         "width": {
+          "$code": "size.width * half"
+         },
+         "height": 4
+        }
+       },
+       {
+        "id": "w13",
+        "type": "Code",
+        "props": {
+         "code": "ColoredBox(color: Colors.red, child: #{slot:child})"
+        },
+        "slots": {
+         "child": {
+          "id": "w14",
+          "type": "Text",
+          "props": {
+           "data": "inside code"
+          }
+         }
+        }
+       },
+       {
+        "id": "w15",
+        "type": "Expanded",
+        "slots": {
+         "child": {
+          "id": "w16",
+          "type": "Transform",
+          "ctor": "rotate",
+          "props": {
+           "angle": {
+            "$code": "pi / 8"
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w17",
+            "type": "Text",
+            "props": {
+             "data": "Rotated",
+             "style": {
+              "fontStyle": "FontStyle.italic"
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

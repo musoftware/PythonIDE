@@ -398,8 +398,21 @@ function runMain(files, folder) {
   process.exit(0);
 }
 
+/** Entry point of a console project (no forms): load the code files in order and let Node run them like a
+ *  normal program - it ends when nothing is pending (timers, promises, servers keep it alive), and stdin
+ *  stays free for the program itself (readline, fs.readFileSync(0)). */
+function runConsole(files, folder) {
+  folder = folder || process.cwd();
+  installGlobals(folder);
+  loadReferences(folder, files.some((f) => /\.ts$/i.test(f)) ? '.ts' : '.js');
+  for (const f of files) {
+    try { loadScript(path.resolve(folder, f)); } catch (e) { report(`error in ${f}`, e); process.exitCode = 1; return; }
+  }
+}
+
 module.exports = {
   set, get, getNum, call, msgbox, input, show, hide, end, ui, radcall,
   readLine, writeLine, writeFd, patchConsole, installGlobals, loadScript, loadReferences, findHandler, runMain,
+  runConsole,
   _setWorkerMode() { workerMode = true; },
 };

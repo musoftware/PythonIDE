@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "ToolStrip",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A tool bar under the menu; each button raises <ItemName>_Click.",
+  "category": "Menus & Toolbars",
+  "order": 230,
+  "builtin": true,
+  "prefix": "ToolStrip",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Items",
+      "type": "menu",
+      "default": [],
+      "category": "Data",
+      "description": "Tool bar buttons (Text \"-\" = separator) - double-click to edit."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

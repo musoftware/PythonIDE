@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "name": "CheckBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "An on/off option.",
+  "category": "Common Controls",
+  "order": 40,
+  "builtin": true,
+  "prefix": "CheckBox",
+  "defaultSize": [
+    90,
+    20
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance"
+    }
+  ],
+  "events": [
+    {
+      "name": "CheckedChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

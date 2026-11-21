@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "ComboBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A drop-down list.",
+  "category": "Common Controls",
+  "order": 70,
+  "builtin": true,
+  "prefix": "ComboBox",
+  "defaultSize": [
+    120,
+    21
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "",
+      "category": "Data",
+      "description": "Items separated by ;"
+    },
+    {
+      "name": "DropDownStyle",
+      "type": "enum",
+      "default": "DropDownList",
+      "category": "Behavior",
+      "choices": [
+        "DropDownList",
+        "DropDown"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    },
+    {
+      "name": "TextChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "c",
+  "title_ar": "تعلّم لغة C من الصفر",
+  "title_en": "Learn C from Scratch",
+  "language": "c-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في لغة C، أم اللغات الحديثة، تكمّل دورة C++: المترجم gcc من MinGW، والمتغيرات، والإدخال والإخراج، والشروط، والحلقات، والدوال، والمصفوفات، والنصوص، والمؤشرات، والذاكرة الديناميكية، والهياكل، والملفات، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في لغة C وتجهيز المترجم gcc", "minutes": 20},
+    {"id": "02-first-program", "file": "02-first-program.md", "title_ar": "برنامجك الأول و`printf`", "minutes": 25},
+    {"id": "03-variables", "file": "03-variables.md", "title_ar": "المتغيرات وأنواع البيانات", "minutes": 35},
+    {"id": "04-input", "file": "04-input.md", "title_ar": "الإدخال بـ `scanf` و`fgets`", "minutes": 30},
+    {"id": "05-operators", "file": "05-operators.md", "title_ar": "العوامل والتحويل بين الأنواع", "minutes": 30},
+    {"id": "06-conditions", "file": "06-conditions.md", "title_ar": "الشروط و`switch`", "minutes": 35},
+    {"id": "07-loops", "file": "07-loops.md", "title_ar": "حلقات التكرار", "minutes": 40},
+    {"id": "08-functions", "file": "08-functions.md", "title_ar": "الدوال", "minutes": 40},
+    {"id": "09-arrays", "file": "09-arrays.md", "title_ar": "المصفوفات", "minutes": 40},
+    {"id": "10-strings", "file": "10-strings.md", "title_ar": "النصوص في C", "minutes": 40},
+    {"id": "11-pointers", "file": "11-pointers.md", "title_ar": "المؤشرات بهدوء وخطوة بخطوة", "minutes": 50},
+    {"id": "12-memory", "file": "12-memory.md", "title_ar": "الذاكرة الديناميكية: `malloc` و`free`", "minutes": 45},
+    {"id": "13-structs", "file": "13-structs.md", "title_ar": "الهياكل `struct` والتعدادات `enum`", "minutes": 40},
+    {"id": "14-files-multifile", "file": "14-files-multifile.md", "title_ar": "الملفات والمشاريع متعددة الملفات", "minutes": 45},
+    {"id": "15-gui-form", "file": "15-gui-form.md", "title_ar": "أول نافذة رسومية بلغة C في مصمم النماذج", "minutes": 40},
+    {"id": "16-final-project", "file": "16-final-project.md", "title_ar": "المشروع النهائي: دفتر الدرجات", "minutes": 50}
+  ]
+}

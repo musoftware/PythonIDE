@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAD IDE Flutter preview</title>
+  <style>html, body { margin: 0; padding: 0; background: #2b2d31; overflow: hidden; }</style>
+  <script>
+  // Message shim between RAD IDE and the Flutter app (radide/flutterdesign/live.py).
+  //  IDE -> app: window.radHost.deliver("<json>")  (QWebEngine runJavaScript), or window.postMessage(obj | "<json>")
+  //  app -> IDE: QWebChannel object "radBridge".post(json) when available, else parent.postMessage, else
+  //              console.log("RADHOST:" + json) (QWebEnginePage.javaScriptConsoleMessage).
+  (function () {
+    var host = {
+      inbox: [], outbox: [], onMessage: null, bridge: null, connecting: false,
+      deliver: function (msg) {
+        if (typeof msg !== 'string') msg = JSON.stringify(msg);
+        if (host.onMessage) { try { host.onMessage(msg); } catch (e) { console.error(e); } }
+        else host.inbox.push(msg);
+      },
+      flush: function () {           // called by Dart once onMessage is set
+        var q = host.inbox; host.inbox = [];
+        for (var i = 0; i < q.length; i++) host.deliver(q[i]);
+      },
+      send: function (msg) {
+        if (host.bridge) { host.bridge.post(msg); return; }
+        if (host.connecting) { host.outbox.push(msg); return; }
+        if (window.parent && window.parent !== window) { window.parent.postMessage(msg, '*'); return; }
+        console.log('RADHOST:' + msg);
+      }
+    };
+    window.radHost = host;
+    window.addEventListener('message', function (e) {
+      if (e.source === window.parent && window.parent !== window) host.deliver(e.data);
+      else if (e.source === window && e.data && (typeof e.data === 'object') && e.data.radHost) host.deliver(e.data.msg);
+    });
+    function connect() {
+      if (typeof QWebChannel === 'undefined' || !(window.qt && window.qt.webChannelTransport)) return;
+      host.connecting = true;
+      new QWebChannel(window.qt.webChannelTransport, function (ch) {
+        host.bridge = ch.objects.radBridge || null;
+        host.connecting = false;
+        var q = host.outbox; host.outbox = [];
+        if (!host.bridge) { for (var j = 0; j < q.length; j++) host.send(q[j]); return; }
+        for (var i = 0; i < q.length; i++) host.bridge.post(q[i]);
+      });
+    }
+    connect();
+  })();
+  </script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

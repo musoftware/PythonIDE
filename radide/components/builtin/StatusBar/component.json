@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "StatusBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A status line, docked at the bottom of the form.",
+  "category": "Menus & Toolbars",
+  "order": 220,
+  "builtin": true,
+  "prefix": "StatusBar",
+  "defaultSize": [
+    200,
+    22
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  },
+  "overrides": {
+    "Dock": "Bottom",
+    "Text": "Ready"
+  }
+}

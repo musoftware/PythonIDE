@@ -1,0 +1,257 @@
+{
+ "version": 1,
+ "name": "Settings",
+ "route": "/settings",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Settings"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "ListView",
+    "children": [
+     {
+      "id": "w5",
+      "type": "SwitchListTile",
+      "name": "swtDark",
+      "props": {
+       "value": true
+      },
+      "slots": {
+       "title": {
+        "id": "w6",
+        "type": "Text",
+        "props": {
+         "data": "Dark mode"
+        }
+       },
+       "secondary": {
+        "id": "w7",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.dark_mode"
+        }
+       }
+      }
+     },
+     {
+      "id": "w8",
+      "type": "CheckboxListTile",
+      "name": "chkNews",
+      "slots": {
+       "title": {
+        "id": "w9",
+        "type": "Text",
+        "props": {
+         "data": "Newsletter"
+        }
+       }
+      },
+      "events": {
+       "onChanged": "onNewsChanged"
+      }
+     },
+     {
+      "id": "w10",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "h": 16
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w11",
+        "type": "Row",
+        "children": [
+         {
+          "id": "w12",
+          "type": "Text",
+          "props": {
+           "data": "Volume"
+          }
+         },
+         {
+          "id": "w13",
+          "type": "Expanded",
+          "slots": {
+           "child": {
+            "id": "w14",
+            "type": "Slider",
+            "name": "sldVolume",
+            "props": {
+             "value": 0.3,
+             "divisions": 10
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "w15",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "h": 16
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w16",
+        "type": "DropdownButton",
+        "name": "cboLang",
+        "props": {
+         "items": [
+          "Arabic",
+          "English",
+          "French"
+         ],
+         "hint": "Language",
+         "isExpanded": true
+        },
+        "events": {
+         "onChanged": "onLangChanged"
+        }
+       }
+      }
+     },
+     {
+      "id": "w17",
+      "type": "ListTile",
+      "slots": {
+       "title": {
+        "id": "w18",
+        "type": "Text",
+        "props": {
+         "data": "Switch"
+        }
+       },
+       "trailing": {
+        "id": "w19",
+        "type": "Switch",
+        "name": "swtWifi"
+       }
+      }
+     },
+     {
+      "id": "w20",
+      "type": "ExpansionTile",
+      "slots": {
+       "title": {
+        "id": "w21",
+        "type": "Text",
+        "props": {
+         "data": "Advanced"
+        }
+       }
+      },
+      "children": [
+       {
+        "id": "w22",
+        "type": "ListTile",
+        "slots": {
+         "title": {
+          "id": "w23",
+          "type": "Text",
+          "props": {
+           "data": "Cache"
+          }
+         }
+        }
+       },
+       {
+        "id": "w24",
+        "type": "Wrap",
+        "props": {
+         "spacing": 8
+        },
+        "children": [
+         {
+          "id": "w25",
+          "type": "Chip",
+          "slots": {
+           "label": {
+            "id": "w26",
+            "type": "Text",
+            "props": {
+             "data": "a"
+            }
+           }
+          }
+         },
+         {
+          "id": "w27",
+          "type": "Chip",
+          "slots": {
+           "label": {
+            "id": "w28",
+            "type": "Text",
+            "props": {
+             "data": "b"
+            }
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "w29",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "all": 16
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w30",
+        "type": "OutlinedButton",
+        "ctor": "icon",
+        "slots": {
+         "icon": {
+          "id": "w31",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.logout"
+          }
+         },
+         "label": {
+          "id": "w32",
+          "type": "Text",
+          "props": {
+           "data": "Sign out"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "replace:/login"
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "name": "ReportViewer",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Shows a report (.rpt.json): pages, zoom, print, export to PDF / HTML / CSV / Excel. Code: Parameters[\"X\"] = 1, SetData(rows), Refresh(), Print().",
+  "category": "Reporting",
+  "order": 300,
+  "builtin": true,
+  "prefix": "ReportViewer",
+  "defaultSize": [
+    400,
+    300
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "ReportFile",
+      "type": "file",
+      "default": "",
+      "category": "Data",
+      "description": "The report to show (a .rpt.json file of the project)."
+    },
+    {
+      "name": "Zoom",
+      "type": "int",
+      "default": 100,
+      "category": "Appearance",
+      "description": "Zoom in percent."
+    },
+    {
+      "name": "ShowToolbar",
+      "type": "bool",
+      "default": true,
+      "category": "Appearance",
+      "description": "Show the page / zoom / print / export bar."
+    },
+    {
+      "name": "AutoLoad",
+      "type": "bool",
+      "default": true,
+      "category": "Behavior",
+      "description": "Run the report when the form opens (False: call Refresh())."
+    }
+  ],
+  "events": [
+    {
+      "name": "PageChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

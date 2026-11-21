@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "name": "RadioButton",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "One choice from a group.",
+  "category": "Common Controls",
+  "order": 50,
+  "builtin": true,
+  "prefix": "RadioButton",
+  "defaultSize": [
+    90,
+    20
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance"
+    }
+  ],
+  "events": [
+    {
+      "name": "CheckedChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

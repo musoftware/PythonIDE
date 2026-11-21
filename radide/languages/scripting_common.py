@@ -115,6 +115,13 @@ class ScriptBridgePlugin(BridgeLanguagePlugin):
                 out.append(f)
         return out
 
+    def console_script(self, project: Project) -> str | None:
+        """Console mode: a project without forms runs its first module of this language as a plain script
+        (radide/runtimes/bridge.py starts it with stdin/stdout inherited), or None (GUI Bridge program)."""
+        if project.forms:
+            return None
+        return next((m for m in project.modules if m.lower().endswith(self.code_ext)), None)
+
     def code_files(self, project: Project) -> list[str]:
         files = [self.code_file(f) for f in self.my_forms(project)]
         files += [m for m in project.modules if m.lower().endswith(self.code_ext)]

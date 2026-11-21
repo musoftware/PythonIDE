@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "MenuStrip",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "The form's menu bar.",
+  "category": "Menus & Toolbars",
+  "order": 150,
+  "builtin": true,
+  "prefix": "MenuStrip",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Items",
+      "type": "menu",
+      "default": [],
+      "category": "Data",
+      "description": "Menu items - double-click to edit."
+    }
+  ],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

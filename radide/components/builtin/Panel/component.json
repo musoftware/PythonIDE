@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "name": "Panel",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Groups other controls.",
+  "category": "Containers",
+  "order": 120,
+  "builtin": true,
+  "prefix": "Panel",
+  "defaultSize": [
+    200,
+    100
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

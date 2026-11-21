@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "name": "TextBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Lets the user enter text.",
+  "category": "Common Controls",
+  "order": 30,
+  "builtin": true,
+  "prefix": "TextBox",
+  "defaultSize": [
+    100,
+    20
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Multiline",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Allow several lines of text."
+    },
+    {
+      "name": "ReadOnly",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior"
+    },
+    {
+      "name": "PasswordChar",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Character shown instead of the text (e.g. *)."
+    },
+    {
+      "name": "MaxLength",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Maximum characters (0 = no limit)."
+    }
+  ],
+  "events": [
+    {
+      "name": "TextChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

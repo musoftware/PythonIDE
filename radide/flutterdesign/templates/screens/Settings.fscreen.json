@@ -1,0 +1,907 @@
+{
+ "version": 1,
+ "name": "Settings",
+ "route": "/settings",
+ "theme": {},
+ "assets": [
+  "assets/images/avatar_3.png"
+ ],
+ "fonts": [
+  {
+   "family": "Inter",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFF5F6FA"
+  },
+  "slots": {
+   "appBar": {
+    "id": "w8",
+    "type": "AppBar",
+    "props": {
+     "backgroundColor": "#FFF5F6FA",
+     "elevation": 0,
+     "centerTitle": true
+    },
+    "slots": {
+     "title": {
+      "id": "w9",
+      "type": "Text",
+      "props": {
+       "data": "Settings",
+       "style": {
+        "color": "#FF111827",
+        "fontSize": 18,
+        "fontWeight": "FontWeight.w700",
+        "googleFont": "Inter"
+       }
+      }
+     },
+     "leading": {
+      "id": "w10",
+      "type": "IconButton",
+      "slots": {
+       "icon": {
+        "id": "w11",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.arrow_back_ios_new",
+         "color": "#FF111827"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "back"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w12",
+    "type": "ListView",
+    "props": {
+     "padding": {
+      "h": 20,
+      "v": 8
+     }
+    },
+    "children": [
+     {
+      "id": "w13",
+      "type": "Container",
+      "props": {
+       "padding": {
+        "all": 18
+       },
+       "decoration": {
+        "gradient": {
+         "type": "linear",
+         "begin": "Alignment.topLeft",
+         "end": "Alignment.bottomRight",
+         "colors": [
+          "#FF0EA5E9",
+          "#FF6366F1"
+         ]
+        },
+        "borderRadius": 22,
+        "boxShadow": [
+         {
+          "color": "#406366F1",
+          "blur": 20,
+          "offset": [
+           0,
+           10
+          ]
+         }
+        ]
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w14",
+        "type": "Row",
+        "children": [
+         {
+          "id": "w15",
+          "type": "CircleAvatar",
+          "props": {
+           "radius": 28,
+           "backgroundImage": {
+            "source": "asset",
+            "src": "assets/images/avatar_3.png"
+           }
+          }
+         },
+         {
+          "id": "w16",
+          "type": "SizedBox",
+          "props": {
+           "width": 14
+          }
+         },
+         {
+          "id": "w17",
+          "type": "Expanded",
+          "slots": {
+           "child": {
+            "id": "w18",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w19",
+              "type": "Text",
+              "props": {
+               "data": "Sam Rivera",
+               "style": {
+                "color": "Colors.white",
+                "fontSize": 17,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "Inter"
+               }
+              }
+             },
+             {
+              "id": "w20",
+              "type": "Text",
+              "props": {
+               "data": "sam@example.com",
+               "style": {
+                "color": "#CCFFFFFF",
+                "fontSize": 13,
+                "googleFont": "Inter"
+               }
+              }
+             }
+            ]
+           }
+          }
+         },
+         {
+          "id": "w21",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.chevron_right_rounded",
+           "color": "Colors.white"
+          }
+         }
+        ]
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30
+      }
+     },
+     {
+      "id": "w22",
+      "type": "SizedBox",
+      "props": {
+       "height": 26
+      }
+     },
+     {
+      "id": "w23",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "l": 6,
+        "b": 10
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w24",
+        "type": "Text",
+        "props": {
+         "data": "GENERAL",
+         "style": {
+          "color": "#FF8A90A2",
+          "fontSize": 12,
+          "fontWeight": "FontWeight.w600",
+          "googleFont": "Inter",
+          "letterSpacing": 1.1
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w25",
+      "type": "Container",
+      "props": {
+       "decoration": {
+        "color": "Colors.white",
+        "borderRadius": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w26",
+        "type": "Column",
+        "children": [
+         {
+          "id": "w27",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w28",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1F6366F1",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w29",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.person_outline",
+               "color": "#FF6366F1",
+               "size": 20
+              }
+             }
+            }
+           },
+           "title": {
+            "id": "w30",
+            "type": "Text",
+            "props": {
+             "data": "Account",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "trailing": {
+            "id": "w31",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.chevron_right_rounded",
+             "color": "#FFB0B5C3"
+            }
+           }
+          },
+          "events": {
+           "onTap": "onAccount"
+          }
+         },
+         {
+          "id": "w32",
+          "type": "Divider",
+          "props": {
+           "height": 1,
+           "indent": 70,
+           "color": "#FFF0F1F5"
+          }
+         },
+         {
+          "id": "w33",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w34",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1FF59E0B",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w35",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.lock_outline",
+               "color": "#FFF59E0B",
+               "size": 20
+              }
+             }
+            }
+           },
+           "title": {
+            "id": "w36",
+            "type": "Text",
+            "props": {
+             "data": "Privacy & security",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "trailing": {
+            "id": "w37",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.chevron_right_rounded",
+             "color": "#FFB0B5C3"
+            }
+           }
+          },
+          "events": {
+           "onTap": "onPrivacy"
+          }
+         },
+         {
+          "id": "w38",
+          "type": "Divider",
+          "props": {
+           "height": 1,
+           "indent": 70,
+           "color": "#FFF0F1F5"
+          }
+         },
+         {
+          "id": "w39",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w40",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1F10B981",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w41",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.language",
+               "color": "#FF10B981",
+               "size": 20
+              }
+             }
+            }
+           },
+           "title": {
+            "id": "w42",
+            "type": "Text",
+            "props": {
+             "data": "Language",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "trailing": {
+            "id": "w43",
+            "type": "Text",
+            "props": {
+             "data": "English",
+             "style": {
+              "color": "#FF8A90A2",
+              "fontSize": 14,
+              "googleFont": "Inter"
+             }
+            }
+           }
+          },
+          "events": {
+           "onTap": "onLanguage"
+          }
+         }
+        ]
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30,
+       "delayMs": 100
+      }
+     },
+     {
+      "id": "w44",
+      "type": "SizedBox",
+      "props": {
+       "height": 26
+      }
+     },
+     {
+      "id": "w45",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "l": 6,
+        "b": 10
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w46",
+        "type": "Text",
+        "props": {
+         "data": "PREFERENCES",
+         "style": {
+          "color": "#FF8A90A2",
+          "fontSize": 12,
+          "fontWeight": "FontWeight.w600",
+          "googleFont": "Inter",
+          "letterSpacing": 1.1
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w47",
+      "type": "Container",
+      "props": {
+       "decoration": {
+        "color": "Colors.white",
+        "borderRadius": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w48",
+        "type": "Column",
+        "children": [
+         {
+          "id": "w49",
+          "type": "SwitchListTile",
+          "name": "swNotifications",
+          "props": {
+           "value": true,
+           "activeThumbColor": "#FF6366F1"
+          },
+          "slots": {
+           "title": {
+            "id": "w50",
+            "type": "Text",
+            "props": {
+             "data": "Notifications",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "secondary": {
+            "id": "w51",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1FEF4444",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w52",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.notifications_none",
+               "color": "#FFEF4444",
+               "size": 20
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "id": "w53",
+          "type": "Divider",
+          "props": {
+           "height": 1,
+           "indent": 70,
+           "color": "#FFF0F1F5"
+          }
+         },
+         {
+          "id": "w54",
+          "type": "SwitchListTile",
+          "name": "swDarkMode",
+          "props": {
+           "value": false,
+           "activeThumbColor": "#FF6366F1"
+          },
+          "slots": {
+           "title": {
+            "id": "w55",
+            "type": "Text",
+            "props": {
+             "data": "Dark mode",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "secondary": {
+            "id": "w56",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1F8B5CF6",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w57",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.dark_mode_outlined",
+               "color": "#FF8B5CF6",
+               "size": 20
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "id": "w58",
+          "type": "Divider",
+          "props": {
+           "height": 1,
+           "indent": 70,
+           "color": "#FFF0F1F5"
+          }
+         },
+         {
+          "id": "w59",
+          "type": "Padding",
+          "props": {
+           "padding": {
+            "l": 16,
+            "t": 12,
+            "r": 8,
+            "b": 4
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w60",
+            "type": "Column",
+            "children": [
+             {
+              "id": "w61",
+              "type": "Row",
+              "children": [
+               {
+                "id": "w62",
+                "type": "Container",
+                "props": {
+                 "width": 38,
+                 "height": 38,
+                 "alignment": "Alignment.center",
+                 "decoration": {
+                  "color": "#1F0EA5E9",
+                  "borderRadius": 12
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w63",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.text_fields",
+                   "color": "#FF0EA5E9",
+                   "size": 20
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w64",
+                "type": "SizedBox",
+                "props": {
+                 "width": 16
+                }
+               },
+               {
+                "id": "w65",
+                "type": "Text",
+                "props": {
+                 "data": "Text size",
+                 "style": {
+                  "color": "#FF111827",
+                  "fontSize": 15,
+                  "fontWeight": "FontWeight.w500",
+                  "googleFont": "Inter"
+                 }
+                }
+               }
+              ]
+             },
+             {
+              "id": "w66",
+              "type": "Slider",
+              "name": "sldTextSize",
+              "props": {
+               "value": 0.4,
+               "activeColor": "#FF6366F1"
+              }
+             }
+            ]
+           }
+          }
+         }
+        ]
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30,
+       "delayMs": 200
+      }
+     },
+     {
+      "id": "w67",
+      "type": "SizedBox",
+      "props": {
+       "height": 26
+      }
+     },
+     {
+      "id": "w68",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "l": 6,
+        "b": 10
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w69",
+        "type": "Text",
+        "props": {
+         "data": "SUPPORT",
+         "style": {
+          "color": "#FF8A90A2",
+          "fontSize": 12,
+          "fontWeight": "FontWeight.w600",
+          "googleFont": "Inter",
+          "letterSpacing": 1.1
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w70",
+      "type": "Container",
+      "props": {
+       "decoration": {
+        "color": "Colors.white",
+        "borderRadius": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w71",
+        "type": "Column",
+        "children": [
+         {
+          "id": "w72",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w73",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1F14B8A6",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w74",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.help_outline",
+               "color": "#FF14B8A6",
+               "size": 20
+              }
+             }
+            }
+           },
+           "title": {
+            "id": "w75",
+            "type": "Text",
+            "props": {
+             "data": "Help center",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "trailing": {
+            "id": "w76",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.chevron_right_rounded",
+             "color": "#FFB0B5C3"
+            }
+           }
+          },
+          "events": {
+           "onTap": "onHelp"
+          }
+         },
+         {
+          "id": "w77",
+          "type": "Divider",
+          "props": {
+           "height": 1,
+           "indent": 70,
+           "color": "#FFF0F1F5"
+          }
+         },
+         {
+          "id": "w78",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w79",
+            "type": "Container",
+            "props": {
+             "width": 38,
+             "height": 38,
+             "alignment": "Alignment.center",
+             "decoration": {
+              "color": "#1F64748B",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w80",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.info_outline",
+               "color": "#FF64748B",
+               "size": 20
+              }
+             }
+            }
+           },
+           "title": {
+            "id": "w81",
+            "type": "Text",
+            "props": {
+             "data": "About",
+             "style": {
+              "color": "#FF111827",
+              "fontSize": 15,
+              "fontWeight": "FontWeight.w500",
+              "googleFont": "Inter"
+             }
+            }
+           },
+           "trailing": {
+            "id": "w82",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.chevron_right_rounded",
+             "color": "#FFB0B5C3"
+            }
+           }
+          },
+          "events": {
+           "onTap": "onAbout"
+          }
+         }
+        ]
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30,
+       "delayMs": 300
+      }
+     },
+     {
+      "id": "w83",
+      "type": "SizedBox",
+      "props": {
+       "height": 20
+      }
+     },
+     {
+      "id": "w84",
+      "type": "TextButton",
+      "ctor": "icon",
+      "props": {
+       "style": {
+        "foregroundColor": "#FFEF4444",
+        "padding": {
+         "v": 16
+        }
+       }
+      },
+      "slots": {
+       "icon": {
+        "id": "w85",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.logout_rounded"
+        }
+       },
+       "label": {
+        "id": "w86",
+        "type": "Text",
+        "props": {
+         "data": "Log out",
+         "style": {
+          "fontSize": 15,
+          "fontWeight": "FontWeight.w600",
+          "googleFont": "Inter"
+         }
+        }
+       }
+      },
+      "events": {
+       "onPressed": "onLogout"
+      },
+      "anim": {
+       "type": "fadeIn",
+       "delayMs": 400
+      }
+     },
+     {
+      "id": "w87",
+      "type": "SizedBox",
+      "props": {
+       "height": 24
+      }
+     }
+    ]
+   }
+  }
+ }
+}

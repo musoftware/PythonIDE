@@ -1,0 +1,26 @@
+{
+  "id": "php-web",
+  "title_ar": "تطوير مواقع الويب بلغة PHP من الصفر",
+  "title_en": "Web Development with PHP from Scratch",
+  "language": "php-web",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في PHP 8 لتطوير المواقع داخل RAD IDE: أساسيات اللغة، والنماذج، وتقسيم الموقع إلى ملفات، والجلسات وتسجيل الدخول، والأصناف، وقواعد البيانات بـ PDO و SQLite، ثم أدوات بيئة الويب (المعاينة، ونافذة الطلبات، وعرض التصميم، وقواعد البيانات، والتصحيح بـ Xdebug، والنشر)، ومشروع نهائي: موقع لإدارة الكتب (CRUD).",
+  "lessons": [
+    {"id": "01-welcome", "file": "01-welcome.md", "title_ar": "مرحبًا بك في PHP: كيف يعمل الويب؟", "minutes": 20},
+    {"id": "02-first-page", "file": "02-first-page.md", "title_ar": "أول صفحة ويب في RAD IDE", "minutes": 30},
+    {"id": "03-variables", "file": "03-variables.md", "title_ar": "المتغيرات وأنواع البيانات", "minutes": 30},
+    {"id": "04-conditions", "file": "04-conditions.md", "title_ar": "العمليات والشروط", "minutes": 35},
+    {"id": "05-loops", "file": "05-loops.md", "title_ar": "حلقات التكرار", "minutes": 30},
+    {"id": "06-arrays", "file": "06-arrays.md", "title_ar": "المصفوفات", "minutes": 40},
+    {"id": "07-functions", "file": "07-functions.md", "title_ar": "الدوال والتعامل مع النصوص", "minutes": 40},
+    {"id": "08-forms", "file": "08-forms.md", "title_ar": "النماذج: استقبال بيانات الزائر", "minutes": 45},
+    {"id": "09-include-layout", "file": "09-include-layout.md", "title_ar": "تقسيم الموقع إلى ملفات وقالب مشترك", "minutes": 35},
+    {"id": "10-sessions", "file": "10-sessions.md", "title_ar": "الجلسات والكوكيز وتسجيل الدخول", "minutes": 45},
+    {"id": "11-oop", "file": "11-oop.md", "title_ar": "الأصناف والكائنات والاستثناءات", "minutes": 40},
+    {"id": "12-pdo-sqlite", "file": "12-pdo-sqlite.md", "title_ar": "قواعد البيانات: PDO و SQLite", "minutes": 50},
+    {"id": "13-web-tools", "file": "13-web-tools.md", "title_ar": "أدوات بيئة الويب: المعاينة والطلبات وعرض التصميم", "minutes": 35},
+    {"id": "14-crud-project", "file": "14-crud-project.md", "title_ar": "المشروع النهائي: موقع إدارة الكتب (CRUD)", "minutes": 90},
+    {"id": "15-debug-publish", "file": "15-debug-publish.md", "title_ar": "التصحيح بـ Xdebug ونشر الموقع", "minutes": 40},
+    {"id": "16-glossary", "file": "16-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 15}
+  ]
+}

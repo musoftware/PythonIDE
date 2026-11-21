@@ -1,0 +1,1422 @@
+{
+ "version": 1,
+ "name": "Shop",
+ "route": "/shop",
+ "theme": {},
+ "assets": [
+  "assets/images/product_headphones.png",
+  "assets/images/product_watch.png",
+  "assets/images/product_speaker.png",
+  "assets/images/product_plant.png"
+ ],
+ "fonts": [
+  {
+   "family": "DM Sans",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFF7F5F2"
+  },
+  "slots": {
+   "appBar": {
+    "id": "w8",
+    "type": "AppBar",
+    "props": {
+     "backgroundColor": "#FFF7F5F2",
+     "elevation": 0,
+     "centerTitle": false
+    },
+    "slots": {
+     "title": {
+      "id": "w9",
+      "type": "Text",
+      "props": {
+       "data": "Discover",
+       "style": {
+        "color": "#FF2D3142",
+        "fontSize": 24,
+        "fontWeight": "FontWeight.w700",
+        "googleFont": "DM Sans"
+       }
+      }
+     },
+     "actions": [
+      {
+       "id": "w10",
+       "type": "IconButton",
+       "slots": {
+        "icon": {
+         "id": "w11",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.shopping_bag_outlined",
+          "color": "#FF2D3142"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "onCart"
+       }
+      },
+      {
+       "id": "w12",
+       "type": "SizedBox",
+       "props": {
+        "width": 8
+       }
+      }
+     ]
+    }
+   },
+   "body": {
+    "id": "w13",
+    "type": "ListView",
+    "props": {
+     "padding": {
+      "h": 20
+     }
+    },
+    "children": [
+     {
+      "id": "w14",
+      "type": "SizedBox",
+      "props": {
+       "height": 8
+      }
+     },
+     {
+      "id": "w15",
+      "type": "Row",
+      "props": {
+       "spacing": 12
+      },
+      "children": [
+       {
+        "id": "w16",
+        "type": "Expanded",
+        "slots": {
+         "child": {
+          "id": "w17",
+          "type": "TextField",
+          "name": "txtSearch",
+          "props": {
+           "decoration": {
+            "hintText": "Search products",
+            "prefixIcon": "Icons.search",
+            "border": "outline",
+            "borderRadius": 16,
+            "borderColor": "Colors.white",
+            "focusedBorderColor": "#FFEF8354",
+            "filled": true,
+            "fillColor": "Colors.white",
+            "contentPadding": {
+             "v": 14
+            },
+            "hintStyle": {
+             "color": "#FF9095A5",
+             "fontSize": 14,
+             "googleFont": "DM Sans"
+            }
+           }
+          }
+         }
+        }
+       },
+       {
+        "id": "w18",
+        "type": "Container",
+        "props": {
+         "width": 52,
+         "height": 52,
+         "alignment": "Alignment.center",
+         "decoration": {
+          "color": "#FF2D3142",
+          "borderRadius": 16
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w19",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.tune",
+           "color": "Colors.white"
+          }
+         }
+        }
+       }
+      ],
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30,
+       "delayMs": 100
+      }
+     },
+     {
+      "id": "w20",
+      "type": "SizedBox",
+      "props": {
+       "height": 20
+      }
+     },
+     {
+      "id": "w21",
+      "type": "Container",
+      "props": {
+       "height": 150,
+       "padding": {
+        "all": 20
+       },
+       "decoration": {
+        "gradient": {
+         "type": "linear",
+         "begin": "Alignment.topLeft",
+         "end": "Alignment.bottomRight",
+         "colors": [
+          "#FFEF8354",
+          "#FFF7B267"
+         ]
+        },
+        "borderRadius": 22,
+        "boxShadow": [
+         {
+          "color": "#40EF8354",
+          "blur": 20,
+          "offset": [
+           0,
+           10
+          ]
+         }
+        ]
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w22",
+        "type": "Row",
+        "children": [
+         {
+          "id": "w23",
+          "type": "Expanded",
+          "slots": {
+           "child": {
+            "id": "w24",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start",
+             "mainAxisAlignment": "MainAxisAlignment.center"
+            },
+            "children": [
+             {
+              "id": "w25",
+              "type": "Text",
+              "props": {
+               "data": "Summer drop",
+               "style": {
+                "color": "Colors.white",
+                "fontSize": 20,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w26",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w27",
+              "type": "Text",
+              "props": {
+               "data": "Up to 40% off audio",
+               "style": {
+                "color": "#E6FFFFFF",
+                "fontSize": 13,
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w28",
+              "type": "SizedBox",
+              "props": {
+               "height": 12
+              }
+             },
+             {
+              "id": "w29",
+              "type": "Container",
+              "props": {
+               "padding": {
+                "h": 14,
+                "v": 8
+               },
+               "decoration": {
+                "color": "Colors.white",
+                "borderRadius": 20
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w30",
+                "type": "Text",
+                "props": {
+                 "data": "Shop now",
+                 "style": {
+                  "color": "#FFEF8354",
+                  "fontSize": 12,
+                  "fontWeight": "FontWeight.w700",
+                  "googleFont": "DM Sans"
+                 }
+                }
+               }
+              }
+             }
+            ]
+           }
+          }
+         },
+         {
+          "id": "w31",
+          "type": "Image",
+          "ctor": "asset",
+          "props": {
+           "src": "assets/images/product_headphones.png",
+           "width": 120,
+           "fit": "BoxFit.contain"
+          }
+         }
+        ]
+       }
+      },
+      "anim": {
+       "type": "fadeInUp",
+       "durationMs": 600,
+       "offsetY": 30,
+       "delayMs": 200
+      }
+     },
+     {
+      "id": "w32",
+      "type": "SizedBox",
+      "props": {
+       "height": 22
+      }
+     },
+     {
+      "id": "w33",
+      "type": "SizedBox",
+      "props": {
+       "height": 42
+      },
+      "slots": {
+       "child": {
+        "id": "w34",
+        "type": "ListView",
+        "props": {
+         "scrollDirection": "Axis.horizontal"
+        },
+        "children": [
+         {
+          "id": "w35",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "h": 18,
+            "v": 10
+           },
+           "margin": {
+            "r": 10
+           },
+           "alignment": "Alignment.center",
+           "decoration": {
+            "color": "#FF2D3142",
+            "borderRadius": 20
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w36",
+            "type": "Text",
+            "props": {
+             "data": "All",
+             "style": {
+              "color": "Colors.white",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w600",
+              "googleFont": "DM Sans"
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 300
+          }
+         },
+         {
+          "id": "w37",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "h": 18,
+            "v": 10
+           },
+           "margin": {
+            "r": 10
+           },
+           "alignment": "Alignment.center",
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 20
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w38",
+            "type": "Text",
+            "props": {
+             "data": "Audio",
+             "style": {
+              "color": "#FF2D3142",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w600",
+              "googleFont": "DM Sans"
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 360
+          }
+         },
+         {
+          "id": "w39",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "h": 18,
+            "v": 10
+           },
+           "margin": {
+            "r": 10
+           },
+           "alignment": "Alignment.center",
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 20
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w40",
+            "type": "Text",
+            "props": {
+             "data": "Wearables",
+             "style": {
+              "color": "#FF2D3142",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w600",
+              "googleFont": "DM Sans"
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 420
+          }
+         },
+         {
+          "id": "w41",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "h": 18,
+            "v": 10
+           },
+           "margin": {
+            "r": 10
+           },
+           "alignment": "Alignment.center",
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 20
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w42",
+            "type": "Text",
+            "props": {
+             "data": "Home",
+             "style": {
+              "color": "#FF2D3142",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w600",
+              "googleFont": "DM Sans"
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 480
+          }
+         },
+         {
+          "id": "w43",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "h": 18,
+            "v": 10
+           },
+           "margin": {
+            "r": 10
+           },
+           "alignment": "Alignment.center",
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 20
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w44",
+            "type": "Text",
+            "props": {
+             "data": "Plants",
+             "style": {
+              "color": "#FF2D3142",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w600",
+              "googleFont": "DM Sans"
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 540
+          }
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "w45",
+      "type": "SizedBox",
+      "props": {
+       "height": 18
+      }
+     },
+     {
+      "id": "w46",
+      "type": "GridView",
+      "ctor": "count",
+      "props": {
+       "crossAxisCount": 2,
+       "shrinkWrap": true,
+       "physics": "NeverScrollableScrollPhysics",
+       "mainAxisSpacing": 16,
+       "crossAxisSpacing": 16,
+       "childAspectRatio": 0.68
+      },
+      "children": [
+       {
+        "id": "w47",
+        "type": "GestureDetector",
+        "slots": {
+         "child": {
+          "id": "w48",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "all": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 22
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w49",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w50",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w51",
+                "type": "Stack",
+                "children": [
+                 {
+                  "id": "w52",
+                  "type": "Positioned",
+                  "ctor": "fill",
+                  "slots": {
+                   "child": {
+                    "id": "w53",
+                    "type": "Container",
+                    "props": {
+                     "padding": {
+                      "all": 12
+                     },
+                     "decoration": {
+                      "color": "#FFFCE8DD",
+                      "borderRadius": 16
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w54",
+                      "type": "Image",
+                      "ctor": "asset",
+                      "props": {
+                       "src": "assets/images/product_headphones.png",
+                       "fit": "BoxFit.contain"
+                      }
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "id": "w55",
+                  "type": "Positioned",
+                  "props": {
+                   "top": 8,
+                   "right": 8
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w56",
+                    "type": "Container",
+                    "props": {
+                     "width": 32,
+                     "height": 32,
+                     "alignment": "Alignment.center",
+                     "decoration": {
+                      "color": "Colors.white",
+                      "shape": "BoxShape.circle"
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w57",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.favorite_border",
+                       "color": "#FF2D3142",
+                       "size": 18
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w58",
+              "type": "SizedBox",
+              "props": {
+               "height": 10
+              }
+             },
+             {
+              "id": "w59",
+              "type": "Text",
+              "props": {
+               "data": "Aura Wireless",
+               "style": {
+                "color": "#FF2D3142",
+                "fontSize": 15,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w60",
+              "type": "SizedBox",
+              "props": {
+               "height": 2
+              }
+             },
+             {
+              "id": "w61",
+              "type": "Text",
+              "props": {
+               "data": "Audio",
+               "style": {
+                "color": "#FF9095A5",
+                "fontSize": 12,
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w62",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w63",
+              "type": "Row",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+              },
+              "children": [
+               {
+                "id": "w64",
+                "type": "Text",
+                "props": {
+                 "data": "$249",
+                 "style": {
+                  "color": "#FF2D3142",
+                  "fontSize": 16,
+                  "fontWeight": "FontWeight.w800",
+                  "googleFont": "DM Sans"
+                 }
+                }
+               },
+               {
+                "id": "w65",
+                "type": "Container",
+                "props": {
+                 "width": 30,
+                 "height": 30,
+                 "alignment": "Alignment.center",
+                 "decoration": {
+                  "color": "#FF2D3142",
+                  "borderRadius": 10
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w66",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.add",
+                   "color": "Colors.white",
+                   "size": 18
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         }
+        },
+        "events": {
+         "onTap": "onOpenProduct"
+        },
+        "anim": {
+         "type": "scaleIn",
+         "durationMs": 450,
+         "scale": 0.8,
+         "delayMs": 500
+        }
+       },
+       {
+        "id": "w67",
+        "type": "GestureDetector",
+        "slots": {
+         "child": {
+          "id": "w68",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "all": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 22
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w69",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w70",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w71",
+                "type": "Stack",
+                "children": [
+                 {
+                  "id": "w72",
+                  "type": "Positioned",
+                  "ctor": "fill",
+                  "slots": {
+                   "child": {
+                    "id": "w73",
+                    "type": "Container",
+                    "props": {
+                     "padding": {
+                      "all": 12
+                     },
+                     "decoration": {
+                      "color": "#FFE5ECF6",
+                      "borderRadius": 16
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w74",
+                      "type": "Image",
+                      "ctor": "asset",
+                      "props": {
+                       "src": "assets/images/product_watch.png",
+                       "fit": "BoxFit.contain"
+                      }
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "id": "w75",
+                  "type": "Positioned",
+                  "props": {
+                   "top": 8,
+                   "right": 8
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w76",
+                    "type": "Container",
+                    "props": {
+                     "width": 32,
+                     "height": 32,
+                     "alignment": "Alignment.center",
+                     "decoration": {
+                      "color": "Colors.white",
+                      "shape": "BoxShape.circle"
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w77",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.favorite_border",
+                       "color": "#FF2D3142",
+                       "size": 18
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w78",
+              "type": "SizedBox",
+              "props": {
+               "height": 10
+              }
+             },
+             {
+              "id": "w79",
+              "type": "Text",
+              "props": {
+               "data": "Mono Watch",
+               "style": {
+                "color": "#FF2D3142",
+                "fontSize": 15,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w80",
+              "type": "SizedBox",
+              "props": {
+               "height": 2
+              }
+             },
+             {
+              "id": "w81",
+              "type": "Text",
+              "props": {
+               "data": "Wearables",
+               "style": {
+                "color": "#FF9095A5",
+                "fontSize": 12,
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w82",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w83",
+              "type": "Row",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+              },
+              "children": [
+               {
+                "id": "w84",
+                "type": "Text",
+                "props": {
+                 "data": "$189",
+                 "style": {
+                  "color": "#FF2D3142",
+                  "fontSize": 16,
+                  "fontWeight": "FontWeight.w800",
+                  "googleFont": "DM Sans"
+                 }
+                }
+               },
+               {
+                "id": "w85",
+                "type": "Container",
+                "props": {
+                 "width": 30,
+                 "height": 30,
+                 "alignment": "Alignment.center",
+                 "decoration": {
+                  "color": "#FF2D3142",
+                  "borderRadius": 10
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w86",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.add",
+                   "color": "Colors.white",
+                   "size": 18
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         }
+        },
+        "events": {
+         "onTap": "onOpenProduct"
+        },
+        "anim": {
+         "type": "scaleIn",
+         "durationMs": 450,
+         "scale": 0.8,
+         "delayMs": 590
+        }
+       },
+       {
+        "id": "w87",
+        "type": "GestureDetector",
+        "slots": {
+         "child": {
+          "id": "w88",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "all": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 22
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w89",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w90",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w91",
+                "type": "Stack",
+                "children": [
+                 {
+                  "id": "w92",
+                  "type": "Positioned",
+                  "ctor": "fill",
+                  "slots": {
+                   "child": {
+                    "id": "w93",
+                    "type": "Container",
+                    "props": {
+                     "padding": {
+                      "all": 12
+                     },
+                     "decoration": {
+                      "color": "#FFE1EEF8",
+                      "borderRadius": 16
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w94",
+                      "type": "Image",
+                      "ctor": "asset",
+                      "props": {
+                       "src": "assets/images/product_speaker.png",
+                       "fit": "BoxFit.contain"
+                      }
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "id": "w95",
+                  "type": "Positioned",
+                  "props": {
+                   "top": 8,
+                   "right": 8
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w96",
+                    "type": "Container",
+                    "props": {
+                     "width": 32,
+                     "height": 32,
+                     "alignment": "Alignment.center",
+                     "decoration": {
+                      "color": "Colors.white",
+                      "shape": "BoxShape.circle"
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w97",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.favorite_border",
+                       "color": "#FF2D3142",
+                       "size": 18
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w98",
+              "type": "SizedBox",
+              "props": {
+               "height": 10
+              }
+             },
+             {
+              "id": "w99",
+              "type": "Text",
+              "props": {
+               "data": "Pulse Speaker",
+               "style": {
+                "color": "#FF2D3142",
+                "fontSize": 15,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w100",
+              "type": "SizedBox",
+              "props": {
+               "height": 2
+              }
+             },
+             {
+              "id": "w101",
+              "type": "Text",
+              "props": {
+               "data": "Audio",
+               "style": {
+                "color": "#FF9095A5",
+                "fontSize": 12,
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w102",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w103",
+              "type": "Row",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+              },
+              "children": [
+               {
+                "id": "w104",
+                "type": "Text",
+                "props": {
+                 "data": "$129",
+                 "style": {
+                  "color": "#FF2D3142",
+                  "fontSize": 16,
+                  "fontWeight": "FontWeight.w800",
+                  "googleFont": "DM Sans"
+                 }
+                }
+               },
+               {
+                "id": "w105",
+                "type": "Container",
+                "props": {
+                 "width": 30,
+                 "height": 30,
+                 "alignment": "Alignment.center",
+                 "decoration": {
+                  "color": "#FF2D3142",
+                  "borderRadius": 10
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w106",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.add",
+                   "color": "Colors.white",
+                   "size": 18
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         }
+        },
+        "events": {
+         "onTap": "onOpenProduct"
+        },
+        "anim": {
+         "type": "scaleIn",
+         "durationMs": 450,
+         "scale": 0.8,
+         "delayMs": 680
+        }
+       },
+       {
+        "id": "w107",
+        "type": "GestureDetector",
+        "slots": {
+         "child": {
+          "id": "w108",
+          "type": "Container",
+          "props": {
+           "padding": {
+            "all": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 22
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w109",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w110",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w111",
+                "type": "Stack",
+                "children": [
+                 {
+                  "id": "w112",
+                  "type": "Positioned",
+                  "ctor": "fill",
+                  "slots": {
+                   "child": {
+                    "id": "w113",
+                    "type": "Container",
+                    "props": {
+                     "padding": {
+                      "all": 12
+                     },
+                     "decoration": {
+                      "color": "#FFE4F3EA",
+                      "borderRadius": 16
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w114",
+                      "type": "Image",
+                      "ctor": "asset",
+                      "props": {
+                       "src": "assets/images/product_plant.png",
+                       "fit": "BoxFit.contain"
+                      }
+                     }
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "id": "w115",
+                  "type": "Positioned",
+                  "props": {
+                   "top": 8,
+                   "right": 8
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w116",
+                    "type": "Container",
+                    "props": {
+                     "width": 32,
+                     "height": 32,
+                     "alignment": "Alignment.center",
+                     "decoration": {
+                      "color": "Colors.white",
+                      "shape": "BoxShape.circle"
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w117",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.favorite_border",
+                       "color": "#FF2D3142",
+                       "size": 18
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w118",
+              "type": "SizedBox",
+              "props": {
+               "height": 10
+              }
+             },
+             {
+              "id": "w119",
+              "type": "Text",
+              "props": {
+               "data": "Desk Fern",
+               "style": {
+                "color": "#FF2D3142",
+                "fontSize": 15,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w120",
+              "type": "SizedBox",
+              "props": {
+               "height": 2
+              }
+             },
+             {
+              "id": "w121",
+              "type": "Text",
+              "props": {
+               "data": "Home",
+               "style": {
+                "color": "#FF9095A5",
+                "fontSize": 12,
+                "googleFont": "DM Sans"
+               }
+              }
+             },
+             {
+              "id": "w122",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w123",
+              "type": "Row",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+              },
+              "children": [
+               {
+                "id": "w124",
+                "type": "Text",
+                "props": {
+                 "data": "$39",
+                 "style": {
+                  "color": "#FF2D3142",
+                  "fontSize": 16,
+                  "fontWeight": "FontWeight.w800",
+                  "googleFont": "DM Sans"
+                 }
+                }
+               },
+               {
+                "id": "w125",
+                "type": "Container",
+                "props": {
+                 "width": 30,
+                 "height": 30,
+                 "alignment": "Alignment.center",
+                 "decoration": {
+                  "color": "#FF2D3142",
+                  "borderRadius": 10
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w126",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.add",
+                   "color": "Colors.white",
+                   "size": 18
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         }
+        },
+        "events": {
+         "onTap": "onOpenProduct"
+        },
+        "anim": {
+         "type": "scaleIn",
+         "durationMs": 450,
+         "scale": 0.8,
+         "delayMs": 770
+        }
+       }
+      ]
+     },
+     {
+      "id": "w127",
+      "type": "SizedBox",
+      "props": {
+       "height": 24
+      }
+     }
+    ]
+   },
+   "bottomNavigationBar": {
+    "id": "w128",
+    "type": "BottomNavigationBar",
+    "name": "navShop",
+    "props": {
+     "type": "BottomNavigationBarType.fixed",
+     "selectedItemColor": "#FF2D3142",
+     "unselectedItemColor": "#FF9095A5",
+     "backgroundColor": "Colors.white",
+     "showUnselectedLabels": false,
+     "items": [
+      {
+       "icon": "Icons.storefront_outlined",
+       "label": "Shop"
+      },
+      {
+       "icon": "Icons.favorite_border",
+       "label": "Saved"
+      },
+      {
+       "icon": "Icons.receipt_long_outlined",
+       "label": "Orders"
+      },
+      {
+       "icon": "Icons.person_outline",
+       "label": "Me"
+      }
+     ]
+    }
+   }
+  }
+ }
+}

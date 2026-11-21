@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "ListBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A list of items to choose from.",
+  "category": "Common Controls",
+  "order": 60,
+  "builtin": true,
+  "prefix": "ListBox",
+  "defaultSize": [
+    120,
+    95
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "",
+      "category": "Data",
+      "description": "Items separated by ;"
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

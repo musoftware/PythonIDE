@@ -1,0 +1,277 @@
+{
+ "version": 1,
+ "name": "ShopTabs",
+ "route": "/shop",
+ "theme": {
+  "brightness": "dark",
+  "fontFamily": "Lato"
+ },
+ "assets": [],
+ "fonts": [
+  {
+   "family": "Lato",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w1",
+  "type": "DefaultTabController",
+  "slots": {
+   "child": {
+    "id": "w2",
+    "type": "Scaffold",
+    "slots": {
+     "appBar": {
+      "id": "w3",
+      "type": "AppBar",
+      "slots": {
+       "title": {
+        "id": "w4",
+        "type": "Text",
+        "props": {
+         "data": "Shop"
+        }
+       },
+       "bottom": {
+        "id": "w5",
+        "type": "TabBar",
+        "children": [
+         {
+          "id": "w6",
+          "type": "Tab",
+          "props": {
+           "text": "New"
+          }
+         },
+         {
+          "id": "w7",
+          "type": "Tab",
+          "props": {
+           "text": "Popular"
+          }
+         },
+         {
+          "id": "w8",
+          "type": "Tab",
+          "slots": {
+           "icon": {
+            "id": "w9",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.star"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     },
+     "drawer": {
+      "id": "w10",
+      "type": "Drawer",
+      "slots": {
+       "child": {
+        "id": "w11",
+        "type": "ListView",
+        "props": {
+         "padding": {
+          "all": 0
+         }
+        },
+        "children": [
+         {
+          "id": "w12",
+          "type": "DrawerHeader",
+          "props": {
+           "decoration": {
+            "color": "#FF5B6CF9"
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w13",
+            "type": "Text",
+            "props": {
+             "data": "Menu",
+             "style": {
+              "color": "Colors.white"
+             }
+            }
+           }
+          }
+         },
+         {
+          "id": "w14",
+          "type": "ListTile",
+          "slots": {
+           "leading": {
+            "id": "w15",
+            "type": "Icon",
+            "props": {
+             "icon": "Icons.home"
+            }
+           },
+           "title": {
+            "id": "w16",
+            "type": "Text",
+            "props": {
+             "data": "Home"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     },
+     "body": {
+      "id": "w17",
+      "type": "TabBarView",
+      "children": [
+       {
+        "id": "w18",
+        "type": "GridView",
+        "ctor": "count",
+        "props": {
+         "crossAxisCount": 2,
+         "mainAxisSpacing": 12,
+         "crossAxisSpacing": 12,
+         "padding": {
+          "all": 12
+         }
+        },
+        "children": [
+         {
+          "id": "w19",
+          "type": "ClipRRect",
+          "props": {
+           "borderRadius": 16
+          },
+          "slots": {
+           "child": {
+            "id": "w20",
+            "type": "Image",
+            "ctor": "network",
+            "props": {
+             "src": "https://picsum.photos/300",
+             "fit": "BoxFit.cover"
+            }
+           }
+          }
+         },
+         {
+          "id": "w21",
+          "type": "Hero",
+          "props": {
+           "tag": "p2"
+          },
+          "slots": {
+           "child": {
+            "id": "w22",
+            "type": "Container",
+            "props": {
+             "color": "Colors.amber"
+            }
+           }
+          }
+         },
+         {
+          "id": "w23",
+          "type": "Opacity",
+          "props": {
+           "opacity": 0.6
+          },
+          "slots": {
+           "child": {
+            "id": "w24",
+            "type": "Placeholder"
+           }
+          }
+         },
+         {
+          "id": "w25",
+          "type": "Align",
+          "props": {
+           "alignment": {
+            "x": 0.5,
+            "y": -0.5
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w26",
+            "type": "FlutterLogo",
+            "props": {
+             "size": 48
+            }
+           }
+          }
+         }
+        ]
+       },
+       {
+        "id": "w27",
+        "type": "Center",
+        "slots": {
+         "child": {
+          "id": "w28",
+          "type": "CircularProgressIndicator"
+         }
+        }
+       },
+       {
+        "id": "w29",
+        "type": "PageView",
+        "children": [
+         {
+          "id": "w30",
+          "type": "Center",
+          "slots": {
+           "child": {
+            "id": "w31",
+            "type": "Text",
+            "props": {
+             "data": "Page 1"
+            }
+           }
+          }
+         },
+         {
+          "id": "w32",
+          "type": "Center",
+          "slots": {
+           "child": {
+            "id": "w33",
+            "type": "Text",
+            "props": {
+             "data": "Page 2"
+            }
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "floatingActionButton": {
+      "id": "w34",
+      "type": "FloatingActionButton",
+      "slots": {
+       "child": {
+        "id": "w35",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.add"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "onAdd"
+      }
+     }
+    }
+   }
+  }
+ }
+}

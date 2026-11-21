@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "TabControl",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Pages of controls selected with tabs. Click a tab in the designer to edit it.",
+  "category": "Containers",
+  "order": 160,
+  "builtin": true,
+  "prefix": "TabControl",
+  "defaultSize": [
+    200,
+    100
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "TabPages",
+      "type": "list",
+      "default": "TabPage1;TabPage2",
+      "category": "Data",
+      "description": "Page captions separated by ;"
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Index of the page shown (0 = first)."
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "name": "TreeView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A hierarchy of nodes.",
+  "category": "Common Controls",
+  "order": 170,
+  "builtin": true,
+  "prefix": "TreeView",
+  "defaultSize": [
+    121,
+    97
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Nodes",
+      "type": "list",
+      "default": "",
+      "category": "Data",
+      "description": "Nodes separated by ; - use / for children (Root;Root/Child;Root/Child2)."
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    },
+    {
+      "name": "DoubleClick"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

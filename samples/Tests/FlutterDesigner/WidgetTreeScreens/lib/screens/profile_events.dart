@@ -1,0 +1,21 @@
+// Profile screen - event handlers. This file is yours: the Flutter designer only adds new handler
+// stubs. Named widgets are fields (txtEmail.text, chkRemember); call setState(() { ... }) after
+// changing values shown on the screen. Extra imports: Screen properties > Imports.
+part of 'profile.dart';
+
+class ProfileEvents extends ProfileDesigner {
+  @override
+  void onShare() {
+    // TODO
+  }
+
+  @override
+  void onTile() {
+    // TODO
+  }
+
+  @override
+  void onNavTap(int index) {
+    // TODO
+  }
+}

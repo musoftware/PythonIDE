@@ -1,0 +1,112 @@
+{
+  "id": "java",
+  "title_ar": "تعلّم Java من الصفر",
+  "title_en": "Learn Java from Scratch",
+  "language": "java-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية من الصفر في لغة Java مع JDK: الأساسيات، والإدخال بـ Scanner، والشروط، والحلقات، والدوال، والمصفوفات والمجموعات، والنصوص، والبرمجة كائنية التوجه، والاستثناءات والملفات، ثم النوافذ الرسومية بمصمم النماذج عبر GUI Bridge، ومشاريع Maven وGradle، ومشروع نهائي.",
+  "lessons": [
+    {
+      "id": "01-intro-setup",
+      "file": "01-intro-setup.md",
+      "title_ar": "مرحبًا بك في Java وتجهيز JDK",
+      "minutes": 20
+    },
+    {
+      "id": "02-first-program",
+      "file": "02-first-program.md",
+      "title_ar": "برنامجك الأول سطرًا سطرًا",
+      "minutes": 25
+    },
+    {
+      "id": "03-variables-types",
+      "file": "03-variables-types.md",
+      "title_ar": "المتغيرات وأنواع البيانات",
+      "minutes": 30
+    },
+    {
+      "id": "04-input-operators",
+      "file": "04-input-operators.md",
+      "title_ar": "الإدخال بـ Scanner والعمليات الحسابية",
+      "minutes": 35
+    },
+    {
+      "id": "05-conditions",
+      "file": "05-conditions.md",
+      "title_ar": "الشروط واتخاذ القرار",
+      "minutes": 35
+    },
+    {
+      "id": "06-loops",
+      "file": "06-loops.md",
+      "title_ar": "حلقات التكرار",
+      "minutes": 35
+    },
+    {
+      "id": "07-methods",
+      "file": "07-methods.md",
+      "title_ar": "الدوال (Methods)",
+      "minutes": 40
+    },
+    {
+      "id": "08-arrays-collections",
+      "file": "08-arrays-collections.md",
+      "title_ar": "المصفوفات وArrayList وHashMap",
+      "minutes": 45
+    },
+    {
+      "id": "09-strings",
+      "file": "09-strings.md",
+      "title_ar": "التعامل مع النصوص",
+      "minutes": 35
+    },
+    {
+      "id": "10-classes",
+      "file": "10-classes.md",
+      "title_ar": "الأصناف والكائنات (Classes)",
+      "minutes": 45
+    },
+    {
+      "id": "11-inheritance-interfaces",
+      "file": "11-inheritance-interfaces.md",
+      "title_ar": "الوراثة والواجهات (Interfaces)",
+      "minutes": 45
+    },
+    {
+      "id": "12-exceptions-files",
+      "file": "12-exceptions-files.md",
+      "title_ar": "الاستثناءات والملفات",
+      "minutes": 40
+    },
+    {
+      "id": "13-gui-first-form",
+      "file": "13-gui-first-form.md",
+      "title_ar": "أول نافذة رسومية بـ Java في مصمم النماذج",
+      "minutes": 45
+    },
+    {
+      "id": "14-gui-controls-events",
+      "file": "14-gui-controls-events.md",
+      "title_ar": "الأدوات والأحداث: القوائم والاختيارات والمؤقت",
+      "minutes": 50
+    },
+    {
+      "id": "15-maven-gradle",
+      "file": "15-maven-gradle.md",
+      "title_ar": "مشاريع Maven وGradle والمكتبات وتصحيح الأخطاء",
+      "minutes": 45
+    },
+    {
+      "id": "16-final-project",
+      "file": "16-final-project.md",
+      "title_ar": "المشروع النهائي: دفتر الدرجات",
+      "minutes": 60
+    },
+    {
+      "id": "17-glossary",
+      "file": "17-glossary.md",
+      "title_ar": "قاموس المصطلحات (إنجليزي - عربي)",
+      "minutes": 15
+    }
+  ]
+}

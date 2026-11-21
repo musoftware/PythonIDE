@@ -1,0 +1,22 @@
+{
+  "id": "form-designer",
+  "kind": "guide",
+  "title_ar": "دليل مصمم النماذج في RAD IDE",
+  "title_en": "RAD IDE Guide: The Form Designer",
+  "language": "vb-basic",
+  "level": "beginner",
+  "description_ar": "دليل عربي خطوة بخطوة لمصمم النماذج: وضع الأدوات وترتيبها، ونافذة الخصائص، والأحداث، والأدوات الشائعة، والقوائم والنماذج المتعددة، و Anchor و Dock، والتكبير، وعناصر التحكم من تصميمك، والترجمة والاتجاه من اليمين إلى اليسار، وحالات Blend والخط الزمني وربط البيانات، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-designer-surface", "file": "01-designer-surface.md", "title_ar": "سطح التصميم وصندوق الأدوات", "minutes": 25},
+    {"id": "02-properties", "file": "02-properties.md", "title_ar": "نافذة الخصائص", "minutes": 25},
+    {"id": "03-events", "file": "03-events.md", "title_ar": "الأحداث ومعالجاتها", "minutes": 30},
+    {"id": "04-common-controls", "file": "04-common-controls.md", "title_ar": "الأدوات الشائعة والمكونات غير المرئية", "minutes": 35},
+    {"id": "05-menus-forms", "file": "05-menus-forms.md", "title_ar": "القوائم ومحرر القوائم والنماذج المتعددة", "minutes": 30},
+    {"id": "06-anchor-dock", "file": "06-anchor-dock.md", "title_ar": "Anchor و Dock: نماذج تتغير مع حجم النافذة", "minutes": 30},
+    {"id": "07-arrange-zoom", "file": "07-arrange-zoom.md", "title_ar": "قائمة Format وترتيب Tab والتكبير", "minutes": 20},
+    {"id": "08-user-controls", "file": "08-user-controls.md", "title_ar": "عناصر التحكم من تصميمك (User Controls)", "minutes": 30},
+    {"id": "09-localization-rtl", "file": "09-localization-rtl.md", "title_ar": "ترجمة النماذج والاتجاه من اليمين إلى اليسار", "minutes": 30},
+    {"id": "10-blend", "file": "10-blend.md", "title_ar": "Blend: الحالات المرئية والخط الزمني وربط البيانات", "minutes": 40},
+    {"id": "11-final-project", "file": "11-final-project.md", "title_ar": "المشروع النهائي: قائمة المهام", "minutes": 45}
+  ]
+}

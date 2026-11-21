@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "name": "GroupBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A frame with a caption around other controls.",
+  "category": "Containers",
+  "order": 130,
+  "builtin": true,
+  "prefix": "GroupBox",
+  "defaultSize": [
+    200,
+    100
+  ],
+  "kind": "container",
+  "hasText": true,
+  "commonEvents": true,
+  "properties": [],
+  "events": [],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

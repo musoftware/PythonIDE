@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "PictureBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Displays an image.",
+  "category": "Common Controls",
+  "order": 80,
+  "builtin": true,
+  "prefix": "PictureBox",
+  "defaultSize": [
+    100,
+    50
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Image",
+      "type": "file",
+      "default": "",
+      "category": "Appearance",
+      "description": "Image file (.png / .gif)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Click"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

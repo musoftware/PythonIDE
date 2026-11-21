@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "name": "DataGridView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A grid of editable cells.",
+  "category": "Data",
+  "order": 190,
+  "builtin": true,
+  "prefix": "DataGridView",
+  "defaultSize": [
+    240,
+    150
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "properties": [
+    {
+      "name": "Columns",
+      "type": "list",
+      "default": "Column1;Column2",
+      "category": "Data",
+      "description": "Column headers separated by ;"
+    },
+    {
+      "name": "Rows",
+      "type": "list",
+      "default": "",
+      "category": "Data",
+      "description": "Rows separated by ; with cells separated by | (a|b;c|d)."
+    },
+    {
+      "name": "ReadOnly",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Prevent editing the cells."
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged"
+    },
+    {
+      "name": "CellChanged"
+    }
+  ],
+  "targets": {
+    "*": {
+      "native": true
+    }
+  }
+}

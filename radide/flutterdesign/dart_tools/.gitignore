@@ -1,0 +1,4 @@
+# the importer is built in %LOCALAPPDATA%\RADIDE\cache\flutterdesign (radide/flutterdesign/importer.py)
+.dart_tool/
+pubspec.lock
+*.exe

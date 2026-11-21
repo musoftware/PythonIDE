@@ -114,7 +114,7 @@ class RubyBridgePlugin(ScriptBridgePlugin):
         return "_radmain.rb", "\n".join(L)
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [self.tool() or "ruby", "_radmain.rb"]
+        return [self.tool() or "ruby", self.console_script(project) or "_radmain.rb"]
 
     # ------------------------------------------------------------ references (CONTRACTS 7)
     def exported_functions(self, path: Path, text: str, module: str | None = None,
