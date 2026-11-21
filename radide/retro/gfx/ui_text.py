@@ -112,9 +112,11 @@ class TableEditor(RetroDoc):
 
     def _append(self, hx: str, text: str, kind: str) -> None:
         r = self.grid.rowCount()
+        blocked = self.grid.blockSignals(True)     # Add Row: no itemChanged before the Kind combo exists
         self.grid.insertRow(r)
         self.grid.setItem(r, 0, QTableWidgetItem(hx))
         self.grid.setItem(r, 1, QTableWidgetItem(text))
+        self.grid.blockSignals(blocked)
         combo = QComboBox()
         for k, n in KINDS:
             combo.addItem(n, k)
@@ -127,7 +129,8 @@ class TableEditor(RetroDoc):
         for r in range(self.grid.rowCount()):
             hx = (self.grid.item(r, 0).text() if self.grid.item(r, 0) else "").replace(" ", "")
             tx = self.grid.item(r, 1).text() if self.grid.item(r, 1) else ""
-            kind = self.grid.cellWidget(r, 2).currentData()
+            cw = self.grid.cellWidget(r, 2)
+            kind = cw.currentData() if cw is not None else "char"
             if not hx:
                 continue
             if kind == "end":

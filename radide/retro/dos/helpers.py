@@ -4,6 +4,8 @@
                  ` = Esc, _ = Space, ^U ^D ^L ^R = arrows; | < > cannot be used on a DOS command line)
     RADSCR.COM   save the screen: text -> C:\\_SCREEN.TXT, mode 13h -> C:\\_SCR13.RAW (pixels + palette)
     RADCAP.COM   resident: saves the last mode 13h frame when the program switches back to text mode
+    RADMOUSE.COM resident scripted mouse (INT 33h stand-in): ``RADMOUSE 12,5 30,7`` clicks those text cells,
+                 then saves the text screen to C:\\_MOUSE.BIN and types Esc (dosbox.capture_clicks)
 
 They are original RAD IDE code: the sources are in ``helpers_src/*.ASM`` (JWasm, ``-bin``) and the bytes below are
 what JWasm 2.21 produces from them (samples/Tests/Retro/DOSDev/test_dos_toolchains.py re-assembles and compares).
@@ -29,6 +31,13 @@ _COM = {
     "RADCAP.COM": "eNp7OYOZAQScrWLig52DDI31ghzDGRr+MJSw2jL5l0rrNdixMzKUCgfI7XBg6LuxwJNB3kY4opT5BSuD3n89Zka9Y2zsjIwB"
                   "wYFB4XJ88ruOMxsdeLfrJPP+2Yw7GZjfdLC6P/q1xcb45C4OxrOKRQrdN+R2MCzou2F8aSfDry0OZxXltzgA1e2aDZTdYgfk"
                   "xkdFRkeAzWQ4zDAKRsEIBjsETM8qdsoxM/awsTLuEFDdJQbMJbtWsWxkufxqB4PhWUUAewtApg==",
+    "RADMOUSE.COM": "eNp7eZKRgXrA2Som3tc/NNhVz8nTDy76HwiafzCUsu/4/383E8P55h/MJaLNP3hK+fU6+WIY9TrF4hj1etgSGM8HhMnxyRvf7jZj"
+                    "ZbQ2Y2YsNr347OKz7hY+xsVcjN0tAoyLeRj/s7EzNtuxM2qUGYEonXLW3YwMr9X+s7EyHgdKMTC8lmqw42RkKBWGqyziOMbGycj4"
+                    "Ipuhm4+L8eJDEOwW42G8+AgEX7AwyMdFnA8wPmDNl8JYymYtlsZYwtx8gtFaLomxhKf5BMv3w4wMQJEPbJ1AkU6gok6gEmW2GMYS"
+                    "ieDAoLDwUDk242/G///LxTGyy8fGx0VFRkccDgBKye1wYOi7sdCLoYuvhcHorWPzT5sy5p2SDN8fXnwQwCe/xcb45C4/xrOKkUXC"
+                    "3TfkdjDs6LthfGmLw1lF+S12ZxX3sTBsYd0pzXhWzK/0mzzYUOMDXTINvw2KRBp+W5bzN7w2MPq/i4vh+yPmw26vnx7e18iwn4+x"
+                    "i8WGt0THxqBI1cayXLHZjplRoFj2xZH/nawNNjqlwm4vdv7vdGVqPs7yn42Z8fVFt9fndhir7soAOmPXXqaNLJdf7WAwPKsIAGdm"
+                    "qQ4=",
 }
 
 
@@ -37,7 +46,7 @@ def com_bytes(name: str) -> bytes:
 
 
 def write_helpers(folder: Path) -> Path:
-    """Write the three helpers into *folder* (created); unchanged files are not rewritten."""
+    """Write the helpers into *folder* (created); unchanged files are not rewritten."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     for name in _COM:

@@ -1,5 +1,18 @@
 {
  "strings": {
+  "Problems Explained": "شرح المشكلات",
+  "Learn more": "اعرف المزيد",
+  "Open Lesson": "افتح الدرس",
+  "Configure Rules...": "إعداد القواعد...",
+  "Assembly Rules": "قواعد فحص الأسمبلي",
+  "Rule": "القاعدة",
+  "Default (error)": "الافتراضي (خطأ)",
+  "Default (warning)": "الافتراضي (تحذير)",
+  "Default (info)": "الافتراضي (تلميح)",
+  "Hint": "تلميح",
+  "Off": "معطّل",
+  "Suppress one line with a comment:": "لإيقاف الفحص في سطر واحد اكتب التعليق:",
+  "The assembly analyzer's findings of the current file, explained (Arabic / English)": "مشكلات ملف الأسمبلي الحالي مع شرحها (بالعربية والإنجليزية)",
   "Check by Running": "افحص بالتشغيل",
   "Check Procedure": "افحص الإجراء",
   "Explain Line": "اشرح السطر",

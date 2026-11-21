@@ -212,5 +212,32 @@ def capture_text(run: DosRun, folder: Path, command: str, out_name: str = "_OUT.
     return res
 
 
-__all__ = ["CYCLES", "MACHINES", "DosRun", "capture_text", "command_line", "cycles_value", "launch",
-           "run_headless", "to_dos_path", "write_conf"]
+def capture_clicks(run: DosRun, folder: Path, command: str, clicks: list[tuple[int, int]], timeout: int = 30,
+                   keys: str = "", log=print) -> bytes | None:
+    """Run *command* headless with RADMOUSE.COM as the mouse driver: it clicks the left button at the text cells
+    *clicks* ``[(col, row), ...]`` (0-based), then saves the text screen (char / attribute pairs, like B800:0000)
+    and types Esc so that the program can end. *keys* (RADKEYS syntax) are typed before the program starts.
+    Returns the saved screen, or None when the program never polled the mouse often enough."""
+    from . import helpers
+    folder = Path(folder)
+    tools = folder / "_build" / "radtools"
+    helpers.write_helpers(tools)
+    out = folder / "_MOUSE.BIN"
+    try:
+        out.unlink()
+    except OSError:
+        pass
+    rel = os.path.relpath(tools, folder).replace("/", "\\")
+    pre = [f"C:\\{rel}\\RADMOUSE.COM " + " ".join(f"{int(c)},{int(r)}" for c, r in clicks)]
+    if keys:
+        pre.append(f"C:\\{rel}\\RADKEYS.COM {keys}")
+    run.commands = list(run.commands) + pre + [command]
+    run_headless(run, folder / "_build", timeout, name="mouse.conf", log=log)
+    try:
+        return out.read_bytes()
+    except OSError:
+        return None
+
+
+__all__ = ["CYCLES", "MACHINES", "DosRun", "capture_clicks", "capture_text", "command_line", "cycles_value",
+           "launch", "run_headless", "to_dos_path", "write_conf"]

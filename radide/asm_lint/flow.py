@@ -108,6 +108,40 @@ def join_reg(a, b):
     return (a[0] | b[0], a[1] & b[1], km, a[3] & km, a[4] if a[4] == b[4] else "", a[5] or b[5])
 
 
+def alloc_push(a, kind: str, size: int):
+    """The stack as chunks from the bottom: ('p', bytes) pushed values, ('a', bytes) space reserved by sub rsp."""
+    if a is None:
+        return None
+    if a and a[-1][0] == kind:
+        return (a[:-1] + ((kind, a[-1][1] + size),))[-64:]
+    return (a + ((kind, size),))[-64:]
+
+
+def alloc_pop(a, size: int):
+    if a is None:
+        return None
+    lst = list(a)
+    while size > 0 and lst:
+        k, s = lst[-1]
+        if s <= size:
+            lst.pop()
+            size -= s
+        else:
+            lst[-1] = (k, s - size)
+            size = 0
+    return tuple(lst)
+
+
+def shadow(a) -> int:
+    """Bytes reserved with sub rsp at the top of the stack (what a called function may use as shadow space)."""
+    n = 0
+    for k, s in reversed(a or ()):
+        if k != "a":
+            break
+        n += s
+    return n
+
+
 class State:
     __slots__ = ("r", "depth", "mod", "alloc", "frame", "frame_mod", "pushes", "df", "std_line", "ds", "cdecl",
                  "stdcall")
@@ -116,7 +150,7 @@ class State:
         self.r = {}
         self.depth = 0
         self.mod = None
-        self.alloc = 0
+        self.alloc = ()
         self.frame = None
         self.frame_mod = None
         self.pushes = 0
@@ -148,8 +182,7 @@ class State:
                 mismatch = (s.depth, o.depth)
             s.depth = None
         s.mod = s.mod if s.mod == o.mod else None
-        s.alloc = s.alloc if s.alloc == o.alloc else (None if s.alloc is None or o.alloc is None else
-                                                      min(s.alloc, o.alloc))
+        s.alloc = s.alloc if s.alloc == o.alloc else None
         s.frame = s.frame if s.frame == o.frame else None
         s.frame_mod = s.frame_mod if s.frame_mod == o.frame_mod else None
         s.pushes = s.pushes if s.pushes == o.pushes else None
@@ -405,9 +438,12 @@ class Flow:
         if u.explicit is not None and u.explicit.params:
             u.saved.add("rbp")
         u.ret_pop = rets[0] if rets and all(r == rets[0] for r in rets) else 0
-        last = next((p.stmts[i] for i in reversed(u.stmts) if p.stmts[i].kind in ("instr", "macro")), None)
+        lastpos = next((k for k in range(len(u.stmts) - 1, -1, -1) if p.stmts[u.stmts[k]].kind in ("instr", "macro")),
+                       None)
+        last = p.stmts[u.stmts[lastpos]] if lastpos is not None else None
         falls = last is not None and not (last.kind == "instr" and last.mnem in (
-            "jmp", "ret", "retn", "retf", "iret", "iretd", "iretq", "hlt", "ud2") or last.mnem == "int" or
+            "jmp", "ret", "retn", "retf", "iret", "iretd", "iretq", "hlt", "ud2") or
+            last.mnem in ("int", "syscall") and self.is_exit_int(u, lastpos) or
             last.mnem == "call" and is_noreturn(self.target_name(last)) or last.kind == "macro" and
             last.mnem in ("invoke", ".exit") and is_noreturn(last.optext.split(",")[0].strip()))
         u.can_return = u.has_ret or u.tail or falls
@@ -624,6 +660,11 @@ class Flow:
     # ------------------------------------------------------------ effects of one instruction
     def effects(self, st: Stmt):
         """(reads, writes) of general registers: reads = [name], writes = [(name, kind, value, symbol)]."""
+        if st.eff is None:
+            st.eff = self._effects(st)
+        return st.eff
+
+    def _effects(self, st: Stmt):
         m = st.mnem
         ops = st.ops
         mode = self.mode
@@ -659,6 +700,8 @@ class Flow:
                         sym = ops[1].syms[0]
                 elif m == "lea" and n == 2 and ops[1].kind == "mem" and ops[1].syms and not ops[1].regs:
                     sym = ops[1].syms[0]
+                elif m == "mov" and n == 2 and ops[1].kind == "mem" and ops[1].syms and not ops[1].regs:
+                    sym = "*" + ops[1].syms[0]          # the CONTENTS of a variable
                 elif m == "mov" and n == 2 and ops[1].kind == "reg" and ops[1].reg in GP:
                     sym = "=" + ops[1].reg
                 w(ops[0], "D", val, sym)
@@ -1208,7 +1251,7 @@ class Flow:
         if m in ("push", "pop"):
             for o in ops:
                 if o.kind == "reg":
-                    size = o.size // 8
+                    size = o.size // 8 if o.size >= 16 else ps
                 elif o.kind == "sreg":
                     size = ps
                 elif o.kind == "mem" and o.size:
@@ -1222,7 +1265,7 @@ class Flow:
                         S.depth += size
                     if S.mod is not None:
                         S.mod = (S.mod - size) % 16
-                    S.alloc = 0
+                    S.alloc = alloc_push(S.alloc, "p", size)
                     if S.pushes is not None:
                         S.pushes += 1
                     S.stdcall = None
@@ -1234,7 +1277,7 @@ class Flow:
                             S.depth = None
                     if S.mod is not None:
                         S.mod = (S.mod + size) % 16
-                    S.alloc = 0
+                    S.alloc = alloc_pop(S.alloc, size)
                     if S.cdecl is not None:
                         S.cdecl = None
                     S.stdcall = None
@@ -1248,6 +1291,9 @@ class Flow:
                 S.mod = (S.mod - sign * size) % 16
             return
         if m in ("pusha", "pushad", "popa", "popad"):
+            if self.mode == 64:
+                S.depth = S.mod = S.alloc = None
+                return
             size = 8 * (2 if m in ("pusha", "popa") and self.mode == 16 else 4)
             sign = 1 if m.startswith("push") else -1
             if S.depth is not None:
@@ -1268,13 +1314,15 @@ class Flow:
             if S.mod is not None:
                 S.mod = (S.mod - sign * v) % 16
             if S.alloc is not None:
-                S.alloc = max(0, S.alloc + sign * v)
+                S.alloc = alloc_push(S.alloc, "a", v) if sign > 0 else alloc_pop(S.alloc, v)
             if m == "add":
-                if report and S.stdcall is not None and S.stdcall[2] > 0 and v == S.stdcall[2]:
+                if S.stdcall is not None and S.stdcall[2] > 0 and v == S.stdcall[2]:
                     line, api, nbytes = S.stdcall
                     fx = Fix("Delete this line", "احذف هذا السطر",
                              [{"range": [st.line, 0, st.line + 1, 0], "text": ""}]) if not st.labels else None
-                    self.add("ASM506", st, st.mcol, st.end_col, [fx] if fx else [], api=api, bytes=nbytes)
+                    if report:
+                        self.add("ASM506", st, st.mcol, st.end_col, [fx] if fx else [], api=api, bytes=nbytes)
+                    S.depth = None               # already reported: do not report the RET as well
                 if S.cdecl is not None and v >= S.cdecl[2]:
                     S.cdecl = None
             S.stdcall = None
@@ -1285,7 +1333,7 @@ class Flow:
             else:
                 S.mod = None
             S.depth = None
-            S.alloc = 0
+            S.alloc = ()
             return
         if m == "mov" and len(ops) == 2 and dst is not None and dst.kind == "reg":
             src = ops[1]
@@ -1298,7 +1346,7 @@ class Flow:
                 if src.kind == "reg" and GP.get(src.reg, ("",))[0] == "rbp" and S.frame is not None:
                     S.depth = S.frame
                     S.mod = S.frame_mod
-                    S.alloc = 0
+                    S.alloc = ()
                 else:
                     S.depth = S.mod = S.alloc = None
                 return
@@ -1312,7 +1360,7 @@ class Flow:
             else:
                 S.depth = S.mod = None
             S.frame = S.frame_mod = None
-            S.alloc = 0
+            S.alloc = ()
             return
         if m == "enter" and ops and ops[0].kind == "imm" and ops[0].value is not None:
             if S.depth is not None:
@@ -1325,7 +1373,7 @@ class Flow:
                 S.depth += v
             if S.mod is not None:
                 S.mod = (S.mod - v) % 16
-            S.alloc = v
+            S.alloc = alloc_push(alloc_push(S.alloc, "p", ps), "a", v)
             return
         if is_sp and m not in ("cmp", "test", "push"):
             S.depth = S.mod = S.alloc = None
@@ -1376,8 +1424,8 @@ class Flow:
                 conv = CONV_NAME[self.abi]
                 self.add("ASM502", st, st.mcol, st.end_col, callee=name, mod=S.mod, conv=f"The {conv} convention",
                          conv_ar=f"اتفاقية {CONV_NAME_AR[self.abi]}")
-            if self.abi == "win64" and S.alloc is not None and S.alloc < 32 and not managed and S.depth is not None:
-                self.add("ASM501", st, st.mcol, st.end_col, callee=name, have=S.alloc)
+            if self.abi == "win64" and S.alloc is not None and shadow(S.alloc) < 32 and not managed and                     S.depth is not None:
+                self.add("ASM501", st, st.mcol, st.end_col, callee=name, have=shadow(S.alloc))
             if api is not None and self.abi in ("win64", "sysv"):
                 locs = apis.arg_locations(api, self.abi)
                 n_rep = 0
@@ -1392,6 +1440,28 @@ class Flow:
                                  api=api.name, param=f"{typ} {pname}".strip(), loc=loc.upper(),
                                  conv=f"In the {conv} convention", conv_ar=f"في اتفاقية {CONV_NAME_AR[self.abi]}",
                                  sig=api.signature())
+                for k, ((typ, pname), loc) in enumerate(zip(api.params, locs)):
+                    if loc not in GP:
+                        continue
+                    rv = S.r.get(GP[loc][0], _UNDEF)
+                    t = typ.replace(" ", "").upper()
+                    pointer = "*" in t or t.startswith(("LP", "PCSTR", "PSTR", "PVOID", "PWSTR", "PCWSTR"))
+                    if pointer and rv[4].startswith("*") and isinstance(rv[5], int):
+                        d = p.resolve(rv[4][1:], st.line, st.scope, st.proc)
+                        if d is None or d.kind != "data" or d.size not in (8, 16):
+                            continue
+                        def_st = next((s for s in p.stmts if s.line == rv[5] and s.kind == "instr"), None)
+                        fixes = []
+                        if def_st is not None and def_st.mnem == "mov" and not p.att:
+                            src = def_st.ops[1]
+                            new_src = src.text if "[" in src.text or p.dialect in ("masm",) else f"[{src.text}]"
+                            fixes = [Fix(f"Use lea {def_st.ops[0].text}, {new_src}",
+                                         f"استخدم lea {def_st.ops[0].text}, {new_src}",
+                                         [{"range": [def_st.line, def_st.mcol, def_st.line, def_st.mend],
+                                           "text": "lea"}])]
+                        tgt = def_st or st
+                        self.add("ASM509", tgt, tgt.mcol, tgt.end_col, fixes, key=("ASM509", tgt.line), n=k + 1,
+                                 api=api.name, param=f"{typ} {pname}".strip(), loc=loc.upper(), sym=rv[4][1:])
                 if self.abi == "sysv" and api.variadic:
                     rv = S.r.get("rax", _UNDEF)
                     if rv[2] & 0xFF != 0xFF:
@@ -1408,6 +1478,10 @@ class Flow:
             if 1 in S.df and self.abi != "dos16":
                 self.add("ASM406", st, st.mcol, st.end_col, mnem="CALL", line=S.std_line + 1)
         # ---------------- state after the call
+        if api is not None and self.abi == "x86" and S.pushes and external:
+            nparams = len(api.params)
+            if (api.variadic and S.pushes < nparams) or (not api.variadic and S.pushes != nparams):
+                S.depth = None                   # ASM505 explains it; the RET is not reported again
         if cu is not None:
             clob = set(cu.clobbers)
             reason = "internal"
@@ -1439,6 +1513,11 @@ class Flow:
                 elif S.pushes:
                     S.depth = None           # unknown convention: do not guess the cleanup
                     S.stdcall = None
+        if cu is None and self.abi == "dos16":
+            for f in FAMILIES:                   # a procedure from an include file: results in any register
+                if f != "rsp":
+                    S.r[f] = _ARG
+            clob = set()
         for f in clob:
             if f in ("rax", "rsp"):
                 continue
@@ -1469,7 +1548,7 @@ class Flow:
                     dx = S.r.get("rdx", _UNDEF)
                     if dx[1] & 0xFFFF != 0xFFFF and "C" not in dx[0] and "A" not in dx[0]:
                         self.add("ASM606", st, st.mcol, st.end_col)
-                    elif dx[4] and not dx[4].startswith("="):
+                    elif dx[4] and dx[4][:1] not in "=*":
                         self.check_dollar(st, dx[4])
         writes = ["rax"]
         if v == 0x21 and ah in DOS_INT_WRITES:
@@ -1669,6 +1748,13 @@ class Flow:
             self.add("ASM403", st, st.mcol, st.end_col, fixes, key=("ASM403", st.line), mnem=m.upper(), pair=pair,
                      high=high, low=low, state=state, state_ar=state_ar, fixins=fixins)
             return
+        if o.kind == "reg" and o.reg in GP and m == "div":
+            dv = self.value(S, o.reg)
+            hv = self.value(S, {8: "ah", 16: "dx", 32: "edx", 64: "rdx"}[size])
+            if dv and hv is not None and hv >= dv:
+                self.add("ASM409", st, st.mcol, st.end_col, key=("ASM409", st.line), mnem=m.upper(), high=high,
+                         hv=hv, dv=dv, pair=pair, low=low)
+                return
         if m == "idiv" and fam == "rdx" and rv[0] == frozenset({"Z"}):
             ext = {16: "cwd", 32: "cdq", 64: "cqo"}[size]
             fx = [] if self.p.att else [self.insert_before(st, [ext], f"Insert {ext} before idiv",
@@ -1686,6 +1772,7 @@ class Flow:
         prev = None
         passed = 0
         writer = None
+        after_call = False
         while k >= 0:
             s2 = p.stmts[u.stmts[b.stmts[k]]]
             if s2.kind == "macro":
@@ -1694,10 +1781,17 @@ class Flow:
                 k -= 1
                 continue
             if s2.mnem in ("call", "int", "syscall", "popf", "popfd", "popfq", "sahf", "iret"):
+                if s2.mnem == "call" and prev is not None and prev.mnem in FLAGLESS_SUSPECTS and \
+                        prev.ops and prev.ops[0].kind == "reg":
+                    after_call = True            # call f / mov eax, [x] / jz: the MOV was meant to set the flags
+                    break
                 return
             r, w, und = flags_of(s2.mnem)
             if prev is None:
                 prev = s2
+            if s2.mnem in ("sub", "add", "and") and s2.ops and s2.ops[0].kind == "reg" and                     GP.get(s2.ops[0].reg, ("",))[0] == "rsp":
+                k -= 1                           # flags of a stack adjustment are never what a jump tests
+                continue
             passed += 1
             if tested & und and not (tested & w - und):
                 self.add("ASM308", st, st.mcol, st.end_col, mnem=m.upper(), flags=" ".join(sorted(tested & und)),
@@ -1716,7 +1810,7 @@ class Flow:
         if prev is None:
             return
         # nothing in this block writes the flags: are they set by every block before it?
-        for pi in b.preds:
+        for pi in ([] if after_call else b.preds):
             pb = u.blocks[pi]
             for x in reversed(pb.stmts):
                 s3 = p.stmts[u.stmts[x]]
@@ -1754,7 +1848,7 @@ class Flow:
                     addr = True
                 elif o.kind == "reg" and o.reg in GP:
                     rv = S.r.get(GP[o.reg][0], _UNDEF)
-                    if rv[4] and not rv[4].startswith("=") and GP[o.reg][1] >= (16 if self.mode == 16 else 32):
+                    if rv[4] and rv[4][:1] not in "=*" and GP[o.reg][1] >= (16 if self.mode == 16 else 32):
                         addr = True
             if addr:
                 better = SIGNED_J[m]

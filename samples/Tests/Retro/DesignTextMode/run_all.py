@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TESTS = ["test_core.py", "test_dosbox.py", "test_ui.py"]
+TESTS = ["test_core.py", "test_dosbox.py", "test_mouse.py", "test_ui.py"]
 
 
 def main() -> int:

@@ -310,6 +310,7 @@ class Stmt:
     end_col: int = 0               # end of the code (before the comment)
     att_src_first: bool = False
     scope: str = ""                # the enclosing global label (parent of NASM / FASM .local labels)
+    eff: tuple | None = None       # cached (reads, writes) of the flow analysis
 
 
 @dataclass(slots=True)
@@ -352,6 +353,8 @@ class _Split:
 
 
 _SPLIT_CACHE: dict = {}
+_MASK_CACHE: dict = {}
+_OPS_CACHE: dict = {}
 
 
 def _split_ops(text: str, col: int) -> list[tuple[str, int]]:
@@ -434,7 +437,7 @@ def split_line(masked: str, dialect: str) -> _Split:
 
 # ============================================================================ the program
 CODE_ENTRY_NAMES = {"main", "_main", "wmain", "_wmain", "winmain", "_winmain@16", "wwinmain", "start", "_start",
-                    "maincrtstartup", "winmaincrtstartup", "__start"}
+                    "maincrtstartup", "winmaincrtstartup", "__start", "cmain"}
 
 
 class Program:
@@ -449,6 +452,8 @@ class Program:
             self.dialect = "nasm"
         if dialect is None and self.dialect == "nasm" and _masm16_style(text, self.path):
             self.dialect = "masm"           # emu8086 / TASM style DOS code (lea dx, msg / offset / proc ... endp)
+        if dialect is None and (project_lang or self._project_language() or "").lower() == "emu8086":
+            self.dialect = "masm"           # the 8086 emulator's assembler is MASM / TASM-like
         self.att = self.dialect == "gas" and gas_syntax(text) == "att"
         self.lines = text.split("\n")
         settings = project_asm_settings(self.path) if self.path else {}
@@ -461,7 +466,15 @@ class Program:
                 self.bits = 32
             elif self.abi == "dos16":
                 self.bits = 16
+        if abi is None and self.abi == "dos16" and re.search(
+                r"(?m)^\s*(default\s+rel|bits\s+(32|64)|global\s+\w|extern\s+\w|format\s+pe|\.model\s+flat)|"
+                r"(?<![\w%])%?(r[abcd]x|r[sd]i|r[sb]p|r(8|9|1[0-5])d?|e[abcd]x|e[sd]i|e[sb]p)\b", text[:60000],
+                re.I):
+            self.bits = code_bits(text, self.dialect) if code_bits(text, self.dialect) != 16 else 32
+            self.abi = "win64" if self.bits == 64 else "x86"      # Windows code that also uses INT 21h
         self.os = target_os(text, self.dialect, self.path) if self.abi != "dos16" else "dos"
+        if self.abi in ("win64", "x86") and self.os == "dos":
+            self.os = "windows"
         low = text[:60000].lower()
         lang = (project_lang or self._project_language() or "").lower()
         self.emu = lang in ("emu8086", "dos-asm") or "#make_" in low
@@ -526,10 +539,18 @@ class Program:
         proc: ProcDef | None = None
         last_global = ""
         for i, line in enumerate(self.lines):
-            masked, in_block = mask_line(line, dia, in_block, keep_strings=True)
+            mk = (dia, in_block, line)
+            hit = _MASK_CACHE.get(mk)
+            if hit is None:
+                hit = mask_line(line, dia, in_block, keep_strings=True)
+                if len(_MASK_CACHE) > 200_000:
+                    _MASK_CACHE.clear()
+                _MASK_CACHE[mk] = hit
+            masked, in_block = hit
             if not masked.strip():
                 continue
-            if dia == "nasm" and masked.lstrip().startswith("[") and masked.rstrip().endswith("]") and                     re.match(r"\s*\[\s*(bits|section|segment|global|extern|default|cpu|org)", masked, re.I):
+            if dia == "nasm" and masked.lstrip().startswith("[") and masked.rstrip().endswith("]") and \
+                    re.match(r"\s*\[\s*(bits|section|segment|global|extern|default|cpu|org)\b", masked, re.I):
                 k = masked.index("[")
                 e = masked.rindex("]")
                 masked = masked[:k] + " " + masked[k + 1:e] + " " + masked[e + 1:]
@@ -598,7 +619,7 @@ class Program:
                 last_global = sp.name
                 for pn, pt in re.findall(r"(\w+)\s*:\s*(\w+)", sp.rest):
                     if pn.lower() != "uses":
-                        self._add_label(pn, i, sp.rcol, "data", "", section, skind, cond, proc,
+                        self._add_label(pn, i, sp.rcol, "data", "", "", "stack", cond, proc,
                                         SIZE_WORDS.get(pt.lower(), 0) or (self.bits if pt.lower().startswith(
                                             ("ptr", "lp", "h")) else 0), "param", local=True)
             elif dia == "masm" and w == "local" and proc is not None:
@@ -606,7 +627,7 @@ class Program:
                     mm = re.match(r"\s*(\w+)\s*(\[[^\]]*\])?\s*(?::\s*(\w+))?", item)
                     if mm:
                         typ = (mm.group(3) or "").lower()
-                        self._add_label(mm.group(1), i, sp.rcol, "data", "", section, skind, cond, proc,
+                        self._add_label(mm.group(1), i, sp.rcol, "data", "", "", "stack", cond, proc,
                                         SIZE_WORDS.get(typ, 0), "local", local=True)
                 st.kind = "directive"
             elif dia == "masm" and w == "endp":
@@ -985,7 +1006,14 @@ class Program:
         return evaluate(expr, lambda n: self.const_value(n, depth + 1))
 
     # ------------------------------------------------------------ pass 2: operands
+    def symbol_signature(self) -> int:
+        """Changes when a label / constant that operand typing depends on changes (cache key)."""
+        return hash((self.dialect, self.att, self.bits, self.default_rel,
+                     tuple((k, v.kind, v.size, v.line if self.mem_symbols else 0) for k, v in self.labels.items()),
+                     tuple(self.consts.items())))
+
     def _classify(self) -> None:
+        sig = self.symbol_signature()
         scope = ""
         for st in self.stmts:
             for lb, _c in st.labels:
@@ -1002,6 +1030,12 @@ class Program:
             text = st.optext
             if not text.strip():
                 st.ops = []
+                continue
+            ck = (sig, st.mnem, st.raw, st.suffix, st.opcol, text, st_scope, st.proc, st.line if self.mem_symbols
+                  else -1)
+            hit = _OPS_CACHE.get(ck)
+            if hit is not None:
+                st.ops, st.att_src_first = list(hit[0]), hit[1]
                 continue
             parts = _split_ops(text, st.opcol)
             if self.dialect == "fasm" and st.mnem in ("push", "pop") and len(parts) == 1 and " " in parts[0][0]:
@@ -1027,6 +1061,9 @@ class Program:
                     if ops[1].kind == "mem" and src:
                         ops[1].size = src
                         ops[1].explicit = True
+            if len(_OPS_CACHE) > 200_000:
+                _OPS_CACHE.clear()
+            _OPS_CACHE[ck] = (tuple(ops), st.att_src_first)
 
     def operand(self, t: str, col: int, st: Stmt, scope: str) -> Operand:
         o = Operand(t, col, col + len(t))

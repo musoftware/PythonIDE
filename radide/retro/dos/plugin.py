@@ -90,7 +90,8 @@ class DosPluginBase(LanguagePlugin):
 
     # ------------------------------------------------------------ build / run
     def build_command(self, folder: Path, project: Project) -> str | None:
-        return f'"{sys.executable}" -m radide.retro.dos.build "{Path(folder)}"'
+        from ..pycmd import module_command          # the IDE runs it from the project folder, no PYTHONPATH
+        return module_command("radide.retro.dos.build", Path(folder))
 
     def _env(self) -> dict:
         return dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")

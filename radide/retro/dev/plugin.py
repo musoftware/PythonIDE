@@ -83,8 +83,8 @@ class RetroPluginBase(RetroIntel, LanguagePlugin):
         return ""
 
     def module_template(self, name: str) -> str:
-        inc = {"dasm": f'include "{name}{self.code_ext}"', "ca65": f'(ca65 assembles every .s file; .import / '
-               f'.export share labels)', "rgbds": f'INCLUDE "{name}{self.code_ext}" (or let rgblink link it)',
+        inc = {"dasm": f'include "{name}{self.code_ext}"', "ca65": '(ca65 assembles every .s file; .import / '
+               '.export share labels)', "rgbds": f'INCLUDE "{name}{self.code_ext}" (or let rgblink link it)',
                "sjasmplus": f'INCLUDE "{name}{self.code_ext}"'}[self.dialect]
         return f"; {name}{self.code_ext} - {inc}\n"
 
@@ -100,7 +100,8 @@ class RetroPluginBase(RetroIntel, LanguagePlugin):
         return sys.executable or "python"
 
     def build_command(self, folder: Path, project: Project) -> str | None:
-        return f'"{sys.executable}" -m radide.retro.dev.build "{Path(folder)}"'
+        from ..pycmd import module_command          # the IDE runs it from the project folder, no PYTHONPATH
+        return module_command("radide.retro.dev.build", Path(folder))
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         import os

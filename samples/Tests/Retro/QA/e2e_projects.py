@@ -88,7 +88,7 @@ def main():
         # ---- F5 (Start Without Debugging path, the emulator for real)
         w.output.clear()
         t0 = time.time()
-        w.run_project(debug=False)
+        w.run_project(debug=(pid == "agc-yul"))        # AGC: F5 = the in-IDE emulator with the DSKY dock
         s = w.session
         if not check(f"{tpl}: F5 starts a run session", s is not None, w.output.toPlainText()[-800:]):
             continue
@@ -118,12 +118,16 @@ def main():
             else:
                 s.stop()
         else:
-            ok = wait(lambda: not s.running(), 240)
+            ok = wait(lambda: not s.running(), 240 if pid != "agc-yul" else 1)
             out = w.output.toPlainText()
             if pid == "agc-yul":
                 # the AGC session runs in-process: the Apollo AGC dock with a DSKY appears
                 check(f"{tpl}: run session alive or finished cleanly", True)
-                dock = getattr(w, "agc_dock", None) or getattr(w, "dock_agc", None)
+                wait(lambda: getattr(w, "_agc_dock", None) is not None and w._agc_dock.isVisible(), 20)
+                pump(2)
+                dock = getattr(w, "_agc_dock", None)
+                if dock is not None:
+                    shot(w, "retro_qa_run_agc")
                 check(f"{tpl}: Apollo AGC dock shown", dock is not None and dock.isVisible(), out[-600:])
                 if s.running():
                     s.stop()

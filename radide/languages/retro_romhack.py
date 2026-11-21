@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -124,14 +123,15 @@ class RomHackPlugin(LanguagePlugin):
         return sys.executable or "python"
 
     def build_command(self, folder: Path, project=None) -> str:
-        return subprocess.list2cmdline([sys.executable, "-m", "radide.retro.rom", "build", str(Path(folder))])
+        from ..retro.pycmd import module_command    # runs from the project folder without PYTHONPATH
+        return module_command("radide.retro.rom", "build", Path(folder))
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         root = Path(__file__).resolve().parents[2]
         import os
         env = dict(os.environ)
         env["PYTHONPATH"] = str(root) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-        return RunSpec(sys.executable, ["-m", "radide.retro.rom", "run", str(Path(folder))], Path(folder), env)
+        return RunSpec(sys.executable, ["-u", "-m", "radide.retro.rom", "run", str(Path(folder))], Path(folder), env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:
         return self.run_spec(folder, startup_form, interpreter)

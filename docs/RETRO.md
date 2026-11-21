@@ -350,7 +350,8 @@ GBDK-2020 (C for the Game Boy) is not offered yet.
   Tools > Retro > Retro Development > Retro Toolchains... shows the status and downloads with one click.
 * Build: `python -m radide.retro.dev.build <folder>` (`build.py`), driven by `project.radproj` `"retro"`:
   `system`, `lang` (asm / c / acme), `main`, `cfg` (ld65 config), `output`, `fix` / `title` (rgbfix), `org` /
-  `entry` (ZX .tap), and for disassemblies `original` / `compare` / `compare_what`. Messages go to
+  `entry` (ZX .tap), `prebuild` (commands run in the project folder before assembling, e.g. a graphics packer;
+  `{python}` is the IDE's Python), and for disassemblies `original` / `compare` / `compare_what`. Messages go to
   `_build/diagnostics.json`; `errors.py` understands DASM, ca65 / ld65 / cc65, RGBDS (`error: ...` + `at f(n)`),
   sjasmplus and ACME, so the Error List shows file + line (double-click opens it). Listings, symbol files,
   `labels.txt` (ld65 `-Ln`) and the ca65 `.dbg` file are written to `_build/` for the emulators / debuggers.
@@ -682,8 +683,8 @@ activates / selects list items / opens menus. Menus and message boxes are modal 
 | target | drawing | keys | mouse | build |
 |---|---|---|---|---|
 | FreeBASIC (`-lang qb`) | LOCATE / COLOR / PRINT (the bottom-right cell without scrolling) | INKEY$ | `__GETMOUSE` | dosdev Builder (FreeBASIC DOS in DOSBox-X) |
-| QuickBASIC 4.5 | same, `DEF SEG` / POKE for the last cell | INKEY$ | INT 33h via CALL INTERRUPT (`QB /L QB.QLB`) | user's BC.EXE |
-| QBasic 1.1 | same | INKEY$ | none (no COMMAND$ either) | user's QBASIC.EXE / FreeBASIC |
+| QuickBASIC 4.5 | same | INKEY$ | INT 33h via CALL INTERRUPT (`QB /L QB.QLB`) | user's BC.EXE |
+| QBasic 1.1 | same | INKEY$ | none (no COMMAND$, so no test dump either) | user's QBASIC.EXE; FreeBASIC builds it too |
 | Pascal | Crt (TextAttr, GotoXY, Write); last cell / dump via `Mem[$B800:...]` (go32v2: `dosmemput`) | KeyPressed / ReadKey | FPC Mouse unit, TP: INT 33h via Dos.Intr | Free Pascal i8086-msdos (`-Mtp`), user's TPC |
 | C (C89) | far pointer to B800:0000 (DJGPP: `_farpokew`) | kbhit / getch | INT 33h via int86 | OpenWatcom wcl `-bt=dos`, user's TCC, DJGPP |
 | 16-bit asm (MASM / TASM / JWasm syntax, `.model tiny`, `org 100h`) | stosw to B800h | INT 16h | INT 33h | JWasm `-bin`, or RAD IDE's own 8086 assembler (no toolchain) |
@@ -730,12 +731,14 @@ Other DOS lessons can be added to the same course.json.
 ### Tests (`samples/Tests/Retro/DesignTextMode`, sample `samples/Tests/Retro/DesignTUI_Contacts`)
 
 `test_core.py` (48 checks, no toolchain: model, renderer, ANSI / BIN / TXT / SAUCE, regions in four languages, the asm
-program in the 8086 emulator = simulator after 13 key sequences), `test_dosbox.py` (39: the sample and all four
+program in the 8086 emulator = simulator after 13 key sequences), `test_dosbox.py` (40: the sample and all four
 targets built with FreeBASIC DOS / Free Pascal i8086 / OpenWatcom / JWasm, run in DOSBox-X, screens equal to the
 designer and the simulator after keys, menus, message boxes, a second screen, 80x43 / 80x50 in C and asm; splash
 in the emulator; skips offline),
 `test_ui.py` (34, qh.py). Not done: the dropdown menus and message boxes have no shadow at run time (the static
 windows do), list boxes have no scroll bar, there are no 40-column screens, a Pascal 80x43 program shows 50 lines on VGA
 (Crt's Font8x8; the bottom 7 stay empty), Turbo Pascal / Turbo C / QuickBASIC / QBasic outputs are checked only by
-reading (no proprietary copies), DJGPP is untested (not downloadable), and the asm target has no `TuiAddItem` /
+reading (no proprietary copies; the QuickBASIC dialect needs QB.BI / CALL INTERRUPT, so FreeBASIC cannot build
+it), mouse clicks in the DOS programs were not automated (the mouse driver is detected and polled in every DOSBox-X
+run, clicks were not injected), DJGPP is untested (not downloadable), and the asm target has no `TuiAddItem` /
 `TuiClearList` (fixed item lists).

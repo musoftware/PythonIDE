@@ -121,8 +121,10 @@ class RetroDosPlugin(LanguagePlugin):
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         target = Path(folder) / startup_form if startup_form and (Path(folder) / startup_form).is_file() \
             else Path(folder)
-        env = {"PYTHONPATH": IDE_ROOT + (os.pathsep + os.environ["PYTHONPATH"] if os.environ.get("PYTHONPATH") else "")}
-        return RunSpec(sys.executable, ["-m", "radide.retro.emu", "dos", str(target)], Path(folder), env)
+        # the whole environment (a RunSpec env replaces it: without SystemRoot / PATH Python cannot start)
+        env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
+                   PYTHONPATH=IDE_ROOT + (os.pathsep + os.environ["PYTHONPATH"] if os.environ.get("PYTHONPATH") else ""))
+        return RunSpec(sys.executable, ["-u", "-m", "radide.retro.emu", "dos", str(target)], Path(folder), env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints=None) -> RunSpec:
         return self.run_spec(folder, startup_form, interpreter)

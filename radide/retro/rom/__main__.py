@@ -18,6 +18,22 @@ def _say(text: str) -> None:
     sys.stdout.flush()
 
 
+def _wait_emulator(proc) -> None:
+    """Stay alive while the emulator runs, tied to this process: the IDE's Stop (which kills this runner)
+    closes the emulator too, and closing the emulator ends the run."""
+    import time
+    try:
+        from ..emu.launch import tie_to_this_process
+        tie_to_this_process(proc)
+    except Exception:  # noqa: BLE001 - best effort (Windows job object)
+        pass
+    try:
+        while proc.alive():
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        proc.stop()
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] in ("-h", "--help"):
@@ -37,7 +53,8 @@ def main(argv=None) -> int:
                     if getattr(proc, "popen", None) is None and hasattr(proc, "command"):
                         _say("Emulator command (dry run): " + " ".join(map(str, proc.command)))
                     else:
-                        _say(f"Started the emulator for {out.name}")
+                        _say(f"Started the emulator for {out.name} - close it or press Stop to end.")
+                        _wait_emulator(proc)
                 except RunError as e:
                     _say(f"*** Cannot start an emulator: {e}")
                     _say("    (Tools > Retro > Emulators downloads one; the patched ROM is ready in build/)")

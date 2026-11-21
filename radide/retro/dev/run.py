@@ -51,6 +51,11 @@ def run_rom(path, system_id: str, log=print):
     return None
 
 
+def _as_popen(proc):
+    from types import SimpleNamespace
+    return SimpleNamespace(popen=getattr(proc, "p", None))
+
+
 class _Proc:
     def __init__(self, p: subprocess.Popen):
         self.p = p
@@ -89,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     if proc is None:
         return 0
     print(f"Running {b.out_path.name} ({b.system.title}) - close the emulator or press Stop to end.", flush=True)
+    try:        # the IDE's Stop kills this runner: a job object closes the emulator with it (Windows)
+        from ..emu.launch import tie_to_this_process
+        tie_to_this_process(proc if getattr(proc, "popen", None) is not None else _as_popen(proc))
+    except Exception:  # noqa: BLE001 - best effort
+        pass
     try:
         while proc.alive():
             time.sleep(0.5)

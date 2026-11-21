@@ -33,7 +33,10 @@ def main() -> int:
         if d.langs.topLevelItem(i).text(0).replace("&", "") in ("DOS",):
             group = d.langs.topLevelItem(i)
     names = [group.child(i).text(0) for i in range(group.childCount())] if group else []
-    qh.check("New Project has a DOS group with 5 project types", group is not None and len(names) == 5, names)
+    # 5 dosdev types + "DOS Text-Mode Forms App" of the text-mode designer slice
+    qh.check("New Project has a DOS group with the 5 DOS project types", group is not None and len(names) >= 5 and
+             sum(n.startswith(("QBasic", "Turbo Pascal", "Turbo C", "DOS Assembly", "DOS Batch")) for n in names) == 5,
+             names)
     if group is not None:
         d.langs.setCurrentItem(group.child(0))
         qh.pump(0.3)

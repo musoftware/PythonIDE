@@ -1,0 +1,19 @@
+{
+  "name": "DABG",
+  "language": "retro-nes",
+  "forms": [],
+  "startup": "dabg",
+  "modules": [
+    "dabg.s"
+  ],
+  "retro": {
+    "system": "nes",
+    "lang": "asm",
+    "main": "dabg.s",
+    "cfg": "nrom256.x",
+    "output": "dabg.nes",
+    "prebuild": [
+      "{python} pb53_py3.py --raw ascii.chr ascii.pb53"
+    ]
+  }
+}

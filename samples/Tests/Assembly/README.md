@@ -54,6 +54,7 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 | [NativeDebug](NativeDebug/README.md) | Registers / Disassembly / Memory / Stack windows, step instruction |
 | [AsmLsp](AsmLsp/README.md) | asm-lsp: install plan / GitHub release download, the LSP client, the built-in fallback |
 | [SmartSim](SmartSim/README.md) | Check by running: buggy / correct programs for the runtime checks (`sim.*`), Explain this line, What-if |
+| [SmartLint](SmartLint/README.md) | the editor that explains mistakes while you type: NasmMistakes / Emu8086Mistakes projects, the rule corpus |
 
 ## Test scripts
 
@@ -69,3 +70,4 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 | `QA/test_user_flow.py` | the IDE as a user drives it: New Project -> Ctrl+F5 with the Program Input bar, forms, Error List, IntelliSense, F5 with Registers / Disassembly / Memory (and stdin under the debugger), C regression, emulator, CHM / Tutorials, Open Folder F5, Arabic + dark screenshots ([README](QA/README.md)) |
 | `SmartCpuView/test_cpu_analysis.py`, `SmartCpuView/test_cpu_view.py` | the OllyDbg-style CPU view (gdb + 8086 emulator) and the live editor: jump arrows, register read / write highlighting, inline values, register hover ([README](SmartCpuView/README.md)) |
 | `SmartSim/tests/test_sim.py`, `SmartSim/tests/test_ide_sim.py` | Check by running (Unicorn / 8086 emulator): every buggy program reported at the right line with English + Arabic texts, correct programs clean, Explain this line, What-if, the Assembly Checks window ([README](SmartSim/README.md)) |
+| `SmartLint/test_lint_corpus.py`, `SmartLint/test_lint_ide.py` | the static analyzer: rule corpus for every dialect, quick fixes, no false positives on the samples / templates / course, < 200 ms on 5 500 lines; the IDE: squiggles, hover, Ctrl+., Problems Explained, Error List (Arabic + English) ([README](SmartLint/README.md)) |

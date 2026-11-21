@@ -154,6 +154,7 @@ class OperandChecks:
                                   "فظهرت مع المعالج 80386.")
                         regs_txt = "AX BX CX DX SI DI BP SP, AL AH ..."
                         mode_txt = "8086 (16-bit)"
+                        mode_ar = "8086 (16 بت)"
                     else:
                         why = ("64-bit registers (RAX ... R15) and the byte registers SIL DIL SPL BPL R8B-R15B exist "
                                "only in 64-bit mode.")
@@ -161,11 +162,13 @@ class OperandChecks:
                                   "موجودة في وضع 64 بت فقط.")
                         regs_txt = "EAX EBX ECX EDX ESI EDI EBP ESP" if mode == 32 else "AX BX CX DX SI DI BP SP"
                         mode_txt = f"{mode}-bit"
+                        mode_ar = f"{mode} بت"
                     fix = []
                     rep = sibling(r, 16 if mode == 16 else 32, mode)
                     if rep and o.kind == "reg":
                         fix = [self.fix_replace_op(st, o, rep, f"Use {rep.upper()}", f"استخدم {rep.upper()}")]
-                    self.add("ASM108", st, o.col, o.end, fix, reg=r.upper(), mode=mode_txt, why=why, why_ar=why_ar,
+                    self.add("ASM108", st, o.col, o.end, fix, reg=r.upper(), mode=mode_txt, mode_ar=mode_ar, why=why,
+                             why_ar=why_ar,
                              regs=regs_txt)
                     return
         # ---------------------------------------------- instructions removed from 64-bit mode
@@ -306,53 +309,64 @@ class OperandChecks:
     # ------------------------------------------------------------ helpers of the checks
     def check_8086(self, st: Stmt) -> None:
         m, ops = st.mnem, st.ops
-        what = fix_txt = ""
+        what = what_ar = fix_txt = ""
         fixes = []
         if m == "push" and ops and ops[0].kind == "imm":
-            what, fix_txt = "push with a number", f"mov ax, {ops[0].text} / push ax"
+            what, what_ar = "push with a number", "دفع رقم مباشر (push)"
+            fix_txt = f"mov ax, {ops[0].text} / push ax"
             fixes = [self.fix_lines(st, [f"mov ax, {ops[0].text}", "push ax"], "Push it through AX (changes AX)",
                                     "ادفعه عبر AX (يغيّر AX)")]
         elif m in SHIFTS and len(ops) == 2 and ops[1].kind == "imm" and ops[1].value not in (1, None):
             what = f"{m} by {ops[1].text}"
+            what_ar = f"الإزاحة {m} بمقدار {ops[1].text}"
             fix_txt = f"mov cl, {ops[1].text} / {m} {ops[0].text}, cl"
             fixes = [self.fix_lines(st, [f"mov cl, {ops[1].text}", f"{st.raw} {ops[0].text}, cl"],
                                     "Shift by CL (changes CL)", "أزح بالمسجل CL (يغيّر CL)")]
         elif m in I186:
-            what, fix_txt = m.upper(), "push / pop each register (or mov bp, sp)"
+            what = what_ar = m.upper()
+            fix_txt = "push / pop each register (or mov bp, sp)"
         elif m == "imul" and len(ops) >= 2:
-            what, fix_txt = "IMUL with 2 or 3 operands", "mov ax, value / imul operand"
+            what, what_ar = "IMUL with 2 or 3 operands", "التعليمة IMUL بمعاملين أو ثلاثة"
+            fix_txt = "mov ax, value / imul operand"
         elif m in I386:
-            what, fix_txt = f"{m.upper()} (80386)", "an 8086 instruction sequence"
+            what = what_ar = f"{m.upper()} (80386)"
+            fix_txt = "an 8086 instruction sequence"
         if what:
-            self.add("ASM118", st, st.mcol, st.end_col, fixes, what=what, fix=fix_txt)
+            self.add("ASM118", st, st.mcol, st.end_col, fixes, what=what, what_ar=what_ar, fix=fix_txt)
 
     def check_address(self, st: Stmt, o: Operand) -> bool:
         p = self.p
         mode = p.bits
         regs = list(o.regs)
-        what = ""
+        what = what_ar = ""
         what_rule = "ASM105"
         if o.bad == "segment-register-in-address":
             what = "a segment register cannot be part of an address (write es:[di])"
+            what_ar = "مسجل المقطع لا يكون جزءاً من العنوان (اكتب es:[di])"
         elif o.bad == "too-many-registers":
             what = "at most two registers (base + index) can be used"
+            what_ar = "يمكن استخدام مسجلين على الأكثر (أساس + فهرس)"
         elif o.bad == "negative-register":
             what = "a register cannot be subtracted inside an address"
+            what_ar = "لا يمكن طرح مسجل داخل العنوان"
         elif any(GP[r][1] == 8 for r in regs):
             what = "8-bit registers cannot be used in an address"
+            what_ar = "مسجلات الـ 8 بت لا تُستخدم في العناوين"
         if what:
-            self.add(what_rule, st, o.col, o.end, op=o.text, what=what)
+            self.add(what_rule, st, o.col, o.end, op=o.text, what=what, what_ar=what_ar)
             return True
         sizes = {GP[r][1] for r in regs}
         if len(sizes) > 1:
             names = " and ".join(f"{s}-bit registers" for s in sorted(sizes))
-            self.add("ASM107", st, o.col, o.end, op=o.text, what=names)
+            names_ar = " و ".join(f"مسجلات {s} بت" for s in sorted(sizes))
+            self.add("ASM107", st, o.col, o.end, op=o.text, what=names, what_ar=names_ar)
             return True
         if not regs:
             return False
         asize = sizes.pop()
         if mode == 64 and asize == 16:
-            self.add("ASM107", st, o.col, o.end, op=o.text, what="16-bit registers (not allowed in 64-bit code)")
+            self.add("ASM107", st, o.col, o.end, op=o.text, what="16-bit registers (not allowed in 64-bit code)",
+                     what_ar="مسجلات 16 بت (غير مسموحة في كود 64 بت)")
             return True
         if asize == 16:
             allowed_base, allowed_index = {"bx", "bp"}, {"si", "di"}
@@ -363,17 +377,20 @@ class OperandChecks:
                 return True
             return False
         if o.rel and regs:
-            self.add("ASM105", st, o.col, o.end, op=o.text, what="RIP-relative addresses cannot add registers")
+            self.add("ASM105", st, o.col, o.end, op=o.text, what="RIP-relative addresses cannot add registers",
+                     what_ar="العنوان النسبي لـ RIP لا يقبل إضافة مسجلات")
             return True
         if o.index and o.scale not in (1, 2, 4, 8, -1):
             if o.scale in (3, 5, 9) and not o.base and p.dialect in ("nasm", "fasm"):
                 pass                                     # rewritten by the assembler as [r + r*2/4/8]
             else:
                 self.add("ASM105", st, o.col, o.end, op=o.text,
-                         what=f"the scale must be 1, 2, 4 or 8 (not {o.scale})")
+                         what=f"the scale must be 1, 2, 4 or 8 (not {o.scale})",
+                         what_ar=f"معامل الضرب يجب أن يكون 1 أو 2 أو 4 أو 8 (وليس {o.scale})")
                 return True
         if o.index in ("esp", "rsp") and (o.scale not in (1,) or o.base in ("esp", "rsp")):
-            self.add("ASM105", st, o.col, o.end, op=o.text, what=f"{o.index.upper()} cannot be an index register")
+            self.add("ASM105", st, o.col, o.end, op=o.text, what=f"{o.index.upper()} cannot be an index register",
+                     what_ar=f"المسجل {o.index.upper()} لا يمكن أن يكون مسجل فهرس")
             return True
         if mode == 64 and asize == 32 and st.mnem != "lea":
             new = o.text
@@ -615,7 +632,8 @@ class OperandChecks:
     def _size_order(self, st: Stmt, sizes: list[int]) -> list[int]:
         imm = next((o for o in st.ops if o.kind == "imm" and o.value is not None), None)
         default = 16 if self.p.bits == 16 else 32
-        order = sorted(sizes, key=lambda b: (0 if b == default else 1, b))
+        pref = [default] + [b for b in (16, 8, 32, 64) if b != default]
+        order = [b for b in pref if b in sizes]
         if imm is not None:
             v = imm.value
             fit = [b for b in order if -(1 << (b - 1)) <= v < (1 << b)]

@@ -6,6 +6,13 @@ from dataclasses import dataclass, field
 from .rules import RULES, TOPICS, Rule
 
 
+RLE, PDF = "‫", "‬"          # right-to-left embedding: Arabic lines read right to left in LTR widgets
+
+
+def rtl(text: str) -> str:
+    return RLE + text + PDF if text else text
+
+
 class _Args(dict):
     """str.format_map helper: a missing placeholder stays visible instead of raising."""
 
@@ -98,14 +105,14 @@ class Issue:
         sev = {"error": ("Error", "خطأ"), "warning": ("Warning", "تحذير"), "info": ("Hint", "تلميح")}.get(
             self.severity, ("Note", "ملاحظة"))
         if lang == "ar":
-            out = [f"**{sev[1]} {self.rule}** — {self.message('ar')}"]
+            out = [rtl(f"**{sev[1]} {self.rule}** — {self.message('ar')}")]
             if with_english:
                 out.append(f"*{self.message('en')}*")
-            out += ["", f"**لماذا؟** {self.why('ar')}", "", f"**كيف أصلحه؟** {self.fix_text('ar')}"]
+            out += ["", rtl(f"**لماذا؟** {self.why('ar')}"), "", rtl(f"**كيف أصلحه؟** {self.fix_text('ar')}")]
             if self.fixes:
                 out.append("")
-                out.append("**إصلاح سريع (Ctrl+.):** " + " ، ".join(f.title("ar") for f in self.fixes))
-            out += ["", f"[اعرف المزيد]({self.learn_url()})"]
+                out.append(rtl("**إصلاح سريع (Ctrl+.):** " + " ، ".join(f.title("ar") for f in self.fixes)))
+            out += ["", f"[{rtl('اعرف المزيد')}]({self.learn_url()})"]
         else:
             out = [f"**{sev[0]} {self.rule}** — {self.message('en')}", "", f"**Why?** {self.why('en')}", "",
                    f"**How to fix:** {self.fix_text('en')}"]
@@ -119,7 +126,8 @@ class Issue:
         r = self.meta
         return {"rule": self.rule, "name": r.name if r else "", "severity": self.severity, "line": self.line,
                 "col": self.col, "endLine": self.end_line, "endCol": self.end_col,
-                "message": self.title(lang), "message_en": self.message("en"), "message_ar": self.message("ar"),
+                "message": self.title(lang) if lang != "ar" else f"{self.rule}: {rtl(self.message('ar'))}",
+                "message_en": self.message("en"), "message_ar": self.message("ar"),
                 "why": self.why(lang), "fix": self.fix_text(lang), "markdown": self.markdown(lang),
                 "url": self.learn_url(), "lesson": self.lesson(), "mnem": self.mnem, "source": self.source,
                 "fixes": [f.to_dict(lang) for f in self.fixes]}

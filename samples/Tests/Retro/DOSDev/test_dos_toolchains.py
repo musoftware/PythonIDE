@@ -41,7 +41,7 @@ def main() -> int:
     jw = T.jwasm_exe()
     if jw:
         built = helpers.assemble_sources(jw, WORK / "helpers")
-        for n in ("RADKEYS.COM", "RADSCR.COM", "RADCAP.COM"):
+        for n in ("RADKEYS.COM", "RADSCR.COM", "RADCAP.COM", "RADMOUSE.COM"):
             check(f"helper {n} = JWasm build of helpers_src", built.get(n) == helpers.com_bytes(n),
                   (len(built.get(n, b"")), len(helpers.com_bytes(n))))
     else:

@@ -95,7 +95,7 @@ _rule("ASM104", "error", "operands", "immediate-too-large",
       "فقط: حمّل الثوابت الكبيرة أولاً بالتعليمة mov rax, القيمة.", lesson="02-numbers")
 _rule("ASM105", "error", "operands", "invalid-scale",
       "Invalid address {op}: {what}",
-      "عنوان غير صالح {op}: {what}",
+      "عنوان غير صالح {op}: {what_ar}",
       "A memory address can be base + index*scale + displacement, where scale is 1, 2, 4 or 8 and ESP/RSP can "
       "never be the scaled index. Anything else cannot be encoded by the CPU.",
       "العنوان في الذاكرة يكون بالشكل: أساس + فهرس*معامل + إزاحة، والمعامل 1 أو 2 أو 4 أو 8 فقط، ولا يمكن أن يكون "
@@ -115,7 +115,7 @@ _rule("ASM106", "error", "operands", "invalid-16bit-address",
       "(shl si, 1).", lesson="13-emu8086")
 _rule("ASM107", "error", "operands", "mixed-address-size",
       "The address {op} mixes {what}",
-      "العنوان {op} يخلط {what}",
+      "العنوان {op} يخلط {what_ar}",
       "All registers inside one address must have the same size (all 16-bit, all 32-bit or all 64-bit), and "
       "64-bit code cannot use 16-bit address registers at all.",
       "كل المسجلات داخل العنوان الواحد يجب أن تكون بنفس الحجم (كلها 16 أو 32 أو 64 بت)، وكود 64 بت لا يقبل مسجلات "
@@ -124,7 +124,7 @@ _rule("ASM107", "error", "operands", "mixed-address-size",
       "استخدم مسجلات بحجم واحد داخل [ ]: ‏[rbx+rsi*4] في كود 64 بت و [ebx+esi*4] في كود 32 بت.", lesson="08-arrays")
 _rule("ASM108", "error", "operands", "register-not-in-mode",
       "{reg} does not exist in {mode} code",
-      "المسجل {reg} غير موجود في كود {mode}",
+      "المسجل {reg} غير موجود في كود {mode_ar}",
       "{why}",
       "{why_ar}",
       "Use the registers of this mode ({regs}), or change the mode (bits / .model / format) if you meant "
@@ -217,7 +217,7 @@ _rule("ASM117", "error", "operands", "mul-div-immediate",
       "حمّل الرقم في مسجل أولاً: mov {reg}, {value} ثم {mnem} {reg}.", lesson="05-arithmetic")
 _rule("ASM118", "info", "operands", "not-on-8086",
       "{what} is not available on a real 8086 (80186 and later)",
-      "{what} غير متاح في معالج 8086 الحقيقي (من 80186 وما بعده)",
+      "{what_ar} غير متاح في معالج 8086 الحقيقي (من 80186 وما بعده)",
       "The 8086 cannot push a number, shift by a count other than 1 except through CL, or use PUSHA / ENTER. "
       "The emulator accepts them, but real 8086 hardware and strict course assemblers do not.",
       "المعالج 8086 لا يستطيع دفع رقم مباشر، ولا الإزاحة بعدد غير 1 إلا عبر CL، ولا استخدام PUSHA أو ENTER. "
@@ -523,6 +523,17 @@ _rule("ASM408", "info", "data", "idiv-after-zero-extend",
       "Use {ext} instead of clearing {high} (it copies the sign of {low} into {high}).",
       "استخدم {ext} بدلاً من تصفير {high} (تنسخ إشارة {low} إلى {high}).", lesson="05-arithmetic")
 
+_rule("ASM409", "error", "data", "divide-overflow",
+      "{mnem} overflows: {high} = {hv} is not smaller than the divisor {dv}",
+      "التعليمة {mnem} ستفيض: {high} = {hv} ليس أصغر من المقسوم عليه {dv}",
+      "The quotient of {pair} / divisor must fit in {low}. When the high half {high} is already greater than or "
+      "equal to the divisor, the quotient is too big and the CPU raises a divide error - the same crash as "
+      "dividing by zero.",
+      "ناتج قسمة {pair} على المقسوم عليه يجب أن يتسع في {low}. وعندما يكون النصف العلوي {high} أكبر من أو يساوي "
+      "المقسوم عليه يصبح الناتج كبيراً جداً فيرفع المعالج خطأ القسمة - نفس توقف القسمة على صفر.",
+      "Clear {high} before an unsigned DIV (xor), or sign-extend with CWD / CDQ / CQO before IDIV.",
+      "صفّر {high} قبل DIV بدون إشارة (xor)، أو وسّع الإشارة بـ CWD أو CDQ أو CQO قبل IDIV.", lesson="05-arithmetic")
+
 # ============================================================================ calling conventions
 _rule("ASM501", "warning", "abi", "win64-shadow-space",
       "The call to '{callee}' has no 32-byte shadow space ({have} bytes reserved)",
@@ -603,6 +614,17 @@ _rule("ASM508", "info", "abi", "sysv-variadic-al",
       "Write xor eax, eax before the call when no floating-point argument is passed.",
       "اكتب xor eax, eax قبل الاستدعاء إذا لم تمرر وسيطاً عشرياً.", topic="sysv", lesson="11-c-winapi")
 
+_rule("ASM509", "warning", "abi", "value-instead-of-address",
+      "Argument {n} of {api} ({param}) must be an address, but {loc} holds the contents of '{sym}'",
+      "الوسيط رقم {n} للدالة {api} ‏({param}) يجب أن يكون عنواناً، لكن {loc} يحمل محتوى '{sym}'",
+      "{param} is a pointer: {api} reads memory at the address in {loc}. 'mov {loc}, [{sym}]' loads the first "
+      "bytes of the text (its value) instead of where it is, so the function reads a random address and usually "
+      "crashes.",
+      "{param} مؤشر: الدالة {api} تقرأ الذاكرة عند العنوان الموجود في {loc}. والتعليمة 'mov {loc}, [{sym}]' تحمّل "
+      "أول بايتات النص (قيمته) بدلاً من مكانه، فتقرأ الدالة عنواناً عشوائياً وغالباً يتوقف البرنامج.",
+      "Load the address with LEA: lea {loc}, [{sym}].",
+      "حمّل العنوان بالتعليمة LEA: ‏lea {loc}, [{sym}].", topic="win64", lesson="04-data")
+
 # ============================================================================ DOS / 8086
 _rule("ASM601", "error", "dos", "ds-not-initialized",
       "DS is used before it is set to the data segment (mov ax, {seg} / mov ds, ax)",
@@ -635,8 +657,8 @@ _rule("ASM604", "info", "dos", "int21-unknown-function",
       "int 21h function AH={ah} is not a common DOS service",
       "الخدمة AH={ah} في int 21h ليست من خدمات DOS المعروفة",
       "The value in AH selects the DOS service. {ah} is not one of the usual services (01h read key, 02h print "
-      "char, 09h print string, 0Ah read line, 4Ch exit ...), which often means a typo such as 4Ch written as 4C "
-      "without h (= 4C decimal?).",
+      "char, 09h print string, 0Ah read line, 4Ch exit ...), which often means a typo such as a missing h "
+      "(4Ch, not 4C).",
       "القيمة في AH تختار خدمة DOS. والقيمة {ah} ليست من الخدمات المعتادة (01h قراءة مفتاح، 02h طباعة حرف، 09h طباعة "
       "نص، 0Ah قراءة سطر، 4Ch خروج ...)، وهذا يعني غالباً خطأ كتابة مثل نسيان حرف h في 4Ch.",
       "Check the number (hexadecimal numbers end with h: 09h, 4Ch).",

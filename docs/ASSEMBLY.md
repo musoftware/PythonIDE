@@ -807,3 +807,84 @@ a `win.diag_providers` entry while the checked text is unchanged).
   the menu action, Findings / details / Monaco markers (owner `rad-asm-sim`) / Error List / diag provider, Explain
   This Line (execution 2 of 10), What-If + flags table, context menu, buffer overflow + Program Output, an 8086
   file, the Arabic UI (findings, details right-to-left, explanation); screenshots `asm_sim_*.png`.
+
+## Smart editor checks: mistakes explained while you type (`radide/asm_lint`)
+
+Every assembly editor (NASM, MASM, FASM, GNU as AT&T / Intel, emu8086 / TASM-style 8086; 16 / 32 / 64-bit; Win64,
+System V, 32-bit cdecl / stdcall and DOS) is analysed ~0.4 s after the last key press - without assembling. Each
+finding has a rule id, a severity, a short message, **why** it is a problem, **how to fix it**, a "Learn more"
+reference (Intel SDM / calling convention / DOS API, plus the instruction's own page from `radide/asm_intel`) and,
+when possible, a quick fix. All texts exist in English and Arabic; the IDE language decides, and Arabic keeps the
+English message so it can be searched on the web.
+
+**In the editor** (`radide/features/asm_smart_lint.py`): squiggles (Monaco marker owner `radAsmLint`) and a red /
+yellow / blue gutter dot per line; hovering a squiggle shows the full explanation; **Ctrl+.** lists the quick fixes
+(and "Explain ASMxxx"); **View > Problems Explained** is a dock with the file's findings, their explanation, Fix /
+Go to Line / Learn more / Open Lesson (the matching lesson of the Arabic assembly course) and **Configure
+Rules...** (per project). The findings also join the **Error List** (`win.diag_providers`); a finding on the same
+line as an assembler error is merged away, and the assembler's own messages (NASM, MASM, FASM, GNU as, ld, MS
+link) get a friendly explanation (`asm_errors.explain`: tool tip; in Arabic the friendly text comes first, the
+original message after it). The same friendly texts appear in the Problems panel.
+
+**How it works** (no Qt in `radide/asm_lint`):
+
+* `parse.py` splits the file into statements with typed operands (register + family + size, immediate + value,
+  memory base / index / scale / segment / size, jump target) - AT&T operands are turned into Intel order. It
+  reuses `asm_intel` (comment / string masking, the instruction and register tables, dialect / mode / ABI
+  detection). Labels are scoped like the assemblers do (NASM / FASM `.local`, MASM labels inside PROC, `@@`,
+  GNU `1f` / `1b`); MASM `LOCAL` variables and PROC parameters are typed.
+* `flow.py` builds units (PROC ... ENDP, or code from an entry / global / called / address-taken label), basic
+  blocks and a control-flow graph (tail jumps, `call ExitProcess`, `int 21h` with AH=4Ch, Linux exit system calls,
+  procedures that never return), then runs a forward data flow to a fixed point: per register which bits were
+  written, by whom (code, a call that clobbered it, a program argument), constant values; stack depth, RSP mod 16,
+  the bytes reserved with `sub rsp` above the last push (shadow space), the `mov rbp, rsp` frame, pushes since the
+  last call, the direction flag, DS in DOS EXE programs. Internal procedures get summaries (registers changed and
+  not saved, can return, `ret N`), so `call show` followed by `loop` knows whether CX survived.
+* `ops.py` (encoding), `symbols.py` (names) and `flow.py` (flow / data / ABI / DOS) produce the findings;
+  `config.py` applies the project settings and suppression comments.
+
+**Rules** (66): operands ASM101-125 (size mismatch, unknown memory size, memory to memory, immediate too big,
+invalid scale / 16-bit address / mixed address sizes, register not in this mode, immediate destination, segment
+register misuse, MOVZX / MOVSX sizes, LEA without memory, AH with REX, PUSH sizes, instructions removed from 64-bit
+mode, operand count, MUL / DIV with a number, 80186+ instructions on an 8086, 32-bit address registers in 64-bit
+code, an address loaded into a small register, segment overrides, BP addresses use SS, shift counts, useless
+moves, DOS / BIOS / Linux interrupts in a Windows program); symbols ASM201-207 (undefined label with "did you
+mean", missing `extern`, duplicate label, jump into data, write into a read-only / code section, NASM without
+`default rel`, execution running into data); flow ASM301-310 (unreachable code, falling off the end, falling into
+the next procedure, unbalanced stack at RET, different stack depths on two paths, POP without PUSH, conditional
+jump after an instruction that does not set / leaves undefined the tested flags, signed / unsigned jump hints, JC
+after INC); data ASM401-409 (register used before it is set, register clobbered by a call - API or internal
+procedure, DIV / IDIV without EDX / RDX / AH, division by a constant 0, a certain divide overflow, LOOP / REP with a
+counter never set, STD left set, string instruction without CLD in a 16-bit procedure, IDIV after `xor edx, edx`);
+calling conventions ASM501-509 (Win64 shadow space, RSP not 16-byte aligned at a call, callee-saved register
+changed without saving, API argument register not set - from the `asm_intel` API table, 32-bit push count, stdcall
+double clean-up, cdecl without clean-up, System V variadic AL, the contents of a string passed instead of its
+address); DOS ASM601-606 (DS not loaded, no DOS exit, AH not set before INT 21h, unknown INT 21h function, missing
+`$` for AH=09h, DX not set for AH=09h). `python -c "from radide.asm_lint import RULES; print(len(RULES))"` lists
+them; each rule's texts are in `rules.py`.
+
+**Configuration** - `project.radproj`:
+
+    "asm_lint": {"enabled": true, "rules": {"ASM307": "off", "register-used-before-set": "info"}}
+
+(ids or names; `off` / `error` / `warning` / `info`; the Rules dialog writes it). Suppression comments:
+`; asmlint-disable-line ASM101`, `; asmlint-disable-next-line ASM307, ASM401`, `; asmlint-disable-file ASM206`
+(no id = every rule). `RADIDE_ASM_LINT=0` switches the analyzer off.
+
+**API**:
+
+    from radide.asm_lint import lint, apply_edits, explain
+    for issue in lint(text, path):            # dialect / mode / ABI detected; dialect=, bits=, abi=, config= optional
+        issue.rule, issue.severity, issue.line, issue.col, issue.message("ar"), issue.markdown("ar")
+        new_text = apply_edits(text, issue.fixes[0].edits)
+    explain("main.asm(9) : error A2006:undefined symbol : count").ar
+
+Performance: the context-free part of each line, the operand typing and the instruction effects are cached, so a
+5 500-line file is re-analysed after an edit in ~130 ms (the first analysis ~230 ms).
+
+Tests: `samples/Tests/Assembly/SmartLint` - `test_lint_corpus.py` (88 bad / 14 good snippets over every dialect, all
+66 rules covered, 19 quick fixes applied and re-checked, no errors / warnings on the 48 sample sources, the project
+templates and the 89 runnable course blocks, assembler message translation, configuration, performance) and
+`test_lint_ide.py` (the IDE in Arabic and English: squiggles, gutter icons, hover widget, Ctrl+. menu and applying a
+fix, the Problems Explained panel, Error List merge, an emu8086 project). Demo projects with commented mistakes:
+`SmartLint/NasmMistakes`, `SmartLint/Emu8086Mistakes`.

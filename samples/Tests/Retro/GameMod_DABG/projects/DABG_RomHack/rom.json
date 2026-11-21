@@ -1,0 +1,18 @@
+{
+  "rom": "rom/dabg.nes",
+  "rom_crc32": "4A0582C2",
+  "system": "nes",
+  "output": "build/DABG_RomHack_patched.nes",
+  "patches": [
+    {
+      "file": "patches/001_dabg_values.ips",
+      "enabled": true
+    }
+  ],
+  "tables": [
+    "tables/ascii.tbl",
+    "tables/dabg.tbl"
+  ],
+  "fix_checksum": true,
+  "work": "work/dabg.nes"
+}

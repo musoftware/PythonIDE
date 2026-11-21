@@ -118,8 +118,11 @@ begin
   if TuiMouse = 0 then Exit;
 {$IFDEF FPC}
   TuiMb := GetMouseButtons and 7;
-  TuiMx := GetMouseX;
-  TuiMy := GetMouseY;
+  { the DOS Mouse unit of Free Pascal 3.2 counts columns and rows from 1 }
+  TuiMx := GetMouseX - 1;
+  TuiMy := GetMouseY - 1;
+  if TuiMx < 0 then TuiMx := 0;
+  if TuiMy < 0 then TuiMy := 0;
 {$ELSE}
   r.AX := 3; Intr($33, r);
   TuiMb := r.BX and 7; TuiMx := r.CX shr 3; TuiMy := r.DX shr 3;

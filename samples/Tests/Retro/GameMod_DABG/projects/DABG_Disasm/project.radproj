@@ -1,0 +1,23 @@
+{
+  "name": "dabg",
+  "language": "retro-nes",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.s",
+    "nes.cfg"
+  ],
+  "retro": {
+    "system": "nes",
+    "lang": "asm",
+    "main": "main.s",
+    "output": "dabg.nes",
+    "original": "rom/dabg.nes",
+    "disassembly": {
+      "source": "dabg.nes",
+      "sha1": "76d4a2216426654d734bbdce9b487a9b3bc1d98d",
+      "system": "nes"
+    },
+    "cfg": "nes.cfg"
+  }
+}

@@ -123,8 +123,12 @@ class RomProject:
         self.rom_crc32 = f"{crc32(data):08X}"
         info = detect(data, src.name)
         self.system = info.system
-        if not self.output:
-            self.output = f"build/{self.folder.name}_patched{src.suffix}"
+        # the empty template writes a placeholder build/<name>_patched.bin before a ROM is chosen: give the
+        # output the ROM's extension (a .nes must stay .nes for the emulators and the hex editor)
+        if not self.output or (self.output.startswith("build/") and self.output.endswith("_patched.bin")
+                               and src.suffix.lower() != ".bin"):
+            self.output = f"build/{Path(self.output).stem if self.output else self.folder.name + '_patched'}" \
+                          f"{src.suffix}"
         return self.rom_path
 
     def clean_rom(self) -> bytes:

@@ -5,7 +5,8 @@ The project's ``project.radproj`` holds an ``extra["retro"]`` block::
     {"system": "nes", "lang": "asm" | "c", "main": "main.s", "cfg": "nes.cfg", "output": "Game.nes",
      "fix": true,                    # Game Boy: run rgbfix (logo, checksums) after linking
      "org": 32768, "entry": "start", # ZX Spectrum: load address + entry label of the .tap
-     "original": "rom/Game.nes", "compare": [0, 40976]}   # "Disassemble ROM into project": rebuild check
+     "original": "rom/Game.nes", "compare": [0, 40976],   # "Disassemble ROM into project": rebuild check
+     "prebuild": ["{python} tools/pack.py gfx.chr gfx.bin"]}  # commands run first ({python} = this Python)
 
 Steps:  atari2600  dasm main.asm -f3 -o<out> -l -s
         nes / c64  asm: ca65 every .s -> _build/*.o, ld65 -C <cfg>     c: cl65 -t nes|c64 -O (cc65)
@@ -108,7 +109,7 @@ class Builder:
         try:
             fn = {"atari2600": self._dasm, "nes": self._cc65, "c64": self._cc65, "gameboy": self._rgbds,
                   "zx": self._sjasm}[self.system.id]
-            ok = fn()
+            ok = self._prebuild() and fn()
         except RuntimeError as e:
             self.output.append(f"error: {e}")
             self.log(f"error: {e}")
@@ -124,6 +125,21 @@ class Builder:
             {"ok": ok, "output": str(self.out_path) if ok else "", "system": self.system.id,
              "identical": same, "diags": [d.to_dict() for d in self.diags]}, indent=1), encoding="utf-8")
         return ok
+
+    def _prebuild(self) -> bool:
+        """``"prebuild"``: commands run in the project folder before assembling (graphics packers, level
+        converters ...). Each is a string (split like a shell line) or an argv list; ``{python}`` is this
+        Python interpreter. A non-zero exit code stops the build."""
+        import shlex
+        cmds = self.s.get("prebuild") or []
+        for cmd in [cmds] if isinstance(cmds, str) else cmds:
+            argv = shlex.split(cmd, posix=os.name != "nt") if isinstance(cmd, str) else [str(a) for a in cmd]
+            argv = [a.strip('"') if os.name == "nt" else a for a in argv]
+            argv = [sys.executable if a == "{python}" else a for a in argv]
+            if argv and self.run(argv) != 0:
+                self.output.append(f"error: prebuild step failed: {' '.join(argv)}")
+                return False
+        return True
 
     def _dasm(self) -> bool:
         dasm = self.tool("dasm")
