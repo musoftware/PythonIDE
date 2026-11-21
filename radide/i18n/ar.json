@@ -1891,6 +1891,8 @@
   "Open File...": "فتح ملف...",
   "Open folder": "فتح المجلد",
   "Open Folder": "فتح المجلد",
+  "Open Folder...": "فتح مجلد...",
+  "Open any folder: a RAD IDE project, a Visual Studio/VB6/... project or just a folder of files (Ctrl+K Ctrl+O)": "افتح أي مجلد: مشروع RAD IDE، أو مشروع Visual Studio/VB6/...، أو مجرد مجلد ملفات (Ctrl+K Ctrl+O)",
   "Open Folder in Dev Container...": "فتح مجلد في حاوية تطوير (Dev Container)...",
   "Open Folder in File Explorer": "فتح المجلد في مستكشف الملفات",
   "Open Image": "فتح صورة",

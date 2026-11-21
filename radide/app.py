@@ -517,6 +517,9 @@ class MainWindow(QMainWindow):
         from . import icons
         self.a_open_file = A("Open &File...", self.open_file_dialog, "Ctrl+O")
         self.a_open_file.setIcon(icons.icon("open_file"))
+        self.a_open_folder = A("Open Fol&der...", self.open_folder_dialog, "Ctrl+K, Ctrl+O", SP.SP_DirIcon)
+        self.a_open_folder.setToolTip("Open any folder: a RAD IDE project, a Visual Studio/VB6/... project "
+                                      "or just a folder of files (Ctrl+K Ctrl+O)")
         self.a_save_file = A("&Save", self.save_current)
         self.a_save_file.setIcon(icons.icon("save"))
         self.a_close_sln = A("Close Solutio&n", self.close_solution)
@@ -550,7 +553,7 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
         m = mb.addMenu("&File")
         self.file_menu = m
-        for a in (self.a_new, self.a_open, self.a_open_file, None, self.a_close_sln, None,
+        for a in (self.a_new, self.a_open, self.a_open_file, self.a_open_folder, None, self.a_close_sln, None,
                   self.a_save_file, self.a_save, None):
             m.addSeparator() if a is None else m.addAction(a)
         self.recent_menu = m.addMenu("Recent &Projects and Solutions")
@@ -698,6 +701,17 @@ class MainWindow(QMainWindow):
         f, _ = QFileDialog.getOpenFileName(self, "Open Project/Solution", "", filters)
         if f:
             self.open_project(Path(f))
+
+    def open_folder_dialog(self):
+        """File > Open Folder...: a RAD IDE project/solution folder, a foreign project folder (Visual Studio,
+        VB6, Cargo, Laravel ...) opened in place, or any folder as a folder workspace (like VS Code)."""
+        start = str(self.project.folder.parent) if self.project is not None else ""
+        d = QFileDialog.getExistingDirectory(self, "Open Folder", start)
+        if not d:
+            return
+        from .single_instance import open_target
+        open_target(self, Path(d))
+        self._remember(str(Path(d)))
 
     def open_file_dialog(self):
         """File > Open File...: any file in an editor tab (the project's own editors for its code files)."""
