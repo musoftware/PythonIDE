@@ -1,0 +1,149 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Animations",
+    "Width": 420,
+    "Height": 300,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button1",
+        "Text": "Slide in",
+        "Left": 20,
+        "Top": 20,
+        "Width": 100,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "Button2",
+        "Text": "Shake me",
+        "Left": 20,
+        "Top": 70,
+        "Width": 100,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "Label1",
+        "Text": "Hello, animations!",
+        "Left": 160,
+        "Top": 24,
+        "Width": 200,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    }
+  ],
+  "animations": [
+    {
+      "id": "fx1",
+      "target": "Button1",
+      "preset": "slideIn",
+      "params": {
+        "from": "left",
+        "distance": 80
+      },
+      "durationMs": 500,
+      "delayMs": 0,
+      "easing": "out",
+      "repeat": 1,
+      "autoreverse": false,
+      "trigger": {
+        "on": "load"
+      },
+      "enabled": true
+    },
+    {
+      "id": "fx2",
+      "target": "Label1",
+      "preset": "fadeIn",
+      "params": {},
+      "durationMs": 400,
+      "delayMs": 0,
+      "easing": "out",
+      "repeat": 1,
+      "autoreverse": false,
+      "trigger": {
+        "on": "after",
+        "after": "fx1"
+      },
+      "enabled": true
+    },
+    {
+      "id": "fx3",
+      "target": "Button2",
+      "preset": "shake",
+      "params": {},
+      "durationMs": 400,
+      "delayMs": 0,
+      "easing": "linear",
+      "repeat": 1,
+      "autoreverse": false,
+      "trigger": {
+        "on": "click"
+      },
+      "enabled": true
+    }
+  ],
+  "motion": {
+    "respectReducedMotion": true
+  }
+}

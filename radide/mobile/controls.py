@@ -20,61 +20,18 @@ from ..controls import EVENT_HELP, ControlType, _p
 from .material_icons import icon_names
 
 # ------------------------------------------------------------------ devices
-@dataclass(frozen=True)
-class Device:
-    id: str
-    name: str
-    width: int                     # portrait width in dp
-    height: int                    # portrait height in dp
-    platform: str                  # android | ios
-    insets: tuple                  # portrait safe-area insets (left, top, right, bottom)
-    land_insets: tuple             # landscape safe-area insets (left, top, right, bottom)
-    radius: int = 28               # screen corner radius
-    cutout: str = "punch"          # punch | island | none  (camera cut-out drawn in the status bar)
-    home_button: bool = False      # iPhone SE style chin with a round home button
-    tablet: bool = False
+# Device presets and the foldable geometry live in radide/devices.py (shared with the Flutter designer,
+# SuperPreview and the runtimes); re-exported here so existing imports keep working.
+from ..devices import (DEFAULT_DEVICE, DEFAULT_POSTURE, DEVICES, FOLDABLE_IDS, ORIENTATIONS,  # noqa: E402,F401
+                       POSTURES, Device, device, display_features, effective_posture, fold_axis, hinge_rect,
+                       hinge_screen_rect, is_foldable, is_separating, landscape, posture_key, posture_name,
+                       postures, rect_crosses, safe_area_size, safe_insets, screen_size, segments, span, two_pane)
 
 
-DEVICES: dict[str, Device] = {d.id: d for d in [
-    Device("pixel", "Pixel / Medium phone (412 x 915)", 412, 915, "android", (0, 24, 0, 24), (0, 24, 0, 16),
-           radius=34, cutout="punch"),
-    Device("small_phone", "Small phone (360 x 640)", 360, 640, "android", (0, 24, 0, 48), (0, 24, 0, 48),
-           radius=18, cutout="none"),
-    Device("tablet", "Tablet (800 x 1280)", 800, 1280, "android", (0, 24, 0, 48), (0, 24, 0, 48),
-           radius=24, cutout="none", tablet=True),
-    Device("iphone_15", "iPhone 15 (393 x 852)", 393, 852, "ios", (0, 59, 0, 34), (59, 0, 59, 21),
-           radius=55, cutout="island"),
-    Device("iphone_se", "iPhone SE (375 x 667)", 375, 667, "ios", (0, 20, 0, 0), (0, 0, 0, 0),
-           radius=0, cutout="none", home_button=True),
-]}
-DEFAULT_DEVICE = "pixel"
-ORIENTATIONS = ("Portrait", "Landscape")
-
-
-def device(device_id) -> Device:
-    return DEVICES.get(str(device_id or ""), DEVICES[DEFAULT_DEVICE])
-
-
-def landscape(orientation) -> bool:
-    return str(orientation or "").lower().startswith("land")
-
-
-def screen_size(device_id, orientation="Portrait") -> tuple[int, int]:
-    """Whole screen in dp for the orientation."""
-    d = device(device_id)
-    return (d.height, d.width) if landscape(orientation) else (d.width, d.height)
-
-
-def safe_insets(device_id, orientation="Portrait") -> tuple[int, int, int, int]:
-    d = device(device_id)
-    return tuple(d.land_insets if landscape(orientation) else d.insets)
-
-
-def safe_area_size(device_id, orientation="Portrait") -> tuple[int, int]:
-    """The form's Width / Height for a device + orientation (screen minus the safe-area insets)."""
-    w, h = screen_size(device_id, orientation)
-    left, top, right, bottom = safe_insets(device_id, orientation)
-    return w - left - right, h - top - bottom
+def form_posture(props) -> str:
+    """The posture that applies to a mobile form (Flat for devices that do not fold)."""
+    props = getattr(props, "props", props) or {}
+    return effective_posture(props.get("Device"), props.get("Posture", DEFAULT_POSTURE))
 
 
 # ------------------------------------------------------------------ form properties
@@ -84,7 +41,11 @@ MOBILE_FORM_PROPS = {p.name: p for p in [
     _p("Orientation", "enum", "Portrait", "Portrait or Landscape.", ORIENTATIONS, category="Layout"),
     _p("Route", "str", "", "Route name of this screen (Navigator), e.g. /details. Empty = /<FormName>.",
        category="Behavior"),
+    _p("Posture", "enum", DEFAULT_POSTURE, "Foldable devices only: Flat (fully open), HalfOpened (tabletop / "
+       "book, the hinge splits the screen) or Folded (the cover screen). The form's size follows it.",
+       POSTURES, category="Layout"),
 ]}
+FOLDABLE_FORM_PROPS = ("Posture",)          # shown only when the Device is a foldable
 # desktop-window properties that mean nothing on a phone (hidden in the Properties window of mobile forms;
 # Width / Height follow the Device)
 DESKTOP_FORM_PROPS = ("Width", "Height", "StartPosition", "FormBorderStyle", "TopMost", "WindowState", "Icon",
@@ -106,6 +67,8 @@ def ensure_mobile_props(props: dict) -> bool:
     Returns True when something changed."""
     changed = False
     for name, d in MOBILE_FORM_PROPS.items():
+        if name in FOLDABLE_FORM_PROPS and not is_foldable(props.get("Device")):
+            continue
         if name not in props:
             props[name] = d.default
             changed = True
@@ -115,7 +78,10 @@ def ensure_mobile_props(props: dict) -> bool:
     if props.get("Orientation") not in ORIENTATIONS:
         props["Orientation"] = "Landscape" if landscape(props.get("Orientation")) else "Portrait"
         changed = True
-    w, h = safe_area_size(props["Device"], props["Orientation"])
+    if is_foldable(props["Device"]) and props.get("Posture") not in POSTURES:
+        props["Posture"] = posture_name(props.get("Posture"))
+        changed = True
+    w, h = safe_area_size(props["Device"], props["Orientation"], form_posture(props))
     if int(props.get("Width", 0) or 0) != w or int(props.get("Height", 0) or 0) != h:
         props["Width"], props["Height"] = w, h
         changed = True
@@ -127,7 +93,9 @@ def form_prop_defs(form, plugin=None) -> list:
     from ..controls import FORM_PROPS
     if not is_mobile_form(form, plugin):
         return list(FORM_PROPS.values())
-    return [d for d in FORM_PROPS.values() if d.name not in DESKTOP_FORM_PROPS] + list(MOBILE_FORM_PROPS.values())
+    props = getattr(form, "props", form) or {}
+    fold = is_foldable(props.get("Device"))
+    return [d for d in FORM_PROPS.values() if d.name not in DESKTOP_FORM_PROPS] +         [d for d in MOBILE_FORM_PROPS.values() if fold or d.name not in FOLDABLE_FORM_PROPS]
 
 
 # ------------------------------------------------------------------ controls
