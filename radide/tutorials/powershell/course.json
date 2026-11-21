@@ -1,0 +1,20 @@
+{
+  "id": "powershell",
+  "title_ar": "تعلّم PowerShell من الصفر",
+  "title_en": "Learn PowerShell from Scratch",
+  "language": "powershell-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في PowerShell، لغة الأتمتة في ويندوز: المتغيرات والأنواع والشروط وحلقات التكرار والمصفوفات وجداول التجزئة والدوال وخط الأنابيب (Pipeline) والكائنات والأوامر (Cmdlets) والنصوص والملفات والأخطاء، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في PowerShell: برنامجك الأول", "minutes": 20},
+    {"id": "02-variables-types", "file": "02-variables-types.md", "title_ar": "المتغيرات والأنواع والإدخال", "minutes": 30},
+    {"id": "03-conditions-loops", "file": "03-conditions-loops.md", "title_ar": "الشروط وحلقات التكرار", "minutes": 35},
+    {"id": "04-arrays-hashtables", "file": "04-arrays-hashtables.md", "title_ar": "المصفوفات وجداول التجزئة (Hashtables)", "minutes": 35},
+    {"id": "05-functions-pipeline", "file": "05-functions-pipeline.md", "title_ar": "الدوال وخط الأنابيب (Pipeline)", "minutes": 40},
+    {"id": "06-objects-cmdlets", "file": "06-objects-cmdlets.md", "title_ar": "الكائنات والأوامر الجاهزة (Cmdlets)", "minutes": 40},
+    {"id": "07-strings-files-errors", "file": "07-strings-files-errors.md", "title_ar": "النصوص والملفات ومعالجة الأخطاء", "minutes": 40},
+    {"id": "08-gui-form", "file": "08-gui-form.md", "title_ar": "أول نافذة PowerShell في مصمم النماذج", "minutes": 40},
+    {"id": "09-gui-project", "file": "09-gui-project.md", "title_ar": "مشروع: منظّم الملفات بنافذة رسومية", "minutes": 45},
+    {"id": "10-glossary", "file": "10-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 10}
+  ]
+}

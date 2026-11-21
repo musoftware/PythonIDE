@@ -85,7 +85,8 @@
             "type": "Padding",
             "props": {
              "padding": {
-              "h": 32
+              "h": 32,
+              "t": 24
              }
             },
             "slots": {
@@ -98,12 +99,17 @@
               "children": [
                {
                 "id": "w18",
-                "type": "Image",
-                "ctor": "asset",
-                "props": {
-                 "src": "assets/images/onboarding_1.png",
-                 "height": 300,
-                 "fit": "BoxFit.contain"
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w19",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_1.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
                 },
                 "anim": {
                  "type": "zoomIn",
@@ -112,14 +118,14 @@
                 }
                },
                {
-                "id": "w19",
+                "id": "w20",
                 "type": "SizedBox",
                 "props": {
-                 "height": 40
+                 "height": 32
                 }
                },
                {
-                "id": "w20",
+                "id": "w21",
                 "type": "Text",
                 "props": {
                  "data": "Stay in the loop",
@@ -139,14 +145,14 @@
                 }
                },
                {
-                "id": "w21",
+                "id": "w22",
                 "type": "SizedBox",
                 "props": {
                  "height": 14
                 }
                },
                {
-                "id": "w22",
+                "id": "w23",
                 "type": "Text",
                 "props": {
                  "data": "Everything your team shares, gathered in one calm feed.",
@@ -164,35 +170,48 @@
                  "offsetY": 30,
                  "delayMs": 320
                 }
+               },
+               {
+                "id": "w24",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
                }
               ]
              }
             }
            },
            {
-            "id": "w23",
+            "id": "w25",
             "type": "Padding",
             "props": {
              "padding": {
-              "h": 32
+              "h": 32,
+              "t": 24
              }
             },
             "slots": {
              "child": {
-              "id": "w24",
+              "id": "w26",
               "type": "Column",
               "props": {
                "mainAxisAlignment": "MainAxisAlignment.center"
               },
               "children": [
                {
-                "id": "w25",
-                "type": "Image",
-                "ctor": "asset",
-                "props": {
-                 "src": "assets/images/onboarding_2.png",
-                 "height": 300,
-                 "fit": "BoxFit.contain"
+                "id": "w27",
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w28",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_2.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
                 },
                 "anim": {
                  "type": "scaleIn",
@@ -201,14 +220,14 @@
                 }
                },
                {
-                "id": "w26",
+                "id": "w29",
                 "type": "SizedBox",
                 "props": {
-                 "height": 40
+                 "height": 32
                 }
                },
                {
-                "id": "w27",
+                "id": "w30",
                 "type": "Text",
                 "props": {
                  "data": "See your progress",
@@ -228,14 +247,14 @@
                 }
                },
                {
-                "id": "w28",
+                "id": "w31",
                 "type": "SizedBox",
                 "props": {
                  "height": 14
                 }
                },
                {
-                "id": "w29",
+                "id": "w32",
                 "type": "Text",
                 "props": {
                  "data": "Simple charts show how far you have come each week.",
@@ -253,35 +272,48 @@
                  "offsetY": 30,
                  "delayMs": 320
                 }
+               },
+               {
+                "id": "w33",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
                }
               ]
              }
             }
            },
            {
-            "id": "w30",
+            "id": "w34",
             "type": "Padding",
             "props": {
              "padding": {
-              "h": 32
+              "h": 32,
+              "t": 24
              }
             },
             "slots": {
              "child": {
-              "id": "w31",
+              "id": "w35",
               "type": "Column",
               "props": {
                "mainAxisAlignment": "MainAxisAlignment.center"
               },
               "children": [
                {
-                "id": "w32",
-                "type": "Image",
-                "ctor": "asset",
-                "props": {
-                 "src": "assets/images/onboarding_3.png",
-                 "height": 300,
-                 "fit": "BoxFit.contain"
+                "id": "w36",
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w37",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_3.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
                 },
                 "anim": {
                  "type": "scaleIn",
@@ -290,14 +322,14 @@
                 }
                },
                {
-                "id": "w33",
+                "id": "w38",
                 "type": "SizedBox",
                 "props": {
-                 "height": 40
+                 "height": 32
                 }
                },
                {
-                "id": "w34",
+                "id": "w39",
                 "type": "Text",
                 "props": {
                  "data": "Explore further",
@@ -317,14 +349,14 @@
                 }
                },
                {
-                "id": "w35",
+                "id": "w40",
                 "type": "SizedBox",
                 "props": {
                  "height": 14
                 }
                },
                {
-                "id": "w36",
+                "id": "w41",
                 "type": "Text",
                 "props": {
                  "data": "Discover new spaces and people who build like you do.",
@@ -342,6 +374,13 @@
                  "offsetY": 30,
                  "delayMs": 320
                 }
+               },
+               {
+                "id": "w42",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
                }
               ]
              }
@@ -355,7 +394,7 @@
         }
        },
        {
-        "id": "w37",
+        "id": "w43",
         "type": "Padding",
         "props": {
          "padding": {
@@ -365,21 +404,21 @@
         },
         "slots": {
          "child": {
-          "id": "w38",
+          "id": "w44",
           "type": "Row",
           "props": {
            "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
           },
           "children": [
            {
-            "id": "w39",
+            "id": "w45",
             "type": "Row",
             "props": {
              "spacing": 8
             },
             "children": [
              {
-              "id": "w40",
+              "id": "w46",
               "type": "Container",
               "props": {
                "width": 26,
@@ -391,7 +430,7 @@
               }
              },
              {
-              "id": "w41",
+              "id": "w47",
               "type": "Container",
               "props": {
                "width": 8,
@@ -403,7 +442,7 @@
               }
              },
              {
-              "id": "w42",
+              "id": "w48",
               "type": "Container",
               "props": {
                "width": 8,
@@ -417,14 +456,14 @@
             ]
            },
            {
-            "id": "w43",
+            "id": "w49",
             "type": "InkWell",
             "props": {
              "borderRadius": 32
             },
             "slots": {
              "child": {
-              "id": "w44",
+              "id": "w50",
               "type": "Container",
               "props": {
                "width": 64,
@@ -455,7 +494,7 @@
               },
               "slots": {
                "child": {
-                "id": "w45",
+                "id": "w51",
                 "type": "Icon",
                 "props": {
                  "icon": "Icons.arrow_forward_rounded",

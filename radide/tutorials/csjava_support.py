@@ -163,8 +163,16 @@ def controls_in(code: str) -> list[tuple[str, str]]:
     return out
 
 
+_LOCK = threading.Lock()          # the plugin registry / create_project are not thread-safe (checks run in threads)
+
+
 def make_gui(lang: str, files: dict[str, str], dest: Path, name: str = "Lesson", spec: dict | None = None):
     """A csharp-bridge / java-bridge Windows Application: Form1 with the controls its code uses (one column)."""
+    with _LOCK:
+        return _make_gui(lang, files, dest, name, spec)
+
+
+def _make_gui(lang: str, files: dict[str, str], dest: Path, name: str, spec: dict | None):
     from ..languages import get_plugin
     from ..model import Form
     from ..workspace import create_project
@@ -272,7 +280,8 @@ def run_cs_console(files: dict[str, str], stdin: str | None, work: Path, timeout
     r = subprocess.run([exe, "build", "Lesson.csproj", "-nologo", "-v", "q", "-clp:NoSummary", "-o", "out"],
                        cwd=work, env=env, capture_output=True, creationflags=NO_WINDOW)
     if r.returncode:
-        return False, _clean_build_output((r.stdout + r.stderr).decode("utf-8", "replace"))
+        text = _clean_build_output((r.stdout + r.stderr).decode("utf-8", "replace"))
+        return False, text.replace(str(work) + os.sep, "")
     try:
         r = subprocess.run([exe, str(work / "out" / "Lesson.dll")], input=(stdin or "").encode("utf-8"), cwd=work,
                            env=env, capture_output=True, timeout=timeout, creationflags=NO_WINDOW)
@@ -481,6 +490,10 @@ class FakeHost:
         if not self.spec.get("noload"):
             self.event("Form1", "Load")
         for e in self.spec.get("events") or []:
+            if isinstance(e, dict):             # {"txtTask.Text": "..."}: the user types between two events
+                for k, v in e.items():
+                    self.props[self._key(k)] = str(v)
+                continue
             parts = str(e).split(" ", 2)
             if len(parts) == 1:
                 parts.append("Click")

@@ -355,6 +355,8 @@ class PythonQtPlugin(PythonTkPlugin):
         hooked = designer_hook(self, form, user_code)
         if hooked is not None:
             return hooked
+        from ..components import codegen as _comp      # component runtimes: one import per class
+        _comp.begin(form, self.id)
         n, fp = form.name, form.props
         used = lambda c: set(self.used_events(form, c, user_code))
         menu = form.menu()
@@ -530,6 +532,9 @@ class PythonQtPlugin(PythonTkPlugin):
         from ..usercontrols import is_user_type, qt_control_lines
         if is_user_type(t):                     # an instance of a user control
             return qt_control_lines(self, c, parent, used)
+        from ..components import codegen as _comp      # component packages (radide/components)
+        if _comp.handles(t):
+            return _comp.qt_control_lines(self, c, parent, used)
         cls = QT_CLASS[t]
         multiline = t == "TextBox" and p.get("Multiline")
         fmt = p.get("Format", "Short") if t == "DateTimePicker" else ""

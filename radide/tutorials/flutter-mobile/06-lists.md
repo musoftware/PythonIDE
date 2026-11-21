@@ -40,7 +40,7 @@
 
 ## مثال: قائمة مشتريات
 
-<!-- test: {"controls": {"lstShop": {"ItemTemplate": "title|subtitle"}}, "do": ["txtItem.text = 'خبز'", "txtQty.text = '2'", "btnAdd_Click()", "txtItem.text = 'لبن'", "txtQty.text = '1'", "btnAdd_Click()", "txtItem.text = 'جبن'", "txtQty.text = ''", "btnAdd_Click()", "lstShop_Tap(const RadEvent(Index: 0))"], "expect": {"lstShop.count": "2", "lstShop.field(0, 0)": "لبن", "lblCount.text": "1 عنصر"}, "msgbox": ["حذف: خبز (الكمية: 2)"]} -->
+<!-- test: {"controls": {"lstShop": {"ItemTemplate": "title|subtitle"}}, "do": ["txtItem.text = 'خبز'", "txtQty.text = '2'", "btnAdd_Click()", "txtItem.text = 'لبن'", "txtQty.text = '1'", "btnAdd_Click()", "txtItem.text = 'جبن'", "txtQty.text = ''", "btnAdd_Click()", "lstShop_Tap(const RadEvent(Index: 0))"], "expect": {"lstShop.count": "2", "lstShop.field(0, 0)": "لبن", "lblCount.text": "2 عنصر"}, "msgbox": ["حذف: خبز (الكمية: 2)"]} -->
 ```flutter run
 import 'package:flutter/material.dart';
 

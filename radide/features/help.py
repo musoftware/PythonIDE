@@ -274,6 +274,13 @@ def help_target(plugin_id: str, word: str, control_type: str = "") -> tuple[str,
     """Return ("vb", <key>) for the bundled VB reference, ("url", <url>) to open, or ("", "")."""
     w = word.strip()
     if control_type and not w:
+        try:                                   # a component package's help.md (radide/components)
+            from ..components import help_file
+            hf = help_file(control_type)
+            if hf:
+                return "local", hf
+        except Exception:  # noqa: BLE001
+            pass
         tk_name, qt_cls = CONTROL_DOCS.get(control_type, ("", ""))
         if plugin_id == "vb-basic" or not plugin_id:
             return "vb", VB_CONTROL_TOPIC.get(control_type, "Caption")

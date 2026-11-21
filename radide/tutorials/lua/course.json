@@ -1,0 +1,21 @@
+{
+  "id": "lua",
+  "title_ar": "تعلّم Lua من الصفر",
+  "title_en": "Learn Lua from Scratch",
+  "language": "lua-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في Lua، اللغة الخفيفة المستخدمة في الألعاب (Roblox وLÖVE) وفي إضافات البرامج: المتغيرات والشروط وحلقات التكرار والدوال والجداول والنصوص والكائنات بالجداول الوصفية والوحدات والأخطاء والملفات، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Lua: برنامجك الأول", "minutes": 20},
+    {"id": "02-variables-input", "file": "02-variables-input.md", "title_ar": "المتغيرات والأنواع والإدخال", "minutes": 30},
+    {"id": "03-conditions-loops", "file": "03-conditions-loops.md", "title_ar": "الشروط وحلقات التكرار", "minutes": 35},
+    {"id": "04-functions", "file": "04-functions.md", "title_ar": "الدوال", "minutes": 35},
+    {"id": "05-tables", "file": "05-tables.md", "title_ar": "الجداول (Tables): القوائم والقواميس", "minutes": 40},
+    {"id": "06-strings", "file": "06-strings.md", "title_ar": "النصوص والأنماط", "minutes": 35},
+    {"id": "07-objects-modules", "file": "07-objects-modules.md", "title_ar": "الكائنات بالجداول الوصفية والوحدات", "minutes": 40},
+    {"id": "08-errors-files", "file": "08-errors-files.md", "title_ar": "معالجة الأخطاء والملفات", "minutes": 30},
+    {"id": "09-gui-form", "file": "09-gui-form.md", "title_ar": "أول نافذة Lua في مصمم النماذج", "minutes": 40},
+    {"id": "10-gui-project", "file": "10-gui-project.md", "title_ar": "مشروع: لعبة اختبار المعلومات", "minutes": 45},
+    {"id": "11-glossary", "file": "11-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 10}
+  ]
+}

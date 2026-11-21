@@ -1,0 +1,18 @@
+{
+  "id": "jupyter-datascience",
+  "title_ar": "دليل Jupyter وعلم البيانات في RAD IDE",
+  "title_en": "Jupyter Notebooks and Data Science in RAD IDE",
+  "language": "python",
+  "level": "beginner",
+  "description_ar": "دليل عملي خطوة بخطوة: دفاتر Jupyter داخل RAD IDE (الخلايا، والنواة، ونافذة متغيرات الدفتر)، ثم تحليل البيانات بمكتبة pandas، والرسوم البيانية بـ matplotlib، ومشروع تحليل مبيعات كامل مع التصدير إلى ملف Python وصفحة HTML. يفترض أنك تعرف أساسيات Python (الدروس 1 إلى 9 من دورة Python).",
+  "lessons": [
+    {"id": "01-first-notebook", "file": "01-first-notebook.md", "title_ar": "ما هو دفتر Jupyter؟ وأول دفتر لك", "minutes": 20},
+    {"id": "02-cells-kernel", "file": "02-cells-kernel.md", "title_ar": "الخلايا والنواة: ترتيب التشغيل وإعادة التشغيل", "minutes": 25},
+    {"id": "03-variables-window", "file": "03-variables-window.md", "title_ar": "نافذة متغيرات الدفتر", "minutes": 15},
+    {"id": "04-pandas-basics", "file": "04-pandas-basics.md", "title_ar": "مقدمة pandas: Series و DataFrame", "minutes": 35},
+    {"id": "05-explore-clean", "file": "05-explore-clean.md", "title_ar": "استكشاف البيانات وتنظيفها", "minutes": 40},
+    {"id": "06-groupby", "file": "06-groupby.md", "title_ar": "التجميع والتلخيص: groupby و pivot_table", "minutes": 35},
+    {"id": "07-matplotlib", "file": "07-matplotlib.md", "title_ar": "الرسوم البيانية بـ matplotlib", "minutes": 35},
+    {"id": "08-project", "file": "08-project.md", "title_ar": "مشروع: تحليل مبيعات متجر وتصدير النتائج", "minutes": 50}
+  ]
+}

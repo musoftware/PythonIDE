@@ -1,0 +1,979 @@
+{
+ "version": 1,
+ "name": "Gallery",
+ "route": "/",
+ "theme": {},
+ "assets": [],
+ "fonts": [
+  {
+   "family": "Poppins",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFF5F6FB"
+  },
+  "slots": {
+   "body": {
+    "id": "w8",
+    "type": "ListView",
+    "props": {
+     "padding": {
+      "all": 0
+     }
+    },
+    "children": [
+     {
+      "id": "w9",
+      "type": "Container",
+      "props": {
+       "decoration": {
+        "gradient": {
+         "type": "linear",
+         "begin": "Alignment.topLeft",
+         "end": "Alignment.bottomRight",
+         "colors": [
+          "#FF5B5FD9",
+          "#FF9D6BF2"
+         ]
+        },
+        "borderRadius": {
+         "bl": 32,
+         "br": 32
+        }
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w10",
+        "type": "SafeArea",
+        "slots": {
+         "child": {
+          "id": "w11",
+          "type": "Padding",
+          "props": {
+           "padding": {
+            "l": 24,
+            "t": 28,
+            "r": 24,
+            "b": 32
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w12",
+            "type": "Column",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w13",
+              "type": "Text",
+              "props": {
+               "data": "Template gallery",
+               "style": {
+                "color": "Colors.white",
+                "fontSize": 30,
+                "fontWeight": "FontWeight.w700",
+                "googleFont": "Poppins"
+               }
+              },
+              "anim": {
+               "type": "fadeInUp",
+               "durationMs": 600,
+               "offsetY": 30
+              }
+             },
+             {
+              "id": "w14",
+              "type": "SizedBox",
+              "props": {
+               "height": 6
+              }
+             },
+             {
+              "id": "w15",
+              "type": "Text",
+              "props": {
+               "data": "Nine screens designed with the RAD IDE Flutter designer.",
+               "style": {
+                "color": "#DDFFFFFF",
+                "fontSize": 14,
+                "googleFont": "Poppins"
+               }
+              },
+              "anim": {
+               "type": "fadeInUp",
+               "durationMs": 600,
+               "offsetY": 30,
+               "delayMs": 100
+              }
+             }
+            ]
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w16",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "l": 20,
+        "t": 20,
+        "r": 20,
+        "b": 20
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w17",
+        "type": "Column",
+        "props": {
+         "crossAxisAlignment": "CrossAxisAlignment.stretch"
+        },
+        "children": [
+         {
+          "id": "w18",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w19",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w20",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w21",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w22",
+              "type": "Text",
+              "props": {
+               "data": "Login",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w23",
+              "type": "Text",
+              "props": {
+               "data": "Authentication",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w24",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/login"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 150
+          }
+         },
+         {
+          "id": "w25",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w26",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w27",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w28",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w29",
+              "type": "Text",
+              "props": {
+               "data": "Sign up",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w30",
+              "type": "Text",
+              "props": {
+               "data": "Authentication",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w31",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/signup"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 210
+          }
+         },
+         {
+          "id": "w32",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w33",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w34",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w35",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w36",
+              "type": "Text",
+              "props": {
+               "data": "Onboarding",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w37",
+              "type": "Text",
+              "props": {
+               "data": "Onboarding",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w38",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/onboarding"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 270
+          }
+         },
+         {
+          "id": "w39",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w40",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w41",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w42",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w43",
+              "type": "Text",
+              "props": {
+               "data": "Profile",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w44",
+              "type": "Text",
+              "props": {
+               "data": "Social",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w45",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/profile"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 330
+          }
+         },
+         {
+          "id": "w46",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w47",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w48",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w49",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w50",
+              "type": "Text",
+              "props": {
+               "data": "Dashboard",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w51",
+              "type": "Text",
+              "props": {
+               "data": "Finance",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w52",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/dashboard"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 390
+          }
+         },
+         {
+          "id": "w53",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w54",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w55",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w56",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w57",
+              "type": "Text",
+              "props": {
+               "data": "Product list",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w58",
+              "type": "Text",
+              "props": {
+               "data": "Shopping",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w59",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/shop"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 450
+          }
+         },
+         {
+          "id": "w60",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w61",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w62",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w63",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w64",
+              "type": "Text",
+              "props": {
+               "data": "Product details",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w65",
+              "type": "Text",
+              "props": {
+               "data": "Shopping",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w66",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/product"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 510
+          }
+         },
+         {
+          "id": "w67",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w68",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w69",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w70",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w71",
+              "type": "Text",
+              "props": {
+               "data": "Settings",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w72",
+              "type": "Text",
+              "props": {
+               "data": "Utility",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w73",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/settings"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 570
+          }
+         },
+         {
+          "id": "w74",
+          "type": "Container",
+          "props": {
+           "margin": {
+            "b": 12
+           },
+           "decoration": {
+            "color": "Colors.white",
+            "borderRadius": 18
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w75",
+            "type": "ListTile",
+            "props": {
+             "contentPadding": {
+              "h": 16,
+              "v": 6
+             }
+            },
+            "slots": {
+             "leading": {
+              "id": "w76",
+              "type": "Container",
+              "props": {
+               "width": 44,
+               "height": 44,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "color": "#1F5B5FD9",
+                "borderRadius": 14
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w77",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.dashboard_customize_outlined",
+                 "color": "#FF5B5FD9"
+                }
+               }
+              }
+             },
+             "title": {
+              "id": "w78",
+              "type": "Text",
+              "props": {
+               "data": "Chat",
+               "style": {
+                "color": "#FF23233A",
+                "fontSize": 16,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "subtitle": {
+              "id": "w79",
+              "type": "Text",
+              "props": {
+               "data": "Social",
+               "style": {
+                "color": "#FF8E8FA6",
+                "fontSize": 12,
+                "googleFont": "Poppins"
+               }
+              }
+             },
+             "trailing": {
+              "id": "w80",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.chevron_right_rounded",
+               "color": "#FFB0B3C5"
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/chat"
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInUp",
+           "durationMs": 600,
+           "offsetY": 30,
+           "delayMs": 630
+          }
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

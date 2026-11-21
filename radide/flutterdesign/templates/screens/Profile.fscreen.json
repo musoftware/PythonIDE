@@ -473,6 +473,10 @@
                 "padding": {
                  "v": 14
                 },
+                "minimumSize": [
+                 64,
+                 48
+                ],
                 "shape": {
                  "type": "rounded",
                  "radius": 14
@@ -512,6 +516,10 @@
                 "padding": {
                  "v": 14
                 },
+                "minimumSize": [
+                 64,
+                 48
+                ],
                 "shape": {
                  "type": "rounded",
                  "radius": 14,

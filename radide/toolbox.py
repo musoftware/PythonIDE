@@ -57,6 +57,9 @@ TOOL_STATE = ToolState()
 
 def control_icon(type_name: str) -> QIcon:
     """Small drawn icons, so the app needs no image files."""
+    icon = package_icon(type_name)          # a component package's own icon file
+    if icon is not None:
+        return icon
     pm = QPixmap(20, 20)
     pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)
@@ -238,7 +241,91 @@ def _draw_new_icon(p: QPainter, type_name: str) -> None:
         p.drawText(2, 2, 16, 16, Qt.AlignmentFlag.AlignCenter, "OCX")
 
 
+# ---------------------------------------------------------------------------- component packages
+# Item roles of the items this Toolbox makes (features may add their own items, e.g. user controls)
+TB_ROLE = Qt.ItemDataRole.UserRole + 11       # "header" | "item" | "pointer"
+CAT_ROLE = Qt.ItemDataRole.UserRole + 12      # Toolbox group of the item / header
+HIDDEN_KEY = "toolbox/hidden_components"      # QSettings: control types hidden with Choose Items
+COLLAPSED_KEY = "toolbox/collapsed_groups"
+_ICON_CACHE: dict = {}
+
+
+def package_icon(type_name: str) -> QIcon | None:
+    """The icon file of a component package (None = no icon file: drawn icons are used)."""
+    try:
+        from .components import package_of
+        pkg = package_of(type_name)
+    except Exception:  # noqa: BLE001
+        return None
+    path = pkg.icon_path if pkg is not None and not pkg.builtin else None
+    if path is None:
+        return None
+    try:
+        key = (str(path), path.stat().st_mtime)
+    except OSError:
+        return None
+    if key not in _ICON_CACHE:
+        icon = QIcon(str(path))
+        _ICON_CACHE[key] = icon if not icon.isNull() else None
+    return _ICON_CACHE[key]
+
+
+def _component_icon() -> QIcon:
+    """Generic icon of a component package without an icon file (a puzzle piece)."""
+    pm = QPixmap(20, 20)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(QPen(QColor("#3c3c3c")))
+    p.setBrush(QColor("#8FB8E8"))
+    p.drawRoundedRect(3, 5, 13, 12, 2, 2)
+    p.drawEllipse(7, 1, 6, 6)
+    p.drawEllipse(13, 8, 6, 6)
+    p.end()
+    return QIcon(pm)
+
+
+def _hidden_types() -> set[str]:
+    try:
+        from PyQt6.QtCore import QSettings
+        v = QSettings().value(HIDDEN_KEY, [])
+        return set(v if isinstance(v, list) else ([v] if v else []))
+    except Exception:  # noqa: BLE001
+        return set()
+
+
+def set_hidden_types(names) -> None:
+    from PyQt6.QtCore import QSettings
+    QSettings().setValue(HIDDEN_KEY, sorted(set(names)))
+
+
+def toolbox_groups(names) -> list[tuple[str, list[str]]]:
+    """[(category, [control types])] in Toolbox order (VS 2005 groups first, package groups after)."""
+    from .components import CATEGORY_ORDER, MISSING_CATEGORY
+    groups: dict[str, list[str]] = {}
+    for n in names:
+        t = CONTROL_TYPES.get(n)
+        if t is None or t.category == MISSING_CATEGORY:
+            continue
+        cat = t.category or ("Components" if t.nonvisual else "General")
+        groups.setdefault(cat, []).append(n)
+
+    def key(cat):
+        if cat in CATEGORY_ORDER:
+            return (0, CATEGORY_ORDER.index(cat), "")
+        return (2 if cat == "General" else 1, 0, cat.lower())
+    for cat, items in groups.items():
+        pkgs = [getattr(CONTROL_TYPES[n], "package", None) for n in items]
+        if any(p is not None and not p.builtin for p in pkgs):        # package groups: by order, then name
+            items.sort(key=lambda n: (getattr(getattr(CONTROL_TYPES[n], "package", None), "order", 1000), n.lower()))
+    return [(cat, groups[cat]) for cat in sorted(groups, key=key)]
+
+
 class Toolbox(QListWidget):
+    """VS-style Toolbox: Pointer, then the controls in collapsible groups (categories of the component
+    packages' manifests), a search box, "Choose Items..." to hide/show controls. Features may insert their
+    own items (they keep them; this class only rebuilds the items it marks with TB_ROLE)."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setIconSize(QSize(20, 20))
@@ -248,67 +335,266 @@ class Toolbox(QListWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.setUniformItemSizes(True)
-        mobile = [n for n in CONTROL_TYPES if n in MOBILE_CONTROL_TYPES]
-        classic = [n for n in CONTROL_TYPES if n not in MOBILE_CONTROL_TYPES]
+        from PyQt6.QtWidgets import QLineEdit
+        self.search = QLineEdit(self)
+        self.search.setObjectName("toolboxSearch")
+        self.search.setPlaceholderText("Search Toolbox")
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(lambda _t: self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported))
+        self.setViewportMargins(0, 26, 0, 0)
         self._headers: dict[str, QListWidgetItem] = {}
-        for name in [POINTER, MOBILE_HEADER, *mobile, CLASSIC_HEADER, *classic]:
-            if name in (MOBILE_HEADER, CLASSIC_HEADER):          # group caption (mobile designers only)
-                it = QListWidgetItem(name)
-                f = it.font()
-                f.setBold(True)
-                it.setFont(f)
-                it.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                it.setSizeHint(QSize(10, 22))
-                self._headers[name] = it
-                self.addItem(it)
-                continue
-            it = QListWidgetItem(control_icon(name), name)
-            it.setData(Qt.ItemDataRole.UserRole, name)
-            ctype = CONTROL_TYPES.get(name)
-            it.setToolTip(f"{name}: {ctype.description}" if ctype is not None and ctype.description else name)
-            it.setSizeHint(QSize(10, 24))          # the row is as wide as the list, the text elides
-            self.addItem(it)
-        self.setCurrentRow(0)
+        self._collapsed: set[str] = set()
+        try:
+            from PyQt6.QtCore import QSettings
+            v = QSettings().value(COLLAPSED_KEY, [])
+            self._collapsed = set(v if isinstance(v, list) else ([v] if v else []))
+        except Exception:  # noqa: BLE001
+            pass
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._menu)
+        self.itemClicked.connect(self._on_clicked)
+        self.rebuild()
         self.currentItemChanged.connect(self._on_current)
         TOOL_STATE.changed.connect(self._on_tool_reset)
         TOOL_STATE.modeChanged.connect(self._on_mode)
         TOOL_STATE.profileChanged.connect(lambda _p: self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported))
+        try:
+            from .components import REGISTRY
+            REGISTRY.on_change(self._registry_changed)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        cr = self.contentsRect()
+        self.search.setGeometry(cr.x() + 2, cr.y() + 2, max(20, cr.width() - 4), 22)
+
+    def _registry_changed(self) -> None:
+        from PyQt6.QtCore import QThread, QTimer
+        try:
+            if QThread.currentThread() is self.thread():
+                self.rebuild()
+            else:
+                QTimer.singleShot(0, self, self.rebuild)
+        except RuntimeError:              # the Toolbox was deleted
+            pass
+
+    def _make_header(self, text: str, cat: str) -> QListWidgetItem:
+        it = QListWidgetItem(text)
+        f = it.font()
+        f.setBold(True)
+        it.setFont(f)
+        it.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        it.setSizeHint(QSize(10, 22))
+        it.setData(TB_ROLE, "header")
+        it.setData(CAT_ROLE, cat)
+        return it
+
+    def rebuild(self) -> None:
+        """(Re)create this Toolbox's items from CONTROL_TYPES (after packages were installed / removed)."""
+        current = TOOL_STATE.current
+        self.blockSignals(True)
+        foreign = []
+        for row in reversed(range(self.count())):
+            it = self.item(row)
+            if it.data(TB_ROLE):
+                self.takeItem(row)
+            else:
+                foreign.insert(0, self.takeItem(row))
+        self._headers = {}
+        pointer = QListWidgetItem(control_icon(POINTER), POINTER)
+        pointer.setData(Qt.ItemDataRole.UserRole, POINTER)
+        pointer.setData(TB_ROLE, "pointer")
+        pointer.setSizeHint(QSize(10, 24))
+        self.addItem(pointer)
+        for it in foreign:                   # e.g. "<Project> Components" (user controls) right under Pointer
+            self.addItem(it)
+        mobile = [n for n in CONTROL_TYPES if n in MOBILE_CONTROL_TYPES]
+        classic = [n for n in CONTROL_TYPES if n not in MOBILE_CONTROL_TYPES and not self._foreign_type(n)]
+        groups = [(MOBILE_HEADER, mobile)] + toolbox_groups(classic)
+        for cat, names in groups:
+            if not names:
+                continue
+            head = self._make_header(cat, cat)
+            self._headers[cat] = head
+            self.addItem(head)
+            for name in names:
+                it = QListWidgetItem(self._icon(name), self._label(name))
+                it.setData(Qt.ItemDataRole.UserRole, name)
+                it.setData(TB_ROLE, "item")
+                it.setData(CAT_ROLE, cat)
+                it.setToolTip(self._tooltip(name))
+                it.setSizeHint(QSize(10, 24))          # the row is as wide as the list, the text elides
+                self.addItem(it)
+        self.setCurrentRow(0)
+        self.blockSignals(False)
+        self._update_headers()
         self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported)
+        if current is not None and current in CONTROL_TYPES:
+            self.select_tool(current)
+
+    @staticmethod
+    def _foreign_type(name: str) -> bool:
+        """User controls get their own group from radide/features/user_controls.py."""
+        try:
+            from .usercontrols import USER_CONTROLS
+            return name in USER_CONTROLS
+        except ImportError:
+            return False
+
+    @staticmethod
+    def _icon(name: str) -> QIcon:
+        icon = package_icon(name)
+        if icon is not None:
+            return icon
+        t = CONTROL_TYPES.get(name)
+        pkg = getattr(t, "package", None) if t is not None else None
+        if pkg is not None and not pkg.builtin:
+            return _component_icon()
+        return control_icon(name)
+
+    @staticmethod
+    def _label(name: str) -> str:
+        t = CONTROL_TYPES.get(name)
+        pkg = getattr(t, "package", None) if t is not None else None
+        return pkg.display_name if pkg is not None and not pkg.builtin else name
+
+    @staticmethod
+    def _tooltip(name: str) -> str:
+        ctype = CONTROL_TYPES.get(name)
+        text = f"{name}: {ctype.description}" if ctype is not None and ctype.description else name
+        pkg = getattr(ctype, "package", None) if ctype is not None else None
+        if pkg is not None and not pkg.builtin:
+            text += f"\n{pkg.summary()}"
+            if pkg.publisher:
+                text += f" - {pkg.publisher}"
+        return text
+
+    def select_tool(self, name: str) -> bool:
+        for row in range(self.count()):
+            it = self.item(row)
+            if it.data(Qt.ItemDataRole.UserRole) == name and it.data(TB_ROLE) == "item":
+                self.blockSignals(True)
+                self.setCurrentRow(row)
+                self.blockSignals(False)
+                return True
+        return False
+
+    def _update_headers(self) -> None:
+        for cat, head in self._headers.items():
+            if head is None or head.data(CAT_ROLE) != cat:
+                continue
+            arrow = "\u25b8 " if cat in self._collapsed and not self.search.text().strip() else "\u25be "
+            head.setText(arrow + cat)
+
+    def toggle_group(self, cat: str) -> None:
+        if cat in self._collapsed:
+            self._collapsed.discard(cat)
+        else:
+            self._collapsed.add(cat)
+        try:
+            from PyQt6.QtCore import QSettings
+            QSettings().setValue(COLLAPSED_KEY, sorted(self._collapsed))
+        except Exception:  # noqa: BLE001
+            pass
+        self._update_headers()
+        self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported)
+
+    def _on_clicked(self, item) -> None:
+        if item is not None and item.data(TB_ROLE) == "header":
+            self.toggle_group(item.data(CAT_ROLE))
 
     def _on_mode(self, mobile: bool, supported) -> None:
         """Desktop forms: the classic controls only.  Phone forms: the Mobile group first and the
-        Windows-only classic controls greyed (not available in mobile apps)."""
+        Windows-only classic controls greyed (not available in mobile apps). The search box and collapsed
+        groups filter the list; controls hidden with Choose Items are not shown."""
         from .mobile.controls import supported_controls
         allowed = set(supported) if supported else supported_controls(None)
+        hidden = _hidden_types()
+        query = self.search.text().strip().lower() if hasattr(self, "search") else ""
+        prof = TOOL_STATE.profile if not mobile else None
+        visible_in: dict[str, int] = {}
         for row in range(self.count()):
             it = self.item(row)
+            role = it.data(TB_ROLE)
             name = it.data(Qt.ItemDataRole.UserRole)
-            if name is None:                                   # group caption
-                it.setHidden(not mobile)
+            if role is None:
+                if name is None and not it.data(Qt.ItemDataRole.UserRole + 7):   # an old-style caption
+                    it.setHidden(not mobile)
+                continue                                   # items of features manage themselves
+            if role in ("header", "pointer"):
                 continue
-            if name == POINTER:
-                continue
+            cat = it.data(CAT_ROLE)
             ctype = CONTROL_TYPES.get(name)
-            desc = f"{name}: {ctype.description}" if ctype is not None and ctype.description else name
+            desc = self._tooltip(name)
             if name in MOBILE_CONTROL_TYPES:
-                it.setHidden(not mobile)
+                hide = not mobile
                 ok = True
             else:
-                it.setHidden(False)
+                hide = False
                 ok = not mobile or name in allowed
-            it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
-                        if ok else Qt.ItemFlag.NoItemFlags)
-            it.setToolTip(desc if ok else f"{name}: Windows only - not available in mobile apps.")
-            prof = TOOL_STATE.profile if not mobile else None
-            label = (prof.get("labels") or {}).get(name, name) if prof else name
+            label = (prof.get("labels") or {}).get(name, self._label(name)) if prof else self._label(name)
             if it.text() != label:
                 it.setText(label)
             if prof and prof.get("allowed") is not None and name not in prof["allowed"]:
-                it.setHidden(True)                 # e.g. no such control in Windows Forms
+                hide = True                                # e.g. no such control in Windows Forms
+            if name in hidden or ctype is None:
+                hide = True
+            if query:
+                hay = f"{name} {label} {ctype.description if ctype else ''} {cat}".lower()
+                if query not in hay:
+                    hide = True
+            it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
+                        if ok else Qt.ItemFlag.NoItemFlags)
+            it.setToolTip(desc if ok else f"{name}: Windows only - not available in mobile apps.")
+            if not hide:
+                visible_in[cat] = visible_in.get(cat, 0) + 1
+            if not hide and cat in self._collapsed and not query:
+                hide = True
+            it.setHidden(hide)
+        for cat, head in self._headers.items():
+            if head is None or head.data(CAT_ROLE) != cat:
+                continue
+            if cat == MOBILE_HEADER:
+                head.setHidden(not mobile or not visible_in.get(cat))
+            else:
+                head.setHidden(not visible_in.get(cat))
+        self._update_headers()
         if TOOL_STATE.current is not None and (TOOL_STATE.current not in CONTROL_TYPES or
                                                (mobile and TOOL_STATE.current not in allowed) or
                                                (not mobile and TOOL_STATE.current in MOBILE_CONTROL_TYPES)):
             TOOL_STATE.set(None)
+
+    def _menu(self, pos) -> None:
+        from PyQt6.QtWidgets import QMenu
+        m = QMenu(self)
+        m.addAction("Choose &Items...", self.choose_items)
+        m.addAction("Install Component &Package...", self.install_package)
+        m.addSeparator()
+        m.addAction("&Expand All", lambda: self._set_all_collapsed(False))
+        m.addAction("&Collapse All", lambda: self._set_all_collapsed(True))
+        m.addAction("&Show All Items", self.show_all)
+        m.exec(self.viewport().mapToGlobal(pos))
+
+    def _set_all_collapsed(self, on: bool) -> None:
+        self._collapsed = {c for c in self._headers if c != MOBILE_HEADER} if on else set()
+        self.toggle_group("\0")                       # saves and refreshes ("\0" is not a group)
+        self._collapsed.discard("\0")
+
+    def show_all(self) -> None:
+        set_hidden_types([])
+        self._on_mode(TOOL_STATE.mobile, TOOL_STATE.supported)
+
+    def choose_items(self):
+        from .components.ui import ChooseItemsDialog
+        dlg = ChooseItemsDialog(self)
+        if dlg.exec():
+            self.rebuild()
+        return dlg
+
+    def install_package(self):
+        from .components.ui import install_package_dialog
+        return install_package_dialog(self)
 
     def _on_current(self, item, _prev):
         if item is None or item.data(Qt.ItemDataRole.UserRole) is None:
@@ -327,7 +613,7 @@ class Toolbox(QListWidget):
         if item is None:
             return
         name = item.data(Qt.ItemDataRole.UserRole)
-        if name == POINTER:
+        if name is None or name == POINTER:
             return
         mime = QMimeData()
         mime.setData(MIME, name.encode())

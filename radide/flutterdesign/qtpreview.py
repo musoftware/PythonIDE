@@ -660,6 +660,8 @@ class ImageCache(QObject):
         p = Path(src)
         if not p.is_absolute() and folder is not None:
             p = Path(folder) / src
+        if not p.is_file() and folder is not None and (Path(folder) / p.name).is_file():
+            p = Path(folder) / p.name           # template artwork kept flat next to the template
         key = str(p)
         if key not in self._cache:
             img = QImage(key) if p.is_file() else QImage()

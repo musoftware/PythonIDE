@@ -107,6 +107,8 @@ class PropertiesPanel(QWidget):
         self.events.currentCellChanged.connect(self._on_event_cell)
         self.props.itemChanged.connect(self._on_item_changed)
         self.props.currentCellChanged.connect(self._on_current_cell)
+        self.props.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.props.customContextMenuRequested.connect(self._props_menu)
         self.tabs.addTab(self.props, "Properties")
         self.tabs.addTab(self.events, "Events")
         self.tabs.currentChanged.connect(lambda _i: self._refresh_events())
@@ -215,6 +217,17 @@ class PropertiesPanel(QWidget):
         if c is None:          # Localizable / Language / RightToLeft / RightToLeftLayout (features/localization.py)
             from .features.localization import form_defs
             defs = list(defs) + [d for d in form_defs(self.doc.form) if d.name not in {x.name for x in defs}]
+        else:
+            # component packages: "browsable": false hides a property; several selected controls show only
+            # the properties they all have (VS multi-select), never (Name)
+            defs = [d for d in defs if not (d.meta and d.meta.get("browsable") is False)]
+            others = [x for x in getattr(self.doc, "selection", []) or [] if x is not c and x.type in CONTROL_TYPES]
+            if others:
+                common = None
+                for o in others:
+                    names = {d.name for d in CONTROL_TYPES[o.type].prop_defs()}
+                    common = names if common is None else common & names
+                defs = [d for d in defs if d.name in (common or set()) and d.name != "Name"]
         if self.categorized:
             return sorted(defs, key=lambda d: (CATEGORY_ORDER.index(d.category)
                                                if d.category in CATEGORY_ORDER else 99, d.name != "Name", d.name))
@@ -225,6 +238,42 @@ class PropertiesPanel(QWidget):
         props = c.props if c else self.doc.form.props
         shown = getattr(self.doc, "display_props", None)     # a form Language being edited (localization)
         return shown(c, props) if shown is not None else props
+
+    def _defaults(self) -> dict:
+        """Default values of the selected object (a new control of its type) - bold / Reset compare to them."""
+        c = self._owner()
+        if c is None or c.type not in CONTROL_TYPES:
+            return {}
+        try:
+            d = CONTROL_TYPES[c.type].default_props(c.name)
+        except Exception:  # noqa: BLE001
+            return {}
+        if CONTROL_TYPES[c.type].has_text:
+            d.pop("Text", None)            # Text starts as the control name: never shown as changed
+        return d
+
+    def reset_property(self, name: str) -> bool:
+        """Context menu > Reset: the property gets its default value again."""
+        d = next((x for x in self._defs() if x.name == name), None)
+        if d is None or name == "Name" or not self.doc:
+            return False
+        value = self._defaults().get(name, d.default)
+        self._set(name, value)
+        self._refresh_values()
+        return True
+
+    def _props_menu(self, pos) -> None:
+        from PyQt6.QtWidgets import QMenu
+        row = self.props.rowAt(pos.y())
+        d = self._row_def(row) if row >= 0 else None
+        if d is None or d.name == "Name":
+            return
+        m = QMenu(self)
+        value = self._props_dict().get(d.name, d.default)
+        a = m.addAction("&Reset", lambda n=d.name: self.reset_property(n))
+        a.setEnabled(value != self._defaults().get(d.name, d.default))
+        m.addAction("&Description", lambda: self._on_current_cell(row))
+        m.exec(self.props.viewport().mapToGlobal(pos))
 
     def refresh(self) -> None:
         self._updating = True
@@ -258,7 +307,8 @@ class PropertiesPanel(QWidget):
                 continue
             label_of = getattr(self.plugin, "property_label", None)   # e.g. .NET names (WinForms)
             label = label_of(d.name, self._owner()) if callable(label_of) else None
-            name_item = QTableWidgetItem("(Name)" if d.name == "Name" else (label or d.name))
+            name_item = QTableWidgetItem("(Name)" if d.name == "Name" else (
+                label or (d.meta or {}).get("displayName") or d.name))
             name_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             name_item.setData(Qt.ItemDataRole.UserRole, d)
             self.props.setItem(row, 0, name_item)
@@ -292,13 +342,24 @@ class PropertiesPanel(QWidget):
         was = self._updating
         self._updating = True
         props = self._props_dict()
+        defaults = self._defaults()
+        from .components import propeditors as _peng       # schema-driven editors (radide/components)
         for row in range(self.props.rowCount()):
             d = self._row_def(row)
             if d is None:
                 continue
             value = props.get(d.name, d.default)
             w = self.props.cellWidget(row, 1)
-            if d.kind == "bool":
+            name_item = self.props.item(row, 0)
+            if name_item is not None:          # VS: values that differ from the default are bold
+                f = name_item.font()
+                changed = d.name != "Name" and value != defaults.get(d.name, d.default)
+                if f.bold() != changed:
+                    f.setBold(changed)
+                    name_item.setFont(f)
+            if _peng.handles(self, d):
+                _peng.cell_widget(self, row, d, value)
+            elif d.kind == "bool":
                 if w is None:
                     w = QComboBox()
                     w.addItems(["True", "False"])
@@ -410,13 +471,18 @@ class PropertiesPanel(QWidget):
     def _on_current_cell(self, row, *_):
         d = self._row_def(row) if row >= 0 else None
         if d is not None:
-            self.help.setText(f"<b>{d.name}</b><br>{d.help or _GENERIC_HELP.get(d.kind, '')}")
+            from .components.proptypes import GENERIC_HELP
+            self.help.setText(f"<b>{d.name}</b><br>{d.help or _GENERIC_HELP.get(d.kind) or GENERIC_HELP.get(d.kind, '')}")
 
     def _on_event_cell(self, row, *_):
         item = self.events.item(row, 0) if row >= 0 else None
         if item:
             ev = item.data(Qt.ItemDataRole.UserRole)
-            self.help.setText(f"<b>{item.text()}</b><br>{EVENT_HELP.get(ev, 'Occurs when the item is clicked.')}"
+            owner = self._owner()
+            from .components import event_help          # a component package's own event description
+            desc = (event_help(owner.type, ev) if owner is not None else "") or \
+                EVENT_HELP.get(ev, 'Occurs when the item is clicked.')
+            self.help.setText(f"<b>{item.text()}</b><br>{desc}"
                               "<br><i>Double-click to write the handler.</i>")
 
     def _on_item_changed(self, item: QTableWidgetItem) -> None:
@@ -430,6 +496,19 @@ class PropertiesPanel(QWidget):
             try:
                 value = int(text)
             except ValueError:
+                self._refresh_values()
+                return
+            lo, hi = (d.meta or {}).get("min"), (d.meta or {}).get("max")     # component package limits
+            if (lo is not None and value < lo) or (hi is not None and value > hi):
+                self.help.setText(f"<span style='color:#b00'>{d.name}: use a value from {lo} to {hi}.</span>")
+                self._refresh_values()
+                return
+        elif d.kind in ("float", "padding"):       # component package kinds typed in the cell
+            from .components.proptypes import coerce
+            try:
+                value = coerce(d.kind, text)
+            except ValueError as e:
+                self.help.setText(f"<span style='color:#b00'>{d.name}: {e}</span>")
                 self._refresh_values()
                 return
         else:

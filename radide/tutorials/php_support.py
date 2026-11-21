@@ -16,7 +16,9 @@ Fence info strings (see vb-basic/README.md for the shared format):
                   "all": false, "start": "form.php"} -->
 
   ``"all": true`` compares the bodies of every request (joined by a new line); without a test comment the
-  block requests ``/`` once.  ``"start"`` is the start page of the project "جرّبه" opens.
+  block requests ``/`` once.  ``"start"`` is the start page of the project "جرّبه" opens.  A form value
+  ``"{{field:csrf}}"`` is the value of that (hidden) field in the previous response, and ``"mask":
+  {"<regex>": "<text>"}`` replaces random parts of the output (tokens) before the comparison.
 * ``exercise`` / ``solution`` work as in the other courses (``php exercise`` / ``php web exercise`` ...).
 """
 from __future__ import annotations
@@ -82,7 +84,7 @@ def _write(files: dict[str, str], dest: Path) -> None:
     for fname, text in files.items():
         p = dest / fname
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8")
+        p.write_bytes(text.encode("utf-8"))           # keep the lesson's LF line ends
 
 
 def _main_file(files: dict[str, str]) -> str:
@@ -134,6 +136,7 @@ def run_cli(files: dict[str, str], stdin: str | None, work: Path, timeout: int =
     php = php_exe()
     if not php:
         return False, "PHP غير موجود (ثبّته من Tools > PHP Versions...)"
+    work = Path(work).resolve()
     _clean(work)
     _write(files, work)
     try:
@@ -151,6 +154,7 @@ def run_web(files: dict[str, str], spec: dict | None, work: Path, timeout: int =
     if not php:
         return False, "PHP غير موجود (ثبّته من Tools > PHP Versions...)"
     spec = dict(spec or {})
+    work = Path(work).resolve()
     _clean(work)
     _write(files, work)
     (work / "data").mkdir(exist_ok=True)
@@ -177,6 +181,8 @@ def run_web(files: dict[str, str], spec: dict | None, work: Path, timeout: int =
             path = str(rq.get("path", "/"))
             url = f"http://127.0.0.1:{port}/{path.lstrip('/')}"
             data = rq.get("data")
+            if isinstance(data, dict) and bodies:          # "{{field:csrf}}" = that hidden field of the last page
+                data = {k: _field(bodies[-1], v) for k, v in data.items()}
             method = str(rq.get("method") or ("POST" if data is not None else "GET")).upper()
             body = urllib.parse.urlencode(data, doseq=True).encode("utf-8") if data is not None else None
             req = urllib.request.Request(url, data=body, method=method)
@@ -190,13 +196,28 @@ def run_web(files: dict[str, str], spec: dict | None, work: Path, timeout: int =
             except (urllib.error.URLError, OSError) as e:
                 return False, f"فشل الطلب {method} {path}: {e}"
             bodies.append(raw.decode("utf-8", "replace"))
-        return True, "\n".join(bodies) if spec.get("all") else (bodies[-1] if bodies else "")
+        shown = bodies if spec.get("all") else bodies[-1:]
+        out = "\n".join(shown)
+        for rx, repl in (spec.get("mask") or {}).items():     # random values (CSRF tokens ...) -> fixed text
+            out = re.sub(rx, repl, out)
+        return True, out
     finally:
         proc.kill()
         try:
             proc.wait(5)
         except subprocess.TimeoutExpired:
             pass
+
+
+def _field(page: str, value):
+    """``{{field:name}}`` -> the value of the form field *name* in *page* (e.g. a CSRF token)."""
+    m = re.fullmatch(r"\{\{field:([\w\[\]-]+)\}\}", value) if isinstance(value, str) else None
+    if not m:
+        return value
+    name = re.escape(m.group(1))
+    hit = re.search(r'name="' + name + r'"[^>]*?value="([^"]*)"', page) or \
+        re.search(r'value="([^"]*)"[^>]*?name="' + name + r'"', page)
+    return hit.group(1) if hit else ""
 
 
 def _project_files(folder: Path) -> dict[str, str]:

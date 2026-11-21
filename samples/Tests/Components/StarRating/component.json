@@ -1,0 +1,60 @@
+{
+  "$schema": "../../../../docs/component.schema.json",
+  "schemaVersion": 1,
+  "name": "StarRating",
+  "displayName": "Star Rating",
+  "version": "1.0.0",
+  "publisher": "RAD IDE Samples",
+  "description": "A row of stars the user clicks to rate something (0..MaxStars).",
+  "license": "MIT",
+  "keywords": ["rating", "stars", "input"],
+  "category": "Rating & Input",
+  "order": 10,
+  "icon": "icon.png",
+  "prefix": "Rating",
+  "defaultSize": [130, 26],
+  "kind": "visual",
+  "hasText": false,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {"name": "Value", "type": "custom", "editor": "starrating.stars", "default": 3, "category": "Behavior",
+     "description": "The rating shown (0 = no star). Click the stars in the Properties window to change it.",
+     "min": 0, "max": 10},
+    {"name": "MaxStars", "type": "int", "default": 5, "min": 1, "max": 10, "category": "Behavior",
+     "description": "How many stars are drawn."},
+    {"name": "ReadOnly", "type": "bool", "default": false, "category": "Behavior",
+     "description": "True = the user cannot change the rating by clicking."},
+    {"name": "StarColor", "type": "color", "default": "#FFB400", "category": "Appearance",
+     "description": "Colour of the selected stars."},
+    {"name": "EmptyColor", "type": "color", "default": "#C8CDD5", "category": "Appearance",
+     "description": "Colour of the stars that are not selected."},
+    {"name": "Shape", "type": "enum", "choices": ["Star", "Circle", "Square"], "default": "Star",
+     "category": "Appearance", "description": "The figure drawn for every point of the rating."},
+    {"name": "Spacing", "type": "int", "default": 4, "min": 0, "max": 40, "category": "Layout",
+     "description": "Pixels between two stars."},
+    {"name": "Padding", "type": "padding", "default": "2, 2, 2, 2", "category": "Layout",
+     "description": "Space inside the control (left, top, right, bottom)."},
+    {"name": "ShowValue", "type": "bool", "default": false, "category": "Appearance",
+     "description": "Write the value (e.g. 3/5) after the stars."},
+    {"name": "Caption", "type": "multiline", "default": "", "category": "Appearance", "designOnly": true,
+     "description": "Design-time note shown under the stars in the designer only (not passed to the program)."}
+  ],
+  "events": [
+    {"name": "ValueChanged", "description": "The user (or code) changed the Value."},
+    {"name": "Hover", "description": "The mouse moved over another star (read HoverValue)."}
+  ],
+  "methods": [
+    {"name": "Reset", "signature": "Reset()", "description": "Sets Value to 0."},
+    {"name": "SetValue", "signature": "SetValue(value)", "description": "Sets Value (clamped to 0..MaxStars)."},
+    {"name": "HoverValue", "signature": "HoverValue", "returns": "int",
+     "description": "The star under the mouse (0 = none) - read it in the Hover event."}
+  ],
+  "targets": {
+    "python-tk": {"file": "runtime/starrating_tk.py", "class": "StarRating"},
+    "python-qt": {"file": "runtime/starrating_qt.py", "class": "StarRating"}
+  },
+  "designer": "designer.py",
+  "editors": "editors.py",
+  "help": "help.md",
+  "requires": {"radide": ">=1.0"}
+}

@@ -110,6 +110,9 @@ def make_preview(ctrl: Control, parent: QWidget, root: Path | None = None) -> QW
         from .usercontrols import is_user_type, make_uc_preview
         if is_user_type(ctrl.type):
             return make_uc_preview(ctrl, parent, root)
+        # a component package (radide/components): its designer.py, or the default labelled box
+        from .components.designer import make_component_preview
+        return make_component_preview(ctrl, parent, root)
     if ctrl.type == "TextBox" and ctrl.props.get("Multiline"):
         w = QPlainTextEdit(parent)
     else:
@@ -139,6 +142,9 @@ def apply_props(w: QWidget, ctrl: Control) -> None:
     if getattr(w, "rad_uc", False):                     # a user control (radide/usercontrols.py)
         from .usercontrols import apply_uc_props
         return apply_uc_props(w, ctrl)
+    if getattr(w, "rad_comp", False):                   # a component package (radide/components)
+        from .components.designer import apply_component_props
+        return apply_component_props(w, ctrl)
     p = ctrl.props
     w.setObjectName(f"rad_{ctrl.name}")
     w.setGeometry(int(p["Left"]), int(p["Top"]), max(4, int(p["Width"])), max(4, int(p["Height"])))

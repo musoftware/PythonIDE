@@ -1,0 +1,46 @@
+{
+ "version": 1,
+ "seedColor": "#FFFF6B8A",
+ "variant": "vibrant",
+ "mode": "light",
+ "colors": {
+  "light": {},
+  "dark": {}
+ },
+ "background": {
+  "light": "#FFFDFBF7",
+  "dark": "#FF15131A"
+ },
+ "font": {
+  "family": "Outfit",
+  "source": "asset",
+  "headingWeight": "FontWeight.w700"
+ },
+ "buttons": {
+  "radius": 16,
+  "height": 54,
+  "elevation": 0,
+  "textStyle": {
+   "fontSize": 16,
+   "fontWeight": "FontWeight.w600"
+  }
+ },
+ "inputs": {
+  "style": "filled",
+  "radius": 14,
+  "fillColor": "#FFF6F1F4",
+  "contentPadding": {
+   "h": 16,
+   "v": 14
+  }
+ },
+ "cards": {
+  "radius": 20,
+  "elevation": 0
+ },
+ "appBar": {
+  "centerTitle": true,
+  "elevation": 0
+ },
+ "useMaterial3": true
+}

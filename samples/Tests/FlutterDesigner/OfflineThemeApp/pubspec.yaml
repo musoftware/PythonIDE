@@ -1,0 +1,45 @@
+name: offline_theme_app
+description: A RAD IDE Flutter app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit/Outfit-Regular.ttf
+        - asset: assets/fonts/Outfit/Outfit-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit/Outfit-Bold.ttf
+          weight: 700
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins/Poppins-Bold.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito/Nunito-Bold.ttf
+          weight: 700
+  assets:
+    - assets/
+    - assets/images/

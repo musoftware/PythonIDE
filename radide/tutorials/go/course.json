@@ -1,0 +1,25 @@
+{
+  "id": "go",
+  "title_ar": "تعلّم لغة Go من الصفر",
+  "title_en": "Learn Go from Scratch",
+  "language": "go-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في لغة Go من Google: البرامج الأولى، والمتغيرات، والإدخال، والشروط والحلقات، والدوال والأخطاء، والشرائح والخرائط، والنصوص العربية والـ runes، والهياكل والواجهات، والتزامن بالـ goroutines والقنوات، والوحدات (go.mod) والحزم، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge، ومشروع نهائي.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Go وتجهيز بيئة العمل", "minutes": 20},
+    {"id": "02-first-program", "file": "02-first-program.md", "title_ar": "برنامجك الأول والحزمة `fmt`", "minutes": 25},
+    {"id": "03-variables", "file": "03-variables.md", "title_ar": "المتغيرات والأنواع والثوابت", "minutes": 30},
+    {"id": "04-input", "file": "04-input.md", "title_ar": "قراءة المدخلات وتحويل النصوص إلى أرقام", "minutes": 30},
+    {"id": "05-conditions-loops", "file": "05-conditions-loops.md", "title_ar": "الشروط وحلقة `for`", "minutes": 40},
+    {"id": "06-functions-errors", "file": "06-functions-errors.md", "title_ar": "الدوال والقيم المتعددة والأخطاء", "minutes": 40},
+    {"id": "07-slices-maps", "file": "07-slices-maps.md", "title_ar": "الشرائح (slices) والخرائط (maps)", "minutes": 45},
+    {"id": "08-strings-runes", "file": "08-strings-runes.md", "title_ar": "النصوص والعربية والـ runes", "minutes": 35},
+    {"id": "09-structs-methods", "file": "09-structs-methods.md", "title_ar": "الهياكل والدوال المرتبطة (methods)", "minutes": 40},
+    {"id": "10-interfaces", "file": "10-interfaces.md", "title_ar": "الواجهات (interfaces)", "minutes": 40},
+    {"id": "11-defer-panic-files", "file": "11-defer-panic-files.md", "title_ar": "`defer` و`panic` والملفات", "minutes": 35},
+    {"id": "12-goroutines", "file": "12-goroutines.md", "title_ar": "التزامن: goroutines والقنوات", "minutes": 45},
+    {"id": "13-modules-packages", "file": "13-modules-packages.md", "title_ar": "الوحدات `go.mod` والحزم والمكتبات الخارجية", "minutes": 40},
+    {"id": "14-gui-form", "file": "14-gui-form.md", "title_ar": "أول نافذة رسومية بـ Go في مصمم النماذج", "minutes": 40},
+    {"id": "15-final-project", "file": "15-final-project.md", "title_ar": "المشروع النهائي: قائمة المهام", "minutes": 50}
+  ]
+}

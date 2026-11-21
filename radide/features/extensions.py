@@ -118,6 +118,10 @@ class ExtensionsDialog(QDialog):
             b.clicked.connect(fn)
             bottom.addWidget(b)
         bottom.addStretch(1)
+        b = QPushButton("&Component Packages...")      # Toolbox controls as packages (radide/components)
+        b.setToolTip("Install, uninstall and export Toolbox component packages (.radcomp)")
+        b.clicked.connect(self._components)
+        bottom.addWidget(b)
         b = QPushButton("Extensions Folder")
         b.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(X.extensions_dir()))))
         bottom.addWidget(b)
@@ -274,9 +278,21 @@ class ExtensionsDialog(QDialog):
             except Exception as e:  # noqa: BLE001
                 self._installed(None, e)
 
+    def _components(self):
+        from ..components.ui import ComponentManagerDialog
+        dlg = ComponentManagerDialog(self, self.win)
+        self._components_dialog = dlg
+        dlg.exec()
+        self.refresh()
+
     def _install_zip(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Extension package", "", "Extension (*.zip *.radext)")
+        path, _ = QFileDialog.getOpenFileName(self, "Extension package", "",
+                                              "Extension (*.zip *.radext);;Component package (*.radcomp)")
         if not path:
+            return
+        if path.lower().endswith(".radcomp"):          # a Toolbox component package, not an extension
+            from ..components.ui import install_package_dialog
+            install_package_dialog(self, path)
             return
         if QMessageBox.question(self, "Install Extension", f"Install the extension in\n{path}?\n\n"
                                 "Extensions run Python code with your permissions.") \

@@ -1,0 +1,17 @@
+{
+  "id": "solutions-references",
+  "title_ar": "دليل الحلول والمراجع: مشروع واحد بعدة لغات",
+  "title_en": "Solutions and References in RAD IDE (Arabic guide)",
+  "language": "python",
+  "level": "intermediate",
+  "description_ar": "دليل خطوة بخطوة للحلول متعددة اللغات في RAD IDE على طريقة Visual Studio: إنشاء حل فيه عدة مشاريع، ومكتبات الأصناف (Class Library)، وإضافة مرجع (Add Reference)، واستدعاء مكتبة C# من برنامج Python كأنها كود Python عادي، وكيف يعمل RAD Hub من الداخل، وأنواع البيانات والأخطاء بين اللغات، وبناء الحل.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما الحل (Solution)؟ ولماذا عدة لغات؟", "minutes": 15},
+    {"id": "02-create-solution", "file": "02-create-solution.md", "title_ar": "إنشاء حل ومكتبة أصناف ومشروع البدء", "minutes": 25},
+    {"id": "03-add-reference", "file": "03-add-reference.md", "title_ar": "إضافة مرجع وملفات الوكيل", "minutes": 25},
+    {"id": "04-python-calls-csharp", "file": "04-python-calls-csharp.md", "title_ar": "مثال كامل: برنامج Python يستدعي مكتبة C#", "minutes": 35},
+    {"id": "05-rad-hub", "file": "05-rad-hub.md", "title_ar": "كيف يعمل RAD Hub من الداخل", "minutes": 25},
+    {"id": "06-types-errors", "file": "06-types-errors.md", "title_ar": "أنواع البيانات والأخطاء بين اللغات", "minutes": 30},
+    {"id": "07-build-solution", "file": "07-build-solution.md", "title_ar": "بناء الحل وتنظيمه ونصائح عملية", "minutes": 20}
+  ]
+}

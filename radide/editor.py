@@ -699,6 +699,14 @@ class CodeEditor(QPlainTextEdit):
             items = self.plugin.completions(self.text(), line, col, self.path, self.names)
         except Exception:  # noqa: BLE001 - completion must never break typing
             items = []
+        try:        # members of component package controls (radide/components/intellisense.py) come first
+            from .components.intellisense import member_completions
+            extra = member_completions(self.text(), line, col, self.names)
+            if extra:
+                seen = {c.name.lower() for c in extra}
+                items = extra + [c for c in items if c.name.lower() not in seen]
+        except Exception:  # noqa: BLE001
+            pass
         if not items:
             self.popup.hide_all()
             return

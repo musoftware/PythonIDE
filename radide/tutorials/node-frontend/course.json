@@ -1,0 +1,19 @@
+{
+  "id": "node-frontend",
+  "title_ar": "دليل Node.js والواجهات الأمامية في RAD IDE",
+  "title_en": "Node.js and Front-end Guide for RAD IDE",
+  "language": "node-web",
+  "level": "intermediate",
+  "description_ar": "دليل عملي خطوة بخطوة: مواقع Node.js وExpress، وواجهات REST وتجربتها بـ REST Client، وتصحيح أخطاء الخادم وجافاسكربت المتصفح داخل المعاينة، ومشاريع React وVue وSvelte وAngular بـ Vite، ومشاريع NestJS، كلها من داخل RAD IDE.",
+  "lessons": [
+    {"id": "01-overview", "file": "01-overview.md", "title_ar": "خريطة مشاريع JavaScript في RAD IDE", "minutes": 15},
+    {"id": "02-node-site", "file": "02-node-site.md", "title_ar": "أول موقع Node.js: التشغيل والمعاينة ونافذة الطلبات", "minutes": 35},
+    {"id": "03-express-api", "file": "03-express-api.md", "title_ar": "Express: المسارات وواجهة REST", "minutes": 40},
+    {"id": "04-rest-client", "file": "04-rest-client.md", "title_ar": "تجربة الواجهات بـ REST Client وملفات .http", "minutes": 30},
+    {"id": "05-debug-server", "file": "05-debug-server.md", "title_ar": "تصحيح أخطاء الخادم: نقاط التوقف في Node.js", "minutes": 30},
+    {"id": "06-browser-debug", "file": "06-browser-debug.md", "title_ar": "تصحيح جافاسكربت المتصفح داخل المعاينة", "minutes": 30},
+    {"id": "07-vite-apps", "file": "07-vite-apps.md", "title_ar": "تطبيقات React وVue وSvelte وAngular", "minutes": 45},
+    {"id": "08-nestjs", "file": "08-nestjs.md", "title_ar": "مشاريع NestJS بلغة TypeScript", "minutes": 40},
+    {"id": "09-npm-scripts-deploy", "file": "09-npm-scripts-deploy.md", "title_ar": "سكربتات npm والحزم والنشر", "minutes": 25}
+  ]
+}

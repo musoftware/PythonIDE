@@ -1,0 +1,790 @@
+{
+ "version": 1,
+ "name": "Chat",
+ "route": "/chat",
+ "theme": {},
+ "assets": [
+  "assets/images/avatar_4.png"
+ ],
+ "fonts": [
+  {
+   "family": "Plus Jakarta Sans",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFF3F4F9"
+  },
+  "slots": {
+   "appBar": {
+    "id": "w8",
+    "type": "AppBar",
+    "props": {
+     "backgroundColor": "Colors.white",
+     "elevation": 0,
+     "centerTitle": false,
+     "toolbarHeight": 66
+    },
+    "slots": {
+     "leading": {
+      "id": "w9",
+      "type": "IconButton",
+      "slots": {
+       "icon": {
+        "id": "w10",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.arrow_back_ios_new",
+         "color": "#FF1E2235"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "back"
+      }
+     },
+     "title": {
+      "id": "w11",
+      "type": "Row",
+      "children": [
+       {
+        "id": "w12",
+        "type": "CircleAvatar",
+        "props": {
+         "radius": 20,
+         "backgroundImage": {
+          "source": "asset",
+          "src": "assets/images/avatar_4.png"
+         }
+        }
+       },
+       {
+        "id": "w13",
+        "type": "SizedBox",
+        "props": {
+         "width": 12
+        }
+       },
+       {
+        "id": "w14",
+        "type": "Column",
+        "props": {
+         "crossAxisAlignment": "CrossAxisAlignment.start",
+         "mainAxisSize": "MainAxisSize.min"
+        },
+        "children": [
+         {
+          "id": "w15",
+          "type": "Text",
+          "props": {
+           "data": "Lina Haddad",
+           "style": {
+            "color": "#FF1E2235",
+            "fontSize": 15,
+            "fontWeight": "FontWeight.w700",
+            "googleFont": "Plus Jakarta Sans"
+           }
+          }
+         },
+         {
+          "id": "w16",
+          "type": "Text",
+          "props": {
+           "data": "Online",
+           "style": {
+            "color": "#FF22C55E",
+            "fontSize": 12,
+            "fontWeight": "FontWeight.w500",
+            "googleFont": "Plus Jakarta Sans"
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "actions": [
+      {
+       "id": "w17",
+       "type": "IconButton",
+       "slots": {
+        "icon": {
+         "id": "w18",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.call_outlined",
+          "color": "#FF1E2235"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "onCall"
+       }
+      },
+      {
+       "id": "w19",
+       "type": "IconButton",
+       "slots": {
+        "icon": {
+         "id": "w20",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.videocam_outlined",
+          "color": "#FF1E2235"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "onVideo"
+       }
+      },
+      {
+       "id": "w21",
+       "type": "SizedBox",
+       "props": {
+        "width": 6
+       }
+      }
+     ]
+    }
+   },
+   "body": {
+    "id": "w22",
+    "type": "Column",
+    "children": [
+     {
+      "id": "w23",
+      "type": "Expanded",
+      "slots": {
+       "child": {
+        "id": "w24",
+        "type": "ListView",
+        "props": {
+         "padding": {
+          "all": 16
+         }
+        },
+        "children": [
+         {
+          "id": "w25",
+          "type": "Center",
+          "slots": {
+           "child": {
+            "id": "w26",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 12,
+              "v": 4
+             },
+             "decoration": {
+              "color": "#FFE4E7F2",
+              "borderRadius": 12
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w27",
+              "type": "Text",
+              "props": {
+               "data": "Today",
+               "style": {
+                "color": "#FF8D92A6",
+                "fontSize": 11,
+                "fontWeight": "FontWeight.w600",
+                "googleFont": "Plus Jakarta Sans"
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "id": "w28",
+          "type": "SizedBox",
+          "props": {
+           "height": 14
+          }
+         },
+         {
+          "id": "w29",
+          "type": "Align",
+          "props": {
+           "alignment": "Alignment.centerLeft"
+          },
+          "slots": {
+           "child": {
+            "id": "w30",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 16,
+              "v": 12
+             },
+             "margin": {
+              "b": 10
+             },
+             "constraints": {
+              "maxWidth": 280
+             },
+             "decoration": {
+              "color": "Colors.white",
+              "borderRadius": {
+               "tl": 20,
+               "tr": 20,
+               "bl": 6,
+               "br": 20
+              },
+              "boxShadow": [
+               {
+                "color": "#0A1E2235",
+                "blur": 10,
+                "offset": [
+                 0,
+                 4
+                ]
+               }
+              ]
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w31",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.start",
+               "mainAxisSize": "MainAxisSize.min"
+              },
+              "children": [
+               {
+                "id": "w32",
+                "type": "Text",
+                "props": {
+                 "data": "Hey! Did you get a chance to look at the new screens?",
+                 "style": {
+                  "color": "#FF1E2235",
+                  "fontSize": 14,
+                  "googleFont": "Plus Jakarta Sans",
+                  "height": 1.4
+                 }
+                }
+               },
+               {
+                "id": "w33",
+                "type": "SizedBox",
+                "props": {
+                 "height": 4
+                }
+               },
+               {
+                "id": "w34",
+                "type": "Text",
+                "props": {
+                 "data": "09:41",
+                 "style": {
+                  "color": "#FF8D92A6",
+                  "fontSize": 10,
+                  "googleFont": "Plus Jakarta Sans"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 100
+          }
+         },
+         {
+          "id": "w35",
+          "type": "Align",
+          "props": {
+           "alignment": "Alignment.centerRight"
+          },
+          "slots": {
+           "child": {
+            "id": "w36",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 16,
+              "v": 12
+             },
+             "margin": {
+              "b": 10
+             },
+             "constraints": {
+              "maxWidth": 280
+             },
+             "decoration": {
+              "gradient": {
+               "type": "linear",
+               "begin": "Alignment.topLeft",
+               "end": "Alignment.bottomRight",
+               "colors": [
+                "#FF6366F1",
+                "#FF8B5CF6"
+               ]
+              },
+              "borderRadius": {
+               "tl": 20,
+               "tr": 20,
+               "bl": 20,
+               "br": 6
+              }
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w37",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.end",
+               "mainAxisSize": "MainAxisSize.min"
+              },
+              "children": [
+               {
+                "id": "w38",
+                "type": "Text",
+                "props": {
+                 "data": "Yes - the onboarding flow looks great. Love the colours.",
+                 "style": {
+                  "color": "Colors.white",
+                  "fontSize": 14,
+                  "googleFont": "Plus Jakarta Sans",
+                  "height": 1.4
+                 }
+                }
+               },
+               {
+                "id": "w39",
+                "type": "SizedBox",
+                "props": {
+                 "height": 4
+                }
+               },
+               {
+                "id": "w40",
+                "type": "Text",
+                "props": {
+                 "data": "09:42",
+                 "style": {
+                  "color": "#B3FFFFFF",
+                  "fontSize": 10,
+                  "googleFont": "Plus Jakarta Sans"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInRight",
+           "durationMs": 600,
+           "offsetX": 40,
+           "delayMs": 250
+          }
+         },
+         {
+          "id": "w41",
+          "type": "Align",
+          "props": {
+           "alignment": "Alignment.centerLeft"
+          },
+          "slots": {
+           "child": {
+            "id": "w42",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 16,
+              "v": 12
+             },
+             "margin": {
+              "b": 10
+             },
+             "constraints": {
+              "maxWidth": 280
+             },
+             "decoration": {
+              "color": "Colors.white",
+              "borderRadius": {
+               "tl": 20,
+               "tr": 20,
+               "bl": 6,
+               "br": 20
+              },
+              "boxShadow": [
+               {
+                "color": "#0A1E2235",
+                "blur": 10,
+                "offset": [
+                 0,
+                 4
+                ]
+               }
+              ]
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w43",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.start",
+               "mainAxisSize": "MainAxisSize.min"
+              },
+              "children": [
+               {
+                "id": "w44",
+                "type": "Text",
+                "props": {
+                 "data": "Thanks! I will share the prototype link later today.",
+                 "style": {
+                  "color": "#FF1E2235",
+                  "fontSize": 14,
+                  "googleFont": "Plus Jakarta Sans",
+                  "height": 1.4
+                 }
+                }
+               },
+               {
+                "id": "w45",
+                "type": "SizedBox",
+                "props": {
+                 "height": 4
+                }
+               },
+               {
+                "id": "w46",
+                "type": "Text",
+                "props": {
+                 "data": "09:43",
+                 "style": {
+                  "color": "#FF8D92A6",
+                  "fontSize": 10,
+                  "googleFont": "Plus Jakarta Sans"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInLeft",
+           "durationMs": 600,
+           "offsetX": -40,
+           "delayMs": 400
+          }
+         },
+         {
+          "id": "w47",
+          "type": "Align",
+          "props": {
+           "alignment": "Alignment.centerRight"
+          },
+          "slots": {
+           "child": {
+            "id": "w48",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 16,
+              "v": 12
+             },
+             "margin": {
+              "b": 10
+             },
+             "constraints": {
+              "maxWidth": 280
+             },
+             "decoration": {
+              "gradient": {
+               "type": "linear",
+               "begin": "Alignment.topLeft",
+               "end": "Alignment.bottomRight",
+               "colors": [
+                "#FF6366F1",
+                "#FF8B5CF6"
+               ]
+              },
+              "borderRadius": {
+               "tl": 20,
+               "tr": 20,
+               "bl": 20,
+               "br": 6
+              }
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w49",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.end",
+               "mainAxisSize": "MainAxisSize.min"
+              },
+              "children": [
+               {
+                "id": "w50",
+                "type": "Text",
+                "props": {
+                 "data": "Perfect, talk soon!",
+                 "style": {
+                  "color": "Colors.white",
+                  "fontSize": 14,
+                  "googleFont": "Plus Jakarta Sans",
+                  "height": 1.4
+                 }
+                }
+               },
+               {
+                "id": "w51",
+                "type": "SizedBox",
+                "props": {
+                 "height": 4
+                }
+               },
+               {
+                "id": "w52",
+                "type": "Text",
+                "props": {
+                 "data": "09:45",
+                 "style": {
+                  "color": "#B3FFFFFF",
+                  "fontSize": 10,
+                  "googleFont": "Plus Jakarta Sans"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeInRight",
+           "durationMs": 600,
+           "offsetX": 40,
+           "delayMs": 550
+          }
+         },
+         {
+          "id": "w53",
+          "type": "Align",
+          "props": {
+           "alignment": "Alignment.centerLeft"
+          },
+          "slots": {
+           "child": {
+            "id": "w54",
+            "type": "Container",
+            "props": {
+             "padding": {
+              "h": 16,
+              "v": 14
+             },
+             "decoration": {
+              "color": "Colors.white",
+              "borderRadius": {
+               "tl": 20,
+               "tr": 20,
+               "bl": 6,
+               "br": 20
+              }
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w55",
+              "type": "Row",
+              "props": {
+               "mainAxisSize": "MainAxisSize.min",
+               "spacing": 5
+              },
+              "children": [
+               {
+                "id": "w56",
+                "type": "Container",
+                "props": {
+                 "width": 8,
+                 "height": 8,
+                 "decoration": {
+                  "color": "#FFB9BDCC",
+                  "shape": "BoxShape.circle"
+                 }
+                }
+               },
+               {
+                "id": "w57",
+                "type": "Container",
+                "props": {
+                 "width": 8,
+                 "height": 8,
+                 "decoration": {
+                  "color": "#FFD0D3DE",
+                  "shape": "BoxShape.circle"
+                 }
+                }
+               },
+               {
+                "id": "w58",
+                "type": "Container",
+                "props": {
+                 "width": 8,
+                 "height": 8,
+                 "decoration": {
+                  "color": "#FFE2E4EC",
+                  "shape": "BoxShape.circle"
+                 }
+                }
+               }
+              ]
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "fadeIn",
+           "delayMs": 800
+          }
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "w59",
+      "type": "Container",
+      "props": {
+       "padding": {
+        "l": 8,
+        "t": 10,
+        "r": 12,
+        "b": 10
+       },
+       "decoration": {
+        "color": "Colors.white",
+        "boxShadow": [
+         {
+          "color": "#0F1E2235",
+          "blur": 16,
+          "offset": [
+           0,
+           -4
+          ]
+         }
+        ]
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w60",
+        "type": "SafeArea",
+        "props": {
+         "top": false
+        },
+        "slots": {
+         "child": {
+          "id": "w61",
+          "type": "Row",
+          "props": {
+           "spacing": 6
+          },
+          "children": [
+           {
+            "id": "w62",
+            "type": "IconButton",
+            "props": {
+             "color": "#FF6366F1"
+            },
+            "slots": {
+             "icon": {
+              "id": "w63",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.add_circle_outline"
+              }
+             }
+            },
+            "events": {
+             "onPressed": "onAttach"
+            }
+           },
+           {
+            "id": "w64",
+            "type": "Expanded",
+            "slots": {
+             "child": {
+              "id": "w65",
+              "type": "TextField",
+              "name": "txtMessage",
+              "props": {
+               "decoration": {
+                "hintText": "Type a message",
+                "border": "outline",
+                "borderRadius": 24,
+                "borderColor": "#FFF3F4F9",
+                "focusedBorderColor": "#FF6366F1",
+                "filled": true,
+                "fillColor": "#FFF3F4F9",
+                "contentPadding": {
+                 "h": 18,
+                 "v": 12
+                },
+                "hintStyle": {
+                 "color": "#FF8D92A6",
+                 "fontSize": 14,
+                 "googleFont": "Plus Jakarta Sans"
+                }
+               },
+               "style": {
+                "color": "#FF1E2235",
+                "fontSize": 14,
+                "googleFont": "Plus Jakarta Sans"
+               }
+              }
+             }
+            }
+           },
+           {
+            "id": "w66",
+            "type": "IconButton",
+            "ctor": "filled",
+            "slots": {
+             "icon": {
+              "id": "w67",
+              "type": "Icon",
+              "props": {
+               "icon": "Icons.send_rounded"
+              }
+             }
+            },
+            "events": {
+             "onPressed": "onSend"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

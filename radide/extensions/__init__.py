@@ -36,7 +36,8 @@ MANIFEST = "radide-extension.json"
 API_VERSION = "1.0"
 ID_RX = re.compile(r"^[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+$")
 VERSION_RX = re.compile(r"^\d+(\.\d+){0,3}([-+][0-9A-Za-z.-]+)?$")
-CONTRIBUTION_KINDS = ("themes", "languages", "aiProviders", "toolbox", "snippets")
+# "components": [{"folder": "components/StarRating"}] - component packages (docs/COMPONENTS.md)
+CONTRIBUTION_KINDS = ("themes", "languages", "aiProviders", "toolbox", "snippets", "components")
 
 
 class ExtensionError(Exception):

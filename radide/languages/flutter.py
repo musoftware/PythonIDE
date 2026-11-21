@@ -116,6 +116,10 @@ class FlutterPlugin(LanguagePlugin):
          "Runs on Android, Windows and the web; hot reload on save.", "SP_ComputerIcon"),
         ("flutter_tabs", "Flutter App (tabs + drawer)", "Bottom navigation with three pages, a side drawer "
          "menu, a floating action button and a second screen opened with ShowForm.", "SP_FileDialogDetailedView"),
+        ("flutter_designer", "Flutter App (visual designer)", "Screens designed as real Flutter widget trees "
+         "(FlutterFlow style): Container + BoxDecoration gradients, Stack / Positioned, Row / Column alignment, "
+         "text styles, Google fonts and entrance animations, with a live Flutter preview. Starts with a login "
+         "screen.", "SP_DesktopIcon"),
     ]
 
     def project_templates(self) -> list[tuple[str, str, str, str]]:
@@ -262,6 +266,12 @@ class FlutterPlugin(LanguagePlugin):
         from ..flutterdesign.codegen import integrate_rad_project
         main, fs_written = integrate_rad_project(folder, main, bool(forms))
         written += fs_written
+        if not forms and project.startup:       # a project of designed screens starts on its start-up screen
+            from ..flutterdesign import model as fdm
+            for sp in fdm.find_screens(folder):
+                if sp.name == f"{project.startup}{fdm.SCREEN_EXT}":
+                    route = fdm.Screen.load(sp).route
+                    main = re.sub(r"initialRoute: '[^']*',", f"initialRoute: '{route}',", main, count=1)
         put("lib/main.dart", main)
         return written
 
@@ -303,6 +313,9 @@ class FlutterPlugin(LanguagePlugin):
     # ------------------------------------------------------------ new projects
     def create_new_project(self, folder: Path, name: str, template: str = "") -> Project:
         """New Project > Mobile > Flutter App / Flutter App (tabs + drawer)."""
+        if template == "flutter_designer":       # widget-tree screens (radide/features/flutter_designer.py)
+            from ..features.flutter_designer import build_designer_project
+            return build_designer_project(self, Path(folder), name)
         from ..mobile.codegen_templates import build_flutter_project
         return build_flutter_project(self, Path(folder), name, template or "flutter_app")
 

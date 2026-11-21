@@ -1,0 +1,20 @@
+{
+  "id": "laravel",
+  "title_ar": "دليل Laravel في RAD IDE",
+  "title_en": "Laravel in RAD IDE (Guide)",
+  "language": "php-web",
+  "level": "intermediate",
+  "description_ar": "دليل عربي عملي لبناء تطبيقات Laravel داخل RAD IDE خطوة بخطوة: إنشاء المشروع وتجهيزه، وقائمة Laravel ولوحة Artisan وأوامر المجلدات في مستكشف الحلول، والمسارات والمتحكمات، وقوالب Blade، والترحيلات وقاعدة البيانات، وEloquent وTinker، وبناء CRUD مع التحقق، وIntelliSense المأخوذ من مشروعك، والتصحيح بـ Xdebug والاختبارات. يفترض أنك أنهيت دورة PHP أو تعرف أساسياتها.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما هو Laravel؟ وإنشاء أول مشروع", "minutes": 25},
+    {"id": "02-ide-tools", "file": "02-ide-tools.md", "title_ar": "التشغيل وأدوات Laravel في الـ IDE", "minutes": 25},
+    {"id": "03-routes-controllers", "file": "03-routes-controllers.md", "title_ar": "المسارات والمتحكمات", "minutes": 35},
+    {"id": "04-blade", "file": "04-blade.md", "title_ar": "قوالب Blade", "minutes": 35},
+    {"id": "05-migrations", "file": "05-migrations.md", "title_ar": "قاعدة البيانات والترحيلات", "minutes": 35},
+    {"id": "06-eloquent", "file": "06-eloquent.md", "title_ar": "Eloquent و Tinker", "minutes": 40},
+    {"id": "07-crud-validation", "file": "07-crud-validation.md", "title_ar": "تطبيق CRUD كامل مع التحقق", "minutes": 50},
+    {"id": "08-intellisense", "file": "08-intellisense.md", "title_ar": "IntelliSense والانتقال إلى التعريف", "minutes": 20},
+    {"id": "09-debug-tests", "file": "09-debug-tests.md", "title_ar": "التصحيح والاختبارات والنشر", "minutes": 35},
+    {"id": "10-reference", "file": "10-reference.md", "title_ar": "مرجع سريع: الأوامر والمصطلحات", "minutes": 15}
+  ]
+}

@@ -1,0 +1,518 @@
+{
+ "version": 1,
+ "name": "SignUp",
+ "route": "/signup",
+ "theme": {},
+ "assets": [
+  "assets/images/signup_blobs.png"
+ ],
+ "fonts": [
+  {
+   "family": "Nunito",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "resizeToAvoidBottomInset": true
+  },
+  "slots": {
+   "body": {
+    "id": "w8",
+    "type": "Container",
+    "props": {
+     "decoration": {
+      "gradient": {
+       "type": "linear",
+       "begin": "Alignment.topLeft",
+       "end": "Alignment.bottomRight",
+       "colors": [
+        "#FFFF6A88",
+        "#FF8B5CF6"
+       ]
+      }
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w9",
+      "type": "Stack",
+      "children": [
+       {
+        "id": "w10",
+        "type": "Positioned",
+        "props": {
+         "top": -80,
+         "right": -140,
+         "width": 440,
+         "height": 440
+        },
+        "slots": {
+         "child": {
+          "id": "w11",
+          "type": "Image",
+          "ctor": "asset",
+          "props": {
+           "src": "assets/images/signup_blobs.png",
+           "fit": "BoxFit.contain"
+          }
+         }
+        },
+        "anim": {
+         "type": "zoomIn",
+         "durationMs": 1200,
+         "scale": 0.3
+        }
+       },
+       {
+        "id": "w12",
+        "type": "SafeArea",
+        "props": {
+         "bottom": false
+        },
+        "slots": {
+         "child": {
+          "id": "w13",
+          "type": "Column",
+          "props": {
+           "crossAxisAlignment": "CrossAxisAlignment.stretch"
+          },
+          "children": [
+           {
+            "id": "w14",
+            "type": "Padding",
+            "props": {
+             "padding": {
+              "all": 8
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w15",
+              "type": "Align",
+              "props": {
+               "alignment": "Alignment.centerLeft"
+              },
+              "slots": {
+               "child": {
+                "id": "w16",
+                "type": "IconButton",
+                "props": {
+                 "color": "Colors.white"
+                },
+                "slots": {
+                 "icon": {
+                  "id": "w17",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.arrow_back_ios_new"
+                  }
+                 }
+                },
+                "events": {
+                 "onPressed": "back"
+                }
+               }
+              }
+             }
+            }
+           },
+           {
+            "id": "w18",
+            "type": "Padding",
+            "props": {
+             "padding": {
+              "l": 28,
+              "t": 8,
+              "r": 28
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w19",
+              "type": "Column",
+              "props": {
+               "crossAxisAlignment": "CrossAxisAlignment.start"
+              },
+              "children": [
+               {
+                "id": "w20",
+                "type": "Text",
+                "props": {
+                 "data": "Create account",
+                 "style": {
+                  "color": "Colors.white",
+                  "fontSize": 32,
+                  "fontWeight": "FontWeight.w800",
+                  "googleFont": "Nunito"
+                 }
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 100
+                }
+               },
+               {
+                "id": "w21",
+                "type": "SizedBox",
+                "props": {
+                 "height": 6
+                }
+               },
+               {
+                "id": "w22",
+                "type": "Text",
+                "props": {
+                 "data": "Join and start designing in minutes.",
+                 "style": {
+                  "color": "#E6FFFFFF",
+                  "fontSize": 15,
+                  "googleFont": "Nunito"
+                 }
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 200
+                }
+               }
+              ]
+             }
+            }
+           },
+           {
+            "id": "w23",
+            "type": "Expanded",
+            "slots": {
+             "child": {
+              "id": "w24",
+              "type": "Container",
+              "props": {
+               "padding": {
+                "all": 28
+               },
+               "margin": {
+                "t": 24
+               },
+               "decoration": {
+                "color": "Colors.white",
+                "borderRadius": {
+                 "tl": 36,
+                 "tr": 36
+                }
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w25",
+                "type": "SingleChildScrollView",
+                "slots": {
+                 "child": {
+                  "id": "w26",
+                  "type": "Column",
+                  "props": {
+                   "crossAxisAlignment": "CrossAxisAlignment.stretch"
+                  },
+                  "children": [
+                   {
+                    "id": "w27",
+                    "type": "TextField",
+                    "name": "txtName",
+                    "props": {
+                     "decoration": {
+                      "labelText": "Full name",
+                      "prefixIcon": "Icons.person_outline",
+                      "border": "outline",
+                      "borderRadius": 14,
+                      "borderColor": "#FFE6E1F5",
+                      "focusedBorderColor": "#FF8B5CF6",
+                      "filled": true,
+                      "fillColor": "#FFFAF8FF",
+                      "contentPadding": {
+                       "h": 16,
+                       "v": 16
+                      },
+                      "labelStyle": {
+                       "color": "#FF8C8798",
+                       "fontSize": 14,
+                       "googleFont": "Nunito"
+                      }
+                     },
+                     "style": {
+                      "color": "#FF1F1B2E",
+                      "fontSize": 15,
+                      "googleFont": "Nunito"
+                     },
+                     "keyboardType": "TextInputType.name"
+                    },
+                    "anim": {
+                     "type": "fadeInUp",
+                     "durationMs": 600,
+                     "offsetY": 30,
+                     "delayMs": 300
+                    }
+                   },
+                   {
+                    "id": "w28",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 14
+                    }
+                   },
+                   {
+                    "id": "w29",
+                    "type": "TextField",
+                    "name": "txtEmail",
+                    "props": {
+                     "decoration": {
+                      "labelText": "Email",
+                      "prefixIcon": "Icons.mail_outline",
+                      "border": "outline",
+                      "borderRadius": 14,
+                      "borderColor": "#FFE6E1F5",
+                      "focusedBorderColor": "#FF8B5CF6",
+                      "filled": true,
+                      "fillColor": "#FFFAF8FF",
+                      "contentPadding": {
+                       "h": 16,
+                       "v": 16
+                      },
+                      "labelStyle": {
+                       "color": "#FF8C8798",
+                       "fontSize": 14,
+                       "googleFont": "Nunito"
+                      }
+                     },
+                     "style": {
+                      "color": "#FF1F1B2E",
+                      "fontSize": 15,
+                      "googleFont": "Nunito"
+                     },
+                     "keyboardType": "TextInputType.emailAddress"
+                    },
+                    "anim": {
+                     "type": "fadeInUp",
+                     "durationMs": 600,
+                     "offsetY": 30,
+                     "delayMs": 380
+                    }
+                   },
+                   {
+                    "id": "w30",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 14
+                    }
+                   },
+                   {
+                    "id": "w31",
+                    "type": "TextField",
+                    "name": "txtPassword",
+                    "props": {
+                     "decoration": {
+                      "labelText": "Password",
+                      "prefixIcon": "Icons.lock_outline",
+                      "border": "outline",
+                      "borderRadius": 14,
+                      "borderColor": "#FFE6E1F5",
+                      "focusedBorderColor": "#FF8B5CF6",
+                      "filled": true,
+                      "fillColor": "#FFFAF8FF",
+                      "contentPadding": {
+                       "h": 16,
+                       "v": 16
+                      },
+                      "labelStyle": {
+                       "color": "#FF8C8798",
+                       "fontSize": 14,
+                       "googleFont": "Nunito"
+                      }
+                     },
+                     "style": {
+                      "color": "#FF1F1B2E",
+                      "fontSize": 15,
+                      "googleFont": "Nunito"
+                     },
+                     "obscureText": true
+                    },
+                    "anim": {
+                     "type": "fadeInUp",
+                     "durationMs": 600,
+                     "offsetY": 30,
+                     "delayMs": 460
+                    }
+                   },
+                   {
+                    "id": "w32",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 10
+                    }
+                   },
+                   {
+                    "id": "w33",
+                    "type": "Row",
+                    "children": [
+                     {
+                      "id": "w34",
+                      "type": "Checkbox",
+                      "name": "chkTerms",
+                      "props": {
+                       "value": false,
+                       "activeColor": "#FF8B5CF6"
+                      }
+                     },
+                     {
+                      "id": "w35",
+                      "type": "Expanded",
+                      "slots": {
+                       "child": {
+                        "id": "w36",
+                        "type": "Text",
+                        "props": {
+                         "data": "I agree to the Terms of Service and the Privacy Policy",
+                         "style": {
+                          "color": "#FF8C8798",
+                          "fontSize": 13,
+                          "googleFont": "Nunito"
+                         }
+                        }
+                       }
+                      }
+                     }
+                    ],
+                    "anim": {
+                     "type": "fadeIn",
+                     "delayMs": 540
+                    }
+                   },
+                   {
+                    "id": "w37",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 18
+                    }
+                   },
+                   {
+                    "id": "w38",
+                    "type": "ElevatedButton",
+                    "props": {
+                     "style": {
+                      "backgroundColor": "#FF8B5CF6",
+                      "foregroundColor": "Colors.white",
+                      "padding": {
+                       "v": 16
+                      },
+                      "elevation": 0,
+                      "minimumSize": [
+                       64,
+                       54
+                      ],
+                      "shape": {
+                       "type": "rounded",
+                       "radius": 16
+                      }
+                     }
+                    },
+                    "slots": {
+                     "child": {
+                      "id": "w39",
+                      "type": "Text",
+                      "props": {
+                       "data": "Sign up",
+                       "style": {
+                        "fontSize": 16,
+                        "fontWeight": "FontWeight.w700",
+                        "googleFont": "Nunito"
+                       }
+                      }
+                     }
+                    },
+                    "events": {
+                     "onPressed": "nav:/dashboard"
+                    },
+                    "anim": {
+                     "type": "fadeInUp",
+                     "durationMs": 600,
+                     "offsetY": 30,
+                     "delayMs": 620
+                    }
+                   },
+                   {
+                    "id": "w40",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 18
+                    }
+                   },
+                   {
+                    "id": "w41",
+                    "type": "Row",
+                    "props": {
+                     "mainAxisAlignment": "MainAxisAlignment.center"
+                    },
+                    "children": [
+                     {
+                      "id": "w42",
+                      "type": "Text",
+                      "props": {
+                       "data": "Already have an account?",
+                       "style": {
+                        "color": "#FF8C8798",
+                        "fontSize": 14,
+                        "googleFont": "Nunito"
+                       }
+                      }
+                     },
+                     {
+                      "id": "w43",
+                      "type": "TextButton",
+                      "slots": {
+                       "child": {
+                        "id": "w44",
+                        "type": "Text",
+                        "props": {
+                         "data": "Log in",
+                         "style": {
+                          "color": "#FF8B5CF6",
+                          "fontSize": 14,
+                          "fontWeight": "FontWeight.w700",
+                          "googleFont": "Nunito"
+                         }
+                        }
+                       }
+                      },
+                      "events": {
+                       "onPressed": "back"
+                      }
+                     }
+                    ],
+                    "anim": {
+                     "type": "fadeIn",
+                     "delayMs": 700
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

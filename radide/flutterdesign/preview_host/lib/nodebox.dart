@@ -59,12 +59,35 @@ class RenderNode extends RenderProxyBox {
   @override
   bool hitTestSelf(Offset position) => NodeRegistry.designHit;
 
+  /// Local bounds; a Spacer (an empty box) is widened to the cross size of its Row / Column so it can be seen
+  /// and clicked.
+  Rect localBounds() {
+    final p = parent;
+    final pd = parentData;
+    if (type == 'Spacer' && p is RenderFlex && p.hasSize && pd is BoxParentData) {
+      final off = pd.offset;
+      return p.direction == Axis.horizontal
+          ? Rect.fromLTWH(0, -off.dy, size.width, p.size.height)
+          : Rect.fromLTWH(-off.dx, 0, p.size.width, size.height);
+    }
+    return Offset.zero & size;
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (type == 'Spacer' && NodeRegistry.designHit && hasSize && localBounds().contains(position)) {
+      result.add(BoxHitTestEntry(this, position));
+      return true;
+    }
+    return super.hitTest(result, position: position);
+  }
+
   /// The box in global (page) logical pixels, transforms (device zoom, Transform widgets) included.
   Rect? globalRect() {
     if (!attached || !hasSize) return null;
     try {
       final m = getTransformTo(null);
-      return MatrixUtils.transformRect(m, Offset.zero & size);
+      return MatrixUtils.transformRect(m, localBounds());
     } catch (_) {
       return null;
     }

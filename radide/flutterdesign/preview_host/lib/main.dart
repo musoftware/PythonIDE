@@ -373,11 +373,76 @@ class HostState extends ChangeNotifier implements FactoryHost {
         st.closeEndDrawer();
       }
     }
-    if (reveal && id != null) {
-      try {
-        NodeRegistry.nodes[id]?.showOnScreen(duration: const Duration(milliseconds: 200));
-      } catch (_) {}
+    if (reveal && id != null) _reveal(id);
+  }
+
+  /// Scrolls the node into view - also when it is not built yet (lazy ListView / GridView children): the
+  /// nearest built ancestor's scroll view is moved page by page until the node exists.
+  Future<void> _reveal(String id) async {
+    final path = _pathTo(screen?['tree'], id);
+    var wrapped = false;
+    for (var tries = 0; tries < 80 && selected == id; tries++) {
+      final n = NodeRegistry.nodes[id];
+      if (n != null) {
+        try {
+          if (n.hasSize && n.size.isFinite) n.showOnScreen(duration: const Duration(milliseconds: 150));
+        } catch (_) {}
+        return;
+      }
+      RenderNode? anc;
+      for (final pid in path.reversed) {
+        anc = NodeRegistry.nodes[pid];
+        if (anc != null) break;
+      }
+      if (anc == null) return;
+      final vp = _viewportIn(anc);
+      final pos = vp?.offset;
+      if (pos is! ScrollPosition || !pos.hasContentDimensions) {
+        Bridge.send({'type': 'log', 'level': 'info', 'text': 'reveal $id: no scroll view under ${anc.id} ($pos)'});
+        return;
+      }
+      if (pos.pixels >= pos.maxScrollExtent - 0.5) {
+        if (wrapped) return;
+        wrapped = true;
+        pos.jumpTo(pos.minScrollExtent);
+      } else {
+        pos.jumpTo(math.min(pos.pixels + pos.viewportDimension * 0.8, pos.maxScrollExtent));
+      }
+      await WidgetsBinding.instance.endOfFrame;
     }
+  }
+
+  static List<String> _pathTo(dynamic node, String id) {
+    if (node is! Map) return const [];
+    if (node['id'] == id) return [id];
+    final kids = <dynamic>[];
+    final sl = node['slots'];
+    if (sl is Map) {
+      for (final v in sl.values) {
+        v is List ? kids.addAll(v) : kids.add(v);
+      }
+    }
+    final ch = node['children'];
+    if (ch is List) kids.addAll(ch);
+    for (final k in kids) {
+      final r = _pathTo(k, id);
+      if (r.isNotEmpty) return ['${node['id']}', ...r];
+    }
+    return const [];
+  }
+
+  static RenderViewportBase? _viewportIn(RenderObject o) {
+    RenderViewportBase? found;
+    void visit(RenderObject c) {
+      if (found != null) return;
+      if (c is RenderViewportBase) {
+        found = c;
+        return;
+      }
+      c.visitChildren(visit);
+    }
+    visit(o);
+    return found;
   }
 
   static bool _inSlot(Map scaffold, String slot, String id) {
@@ -415,7 +480,15 @@ class HostState extends ChangeNotifier implements FactoryHost {
     final hidden = <String>[];
     double r1(double v) => (v * 10).roundToDouble() / 10;
     for (final e in NodeRegistry.nodes.entries) {
-      final r = e.value.globalRect();
+      final ro = e.value;
+      if (ro.attached && ro.hasSize && !ro.size.isFinite) {
+        // what a debug build reports as "unbounded constraints": release builds lay it out silently
+        issues.putIfAbsent(e.key, () => <String>{}).add(
+            'error	${ro.type} has an infinite size (it is inside a scroll view / Row / Column that does not bound '
+            'it): give it a width / height or wrap it in SizedBox / Expanded');
+        continue;
+      }
+      final r = ro.globalRect();
       if (r == null || !r.isFinite) continue;
       if (!e.value.visible) {
         hidden.add(e.key);

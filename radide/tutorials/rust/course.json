@@ -1,0 +1,26 @@
+{
+  "id": "rust",
+  "title_ar": "تعلّم لغة Rust من الصفر",
+  "title_en": "Learn Rust from Scratch",
+  "language": "rust-cargo",
+  "level": "beginner",
+  "description_ar": "دورة عربية في لغة Rust الحديثة الآمنة: مشاريع cargo، والمتغيرات، والتحكم في التدفق، والدوال، والملكية والاستعارة، والنصوص، والهياكل والتعدادات، والمجموعات، والأخطاء بـ Result، والسمات والأنواع العامة، والوحدات والـ crates من crates.io، والاختبارات، وIntelliSense بـ rust-analyzer وتصحيح الأخطاء، ثم نافذة بمصمم النماذج عبر GUI Bridge وتطبيق egui.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Rust وأول مشروع cargo", "minutes": 25},
+    {"id": "02-first-program", "file": "02-first-program.md", "title_ar": "برنامجك الأول و`println!`", "minutes": 25},
+    {"id": "03-variables", "file": "03-variables.md", "title_ar": "المتغيرات وقابلية التغيير والأنواع", "minutes": 35},
+    {"id": "04-control-flow", "file": "04-control-flow.md", "title_ar": "الشروط والحلقات", "minutes": 35},
+    {"id": "05-functions", "file": "05-functions.md", "title_ar": "الدوال والتعبيرات", "minutes": 30},
+    {"id": "06-ownership", "file": "06-ownership.md", "title_ar": "الملكية والاستعارة: قلب Rust", "minutes": 50},
+    {"id": "07-strings", "file": "07-strings.md", "title_ar": "النصوص `String` و`&str` والعربية", "minutes": 35},
+    {"id": "08-structs", "file": "08-structs.md", "title_ar": "الهياكل والدوال المرتبطة", "minutes": 40},
+    {"id": "09-enums-match", "file": "09-enums-match.md", "title_ar": "التعدادات و`Option` و`match`", "minutes": 40},
+    {"id": "10-collections", "file": "10-collections.md", "title_ar": "المجموعات: `Vec` و`HashMap` والمكرِّرات", "minutes": 45},
+    {"id": "11-errors-input", "file": "11-errors-input.md", "title_ar": "الأخطاء بـ `Result` وقراءة المدخلات", "minutes": 45},
+    {"id": "12-traits-generics", "file": "12-traits-generics.md", "title_ar": "السمات (traits) والأنواع العامة", "minutes": 45},
+    {"id": "13-modules-crates", "file": "13-modules-crates.md", "title_ar": "الوحدات والـ crates والاختبارات", "minutes": 45},
+    {"id": "14-ide-tools", "file": "14-ide-tools.md", "title_ar": "أدوات الـ IDE: rust-analyzer وتصحيح الأخطاء", "minutes": 35},
+    {"id": "15-gui-form", "file": "15-gui-form.md", "title_ar": "نافذة رسومية بـ Rust في مصمم النماذج", "minutes": 40},
+    {"id": "16-egui", "file": "16-egui.md", "title_ar": "تطبيق سطح مكتب بمكتبة egui", "minutes": 45}
+  ]
+}

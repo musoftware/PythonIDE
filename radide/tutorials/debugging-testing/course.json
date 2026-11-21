@@ -1,0 +1,19 @@
+{
+  "id": "debugging-testing",
+  "kind": "guide",
+  "title_ar": "دليل التصحيح والاختبار في RAD IDE",
+  "title_en": "RAD IDE Guide: Debugging and Testing",
+  "language": "vb-basic",
+  "level": "beginner",
+  "description_ar": "دليل عربي خطوة بخطوة لاكتشاف الأخطاء وإصلاحها في RAD IDE: نقاط التوقف والتنفيذ خطوة بخطوة، ونوافذ المتغيرات المحلية والمراقبة ومكدس الاستدعاءات والأوامر الفورية، ونقاط التوقف الشرطية وعدد مرات الوصول ونقاط التسجيل، والإرفاق بعملية، ومستكشف الاختبارات وتغطية الكود، والتنسيق عند الحفظ، وإعادة الهيكلة.",
+  "lessons": [
+    {"id": "01-breakpoints", "file": "01-breakpoints.md", "title_ar": "نقاط التوقف والتنفيذ خطوة بخطوة", "minutes": 30},
+    {"id": "02-inspect", "file": "02-inspect.md", "title_ar": "المتغيرات المحلية والمراقبة ومكدس الاستدعاءات", "minutes": 30},
+    {"id": "03-smart-breakpoints", "file": "03-smart-breakpoints.md", "title_ar": "نقاط توقف ذكية: الشرط وعدد المرات ونقاط التسجيل", "minutes": 30},
+    {"id": "04-errors", "file": "04-errors.md", "title_ar": "أخطاء التشغيل وقائمة الأخطاء", "minutes": 25},
+    {"id": "05-attach-engines", "file": "05-attach-engines.md", "title_ar": "الإرفاق بعملية ومصححات اللغات الأخرى", "minutes": 20},
+    {"id": "06-test-explorer", "file": "06-test-explorer.md", "title_ar": "اختبارات الوحدة ومستكشف الاختبارات", "minutes": 35},
+    {"id": "07-coverage", "file": "07-coverage.md", "title_ar": "تغطية الكود", "minutes": 20},
+    {"id": "08-format-refactor", "file": "08-format-refactor.md", "title_ar": "التنسيق عند الحفظ وإعادة الهيكلة", "minutes": 30}
+  ]
+}

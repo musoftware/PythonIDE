@@ -226,6 +226,8 @@ class Form:
         d = json.loads(Path(path).read_text(encoding="utf-8"))
         from .usercontrols import ensure_types      # user controls of the folder (radide/usercontrols.py)
         ensure_types(d, Path(path).parent)
+        from .components import ensure_types as ensure_components   # component packages (radide/components)
+        ensure_components(d, Path(path).parent)
         return Form.from_dict(d)
 
 

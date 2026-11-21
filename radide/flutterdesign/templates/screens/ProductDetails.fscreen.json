@@ -536,17 +536,216 @@
            },
            {
             "id": "w53",
-            "type": "Spacer"
+            "type": "SizedBox",
+            "props": {
+             "height": 20
+            }
            },
            {
             "id": "w54",
+            "type": "Row",
+            "props": {
+             "spacing": 10
+            },
+            "children": [
+             {
+              "id": "w55",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w56",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w57",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w58",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.battery_charging_full_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w59",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w60",
+                    "type": "Text",
+                    "props": {
+                     "data": "40 h",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             },
+             {
+              "id": "w61",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w62",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w63",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w64",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.bluetooth_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w65",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w66",
+                    "type": "Text",
+                    "props": {
+                     "data": "BT 5.3",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             },
+             {
+              "id": "w67",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w68",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w69",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w70",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.hearing_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w71",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w72",
+                    "type": "Text",
+                    "props": {
+                     "data": "ANC",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            ],
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 420
+            }
+           },
+           {
+            "id": "w73",
+            "type": "Spacer"
+           },
+           {
+            "id": "w74",
             "type": "Row",
             "props": {
              "spacing": 14
             },
             "children": [
              {
-              "id": "w55",
+              "id": "w75",
               "type": "Container",
               "props": {
                "decoration": {
@@ -559,18 +758,18 @@
               },
               "slots": {
                "child": {
-                "id": "w56",
+                "id": "w76",
                 "type": "Row",
                 "props": {
                  "mainAxisSize": "MainAxisSize.min"
                 },
                 "children": [
                  {
-                  "id": "w57",
+                  "id": "w77",
                   "type": "IconButton",
                   "slots": {
                    "icon": {
-                    "id": "w58",
+                    "id": "w78",
                     "type": "Icon",
                     "props": {
                      "icon": "Icons.remove",
@@ -583,7 +782,7 @@
                   }
                  },
                  {
-                  "id": "w59",
+                  "id": "w79",
                   "type": "Text",
                   "props": {
                    "data": "1",
@@ -596,11 +795,11 @@
                   }
                  },
                  {
-                  "id": "w60",
+                  "id": "w80",
                   "type": "IconButton",
                   "slots": {
                    "icon": {
-                    "id": "w61",
+                    "id": "w81",
                     "type": "Icon",
                     "props": {
                      "icon": "Icons.add",
@@ -617,11 +816,11 @@
               }
              },
              {
-              "id": "w62",
+              "id": "w82",
               "type": "Expanded",
               "slots": {
                "child": {
-                "id": "w63",
+                "id": "w83",
                 "type": "ElevatedButton",
                 "ctor": "icon",
                 "props": {
@@ -632,6 +831,10 @@
                    "v": 18
                   },
                   "elevation": 0,
+                  "minimumSize": [
+                   64,
+                   56
+                  ],
                   "shape": {
                    "type": "rounded",
                    "radius": 16
@@ -640,14 +843,14 @@
                 },
                 "slots": {
                  "icon": {
-                  "id": "w64",
+                  "id": "w84",
                   "type": "Icon",
                   "props": {
                    "icon": "Icons.shopping_bag_outlined"
                   }
                  },
                  "label": {
-                  "id": "w65",
+                  "id": "w85",
                   "type": "Text",
                   "props": {
                    "data": "Add to cart",

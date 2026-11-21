@@ -41,7 +41,7 @@ MARK = "\u0001RAD "
 PREFIXES = (("lbl", "Label"), ("txt", "MTextField"), ("btn", "Button"), ("cmd", "Button"), ("lst", "MListView"),
             ("chk", "CheckBox"), ("sw", "Switch"), ("sld", "MSlider"), ("img", "MImage"), ("prg", "ProgressBar"),
             ("tmr", "Timer"), ("cbo", "ComboBox"), ("opt", "RadioButton"), ("fab", "Fab"), ("ico", "MIcon"))
-RX_NAME = re.compile(r"\b(?:" + "|".join(p for p, _t in PREFIXES) + r")[A-Z][A-Za-z0-9]*\b")
+RX_NAME = re.compile(r"\b(?:" + "|".join(p for p, _t in PREFIXES) + r")[A-Z][A-Za-z0-9]*(?![A-Za-z0-9])")
 RX_SCREEN = re.compile(r"^\s*class\s+(\w+)Code\s+extends\s+(\w+)Designer\b", re.M)
 SIZES = {"Label": 32, "MTextField": 56, "Button": 44, "MListView": 240, "CheckBox": 32, "Switch": 32, "MSlider": 40,
          "MImage": 120, "ProgressBar": 20, "ComboBox": 48, "RadioButton": 32, "Fab": 56, "MIcon": 32}
@@ -255,8 +255,11 @@ Future<void> _report(WidgetTester t) async {
   }
 }
 
-dynamic _st(WidgetTester t, String screen) =>
-    t.state(find.byWidgetPredicate((w) => w.runtimeType.toString() == screen).last);
+dynamic _st(WidgetTester t, String screen, [dynamic previous]) {
+  // screens under the top one are offstage; a closed / replaced screen keeps the last state seen
+  final f = find.byWidgetPredicate((w) => w.runtimeType.toString() == screen, skipOffstage: false);
+  return f.evaluate().isEmpty ? previous : t.state(f.last);
+}
 
 void main() {
   testWidgets('lesson', (tester) async {
@@ -305,7 +308,7 @@ def test_source(pkg: str, screen: str, spec: dict, size=(412, 915)) -> str:
             out.append(f"{ind}st.{step.rstrip(';')};")
         out.append(f"{ind}await _settle(tester);")
         out.append(f"{ind}await _report(tester);")
-        out.append(f"{ind}st = _st(tester, screen);")
+        out.append(f"{ind}st = _st(tester, screen, st);")
     for k in (spec.get("expect") or {}):
         out.append(f"{ind}print('${{_m}}VAL ' + {_dart_str(k)} + '=' + '${{st.{k}}}');")
     out.append(TEST_TAIL)

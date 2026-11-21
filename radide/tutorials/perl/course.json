@@ -1,0 +1,20 @@
+{
+  "id": "perl",
+  "title_ar": "تعلّم Perl من الصفر",
+  "title_en": "Learn Perl from Scratch",
+  "language": "perl-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية في Perl، لغة معالجة النصوص الشهيرة: المتغيرات العددية والنصية والمصفوفات والقواميس والشروط وحلقات التكرار والدوال والمراجع، ثم التعابير النمطية (أقوى ما في Perl)، والملفات والأخطاء، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge ومشروع صغير.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Perl: برنامجك الأول", "minutes": 20},
+    {"id": "02-scalars-input", "file": "02-scalars-input.md", "title_ar": "المتغيرات العددية والنصية والإدخال", "minutes": 30},
+    {"id": "03-conditions-loops", "file": "03-conditions-loops.md", "title_ar": "الشروط وحلقات التكرار", "minutes": 35},
+    {"id": "04-arrays-hashes", "file": "04-arrays-hashes.md", "title_ar": "المصفوفات والقواميس (Hashes)", "minutes": 40},
+    {"id": "05-subs-references", "file": "05-subs-references.md", "title_ar": "الدوال والمراجع", "minutes": 40},
+    {"id": "06-regex", "file": "06-regex.md", "title_ar": "التعابير النمطية (Regular Expressions)", "minutes": 45},
+    {"id": "07-files-errors", "file": "07-files-errors.md", "title_ar": "الملفات ومعالجة الأخطاء", "minutes": 35},
+    {"id": "08-gui-form", "file": "08-gui-form.md", "title_ar": "أول نافذة Perl في مصمم النماذج", "minutes": 40},
+    {"id": "09-gui-project", "file": "09-gui-project.md", "title_ar": "مشروع: محلل النصوص بنافذة رسومية", "minutes": 45},
+    {"id": "10-glossary", "file": "10-glossary.md", "title_ar": "قاموس المصطلحات (إنجليزي - عربي)", "minutes": 10}
+  ]
+}

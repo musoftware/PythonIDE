@@ -1,0 +1,17 @@
+{
+  "id": "deploy",
+  "title_ar": "دليل النشر: من مشروعك إلى المستخدم",
+  "title_en": "Deploy and Publish in RAD IDE (Arabic guide)",
+  "language": "python",
+  "level": "beginner",
+  "description_ar": "دليل خطوة بخطوة لتوصيل برنامجك إلى المستخدمين: بناء ملف EXE واحد، وإنشاء برنامج تثبيت احترافي بـ Inno Setup دون صلاحيات المسؤول، والنسخة المحمولة (portable)، والتحقق من التحديثات، والتوقيع الرقمي، ثم نشر مواقع الويب عبر FTP وSFTP والمجلدات، والنشر إلى السحابة وDocker، مع قائمة مراجعة قبل كل إصدار.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "طرق توصيل برنامجك إلى المستخدم", "minutes": 15},
+    {"id": "02-build-exe", "file": "02-build-exe.md", "title_ar": "بناء ملف EXE واحد", "minutes": 25},
+    {"id": "03-publish-dialog", "file": "03-publish-dialog.md", "title_ar": "نافذة النشر وإنشاء برنامج التثبيت", "minutes": 30},
+    {"id": "04-inno-setup", "file": "04-inno-setup.md", "title_ar": "داخل برنامج التثبيت: Inno Setup", "minutes": 30},
+    {"id": "05-portable-updates", "file": "05-portable-updates.md", "title_ar": "النسخة المحمولة والتحديثات والتوقيع", "minutes": 30},
+    {"id": "06-web-publish", "file": "06-web-publish.md", "title_ar": "نشر موقع ويب: FTP وSFTP والمجلدات", "minutes": 30},
+    {"id": "07-cloud-checklist", "file": "07-cloud-checklist.md", "title_ar": "السحابة وDocker وقائمة مراجعة الإصدار", "minutes": 30}
+  ]
+}

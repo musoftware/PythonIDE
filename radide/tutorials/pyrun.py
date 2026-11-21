@@ -135,6 +135,7 @@ def make_py_project(block, files: dict[str, str], dest: Path, name: str = "Lesso
         _layout(form, form_controls(code, spec))
         form.save(project.form_path("Form1"))
         for fname, text in files.items():
+            (dest / fname).parent.mkdir(parents=True, exist_ok=True)
             (dest / fname).write_text(text, encoding="utf-8")
             if fname != "Form1.py" and fname.lower().endswith(".py") and fname not in project.modules:
                 project.modules.append(fname)
@@ -148,6 +149,7 @@ def make_py_project(block, files: dict[str, str], dest: Path, name: str = "Lesso
         code = files.pop("main.py", "")
         Notebook.from_py(code, dest / "notebook.ipynb").save(dest / "notebook.ipynb")
     for fname, text in files.items():
+        (dest / fname).parent.mkdir(parents=True, exist_ok=True)
         (dest / fname).write_text(text, encoding="utf-8")
         if fname.lower().endswith(".py"):
             project.modules.append(fname)

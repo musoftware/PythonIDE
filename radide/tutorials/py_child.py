@@ -9,12 +9,17 @@ toolkit of the mode), so it runs with any Python.
 """
 from __future__ import annotations
 
-import ast
-import json
 import os
-import runpy
 import sys
-import traceback
+
+# this folder (radide/tutorials: html.py, course folders...) must not shadow the learner's imports (html, ...)
+_HERE = os.path.normcase(os.path.dirname(os.path.abspath(__file__)))
+sys.path[:] = [p for p in sys.path if os.path.normcase(os.path.abspath(p or os.curdir)) != _HERE]
+
+import ast  # noqa: E402
+import json  # noqa: E402
+import runpy  # noqa: E402
+import traceback  # noqa: E402
 
 folder, spec_path, result_path = sys.argv[1:4]
 spec = json.load(open(spec_path, encoding="utf-8"))
@@ -44,14 +49,16 @@ def record_error(e: BaseException) -> None:
     result["error"] = f"{type(e).__name__}: {e}"
     here = os.path.normcase(os.path.abspath(folder))
     tb = [fr for fr in traceback.extract_tb(e.__traceback__)       # only the learner's files (not runpy, not us)
-          if fr.filename == "<cell>" or not fr.filename.startswith("<") and os.path.normcase(os.path.abspath(fr.filename)).startswith(here + os.sep)]
+          if fr.filename.startswith("Cell In[") or not fr.filename.startswith("<") and os.path.normcase(os.path.abspath(fr.filename)).startswith(here + os.sep)]
     lines = []
     for fr in tb:
-        name = fr.filename if fr.filename == "<cell>" else os.path.basename(fr.filename)
-        lines.append(f'  File "{name}", line {fr.lineno}, in {fr.name}')
+        if fr.filename.startswith("Cell In["):              # a notebook cell, shown like Jupyter does
+            lines.append(f"  {fr.filename}, line {fr.lineno}")
+        else:
+            lines.append(f'  File "{os.path.basename(fr.filename)}", line {fr.lineno}, in {fr.name}')
         if fr.line:
             lines.append("    " + fr.line.strip())
-    if isinstance(e, SyntaxError) and e.filename and e.filename != "<cell>":
+    if isinstance(e, SyntaxError) and e.filename and not e.filename.startswith("Cell In["):
         e.filename = os.path.basename(e.filename)
     tail = "".join(traceback.format_exception_only(type(e), e)).rstrip("\n")
     if tb or not isinstance(e, SyntaxError):
@@ -89,23 +96,30 @@ def run_notebook():
     if cur and kind == "code":
         cells.append("\n".join(cur))
     ns = {"__name__": "__main__"}
+    import warnings                    # plt.show() on the Agg backend: the figure is shown in the IDE only
+    warnings.filterwarnings("ignore", message=".*non-interactive.*")
     try:
         import matplotlib
         matplotlib.use("Agg")
     except ImportError:
         pass
+    import linecache
+    n = 0
     for src in cells:
         if not src.strip():
             continue
+        n += 1
+        name = f"Cell In[{n}]"
+        linecache.cache[name] = (len(src), None, src.splitlines(True), name)
         try:
             tree = ast.parse(src)
             last = None
             quiet = src.rstrip().endswith(";")
             if tree.body and isinstance(tree.body[-1], ast.Expr):
                 last = ast.Expression(tree.body.pop().value)
-            exec(compile(tree, "<cell>", "exec"), ns)
+            exec(compile(tree, name, "exec"), ns)
             if last is not None:
-                value = eval(compile(last, "<cell>", "eval"), ns)
+                value = eval(compile(last, name, "eval"), ns)
                 if value is not None and not quiet:
                     print(repr(value))
         except BaseException as e:  # noqa: BLE001

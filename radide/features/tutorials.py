@@ -589,11 +589,27 @@ class TutorialsPanel(QWidget):
         win = self.win
         win.run_project(debug=False)
         s = win.session
+        if stdin is not None and isinstance(getattr(s, "steps", None), list):
+            # a chained session (foreign projects: build step(s), then the program - C# .csproj, Java ...):
+            # the input belongs to the program, i.e. the last step, not to the build
+            self._send_stdin_when_last(s, stdin, 600)
+            return
         proc = getattr(s, "proc", None)
         if proc is not None and stdin is not None:
             proc.write(stdin.encode("utf-8"))
             proc.closeWriteChannel()
             win.log("[Tutorials] input sent to the program:\n" + stdin.rstrip())
+
+    def _send_stdin_when_last(self, s, stdin: str, tries: int):
+        if self.win.session is not s or tries <= 0 or not s.running():
+            return
+        proc = getattr(s, "proc", None)
+        if not s.steps and proc is not None and proc.state() == proc.ProcessState.Running:
+            proc.write(stdin.encode("utf-8"))
+            proc.closeWriteChannel()
+            self.win.log("[Tutorials] input sent to the program:\n" + stdin.rstrip())
+            return
+        QTimer.singleShot(200, lambda: self._send_stdin_when_last(s, stdin, tries - 1))
 
     def check_block(self, n: int, code: str | None):
         les, b = self.lesson, self.blocks.get(n)

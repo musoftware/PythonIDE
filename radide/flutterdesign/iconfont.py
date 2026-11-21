@@ -11,7 +11,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-_RX = re.compile(r"static const IconData (\w+) = IconData\(0x([0-9a-fA-F]+)")
+_RX = re.compile(r"static const IconData (\w+)\s*=\s*IconData\(\s*0x([0-9a-fA-F]+)")
 _family: str | None = None
 _family_tried = False
 

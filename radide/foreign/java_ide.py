@@ -425,8 +425,11 @@ class JavaAdapter(ForeignAdapter):
                         tool_env(), "gradle run")
         java = find_java("java")
         agent = [f"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:{port}"] if port else []
+        # the Output window reads UTF-8: without these System.out writes the ANSI code page ("????" for Arabic)
+        utf8 = ["-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8",
+                "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8"]
         # the classpath is known only after the build (maven writes it): resolve it when the step starts
-        return _LazyJavaStep([java] + agent, self, target.data["main"])
+        return _LazyJavaStep([java] + utf8 + agent, self, target.data["main"])
 
     def debug_session(self, win, target, pre):
         from ..bridgedebug import free_port

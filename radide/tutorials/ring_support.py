@@ -65,20 +65,22 @@ def run_ring(args: list[str], cwd: Path, stdin: str | None = None, timeout: int 
     except subprocess.TimeoutExpired:
         return False, "<<انتهت المهلة: هل في البرنامج حلقة لا تنتهي أو ينتظر إدخالًا؟>>"
     out = (r.stdout + r.stderr).decode("utf-8", "replace").replace("\r\n", "\n")
+    run_ring.last_rc = r.returncode          # ring.exe exits with 1 after an error that was not caught
     return True, out
+
+
+run_ring.last_rc = 0
 
 
 # ===================================================================== projects
 def controls(code: str, spec: dict | None = None) -> list[tuple[str, str]]:
-    """(type, name) of the controls a form's code uses, then the extra ones of the test spec."""
-    names: list[str] = []
+    """(type, name) of the controls of a form: those of the test spec first (in its order, which is the order on
+    the form), then the other ones the code uses."""
+    extra = ((spec or {}).get("form") or {}).get("controls") or {}
+    names: list[str] = list(extra)
     for m in RX_NAME.finditer(code):
         if m.group(0) not in names:
             names.append(m.group(0))
-    extra = ((spec or {}).get("form") or {}).get("controls") or {}
-    for n in extra:
-        if n not in names:
-            names.append(n)
     out = []
     for n in names:
         typ = (extra.get(n) or {}).get("Type") or next((t for p, t in PREFIXES if n.startswith(p)), None)
@@ -131,7 +133,7 @@ def make_form(files: dict[str, str], dest: Path, name: str, spec: dict | None = 
         c.props["Name"] = cname
         step = 34
         if typ == "Label":
-            c.props.update(Width=360, Text="")
+            c.props.update(Width=280, Text="")
         elif typ == "TextBox":
             c.props.update(Width=220, Text="")
         elif typ == "ComboBox":
@@ -244,7 +246,10 @@ def check(block, code, folder, work: Path, norm, CheckResult, block_files):
         done, out = run_ring([main], work, target.stdin)
     if not done:
         problems.append(out.strip())
-    err = RX_ERROR.search(out)
+    errs = list(RX_ERROR.finditer(out)) if done and run_ring.last_rc != 0 else []
+    err = errs[-1] if errs else None             # the error that stopped the program (not a caught one)
+    if done and run_ring.last_rc != 0 and not err and not spec.get("error"):
+        problems.append("توقف البرنامج بخطأ (التفاصيل في الناتج)")
     if err and not spec.get("error"):
         problems.append("خطأ أثناء التشغيل (التفاصيل في الناتج)")
     elif spec.get("error") and (not err or spec["error"] not in out):

@@ -1,0 +1,19 @@
+{
+  "id": "data-and-reports",
+  "kind": "guide",
+  "title_ar": "دليل البيانات والتقارير في RAD IDE",
+  "title_en": "RAD IDE Guide: Data and Reports",
+  "language": "vb-basic",
+  "level": "beginner",
+  "description_ar": "دليل عربي خطوة بخطوة لقواعد البيانات في RAD IDE: مساحة قواعد البيانات، وجداول SQLite، واستعلامات SQL، وخوادم MySQL و PostgreSQL المحلية، ونافذة مصادر البيانات وربط DataGridView والنماذج بالجداول، ومصمم التقارير، مع أمثلة BASIC حقيقية تعمل على SQLite.",
+  "lessons": [
+    {"id": "01-what-is-database", "file": "01-what-is-database.md", "title_ar": "ما هي قاعدة البيانات؟ أول جدول SQLite", "minutes": 30},
+    {"id": "02-databases-workspace", "file": "02-databases-workspace.md", "title_ar": "مساحة قواعد البيانات (Databases)", "minutes": 30},
+    {"id": "03-sql-queries", "file": "03-sql-queries.md", "title_ar": "استعلامات SQL ونافذة الاستعلام", "minutes": 35},
+    {"id": "04-local-servers", "file": "04-local-servers.md", "title_ar": "MySQL و PostgreSQL والخوادم المحلية", "minutes": 25},
+    {"id": "05-data-sources", "file": "05-data-sources.md", "title_ar": "مصادر البيانات وربط DataGridView", "minutes": 35},
+    {"id": "06-navigate-edit", "file": "06-navigate-edit.md", "title_ar": "التنقل والإضافة والحذف والقوائم المرتبطة", "minutes": 35},
+    {"id": "07-reports", "file": "07-reports.md", "title_ar": "مصمم التقارير", "minutes": 35},
+    {"id": "08-final-project", "file": "08-final-project.md", "title_ar": "المشروع النهائي: مخزن صغير", "minutes": 45}
+  ]
+}

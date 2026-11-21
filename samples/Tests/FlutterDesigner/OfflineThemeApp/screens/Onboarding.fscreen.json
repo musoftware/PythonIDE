@@ -1,0 +1,542 @@
+{
+ "version": 1,
+ "name": "Onboarding",
+ "route": "/",
+ "theme": {},
+ "assets": [
+  "assets/images/onboarding_1.png",
+  "assets/images/onboarding_2.png",
+  "assets/images/onboarding_3.png"
+ ],
+ "fonts": [
+  {
+   "family": "Outfit",
+   "source": "asset",
+   "files": [
+    {
+     "asset": "assets/fonts/Outfit/Outfit-Regular.ttf"
+    },
+    {
+     "asset": "assets/fonts/Outfit/Outfit-SemiBold.ttf",
+     "weight": 600
+    },
+    {
+     "asset": "assets/fonts/Outfit/Outfit-Bold.ttf",
+     "weight": 700
+    }
+   ],
+   "license": "SIL Open Font License 1.1"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFFDFBF7"
+  },
+  "slots": {
+   "body": {
+    "id": "w8",
+    "type": "SafeArea",
+    "slots": {
+     "child": {
+      "id": "w9",
+      "type": "Column",
+      "children": [
+       {
+        "id": "w10",
+        "type": "Align",
+        "props": {
+         "alignment": "Alignment.centerRight"
+        },
+        "slots": {
+         "child": {
+          "id": "w11",
+          "type": "Padding",
+          "props": {
+           "padding": {
+            "h": 12,
+            "v": 4
+           }
+          },
+          "slots": {
+           "child": {
+            "id": "w12",
+            "type": "TextButton",
+            "slots": {
+             "child": {
+              "id": "w13",
+              "type": "Text",
+              "props": {
+               "data": "Skip",
+               "style": {
+                "color": "#FF7D7A8C",
+                "fontSize": 15,
+                "fontWeight": "FontWeight.w500",
+                "fontFamily": "Outfit"
+               }
+              }
+             }
+            },
+            "events": {
+             "onPressed": "replace:/login"
+            }
+           }
+          }
+         }
+        }
+       },
+       {
+        "id": "w14",
+        "type": "Expanded",
+        "slots": {
+         "child": {
+          "id": "w15",
+          "type": "PageView",
+          "children": [
+           {
+            "id": "w16",
+            "type": "Padding",
+            "props": {
+             "padding": {
+              "h": 32,
+              "t": 24
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w17",
+              "type": "Column",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.center"
+              },
+              "children": [
+               {
+                "id": "w18",
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w19",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_1.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
+                },
+                "anim": {
+                 "type": "zoomIn",
+                 "durationMs": 700,
+                 "scale": 0.3
+                }
+               },
+               {
+                "id": "w20",
+                "type": "SizedBox",
+                "props": {
+                 "height": 32
+                }
+               },
+               {
+                "id": "w21",
+                "type": "Text",
+                "props": {
+                 "data": "Stay in the loop",
+                 "style": {
+                  "color": "#FF1E1B2E",
+                  "fontSize": 28,
+                  "fontWeight": "FontWeight.w700",
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 200
+                }
+               },
+               {
+                "id": "w22",
+                "type": "SizedBox",
+                "props": {
+                 "height": 14
+                }
+               },
+               {
+                "id": "w23",
+                "type": "Text",
+                "props": {
+                 "data": "Everything your team shares, gathered in one calm feed.",
+                 "style": {
+                  "color": "#FF7D7A8C",
+                  "fontSize": 15,
+                  "height": 1.5,
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 320
+                }
+               },
+               {
+                "id": "w24",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
+               }
+              ]
+             }
+            }
+           },
+           {
+            "id": "w25",
+            "type": "Padding",
+            "props": {
+             "padding": {
+              "h": 32,
+              "t": 24
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w26",
+              "type": "Column",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.center"
+              },
+              "children": [
+               {
+                "id": "w27",
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w28",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_2.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
+                },
+                "anim": {
+                 "type": "scaleIn",
+                 "durationMs": 700,
+                 "scale": 0.8
+                }
+               },
+               {
+                "id": "w29",
+                "type": "SizedBox",
+                "props": {
+                 "height": 32
+                }
+               },
+               {
+                "id": "w30",
+                "type": "Text",
+                "props": {
+                 "data": "See your progress",
+                 "style": {
+                  "color": "#FF1E1B2E",
+                  "fontSize": 28,
+                  "fontWeight": "FontWeight.w700",
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 200
+                }
+               },
+               {
+                "id": "w31",
+                "type": "SizedBox",
+                "props": {
+                 "height": 14
+                }
+               },
+               {
+                "id": "w32",
+                "type": "Text",
+                "props": {
+                 "data": "Simple charts show how far you have come each week.",
+                 "style": {
+                  "color": "#FF7D7A8C",
+                  "fontSize": 15,
+                  "height": 1.5,
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 320
+                }
+               },
+               {
+                "id": "w33",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
+               }
+              ]
+             }
+            }
+           },
+           {
+            "id": "w34",
+            "type": "Padding",
+            "props": {
+             "padding": {
+              "h": 32,
+              "t": 24
+             }
+            },
+            "slots": {
+             "child": {
+              "id": "w35",
+              "type": "Column",
+              "props": {
+               "mainAxisAlignment": "MainAxisAlignment.center"
+              },
+              "children": [
+               {
+                "id": "w36",
+                "type": "Expanded",
+                "slots": {
+                 "child": {
+                  "id": "w37",
+                  "type": "Image",
+                  "ctor": "asset",
+                  "props": {
+                   "src": "assets/images/onboarding_3.png",
+                   "fit": "BoxFit.contain"
+                  }
+                 }
+                },
+                "anim": {
+                 "type": "scaleIn",
+                 "durationMs": 700,
+                 "scale": 0.8
+                }
+               },
+               {
+                "id": "w38",
+                "type": "SizedBox",
+                "props": {
+                 "height": 32
+                }
+               },
+               {
+                "id": "w39",
+                "type": "Text",
+                "props": {
+                 "data": "Explore further",
+                 "style": {
+                  "color": "#FF1E1B2E",
+                  "fontSize": 28,
+                  "fontWeight": "FontWeight.w700",
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 200
+                }
+               },
+               {
+                "id": "w40",
+                "type": "SizedBox",
+                "props": {
+                 "height": 14
+                }
+               },
+               {
+                "id": "w41",
+                "type": "Text",
+                "props": {
+                 "data": "Discover new spaces and people who build like you do.",
+                 "style": {
+                  "color": "#FF7D7A8C",
+                  "fontSize": 15,
+                  "height": 1.5,
+                  "fontFamily": "Outfit"
+                 },
+                 "textAlign": "TextAlign.center"
+                },
+                "anim": {
+                 "type": "fadeInUp",
+                 "durationMs": 600,
+                 "offsetY": 30,
+                 "delayMs": 320
+                }
+               },
+               {
+                "id": "w42",
+                "type": "SizedBox",
+                "props": {
+                 "height": 16
+                }
+               }
+              ]
+             }
+            }
+           }
+          ],
+          "events": {
+           "onPageChanged": "onPageChanged"
+          }
+         }
+        }
+       },
+       {
+        "id": "w43",
+        "type": "Padding",
+        "props": {
+         "padding": {
+          "h": 32,
+          "v": 28
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w44",
+          "type": "Row",
+          "props": {
+           "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+          },
+          "children": [
+           {
+            "id": "w45",
+            "type": "Row",
+            "props": {
+             "spacing": 8
+            },
+            "children": [
+             {
+              "id": "w46",
+              "type": "Container",
+              "props": {
+               "width": 26,
+               "height": 8,
+               "decoration": {
+                "color": "#FFFF6B8A",
+                "borderRadius": 4
+               }
+              }
+             },
+             {
+              "id": "w47",
+              "type": "Container",
+              "props": {
+               "width": 8,
+               "height": 8,
+               "decoration": {
+                "color": "#FFE9DDE3",
+                "borderRadius": 4
+               }
+              }
+             },
+             {
+              "id": "w48",
+              "type": "Container",
+              "props": {
+               "width": 8,
+               "height": 8,
+               "decoration": {
+                "color": "#FFE9DDE3",
+                "borderRadius": 4
+               }
+              }
+             }
+            ]
+           },
+           {
+            "id": "w49",
+            "type": "InkWell",
+            "props": {
+             "borderRadius": 32
+            },
+            "slots": {
+             "child": {
+              "id": "w50",
+              "type": "Container",
+              "props": {
+               "width": 64,
+               "height": 64,
+               "alignment": "Alignment.center",
+               "decoration": {
+                "gradient": {
+                 "type": "linear",
+                 "begin": "Alignment.topLeft",
+                 "end": "Alignment.bottomRight",
+                 "colors": [
+                  "#FFFF6B8A",
+                  "#FFFFB86B"
+                 ]
+                },
+                "boxShadow": [
+                 {
+                  "color": "#55FF6B8A",
+                  "blur": 18,
+                  "offset": [
+                   0,
+                   8
+                  ]
+                 }
+                ],
+                "shape": "BoxShape.circle"
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w51",
+                "type": "Icon",
+                "props": {
+                 "icon": "Icons.arrow_forward_rounded",
+                 "color": "Colors.white",
+                 "size": 28
+                }
+               }
+              }
+             }
+            },
+            "events": {
+             "onTap": "nav:/login"
+            }
+           }
+          ]
+         }
+        },
+        "anim": {
+         "type": "fadeInUp",
+         "durationMs": 600,
+         "offsetY": 30,
+         "delayMs": 400
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

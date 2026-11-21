@@ -1,0 +1,21 @@
+{
+  "id": "games",
+  "title_ar": "دليل صناعة الألعاب في RAD IDE",
+  "title_en": "Making Games in RAD IDE (guide)",
+  "language": "pygame",
+  "level": "beginner",
+  "description_ar": "دليل خطوة بخطوة لصناعة الألعاب ثنائية الأبعاد في RAD IDE: مشروع لعبة pygame، ومصمم المشاهد، وأحداث اللعبة، والكائنات الرسومية والحركات، وخرائط البلاط، والسلوكيات الجاهزة، والفيزياء والجسيمات، والنقاط والصوت والحفظ، ثم بناء لعبة Sky Hopper خطوة بخطوة، وتصحيح الأخطاء، والتصدير إلى Godot وألعاب HTML5 و Arcade. كل مثال يعمل: «جرّبه» يفتحه مشروعًا تلعبه، و«تحقق» يشغّله تلقائيًا بلا نافذة.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "أنواع مشاريع الألعاب وحلقة اللعبة", "minutes": 20},
+    {"id": "02-scene-designer", "file": "02-scene-designer.md", "title_ar": "جولة في مصمم المشاهد", "minutes": 25},
+    {"id": "03-events-code", "file": "03-events-code.md", "title_ar": "أحداث اللعبة: Scene_Load و Update و KeyDown و Collide", "minutes": 30},
+    {"id": "04-sprites-animations", "file": "04-sprites-animations.md", "title_ar": "الكائنات الرسومية وأوراقها والحركات", "minutes": 25},
+    {"id": "05-tilemaps", "file": "05-tilemaps.md", "title_ar": "خرائط البلاط والتصادم والرسم التلقائي", "minutes": 25},
+    {"id": "06-behaviours", "file": "06-behaviours.md", "title_ar": "السلوكيات الجاهزة: الحركة بلا كود", "minutes": 30},
+    {"id": "07-physics-particles", "file": "07-physics-particles.md", "title_ar": "الفيزياء الحقيقية وتأثيرات الجسيمات", "minutes": 25},
+    {"id": "08-score-sound-save", "file": "08-score-sound-save.md", "title_ar": "النقاط والنصوص والصوت والحفظ والمشاهد", "minutes": 25},
+    {"id": "09-sky-hopper", "file": "09-sky-hopper.md", "title_ar": "مشروع كامل: لعبة Sky Hopper خطوة بخطوة", "minutes": 50},
+    {"id": "10-debug-test", "file": "10-debug-test.md", "title_ar": "تصحيح أخطاء الألعاب واختبارها", "minutes": 20},
+    {"id": "11-godot-html5-arcade", "file": "11-godot-html5-arcade.md", "title_ar": "التصدير إلى Godot وألعاب HTML5 و Arcade و Ring", "minutes": 25}
+  ]
+}

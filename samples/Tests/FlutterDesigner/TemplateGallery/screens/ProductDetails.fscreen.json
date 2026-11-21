@@ -1,0 +1,889 @@
+{
+ "version": 1,
+ "name": "ProductDetails",
+ "route": "/product",
+ "theme": {},
+ "assets": [
+  "assets/images/product_headphones.png"
+ ],
+ "fonts": [
+  {
+   "family": "DM Sans",
+   "source": "google"
+  }
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "props": {
+   "backgroundColor": "#FFFCE8DD"
+  },
+  "slots": {
+   "body": {
+    "id": "w8",
+    "type": "Column",
+    "children": [
+     {
+      "id": "w9",
+      "type": "Expanded",
+      "props": {
+       "flex": 5
+      },
+      "slots": {
+       "child": {
+        "id": "w10",
+        "type": "Stack",
+        "children": [
+         {
+          "id": "w11",
+          "type": "Positioned",
+          "ctor": "fill",
+          "slots": {
+           "child": {
+            "id": "w12",
+            "type": "Container",
+            "props": {
+             "decoration": {
+              "gradient": {
+               "type": "radial",
+               "center": "Alignment.center",
+               "radius": 0.8,
+               "colors": [
+                "#FFFFFFFF",
+                "#FFFCE8DD"
+               ]
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "id": "w13",
+          "type": "Positioned",
+          "props": {
+           "left": 40,
+           "right": 40,
+           "top": 80,
+           "bottom": 10
+          },
+          "slots": {
+           "child": {
+            "id": "w14",
+            "type": "Hero",
+            "props": {
+             "tag": "product-aura"
+            },
+            "slots": {
+             "child": {
+              "id": "w15",
+              "type": "Image",
+              "ctor": "asset",
+              "props": {
+               "src": "assets/images/product_headphones.png",
+               "fit": "BoxFit.contain"
+              }
+             }
+            }
+           }
+          },
+          "anim": {
+           "type": "zoomIn",
+           "durationMs": 700,
+           "scale": 0.3,
+           "delayMs": 100
+          }
+         },
+         {
+          "id": "w16",
+          "type": "Positioned",
+          "props": {
+           "top": 0,
+           "left": 0,
+           "right": 0
+          },
+          "slots": {
+           "child": {
+            "id": "w17",
+            "type": "SafeArea",
+            "slots": {
+             "child": {
+              "id": "w18",
+              "type": "Padding",
+              "props": {
+               "padding": {
+                "h": 16,
+                "v": 8
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w19",
+                "type": "Row",
+                "props": {
+                 "mainAxisAlignment": "MainAxisAlignment.spaceBetween"
+                },
+                "children": [
+                 {
+                  "id": "w20",
+                  "type": "Container",
+                  "props": {
+                   "decoration": {
+                    "color": "Colors.white",
+                    "boxShadow": [
+                     {
+                      "color": "#14000000",
+                      "blur": 12,
+                      "offset": [
+                       0,
+                       4
+                      ]
+                     }
+                    ],
+                    "shape": "BoxShape.circle"
+                   }
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w21",
+                    "type": "IconButton",
+                    "slots": {
+                     "icon": {
+                      "id": "w22",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.arrow_back_ios_new",
+                       "color": "#FF2D3142"
+                      }
+                     }
+                    },
+                    "events": {
+                     "onPressed": "back"
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "id": "w23",
+                  "type": "Container",
+                  "props": {
+                   "decoration": {
+                    "color": "Colors.white",
+                    "boxShadow": [
+                     {
+                      "color": "#14000000",
+                      "blur": 12,
+                      "offset": [
+                       0,
+                       4
+                      ]
+                     }
+                    ],
+                    "shape": "BoxShape.circle"
+                   }
+                  },
+                  "slots": {
+                   "child": {
+                    "id": "w24",
+                    "type": "IconButton",
+                    "slots": {
+                     "icon": {
+                      "id": "w25",
+                      "type": "Icon",
+                      "props": {
+                       "icon": "Icons.favorite_border",
+                       "color": "#FF2D3142"
+                      }
+                     }
+                    },
+                    "events": {
+                     "onPressed": "onFavorite"
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "w26",
+      "type": "Expanded",
+      "props": {
+       "flex": 6
+      },
+      "slots": {
+       "child": {
+        "id": "w27",
+        "type": "Container",
+        "props": {
+         "padding": {
+          "l": 26,
+          "t": 28,
+          "r": 26,
+          "b": 24
+         },
+         "decoration": {
+          "color": "Colors.white",
+          "borderRadius": {
+           "tl": 36,
+           "tr": 36
+          },
+          "boxShadow": [
+           {
+            "color": "#14000000",
+            "blur": 30,
+            "offset": [
+             0,
+             -8
+            ]
+           }
+          ]
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w28",
+          "type": "Column",
+          "props": {
+           "crossAxisAlignment": "CrossAxisAlignment.start"
+          },
+          "children": [
+           {
+            "id": "w29",
+            "type": "Row",
+            "props": {
+             "crossAxisAlignment": "CrossAxisAlignment.start"
+            },
+            "children": [
+             {
+              "id": "w30",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w31",
+                "type": "Column",
+                "props": {
+                 "crossAxisAlignment": "CrossAxisAlignment.start"
+                },
+                "children": [
+                 {
+                  "id": "w32",
+                  "type": "Text",
+                  "props": {
+                   "data": "Aura Wireless",
+                   "style": {
+                    "color": "#FF2D3142",
+                    "fontSize": 24,
+                    "fontWeight": "FontWeight.w800",
+                    "googleFont": "DM Sans"
+                   }
+                  }
+                 },
+                 {
+                  "id": "w33",
+                  "type": "SizedBox",
+                  "props": {
+                   "height": 6
+                  }
+                 },
+                 {
+                  "id": "w34",
+                  "type": "Row",
+                  "children": [
+                   {
+                    "id": "w35",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.star_rounded",
+                     "color": "#FFFFB020",
+                     "size": 20
+                    }
+                   },
+                   {
+                    "id": "w36",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.star_rounded",
+                     "color": "#FFFFB020",
+                     "size": 20
+                    }
+                   },
+                   {
+                    "id": "w37",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.star_rounded",
+                     "color": "#FFFFB020",
+                     "size": 20
+                    }
+                   },
+                   {
+                    "id": "w38",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.star_rounded",
+                     "color": "#FFFFB020",
+                     "size": 20
+                    }
+                   },
+                   {
+                    "id": "w39",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.star_half_rounded",
+                     "color": "#FFFFB020",
+                     "size": 20
+                    }
+                   },
+                   {
+                    "id": "w40",
+                    "type": "SizedBox",
+                    "props": {
+                     "width": 6
+                    }
+                   },
+                   {
+                    "id": "w41",
+                    "type": "Text",
+                    "props": {
+                     "data": "4.6 (1.2k reviews)",
+                     "style": {
+                      "color": "#FF8C90A0",
+                      "fontSize": 12,
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w42",
+              "type": "Text",
+              "props": {
+               "data": "$249",
+               "style": {
+                "color": "#FFEF8354",
+                "fontSize": 24,
+                "fontWeight": "FontWeight.w800",
+                "googleFont": "DM Sans"
+               }
+              }
+             }
+            ],
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 200
+            }
+           },
+           {
+            "id": "w43",
+            "type": "SizedBox",
+            "props": {
+             "height": 16
+            }
+           },
+           {
+            "id": "w44",
+            "type": "Text",
+            "props": {
+             "data": "Soft memory-foam cushions, forty hours of battery and a calm, balanced sound. Folds flat and charges fully in under two hours.",
+             "style": {
+              "color": "#FF8C90A0",
+              "fontSize": 14,
+              "googleFont": "DM Sans",
+              "height": 1.6
+             },
+             "maxLines": 4
+            },
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 280
+            }
+           },
+           {
+            "id": "w45",
+            "type": "SizedBox",
+            "props": {
+             "height": 18
+            }
+           },
+           {
+            "id": "w46",
+            "type": "Text",
+            "props": {
+             "data": "Color",
+             "style": {
+              "color": "#FF2D3142",
+              "fontSize": 14,
+              "fontWeight": "FontWeight.w700",
+              "googleFont": "DM Sans"
+             }
+            }
+           },
+           {
+            "id": "w47",
+            "type": "SizedBox",
+            "props": {
+             "height": 10
+            }
+           },
+           {
+            "id": "w48",
+            "type": "Row",
+            "props": {
+             "spacing": 12
+            },
+            "children": [
+             {
+              "id": "w49",
+              "type": "Container",
+              "props": {
+               "width": 34,
+               "height": 34,
+               "decoration": {
+                "color": "#FF2D3142",
+                "border": {
+                 "color": "Colors.white",
+                 "width": 3
+                },
+                "boxShadow": [
+                 {
+                  "color": "#552D3142",
+                  "blur": 0,
+                  "offset": [
+                   0,
+                   0
+                  ],
+                  "spread": 2
+                 }
+                ],
+                "shape": "BoxShape.circle"
+               }
+              }
+             },
+             {
+              "id": "w50",
+              "type": "Container",
+              "props": {
+               "width": 34,
+               "height": 34,
+               "decoration": {
+                "color": "#FFEF8354",
+                "border": {
+                 "color": "#00FFFFFF",
+                 "width": 3
+                },
+                "shape": "BoxShape.circle"
+               }
+              }
+             },
+             {
+              "id": "w51",
+              "type": "Container",
+              "props": {
+               "width": 34,
+               "height": 34,
+               "decoration": {
+                "color": "#FF9DB4C0",
+                "border": {
+                 "color": "#00FFFFFF",
+                 "width": 3
+                },
+                "shape": "BoxShape.circle"
+               }
+              }
+             },
+             {
+              "id": "w52",
+              "type": "Container",
+              "props": {
+               "width": 34,
+               "height": 34,
+               "decoration": {
+                "color": "#FFE8E1D9",
+                "border": {
+                 "color": "#00FFFFFF",
+                 "width": 3
+                },
+                "shape": "BoxShape.circle"
+               }
+              }
+             }
+            ],
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 360
+            }
+           },
+           {
+            "id": "w53",
+            "type": "SizedBox",
+            "props": {
+             "height": 20
+            }
+           },
+           {
+            "id": "w54",
+            "type": "Row",
+            "props": {
+             "spacing": 10
+            },
+            "children": [
+             {
+              "id": "w55",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w56",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w57",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w58",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.battery_charging_full_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w59",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w60",
+                    "type": "Text",
+                    "props": {
+                     "data": "40 h",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             },
+             {
+              "id": "w61",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w62",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w63",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w64",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.bluetooth_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w65",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w66",
+                    "type": "Text",
+                    "props": {
+                     "data": "BT 5.3",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             },
+             {
+              "id": "w67",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w68",
+                "type": "Container",
+                "props": {
+                 "padding": {
+                  "v": 12
+                 },
+                 "decoration": {
+                  "color": "#FFFFF4EE",
+                  "borderRadius": 14
+                 }
+                },
+                "slots": {
+                 "child": {
+                  "id": "w69",
+                  "type": "Column",
+                  "props": {
+                   "mainAxisSize": "MainAxisSize.min"
+                  },
+                  "children": [
+                   {
+                    "id": "w70",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.hearing_rounded",
+                     "color": "#FFEF8354",
+                     "size": 22
+                    }
+                   },
+                   {
+                    "id": "w71",
+                    "type": "SizedBox",
+                    "props": {
+                     "height": 6
+                    }
+                   },
+                   {
+                    "id": "w72",
+                    "type": "Text",
+                    "props": {
+                     "data": "ANC",
+                     "style": {
+                      "color": "#FF2D3142",
+                      "fontSize": 12,
+                      "fontWeight": "FontWeight.w600",
+                      "googleFont": "DM Sans"
+                     }
+                    }
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            ],
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 420
+            }
+           },
+           {
+            "id": "w73",
+            "type": "Spacer"
+           },
+           {
+            "id": "w74",
+            "type": "Row",
+            "props": {
+             "spacing": 14
+            },
+            "children": [
+             {
+              "id": "w75",
+              "type": "Container",
+              "props": {
+               "decoration": {
+                "borderRadius": 16,
+                "border": {
+                 "color": "#FFE5E5EA",
+                 "width": 1
+                }
+               }
+              },
+              "slots": {
+               "child": {
+                "id": "w76",
+                "type": "Row",
+                "props": {
+                 "mainAxisSize": "MainAxisSize.min"
+                },
+                "children": [
+                 {
+                  "id": "w77",
+                  "type": "IconButton",
+                  "slots": {
+                   "icon": {
+                    "id": "w78",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.remove",
+                     "color": "#FF2D3142"
+                    }
+                   }
+                  },
+                  "events": {
+                   "onPressed": "onLess"
+                  }
+                 },
+                 {
+                  "id": "w79",
+                  "type": "Text",
+                  "props": {
+                   "data": "1",
+                   "style": {
+                    "color": "#FF2D3142",
+                    "fontSize": 16,
+                    "fontWeight": "FontWeight.w700",
+                    "googleFont": "DM Sans"
+                   }
+                  }
+                 },
+                 {
+                  "id": "w80",
+                  "type": "IconButton",
+                  "slots": {
+                   "icon": {
+                    "id": "w81",
+                    "type": "Icon",
+                    "props": {
+                     "icon": "Icons.add",
+                     "color": "#FF2D3142"
+                    }
+                   }
+                  },
+                  "events": {
+                   "onPressed": "onMore"
+                  }
+                 }
+                ]
+               }
+              }
+             },
+             {
+              "id": "w82",
+              "type": "Expanded",
+              "slots": {
+               "child": {
+                "id": "w83",
+                "type": "ElevatedButton",
+                "ctor": "icon",
+                "props": {
+                 "style": {
+                  "backgroundColor": "#FF2D3142",
+                  "foregroundColor": "Colors.white",
+                  "padding": {
+                   "v": 18
+                  },
+                  "elevation": 0,
+                  "minimumSize": [
+                   64,
+                   56
+                  ],
+                  "shape": {
+                   "type": "rounded",
+                   "radius": 16
+                  }
+                 }
+                },
+                "slots": {
+                 "icon": {
+                  "id": "w84",
+                  "type": "Icon",
+                  "props": {
+                   "icon": "Icons.shopping_bag_outlined"
+                  }
+                 },
+                 "label": {
+                  "id": "w85",
+                  "type": "Text",
+                  "props": {
+                   "data": "Add to cart",
+                   "style": {
+                    "fontSize": 16,
+                    "fontWeight": "FontWeight.w700",
+                    "googleFont": "DM Sans"
+                   }
+                  }
+                 }
+                },
+                "events": {
+                 "onPressed": "onAddToCart"
+                }
+               }
+              }
+             }
+            ],
+            "anim": {
+             "type": "fadeInUp",
+             "durationMs": 600,
+             "offsetY": 30,
+             "delayMs": 440
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "import-and-migrate",
+  "title_ar": "دليل الاستيراد والترحيل في RAD IDE",
+  "title_en": "Import and Migrate in RAD IDE (Arabic guide)",
+  "language": "python",
+  "level": "intermediate",
+  "description_ar": "دليل خطوة بخطوة لإحضار البرامج القديمة إلى RAD IDE: فتح المشاريع الأجنبية في مكانها، واستيراد مشاريع Visual Basic 6، ومعالج ترحيل المشاريع إلى Python أو VB.NET، واستيراد البرامج من ملفات exe (برامج .NET وVB6 وPyInstaller والبرامج الأصلية مع Ghidra)، ثم قراءة تقرير الاستيراد وإكمال ما ينقص.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "فتح أم استيراد أم ترحيل؟ ثلاث طرق لإحضار برنامج قديم", "minutes": 15},
+    {"id": "02-vb6-import", "file": "02-vb6-import.md", "title_ar": "استيراد مشروع Visual Basic 6", "minutes": 30},
+    {"id": "03-migrate-wizard", "file": "03-migrate-wizard.md", "title_ar": "معالج ترحيل المشاريع إلى لغة أخرى", "minutes": 35},
+    {"id": "04-exe-wizard", "file": "04-exe-wizard.md", "title_ar": "استيراد برنامج من ملف exe: المعالج والتعرف على النوع", "minutes": 25},
+    {"id": "05-dotnet-vb6-exe", "file": "05-dotnet-vb6-exe.md", "title_ar": "برامج .NET وVB6 المترجمة", "minutes": 35},
+    {"id": "06-pyinstaller", "file": "06-pyinstaller.md", "title_ar": "برامج Python المحزومة بـ PyInstaller", "minutes": 30},
+    {"id": "07-native-ghidra", "file": "07-native-ghidra.md", "title_ar": "البرامج الأصلية (C وC++ وDelphi) مع Ghidra", "minutes": 30},
+    {"id": "08-after-import", "file": "08-after-import.md", "title_ar": "بعد الاستيراد: التقرير وقائمة المهام والاختبار", "minutes": 25}
+  ]
+}

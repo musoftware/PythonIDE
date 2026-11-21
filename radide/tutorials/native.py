@@ -305,8 +305,12 @@ def build_console(lang: str, files: dict[str, str], work: Path) -> tuple[Path | 
         go = tool("go")
         if not go:
             return None, MISSING["go"]
-        if not (work / "go.mod").exists():
-            (work / "go.mod").write_text("module lesson\n\ngo 1.21\n", encoding="utf-8")
+        if not (work / "go.mod").exists():           # like the IDE: the installed Go's language version
+            try:
+                ver = _plugin("go").go_version()
+            except Exception:  # noqa: BLE001
+                ver = "1.22"
+            (work / "go.mod").write_text(f"module lesson\n\ngo {ver}\n", encoding="utf-8")
         code, out = _sh([go, "build", "-o", exe.name, "."], work, env)
     elif lang == "rust":
         if is_cargo(files):

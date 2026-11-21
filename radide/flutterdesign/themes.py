@@ -334,6 +334,12 @@ def generate_dart(spec: dict) -> str:
     L.append("    );")
     L += ["  }", "}", ""]
     code = "\n".join(L)
+    if "isDark ?" not in code:
+        code = code.replace("    final isDark = brightness == Brightness.dark;\n", "")
+    if "scheme = isDark" not in code:
+        code = code.replace("    var scheme = ColorScheme", "    final scheme = ColorScheme")
+    if "textTheme = textTheme" not in code:
+        code = code.replace("    var textTheme = ", "    final textTheme = ")
     return CG.format_dart(code)
 
 

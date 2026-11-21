@@ -277,7 +277,7 @@ def signup() -> dict:
                                    F))], anim=A("fade", 540)),
         gap(18),
         N("ElevatedButton", {"style": {"backgroundColor": V, "foregroundColor": "Colors.white",
-                                       "padding": {"v": 16}, "elevation": 0,
+                                       "padding": {"v": 16}, "elevation": 0, "minimumSize": [64, 54],
                                        "shape": {"type": "rounded", "radius": 16}}},
           child=T("Sign up", 16, "w700", None, F), events={"onPressed": "onSignUp"}, anim=A("fade_up", 620)),
         gap(18),
@@ -315,12 +315,13 @@ def onboarding() -> dict:
     kids = []
     for i, (img, title, body) in enumerate(pages):
         kids.append(pad(col([
-            image(img, height=300, fit="BoxFit.contain") | {"anim": A("zoom" if i == 0 else "scale", 0, 700)},
-            gap(40),
+            N("Expanded", child=image(img, fit="BoxFit.contain"), anim=A("zoom" if i == 0 else "scale", 0, 700)),
+            gap(32),
             T(title, 28, "w700", INK, F, align="center", anim=A("fade_up", 200)),
             gap(14),
             T(body, 15, None, MUTED, F, align="center", height=1.5, anim=A("fade_up", 320)),
-        ], main="center"), h=32))
+            gap(16),
+        ], main="center"), h=32, t=24))
 
     def dot(active):
         return box(w=26 if active else 8, h=8, color=ACC if active else "#FFE9DDE3", radius=4)
@@ -378,10 +379,10 @@ def profile() -> dict:
                     main="spaceEvenly"), color="Colors.white", radius=20, padding={"v": 18},
                 shadow=shadow("#0F1F2333", 24, 8)), h=24, anim=A("fade_up", 460)),
         gap(18),
-        pad(row([N("Expanded", child=N("FilledButton", {"style": {"backgroundColor": P, "padding": {"v": 14},
+        pad(row([N("Expanded", child=N("FilledButton", {"style": {"backgroundColor": P, "padding": {"v": 14}, "minimumSize": [64, 48],
                                                                   "shape": {"type": "rounded", "radius": 14}}},
                                        child=T("Follow", 15, "w600", None, F), events={"onPressed": "onFollow"})),
-                 N("Expanded", child=N("OutlinedButton", {"style": {"foregroundColor": INK, "padding": {"v": 14},
+                 N("Expanded", child=N("OutlinedButton", {"style": {"foregroundColor": INK, "padding": {"v": 14}, "minimumSize": [64, 48],
                                                                     "shape": {"type": "rounded", "radius": 14,
                                                                               "side": {"color": "#FFDADDE8"}}}},
                                        child=T("Message", 15, "w600", None, F),
@@ -571,6 +572,10 @@ def product() -> dict:
                    border={"color": "Colors.white" if sel else "#00FFFFFF", "width": 3},
                    shadow=shadow("#552D3142", 0, 0, 2) if sel else None)
 
+    def feature(ic, label):
+        return N("Expanded", child=box(col([icon(ic, ORANGE, 22), gap(6), T(label, 12, "w600", INK, F)],
+                                           size="min"), color="#FFFFF4EE", radius=14, padding={"v": 12}))
+
     stars = [icon("star_rounded", "#FFFFB020", 20) for _ in range(4)] + [icon("star_half_rounded", "#FFFFB020", 20)]
     top = N("Stack", children=[
         N("Positioned", ctor="fill", child=box(gradient={"type": "radial", "center": "Alignment.center",
@@ -595,6 +600,9 @@ def product() -> dict:
         T("Color", 14, "w700", INK, F),
         gap(10),
         row([dot(INK, True), dot(ORANGE), dot("#FF9DB4C0"), dot("#FFE8E1D9")], spacing=12, anim=A("fade_up", 360)),
+        gap(20),
+        row([feature("battery_charging_full_rounded", "40 h"), feature("bluetooth_rounded", "BT 5.3"),
+             feature("hearing_rounded", "ANC")], spacing=10, anim=A("fade_up", 420)),
         N("Spacer"),
         row([box(row([N("IconButton", icon=icon("remove", INK), events={"onPressed": "onLess"}),
                       T("1", 16, "w700", INK, F),
@@ -602,6 +610,7 @@ def product() -> dict:
                  radius=16, border={"color": "#FFE5E5EA", "width": 1}),
              N("Expanded", child=N("ElevatedButton", {"style": {
                  "backgroundColor": INK, "foregroundColor": "Colors.white", "padding": {"v": 18}, "elevation": 0,
+                 "minimumSize": [64, 56],
                  "shape": {"type": "rounded", "radius": 16}}}, ctor="icon",
                  icon=icon("shopping_bag_outlined"), label=T("Add to cart", 16, "w700", None, F),
                  events={"onPressed": "onAddToCart"}))], spacing=14, anim=A("fade_up", 440)),

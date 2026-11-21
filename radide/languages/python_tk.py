@@ -680,6 +680,8 @@ class PythonTkPlugin(LanguagePlugin):
         hooked = designer_hook(self, form, user_code)
         if hooked is not None:
             return hooked
+        from ..components import codegen as _comp      # component runtimes: one import per class
+        _comp.begin(form, self.id)
         fp = form.props
         n = form.name
         used = lambda ctrl: set(self.used_events(form, ctrl, user_code))
@@ -898,6 +900,9 @@ class PythonTkPlugin(LanguagePlugin):
         from ..usercontrols import is_user_type, tk_control_lines
         if is_user_type(t):                     # an instance of a user control
             return tk_control_lines(self, c, used, master, place)
+        from ..components import codegen as _comp      # component packages (radide/components)
+        if _comp.handles(t):
+            return _comp.tk_control_lines(self, c, used, master, place)
         ev = lambda e: f'self._ev("{n}_{e}")'
         opts = [f"font={_font(p)}"]
         out: list[str] = []
