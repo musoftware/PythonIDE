@@ -194,9 +194,21 @@ class Book:
 
 
 # ===================================================================== the courses
+def plain(title: str) -> str:
+    """A lesson title for the TOC, the index and links: without the `code` backticks of its Markdown."""
+    return title.replace("`", "")
+
+
+def toc_name(title: str) -> str:
+    """plain() + a left-to-right mark after C++ / g++ so the TOC tree does not show "++C" (U+200E is in cp1256)."""
+    return html.unescape(TH.lrm_fix(plain(title)))
+
+
 def nav_html(prev, nxt) -> str:
-    p = (f'<a class="btn sec" href="{prev[0]}">&rarr; {html.escape(prev[1])}</a>' if prev else "<span></span>")
-    n = (f'<a class="btn" href="{nxt[0]}">{html.escape(nxt[1])} &larr;</a>' if nxt else "<span></span>")
+    p = (f'<a class="btn sec" href="{prev[0]}">&rarr; {TH.lrm_fix(html.escape(plain(prev[1])))}</a>'
+         if prev else "<span></span>")
+    n = (f'<a class="btn" href="{nxt[0]}">{TH.lrm_fix(html.escape(plain(nxt[1])))} &larr;</a>'
+         if nxt else "<span></span>")
     return f'<div class="navfoot">{p}{n}</div>'
 
 
@@ -208,25 +220,25 @@ def build_course(key: str, enc: str, work: Path, log=print) -> Path | None:
         return None
     book = Book(f"radide_{key}", course.title_ar, enc, work / key)
     # cover page: description + list of lessons
-    rows = "".join(f'<li><a href="{les.id}.html">{html.escape(les.title_ar)}</a> '
+    rows = "".join(f'<li><a href="{les.id}.html">{TH.lrm_fix(html.escape(plain(les.title_ar)))}</a> '
                    f'<span class="meta">({les.minutes} دقيقة)</span></li>' for les in course.lessons)
-    intro = (f"<h1>{html.escape(course.title_ar)}</h1><p class=\"meta\">{html.escape(course.title_en)}</p>"
-             f"<p>{html.escape(course.description_ar or '')}</p>"
+    intro = (f"<h1>{TH.lrm_fix(html.escape(course.title_ar))}</h1><p class=\"meta\">{html.escape(course.title_en)}</p>"
+             f"<p>{TH.lrm_fix(html.escape(course.description_ar or ''))}</p>"
              f"<p>هذا الملف نسخة للقراءة من دروس RAD IDE. لتشغيل الأمثلة والتحقق من التمارين افتح الدروس داخل "
              f"البيئة: <b>تعليمات &gt; الدروس</b> (Ctrl+Shift+F1)، ثم اضغط «جرّبه» أو «تحقق».</p>"
              f"<h2>الدروس</h2><ol>{rows}</ol>")
     book.write("index.html", TH.page(intro, course.title_ar, chm=True))
-    book.toc.append((1, course.title_ar, "index.html"))
+    book.toc.append((1, toc_name(course.title_ar), "index.html"))
     lessons = course.lessons
     for i, les in enumerate(lessons):
         prev = (f"{lessons[i - 1].id}.html", lessons[i - 1].title_ar) if i > 0 else None
         nxt = (f"{lessons[i + 1].id}.html", lessons[i + 1].title_ar) if i + 1 < len(lessons) else None
         fname = f"{les.id}.html"
         book.write(fname, TH.lesson_page(les, chm=True, nav=nav_html(prev, nxt)))
-        book.toc.append((2, f"{les.number}. {les.title_ar}", fname))
-        book.index.append((les.title_ar, fname))
+        book.toc.append((2, f"{les.number}. {toc_name(les.title_ar)}", fname))
+        book.index.append((toc_name(les.title_ar), fname))
         for m in re.finditer(r"^##\s+(.+)$", les.text(), re.M):         # section headings -> index keywords
-            kw = re.sub(r"[`*]", "", m.group(1)).strip()
+            kw = toc_name(m.group(1).replace("*", "")).strip()
             if kw:
                 book.index.append((kw, fname))
     hhp = book.finish("index.html", chm_name)
@@ -250,6 +262,11 @@ def split_help_page(path: Path) -> tuple[str, str, list[tuple[str, str]]]:
     return head, title, sections
 
 
+# hh.exe (IE) paints the background of an inline ltr + unicode-bidi:embed element in a right-to-left page over
+# its text (the .key chips of the Arabic help were empty boxes); inline-blocks are painted right (see TH.CHM_CSS)
+MANUAL_CHM_CSS = "<style>code, .key { display: inline-block; max-width: 100%; }</style>"
+
+
 def build_manual(enc: str, work: Path, log=print) -> Path | None:
     book = Book("radide_manual", "RAD IDE Manual - دليل RAD IDE", enc, work / "manual")
     first = None
@@ -270,14 +287,15 @@ def build_manual(enc: str, work: Path, log=print) -> Path | None:
                               lambda m: (f'href="{where[m.group(1)]}#{m.group(1)}"' if m.group(1) in where
                                          else f'href="{lang}_00.html"'), sec_html)
             links = []
+            back, fwd = ("&rarr;", "&larr;") if lang == "ar" else ("&larr;", "&rarr;")     # right-to-left page
             if n > 0:
-                links.append(f'<a href="{lang}_{n - 1:02d}.html">&larr; {html.escape(sections[n - 1][0])}</a>')
+                links.append(f'<a href="{lang}_{n - 1:02d}.html">{back} {html.escape(sections[n - 1][0])}</a>')
             if n + 1 < len(sections):
-                links.append(f'<a href="{lang}_{n + 1:02d}.html">{html.escape(sections[n + 1][0])} &rarr;</a>')
+                links.append(f'<a href="{lang}_{n + 1:02d}.html">{html.escape(sections[n + 1][0])} {fwd}</a>')
             nav = f'<p style="margin-top:28px;border-top:1px solid #ccc;padding-top:6px">{" | ".join(links)}</p>'
             page_html = (f'<!DOCTYPE html>\n<html {dirattr}><head><meta charset="utf-8">'
                          f'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'
-                         f'<meta http-equiv="X-UA-Compatible" content="IE=edge">{head}</head>'
+                         f'<meta http-equiv="X-UA-Compatible" content="IE=edge">{head}{MANUAL_CHM_CSS}</head>'
                          f"<body>{sec_html}{nav}</body></html>")
             page_html = re.sub(r"<title>.*?</title>", f"<title>{html.escape(sec_title)}</title>", page_html, 1, re.S)
             book.write(fname, page_html)
@@ -352,7 +370,7 @@ def verify(chm: Path, key: str, enc: str, work: Path, log=print) -> list[str]:
     elif key in ("basic", "cpp"):
         toc = html.unescape(hhc.read_bytes().decode("cp1256"))
         for les in T.course(BOOKS[key][0]).lessons:
-            if les.title_ar not in toc:
+            if toc_name(les.title_ar) not in toc:
                 problems.append(f"{chm.name}: TOC lacks '{les.title_ar}'")
     log(f"verify {chm.name}: {len(pages)} pages, {'OK' if not problems else f'{len(problems)} problem(s)'}")
     return problems

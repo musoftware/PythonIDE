@@ -18,7 +18,7 @@ ACT = "https://radtut.action/"
 FONT_FILE = "NotoNaskhArabic-wght.ttf"
 FONT_FAMILY = "Noto Naskh Arabic RAD"
 LEXERS = {"vb": "vbnet", "cpp": "cpp"}
-LANG_NAMES = {"vb": "BASIC", "cpp": "C++"}
+LANG_NAMES = {"vb": "BASIC", "cpp": "C++‎"}     # LRM: "مثال C++" must not read "مثال ++C"
 
 try:
     import markdown as _markdown
@@ -29,11 +29,17 @@ except ImportError:  # pragma: no cover - markdown is a dependency of the IDE
 # ===================================================================== pieces
 def md_to_html(text: str) -> str:
     if _markdown is not None:
-        return _markdown.markdown(text, extensions=["tables", "sane_lists"], output_format="html")
-    out = []
-    for para in re.split(r"\n\s*\n", text.strip()):          # minimal fallback
-        out.append("<p>" + html.escape(para).replace("\n", "<br>") + "</p>")
-    return "\n".join(out)
+        out = _markdown.markdown(text, extensions=["tables", "sane_lists"], output_format="html")
+    else:
+        out = "\n".join("<p>" + html.escape(para).replace("\n", "<br>") + "</p>"     # minimal fallback
+                        for para in re.split(r"\n\s*\n", text.strip()))
+    return lrm_fix(out)
+
+
+def lrm_fix(html_text: str) -> str:
+    """In a right-to-left sentence the "++" of C++ / g++ (and the "#" of C#) is neutral and jumps before the
+    letters ("++C"): a left-to-right mark after it keeps it attached."""
+    return re.sub(r"(\b[A-Za-z]\w*\+\+|\b[CF]#)(?![+#\w])", r"\1&lrm;", html_text)
 
 
 def highlight(code: str, lang: str) -> str:
@@ -59,6 +65,8 @@ def pygments_css() -> str:
     for ln in (light + "\n" + dark).splitlines():
         if re.match(r"\s*body\.(light|dark) pre\.hl\s*\{", ln) or ".hll" in ln or "td.linenos" in ln \
                 or "span.linenos" in ln:
+            continue
+        if ".err " in ln and "border" in ln:    # Arabic placeholders in syntax templates are not errors
             continue
         keep.append(ln)
     return "\n".join(keep)
@@ -100,6 +108,7 @@ th { background: var(--chip); }
 pre { margin: 0; padding: 10px 14px; overflow-x: auto; direction: ltr; text-align: left;
   font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 13.5px; line-height: 1.5; }
 pre.hl { background: var(--code); }
+pre.hl span { unicode-bidi: embed; unicode-bidi: isolate; }
 pre.out { background: var(--out); unicode-bidi: plaintext; white-space: pre-wrap; }
 .ex textarea { box-sizing: border-box; width: 100%%; min-height: 160px; border: 0; resize: vertical; direction: ltr;
   text-align: left; padding: 10px 14px; background: var(--code); color: var(--fg); outline: none;
@@ -127,6 +136,15 @@ pre.out { background: var(--out); unicode-bidi: plaintext; white-space: pre-wrap
 .navfoot { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 12px;
   border-top: 1px solid var(--border); }
 mark.find { background: #ffe066; color: #000; }
+"""
+
+# Internet Explorer (hh.exe) paints the background of an inline element with direction:ltr +
+# unicode-bidi:embed inside a right-to-left paragraph OVER its text: inline `code` in Arabic sentences showed
+# as empty grey chips.  An inline-block is painted correctly, and it is also an isolated left-to-right unit
+# (what unicode-bidi:isolate does in the viewer, which IE does not know); long spans still wrap inside it.
+CHM_CSS = """
+code { display: inline-block; unicode-bidi: embed; max-width: 100%; vertical-align: baseline; line-height: 1.5; }
+pre code { display: inline; }
 """
 
 JS = r"""
@@ -181,6 +199,23 @@ def _dir(text: str) -> str:
     return "rtl" if _ARABIC.search(text) else "ltr"
 
 
+_STRONG = re.compile(r"[A-Za-z؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
+
+
+def _out_text(text: str, chm: bool) -> str:
+    """Program output.  The viewer orders each line by its first strong letter (unicode-bidi: plaintext);
+    Internet Explorer (CHM) does not know plaintext, so there lines starting in Arabic get <span dir="rtl">,
+    and the lines are joined with <br> (IE drops the newlines of a <pre> next to such spans)."""
+    if not chm:
+        return html.escape(text)
+    out = []
+    for ln in text.split("\n"):
+        m = _STRONG.search(ln)
+        rtl = bool(m and _ARABIC.match(m.group(0)))
+        out.append(f'<span dir="rtl">{html.escape(ln)}</span>' if rtl else html.escape(ln))
+    return "<br>".join(out)
+
+
 def _bar(tag: str, buttons: list[tuple[str, str, str]], chm: bool) -> str:
     parts = [f'<span class="tag">{html.escape(tag)}</span>']
     if not chm:
@@ -203,7 +238,7 @@ def block_html(b: Block, chm: bool = False, saved_code: str | None = None, quiz_
     if b.role == "quiz":
         q = b.quiz
         if not q:
-            return f'<pre class="out">{html.escape(b.code)}</pre>'
+            return f'<pre class="out">{_out_text(b.code, chm)}</pre>'
         btns = "".join(f'<button class="choice" dir="{_dir(str(c))}" onclick="radQuiz({n},{i})">{_inline(str(c))}'
                        f'</button>' for i, c in enumerate(q.get("choices", [])))
         why = html.escape(_inline(str(q.get("explanation", ""))), quote=True)
@@ -214,7 +249,7 @@ def block_html(b: Block, chm: bool = False, saved_code: str | None = None, quiz_
     if b.lang == "text":
         tag = {"output": "الناتج", "input": "المدخلات (ما يكتبه المستخدم)"}.get(b.role, "")
         bar = f'<div class="bar"><span class="tag">{tag}</span></div>' if tag else ""
-        return f'<div class="blk">{bar}<pre class="out">{html.escape(b.code.rstrip())}</pre></div>'
+        return f'<div class="blk">{bar}<pre class="out">{_out_text(b.code.rstrip(), chm)}</pre></div>'
     if b.lang not in ("vb", "cpp"):
         return f'<div class="blk"><pre class="hl">{html.escape(b.code.rstrip())}</pre></div>'
     code_html = f'<pre class="hl">{highlight(b.code.rstrip(), b.lang)}</pre>'
@@ -257,7 +292,7 @@ def page(body: str, title: str, dark: bool = False, font_url: str = "fonts/" + F
     compat = ""
     if chm:      # hh.exe uses the Internet Explorer engine: no CSS variables, no dark mode
         compat = '<meta http-equiv="X-UA-Compatible" content="IE=edge">'
-        css = static_css(css)
+        css = static_css(css) + CHM_CSS
         js = "var RAD_CHM = true;\n" + js
     return (f'<!DOCTYPE html>\n<html lang="ar" dir="rtl"><head><meta charset="{charset}">'
             f'<meta http-equiv="Content-Type" content="text/html; charset={charset}">{compat}'
@@ -277,7 +312,7 @@ def static_css(css: str) -> str:
 
 def lesson_page(lesson: Lesson, dark: bool = False, chm: bool = False, saved: dict | None = None,
                 font_url: str = "fonts/" + FONT_FILE, size: int = 17, nav: str = "", charset: str = "utf-8") -> str:
-    meta = (f'<div class="meta">{html.escape(lesson.course.title_ar)} · الدرس {lesson.number} من '
+    meta = (f'<div class="meta">{lrm_fix(html.escape(lesson.course.title_ar))} · الدرس {lesson.number} من '
             f'{len(lesson.course.lessons)} · {lesson.minutes} دقيقة تقريبًا</div>')
     return page(meta + lesson_body(lesson, chm, saved) + nav, lesson.title_ar, dark, font_url, size, chm, charset)
 
