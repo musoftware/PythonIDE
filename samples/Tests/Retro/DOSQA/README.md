@@ -16,5 +16,6 @@
     set QA_LANG=ar & set QA_THEME=dark & python samples/Tests/Retro/DOSQA/qa_dos_e2e.py
 
 Needs the DOS toolchains and DOSBox-X already installed (`../DOSDev/test_dos_toolchains.py` downloads them) and the
-retro toolchains / emulators for the game phase. Results on the development machine: English 87/87, Arabic + dark
-see the final report of the QA run.
+retro toolchains / emulators for the game phase. Results on the development machine: English 88/88, Arabic + dark
+88/88. The "emulator keeps running for 3 s" checks are timing-sensitive: in 2 of 7 full runs one emulator (DOSBox-X
+or mGBA) had already exited; a re-run passed.

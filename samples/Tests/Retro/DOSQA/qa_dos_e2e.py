@@ -482,7 +482,9 @@ def phase_game():
         if proc is not None:
             time.sleep(3)
             alive = proc.alive() if hasattr(proc, "alive") else proc.poll() is None
-            qh.check(f"[{system}] {emu} starts with the program and keeps running", alive)
+            pop = getattr(proc, "popen", None)
+            qh.check(f"[{system}] {emu} starts with the program and keeps running", alive,
+                     (getattr(pop, "returncode", None), getattr(proc, "command", None)))
             if hasattr(proc, "stop"):                     # radide.retro.emu RetroProcess
                 proc.stop()
             else:
@@ -491,6 +493,18 @@ def phase_game():
                                                               proc.poll() is None))
         else:
             qh.check(f"[{system}] {emu} started", False, (res or {}).get("log", "")[-300:] if res else "")
+    phase_game_names()
+
+
+def phase_game_names():
+    """Designs of two systems with the same default name (Screen1.a26scr, Screen1.m13scr) keep their generated
+    files apart (DASM Screen1.asm and NASM SCREEN1.ASM are one file on Windows)."""
+    from radide.retro.design.game import gen_dir
+    folder = WORK / "designs"
+    a, m = folder / "Screen1.a26scr", folder / "Screen1.m13scr"
+    if a.is_file() and m.is_file():
+        qh.check("same-name designs of two systems generate into different folders", gen_dir(a) != gen_dir(m),
+                 (gen_dir(a), gen_dir(m)))
 
 
 # ====================================================================== i18n

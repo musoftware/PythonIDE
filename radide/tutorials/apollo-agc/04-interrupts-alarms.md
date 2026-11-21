@@ -67,6 +67,114 @@ T3HAND          CAF     T3LOAD          # 37777: فيضان جديد بعد جز
 
 > **من التاريخ:** فكرة «إعادة التشغيل مع حماية البيانات» هي التي أنقذت هبوط أبولو 11 أثناء إنذارات 1202: أعاد الحاسوب تشغيل نفسه عدة مرات في ثوانٍ دون أن يفقد حالة الهبوط.
 
+## جرّب: برنامج يتنفس
+
+هذا برنامج كامل فيه متجهات المقاطعة ومعالج `T3RUPT` وحلقة رئيسية تقرأ `NEWJOB`. المدقق يشغّله **مع إنذارات العتاد** نصف ثانية:
+
+<!-- test: {"seconds": 0.5, "alarms": true, "show": ["TICKS"], "restarts": true} -->
+```agc run
+TIME3           EQUALS  26
+NEWJOB          EQUALS  67
+ARUPT           EQUALS  10
+ZERO            EQUALS  7
+
+                SETLOC  100
+TICKS           ERASE                   # يزيد كل جزء من مئة من الثانية
+
+                SETLOC  4000
+                INHINT                  # 4000 GOJAM: التشغيل
+                TCF     START
+                NOOP
+                NOOP
+                RESUME                  # 4004 T6RUPT
+                NOOP
+                NOOP
+                NOOP
+                RESUME                  # 4010 T5RUPT
+                NOOP
+                NOOP
+                NOOP
+                DXCH    ARUPT           # 4014 T3RUPT: احفظ A و L
+                TCF     T3HAND
+                NOOP
+                NOOP
+
+START           CA      ZERO
+                TS      TICKS
+                CAF     T3LOAD          # أول T3RUPT بعد جزء من مئة من الثانية
+                TS      TIME3
+                RELINT                  # شغّل المقاطعات
+LOOP            CA      NEWJOB          # «أنا حي» لدائرة Night Watchman
+                TCF     LOOP
+
+T3HAND          CAF     T3LOAD
+                TS      TIME3
+                INCR    TICKS
+                DXCH    ARUPT           # استعد A و L
+                RESUME
+
+T3LOAD          OCT     37777
+```
+
+```text output
+TICKS = 50
+restarts: 0
+```
+
+50 مقاطعة في نصف ثانية (واحدة كل جزء من مئة من الثانية)، ولا إعادة تشغيل. والآن احذف قراءة `NEWJOB` من الحلقة وشغّل 3 ثوانٍ:
+
+<!-- test: {"seconds": 3, "alarms": true, "show": ["TICKS"], "restarts": true} -->
+```agc run
+TIME3           EQUALS  26
+NEWJOB          EQUALS  67
+ARUPT           EQUALS  10
+ZERO            EQUALS  7
+
+                SETLOC  100
+TICKS           ERASE                   # يزيد كل جزء من مئة من الثانية
+
+                SETLOC  4000
+                INHINT                  # 4000 GOJAM: التشغيل
+                TCF     START
+                NOOP
+                NOOP
+                RESUME                  # 4004 T6RUPT
+                NOOP
+                NOOP
+                NOOP
+                RESUME                  # 4010 T5RUPT
+                NOOP
+                NOOP
+                NOOP
+                DXCH    ARUPT           # 4014 T3RUPT: احفظ A و L
+                TCF     T3HAND
+                NOOP
+                NOOP
+
+START           CA      ZERO
+                TS      TICKS
+                CAF     T3LOAD          # أول T3RUPT بعد جزء من مئة من الثانية
+                TS      TIME3
+                RELINT                  # شغّل المقاطعات
+LOOP            CA      TICKS           # نسينا قراءة NEWJOB!
+                TCF     LOOP
+
+T3HAND          CAF     T3LOAD
+                TS      TIME3
+                INCR    TICKS
+                DXCH    ARUPT           # استعد A و L
+                RESUME
+
+T3LOAD          OCT     37777
+```
+
+```text output
+TICKS = 44
+restarts: 2
+```
+
+أعاد العتاد تشغيل الحاسوب (GOJAM) **مرتين** في 3 ثوانٍ (الدائرة تفحص كل 1.28 ثانية تقريبًا)، وفي كل مرة يبدأ البرنامج من جديد ويصفّر `TICKS`؛ لذلك `TICKS` = 44 فقط: الأجزاء من مئة الثانية منذ آخر إعادة تشغيل. في RAD IDE ترى في نافذة Output سطرًا مثل `NIGHT WATCHMAN alarm ... the AGC restarted` ويضيء مصباح **RESTART** في DSKY.
+
 ## الأخطاء في Error List
 
 احفظ الملف بعد كتابة خطأ، مثل `TS KEYZ` (اسم غير معرّف) أو `FOO 1` (عملية غير معروفة): يظهر الخطأ في **Error List** مع اسم الملف ورقم السطر، وانقر عليه مرتين لتذهب إليه. وتظهر الرسائل بالعربية إذا كانت الواجهة بالعربية.

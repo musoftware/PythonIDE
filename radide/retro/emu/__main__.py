@@ -4,6 +4,8 @@
     python -m radide.retro.emu install <emulator id>          (downloads the pinned official build)
     python -m radide.retro.emu run <rom> [--system S] [--debug] [--symbols FILE] [--emulator ID]
     python -m radide.retro.emu dos <project folder | program> [--wait]
+    python -m radide.retro.emu shots <rom> --frames 60,240 [--out DIR] [--press 120-130:start ...]
+                                       (Mesen 2 headless test runner saves PNG screenshots, mesenshot.py)
 
 ``run`` / ``dos`` wait until the emulator is closed, so the IDE's Run session (and Stop) follow it.
 """
@@ -78,6 +80,11 @@ def main(argv=None) -> int:
     r.add_argument("--no-wait", action="store_true")
     d = sub.add_parser("dos")
     d.add_argument("target")
+    sh = sub.add_parser("shots")
+    sh.add_argument("rom")
+    sh.add_argument("--frames", required=True, help="frame numbers, e.g. 60,240")
+    sh.add_argument("--out", default="shots")
+    sh.add_argument("--press", action="append", default=[], help="FIRST-LAST:button[+button], e.g. 120-126:start")
     a = ap.parse_args(argv)
     if a.cmd == "status":
         from .manager import status
@@ -110,6 +117,21 @@ def main(argv=None) -> int:
             return 0
     if a.cmd == "dos":
         return _dos(a.target)
+    if a.cmd == "shots":
+        from .mesenshot import ShotError, mesen_screenshots
+        inputs = []
+        for spec in a.press:
+            rng, _c, buttons = spec.partition(":")
+            first, _d, last = rng.partition("-")
+            inputs.append((int(first), int(last or first), {b: True for b in buttons.split("+") if b}))
+        try:
+            files = mesen_screenshots(a.rom, [int(f) for f in a.frames.split(",") if f.strip()], a.out, inputs)
+        except (ShotError, ValueError, OSError) as e:
+            print(f"*** {e}")
+            return 1
+        for f in files:
+            print(f)
+        return 0
     return 2
 
 

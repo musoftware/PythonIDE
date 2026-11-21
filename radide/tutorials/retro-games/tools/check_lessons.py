@@ -9,7 +9,7 @@ Block kinds (fence info strings):
   output compared with the ``text output`` block after them (radide.tutorials.check).
 * ``dasm run`` / ``dasm solution`` - an Atari 2600 program: it replaces main.asm of a new "Atari 2600 Game (DASM)"
   project (radide.retro.dev templates, atari2600.h included) and is built with DASM.  A hidden
-  ``<!-- test: {"frames": 4, "hold": "right", "ram": ["$80"]} -->`` before it runs the cartridge in the course's
+  ``<!-- test: {"frames": 4, "hold": "right", "ram": ["$80"], "ramhex": ["$81"], "tia": ["COLUBK"]} -->`` before it runs the cartridge in the course's
   6502 + 2600 simulator (tools/sim2600.py) and prints ``scanlines: N`` (last frame) and ``$80 = V`` lines, which
   must equal the following ``text output`` block.  ``dasm exercise`` must build (and needs a solution).
 * ``ca65 run`` - an NES program: replaces main.s of a new "NES Game (ca65 assembly)" project (nes.inc, nes.cfg).
@@ -68,6 +68,8 @@ def report_2600(rom: Path, spec: dict) -> str:
     out.append(f"scanlines: {lines[-1] if lines else 0}")
     for a in spec.get("ram", []):
         out.append(f"{a} = {m.ram_at(int(a.lstrip('$'), 16))}")
+    for a in spec.get("ramhex", []):
+        out.append(f"{a} = ${m.ram_at(int(a.lstrip('$'), 16)):02X}")
     for reg in spec.get("tia", []):
         v = m.tia.get(reg)
         out.append(f"{reg} = ${v:02X}" if v is not None else f"{reg} = (never written)")

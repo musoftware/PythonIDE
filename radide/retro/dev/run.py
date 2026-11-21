@@ -30,6 +30,13 @@ def run_rom(path, system_id: str, log=print, emulator: str | None = None):
         except Exception as e:  # noqa: BLE001 - the emulator slice is optional
             log(f"The retro emulator support is not available ({e}).")
             return None
+        try:
+            from ..emu.catalog import EMULATORS
+            if emulator and sysd.emu_system not in getattr(EMULATORS.get(emulator), "systems", ()):
+                log(f"{emulator} does not run {sysd.title} - using the first available emulator.")
+                emulator = None
+        except ImportError:
+            emulator = None
         if emulator:
             try:
                 return emu_run(str(path), system=sysd.emu_system, emulator=emulator)

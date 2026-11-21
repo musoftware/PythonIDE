@@ -56,8 +56,12 @@ def load(path) -> Design:
 
 
 def gen_dir(design_path) -> Path:
-    """Where the generated files of a design file go: ``<folder>/gen/<name>/``."""
+    """Where the generated files of a design file go: ``<folder>/gen/<name>/``, or ``<folder>/gen/<name>_<system>/``
+    when a design of another system has the same name there (Screen1.a26scr next to Screen1.m13scr: the DASM
+    ``Screen1.asm`` and the NASM ``SCREEN1.ASM`` are the same file on Windows)."""
     p = Path(design_path)
+    if any(e != p.suffix.lower() and (p.parent / (p.stem + e)).exists() for e in EXTS):
+        return p.parent / "gen" / f"{ident(p.stem)}_{EXTS.get(p.suffix.lower(), 'design')}"
     return p.parent / "gen" / ident(p.stem)
 
 

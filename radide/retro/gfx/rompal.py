@@ -213,7 +213,7 @@ def find_bgr555_palettes(data, colors: int = 4, max_results: int = 40) -> list[P
         ends = sum(1 for w in (first[0], first[-1]) if w in (0x0000, 0x7FFF))
         if not ends:
             continue
-        score = 0.5 + 0.2 * ends + 0.1 * min(3, len(set(first)) - 2)
+        score = 0.5 + 0.2 * ends + 0.1 * min(3, len(set(first)) - 2) + (0.05 if i % 8 == 0 else 0)
         out.append(PaletteCandidate("bgr555", i, size, round(score, 3), [bgr555_to_rgb(w) for w in first]))
     out.sort(key=lambda c: -c.score)
     picked = []

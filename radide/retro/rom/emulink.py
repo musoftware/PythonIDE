@@ -36,6 +36,10 @@ def run_rom(path, system: str | None = None, debug: bool = False, **kw):
     sysid = EMU_SYSTEM.get(system or "", system or "") or system_for(p)
     try:
         from ..emu import run_rom as emu_run
+        from ..emu.catalog import EMULATORS
+        chosen = EMULATORS.get(emulator or "")
+        if emulator and (chosen is None or (sysid and sysid not in chosen.systems)):
+            emulator = None                 # that emulator cannot run this system: automatic choice
     except ImportError as e:            # the emulator slice is not installed
         raise RunError("The retro emulator support (radide/retro/emu) is not available.") from e
     try:

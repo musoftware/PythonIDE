@@ -342,6 +342,33 @@ def _activate_folder(win, folder: Path) -> None:
         pass
 
 
+def redisassemble_folder(win, folder, ask: bool = True):
+    """Re-disassemble the project in *folder*: through the IDE when it is the active project (open editors are
+    refreshed), else directly."""
+    folder = Path(folder)
+    _activate_folder(win, folder)
+    proj = getattr(win, "project", None)
+    try:
+        active = proj is not None and Path(proj.folder).resolve() == folder.resolve()
+    except OSError:
+        active = False
+    if active:
+        return redisassemble(win, ask=ask)
+    if ask and QMessageBox.question(win, _tr("Re-disassemble with Hints"),
+                                    _tr("Disassemble the original ROM again with hints.json? The main source is "
+                                        "saved as a .bak file first and then replaced.")) !=             QMessageBox.StandardButton.Yes:
+        return None
+    from ..retro.dev.fromrom import redisassemble as redo
+    try:
+        res = redo(folder, log=win.log)
+    except Exception as e:  # noqa: BLE001
+        QMessageBox.warning(win, _tr("Re-disassemble with Hints"), str(e))
+        return None
+    win.log(res.summary())
+    QMessageBox.information(win, _tr("Re-disassemble with Hints"), res.summary())
+    return res
+
+
 def apply_hint(win, folder, kind: str, start: int, end: int | None = None, text: str = "",
                redo: bool = True):
     """Write one hint into hints.json and (by default) disassemble again."""
@@ -362,8 +389,7 @@ def apply_hint(win, folder, kind: str, start: int, end: int | None = None, text:
         pass
     if not redo:
         return True
-    _activate_folder(win, folder)
-    return redisassemble(win, ask=False)
+    return redisassemble_folder(win, folder, ask=False)
 
 
 def _ask_text(win, title: str, label: str) -> str:
@@ -399,7 +425,7 @@ def _hint_submenu(win, menu, folder: Path, start: int | None, end: int | None, w
         sub.addAction(_tr("Add Label..."), label)
         sub.addAction(_tr("Add Comment..."), comment)
     sub.addSeparator()
-    sub.addAction(_tr("Re-disassemble with Hints"), lambda: (_activate_folder(win, folder), redisassemble(win)))
+    sub.addAction(_tr("Re-disassemble with Hints"), lambda: redisassemble_folder(win, folder))
     sub.addAction(_tr("Open hints.json"), lambda: win.open_any_file(folder / "hints.json"))
     sub.setProperty("radHintWhere", where)
     return sub
@@ -508,8 +534,7 @@ def import_labels_dialog(win, folder=None, path: str | None = None):
         QMessageBox.warning(win, _tr("Import Labels"), str(e))
         return None
     win.log(f"[disassembly] {n} labels imported from {Path(path).name} ({kind}) into hints.json")
-    _activate_folder(win, folder)
-    res = redisassemble(win, ask=True) if n else None
+    res = redisassemble_folder(win, folder, ask=True) if n else None
     return n, res
 
 
@@ -560,7 +585,7 @@ def hints_tree_menu(win, item, m) -> None:
     folder = Path(data[1]).parent
     m.addSeparator()
     m.addAction(_tr("Open hints.json"), lambda: win.open_any_file(Path(data[1])))
-    m.addAction(_tr("Re-disassemble with Hints"), lambda: (_activate_folder(win, folder), redisassemble(win)))
+    m.addAction(_tr("Re-disassemble with Hints"), lambda: redisassemble_folder(win, folder))
     m.addAction(_tr("Import Labels (.dbg / .sym / .mlb / .nl)..."), lambda: import_labels_dialog(win, folder))
 
 
@@ -711,6 +736,8 @@ def _install_hints_ui(win) -> None:
 
         def hex_hook(doc, menu, offset, sel):
             hex_hint_menu(win, doc, menu, offset, sel)
+        hex_hook._rad_retro_hints = True
+        HexDocument.menu_hooks[:] = [h for h in HexDocument.menu_hooks if not getattr(h, "_rad_retro_hints", False)]
         HexDocument.menu_hooks.append(hex_hook)
     except Exception as e:  # noqa: BLE001
         win.log(f"[retro dev] hex hints menu: {e}")

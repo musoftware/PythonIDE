@@ -4,13 +4,15 @@
   "title_en": "Old NASA Programs: the Apollo Guidance Computer and Classic Fortran",
   "language": "agc-yul",
   "level": "intermediate",
-  "description_ar": "دورة عربية عن برمجة الحاسوب الذي أوصل الإنسان إلى القمر: حاسوب التوجيه في أبولو (AGC) ولوحة DSKY والأفعال والأسماء، ولغة تجميع AGC بصيغة yaYUL، والذاكرة المتغيرة والثابتة والبنوك، والمقاطعات وإنذارات العتاد، والتشغيل والتصحيح في محاكي RAD IDE، ثم تنزيل برنامج رحلة أبولو 11 الحقيقي (Comanche055) وبناؤه بـ yaYUL وتشغيله في yaAGC، وأخيرًا فورتران 66/77 بالصيغة الثابتة والبطاقات المثقبة وتحويلها إلى فورتران الحديثة.",
+  "description_ar": "دورة عربية عن برمجة الحاسوب الذي أوصل الإنسان إلى القمر: قصة حاسوب التوجيه في أبولو (AGC)، وبنيته (الكلمة 15 بت والمتمم الأحادي والذاكرة المتغيرة والثابتة والبنوك والمسجلات)، ولغة تجميع AGC بصيغة yaYUL، والمقاطعات وإنذارات العتاد، ولوحة DSKY والأفعال والأسماء وكلمات المرحِّلات، ثم تنزيل برنامج رحلة أبولو 11 الحقيقي (Comanche055) وقراءته وبناؤه بـ yaYUL وتشغيله في yaAGC، وفورتران 66/77 بالصيغة الثابتة والبطاقات المثقبة للبرامج العلمية، ومشروع نهائي: مؤقت عدّ تنازلي على DSKY. كل برنامج في الدورة يُختبر في محاكي RAD IDE (وفي yaYUL عند تثبيته).",
   "lessons": [
     {"id": "01-intro", "file": "01-intro.md", "title_ar": "الحاسوب الذي أوصلنا إلى القمر", "minutes": 25},
-    {"id": "02-dsky", "file": "02-dsky.md", "title_ar": "لوحة DSKY: الأفعال والأسماء", "minutes": 30},
-    {"id": "03-first-program", "file": "03-first-program.md", "title_ar": "لغة تجميع AGC: أول برنامج والذاكرة والمسجلات", "minutes": 45},
-    {"id": "04-interrupts-alarms", "file": "04-interrupts-alarms.md", "title_ar": "المقاطعات وإنذارات العتاد وتصحيح الأخطاء", "minutes": 40},
-    {"id": "05-apollo-11", "file": "05-apollo-11.md", "title_ar": "برنامج أبولو 11 الحقيقي: Comanche055 و yaYUL و yaAGC", "minutes": 40},
-    {"id": "06-legacy-fortran", "file": "06-legacy-fortran.md", "title_ar": "فورتران 66/77 والبطاقات المثقبة", "minutes": 45}
+    {"id": "02-architecture", "file": "02-architecture.md", "title_ar": "بنية AGC: الكلمة والذاكرة والمسجلات", "minutes": 45},
+    {"id": "03-first-program", "file": "03-first-program.md", "title_ar": "أول برنامج AGC: الإجراءات والجداول والتصحيح", "minutes": 45},
+    {"id": "04-interrupts-alarms", "file": "04-interrupts-alarms.md", "title_ar": "المقاطعات وإنذارات العتاد", "minutes": 40},
+    {"id": "05-dsky", "file": "05-dsky.md", "title_ar": "لوحة DSKY: الأفعال والأسماء وكلمات المرحِّلات", "minutes": 45},
+    {"id": "06-apollo-11", "file": "06-apollo-11.md", "title_ar": "قراءة Comanche055: برنامج أبولو 11 الحقيقي", "minutes": 45},
+    {"id": "07-legacy-fortran", "file": "07-legacy-fortran.md", "title_ar": "فورتران IV/66/77 للبرامج العلمية والبطاقات المثقبة", "minutes": 50},
+    {"id": "08-final-project", "file": "08-final-project.md", "title_ar": "المشروع النهائي: عدّ تنازلي على DSKY", "minutes": 75}
   ]
 }

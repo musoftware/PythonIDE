@@ -53,6 +53,24 @@ from radide.retro.emu.ui import start_rom, hot_reload            # IDE versions 
 * Errors: `launch.EmuError`. When no emulator is installed, its message tells the user to open Tools > Retro >
   Emulators...
 * CLI: `python -m radide.retro.emu status | install <id> | run <rom> [--debug] [--symbols f] | dos <folder|program>`.
+* Per-project choice: `ui.project_emulator(project)` / `ui.set_project_emulator(project, id)` /
+  `ui.resolve_emulator(system, wanted)`; the Emulator toolbar (`features/retro_emu.py`) edits it, `start_rom`
+  uses it when no emulator is passed.
+
+### Screenshots by script (Mesen 2, `mesenshot.py`)
+
+`mesen_screenshots(rom, frames, outdir, inputs=[(first, last, {"start": True})])` runs Mesen 2's headless test
+runner (`Mesen.exe --testRunner --doNotSaveSettings script.lua rom`, documented in Mesen's command-line help; the
+script ends it with `emu.stop(code)`). The generated Lua script holds buttons with `emu.setInput` in an
+`inputPolled` callback and calls `emu.takeScreenshot()` (PNG bytes) at the given frames. Mesen's Lua sandbox has
+no `io` / `os` unless the user enables "Allow access to I/O and OS functions", and RAD IDE does not change that
+setting: the script prints the PNG as hex on stdout and Python writes the files. The runs use a private runner
+copy (hard links of `Mesen.exe` and its DLLs in `%LOCALAPPDATA%\RADIDE\retro\mesen-runner` with its own
+portable `settings.json`), so the user's Mesen settings are never touched and an open Mesen is not disturbed. Its
+settings put a standard controller in port 1: a portable Mesen started from an empty `settings.json` has `None`
+there (so `emu.setInput` does nothing, and an interactive Mesen started by RAD IDE has no controller until the
+user sets one up in Mesen's input settings). CLI: `python -m radide.retro.emu shots <rom> --frames 60,240
+[--press 120-126:start] [--out DIR]`.
 
 ### Hot reload
 
@@ -143,6 +161,24 @@ File > Save / Save All and the "save changes?" prompt of the tab.
   system colour (the 2600 picker shows the COLUxx value).
 * PNG export (page) / import (quantised to the current colour slots, from the selected tile on; a 2x / 4x
   scaled picture is scaled back).
+* **ROM Palette...** (`rompal.py`, dialog in `ui_romgfx.py`): the colour slots are read from the ROM and edits go
+  back into it. Point at an offset, or press **Detect Palettes** and pick a candidate (NES: 32- or 16-byte blocks
+  of $00-$3F with a shared background colour; GBC / SNES / GBA: BGR555 words with white / black at an end).
+  Layouts: `nes4` (4 bytes per sub-palette, the $3F00 block), `nes_slot` (one byte per sub-palette for one slot,
+  for games that build palettes in code, e.g. DABG's `MainColors`), `gb_bgp` (BGP / OBP register byte), `bgr555`
+  (4 or 16 colours, free RGB colours: double-click opens a colour dialog) and `genesis` (CRAM words). Double-click
+  a slot to change it: the byte(s) change in the file (undoable when the tiles come from the same bytes) and
+  Save writes them.
+* **Compressed Graphics...** (`compress.py`, pluggable `Codec` registry): pick a codec and an offset, or **Find
+  Graphics** (this codec / all codecs) to scan the ROM for blocks that decompress into plausible tiles - for
+  CHR-RAM games, whose graphics are all compressed in the PRG ROM. The block opens in the editor (a yellow bar
+  shows codec, sizes and the room for the packed data); Save packs it again and writes it back when it fits in
+  the old stream plus the free $FF / $00 bytes after it, otherwise it warns and asks before overwriting what
+  follows. "Back to the ROM bytes" returns to the raw view. Codecs: `pb53` (raw, give the tile count; packer
+  byte-identical with pb53.py), `pb53h` (tile-count header), `rle_konami` ($01-$80 runs, $81-$FE literals, $FF
+  end), `rle_shiru` (NES Screen Tool / neslib tag RLE), `packbits` (give the size), `lz10` (GBA / DS BIOS LZ77).
+  Any byte stream is a valid RLE stream, so RLE hits of Find Graphics are ranked below PB53 / LZ10 (whose
+  structure random bytes break) and must be whole tiles that compress better than 1.6:1.
 
 ### Atari 2600 playfield (`ui_playfield.py`, core `atari2600.py`)
 
@@ -301,7 +337,19 @@ working copy:
   Remove / Move Up / Down / Note, details of the selected patch, Edit Working Copy (clean ROM + patches ->
   `work/`, opened in the hex editor) and **Capture Edits as Patch** (the diff becomes `patches/NNN_<name>.ips|bps|
   ups`), Build, Build & Run, Open Output.
-* Solution Explorer shows a "ROM Hacking" node with the source ROM, the patches, the working copy and the build.
+* Solution Explorer shows a "ROM Hacking" node with the source ROM, the patches, the tables, the working copy and
+  the build.
+* Text tables: a `.tbl` saved anywhere inside the project folder (Text Table Editor, Save) is added to `tables`
+  automatically (the filebus listener of `features/retro_rom.py`; an open Patch Manager reloads `rom.json`, so
+  it does not overwrite the list). The **Tables** node's context menu: Add Existing Table... (copied into
+  `tables/` when it is outside the project), New Table...; a table's menu: Open in Text Table Editor, **Set as
+  Default Table** (`rom.json` `default_table`: the hex editor selects it in its text column), Remove from
+  Project (the file stays). Double-click opens the Text Table Editor.
+* Emulator: the **Emulator** toolbar (shown for ROM Hacking and retro game projects) picks the emulator of the
+  project - Automatic (the first installed one for the system) or Mesen 2 / FCEUX / ... - stored as `rom.json`
+  `emulator` (game projects: `project.radproj` `retro.emulator`). F5 (`python -m radide.retro.rom run`,
+  `radide.retro.dev.run`) and Run in Emulator (`emu.ui.start_rom`) use it; when it is not installed or cannot
+  run the system, the first available emulator is used and the Output window says so.
 
 ### Emulator link (`emulink.py`)
 
@@ -388,8 +436,30 @@ point (raw ZX code), "follow undocumented 6502 opcodes" and a folder. `fromrom.c
 (`main.asm` / `main.s`, plus a generated ld65 config for ca65), the data files, a copy of the original in `rom/`
 and `hints.json`, builds it and compares the result with the original: the dialog shows **byte-identical** (green)
 or the first difference (red). F5 / Rebuild Check repeat the comparison after every edit.
-`hints.json` (`code` addresses the tracer missed, `data` ranges, `labels`, `comments`, `undocumented`) is applied by
-Re-disassemble with Hints (the old source is kept as `.bak`). Console: `python -m radide.retro.dev.fromrom <rom>
+`hints.json` (`code` addresses the tracer missed, `data` ranges, `labels`, `comments`, `undocumented`, `jump_tables`,
+`auto_tables`; label keys `"bank:addr"` name an address in one bank only, names of addresses outside the ROM
+become equates such as `PlayerLives = $76`) is applied by Re-disassemble with Hints (the old source is kept as
+`.bak`).
+
+* **Jump tables** (6502): the tracer follows the dispatch idioms itself - `lda Tab+1,x / pha / lda Tab,x / pha /
+  ... / rts` (the RTS trick, also `,y` and split lo / hi tables), `lda Tab,x / sta ptr / lda Tab+1,x / sta ptr+1 /
+  jmp (ptr)` and `jmp (vector)` into the ROM. Entries are read until one is not a plausible code address (outside
+  the ROM, inside the table, into the middle of an instruction, an undecodable opcode) or the table runs into
+  code; every entry becomes code with a label and the table is written as `.word Label-1` / `.word Label`
+  (ca65 split tables `.byte <(Label-1)` / `.byte >(Label-1)`), references to the high byte as `Label+1`, so the
+  rebuild stays byte-identical. Double Action Blaster Guys: 831 traced instructions before, 7022 now (5 tables,
+  55 entries). Hints: `"jump_tables": [["A000", "A01F", "word" | "rts", optional hi-byte table]]`.
+* **Hints from the editors**: the source editor's context menu (lines with an address comment, a selection = a
+  range) and the hex editor's context menu on the project's `rom/` copy (file offsets are turned into CPU
+  addresses, `romfmt.file_to_cpu`) have **Disassembly Hints**: Mark as Code / Data / Jump Table (addresses) / RTS
+  Jump Table (address-1), Add Label..., Add Comment..., Re-disassemble with Hints, Open hints.json. Marking writes
+  `hints.json` (`fromrom.add_hint`) and disassembles again.
+* `hints.json` shows in Solution Explorer (double-click opens it; menu: Re-disassemble with Hints, Import Labels).
+* **Import Labels into Hints...** (Tools > Retro > Retro Development, or the hints.json node; `cpu/labels.py`):
+  ca65 / ld65 `.dbg` (labels, scoped ones as `Scope_name`; constants and ca65's `CPU_*` skipped), RGBDS `.sym`
+  (`BB:AAAA Name`, ROMX names bank-specific) and simple `Name = $AAAA` listings, Mesen `.mlb` (Mesen 1 `P:` /
+  `R:` ... and Mesen 2 `NesPrgRom:` ... types; PRG-ROM offsets become CPU addresses) and FCEUX `.nl`
+  (`$C000#Name#comment`, `game.nes.N.nl` bank files). Existing names in hints.json are kept. Console: `python -m radide.retro.dev.fromrom <rom>
 <folder> [system] [base hex]`. Multi-bank NES ROMs: only the fixed last bank is traced automatically (the other
 banks need code hints); a multi-block ZX tape is compared as the concatenation of its CODE blocks.
 

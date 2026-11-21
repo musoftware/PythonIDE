@@ -51,6 +51,9 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "operand": ("{0} needs an operand", "{0} تحتاج معاملاً"),
     "ignored": ("{0} is not supported by the built-in assembler and was ignored", "{0} غير مدعومة في المجمِّع المدمج"),
     "channel": ("Channel number {0} is out of range", "رقم القناة {0} خارج المدى"),
+    "yayul_reg": ("'{0}' is not defined: the built-in assembler knows it is register {1:o}, but yaYUL needs "
+                  "'{0} EQUALS {1:o}' (as in the Apollo sources)",
+                  "'{0}' غير معرَّف: المجمِّع المدمج يعرف أنه المسجل {1:o}، لكن yaYUL يحتاج السطر '{0} EQUALS {1:o}'"),
 }
 
 
@@ -282,6 +285,10 @@ class Assembler:
         if name in self.symbols:
             return self.symbols[name]
         if name.upper() in isa.REGISTERS and name not in self.symbols:
+            st = getattr(self, "_st", None)         # yaYUL has no built-in register names: warn once per name
+            if st is not None and name.upper() not in self._reg_warned:
+                self._reg_warned.add(name.upper())
+                self.warn(st, "yayul_reg", name.upper(), isa.REGISTERS[name.upper()])
             return Loc("E", 0, isa.REGISTERS[name.upper()])
         raise _Undefined(name)
 
@@ -382,7 +389,9 @@ class Assembler:
         self.bank_next = {}
         self.ebank = 0
         self.extend_pending = False
+        self._reg_warned: set[str] = set()
         for st in stmts:
+            self._st = st
             try:
                 self._stmt(st)
             except _Undefined as e:
@@ -495,6 +504,9 @@ class Assembler:
                 word = 0o10000 + self.loc.plus(1).cpu_address()          # TCF +1 in fixed memory
             if ext and not self.extend_pending:
                 self.warn(st, "no_extend", op)
+            if op == "RETURN" and "Q" not in self.symbols and "Q" not in self._reg_warned:
+                self._reg_warned.add("Q")                 # yaYUL assembles RETURN as TC Q
+                self.warn(st, "yayul_reg", "Q", 2)
             self.emit(st, [word])
             self.extend_pending = op == "EXTEND"
             return
