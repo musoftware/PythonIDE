@@ -303,10 +303,14 @@ else:
             except Exception as e:  # noqa: BLE001
                 check(f"{sysid}: starts in {emu}", False, e)
                 continue
-            time.sleep(4)
+            # poll the emulator RetroProcess tracks (launch.py: the process really showing the ROM - a
+            # launcher's child, or an already open single-instance Mesen window that took the ROM over)
+            while proc.alive() and time.time() < proc.started_at + 4:
+                time.sleep(0.1)
             alive = proc.alive()
-            check(f"{sysid}: {Path(res['rom']).name} runs in {emu}", alive)
+            check(f"{sysid}: {Path(res['rom']).name} runs in {emu}", alive, proc.exit_info())
             proc.stop()
+            check(f"{sysid}: {emu} stopped again", not proc.alive(), proc.exit_info())
 
 # ====================================================================== summary
 ok = sum(1 for _, c in RESULTS if c)

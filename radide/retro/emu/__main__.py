@@ -111,7 +111,12 @@ def main(argv=None) -> int:
         from .launch import tie_to_this_process
         tie_to_this_process(proc)
         try:
-            return proc.wait() or 0
+            rc = proc.wait() or 0
+            proc.alive()                        # finds a window that took the ROM over (sets handed_off)
+            if proc.handed_off:
+                print(f"{proc.emulator} was already open: the ROM was loaded in that window (single-instance "
+                      "mode). Close it first to run under RAD IDE's control (Stop, Reload).")
+            return rc
         except KeyboardInterrupt:
             proc.stop()
             return 0

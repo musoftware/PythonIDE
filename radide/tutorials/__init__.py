@@ -54,6 +54,10 @@ CODE_LANGS.update({"js": "js", "javascript": "js", "node": "js", "ts": "ts", "ty
 # Assembly lessons (NASM x64 console / GUI Bridge forms, asm16 = 8086 emulator): radide/tutorials/asm_support.py
 ASML = ("asm", "asm16")
 CODE_LANGS.update({"asm": "asm", "nasm": "asm", "asm16": "asm16", "8086": "asm16"})
+# DOS lessons (dos-qbasic / dos-pascal / dos-c / dos-asm / dos-batch: DOS projects run in DOSBox-X):
+# radide/tutorials/dos_support.py
+DOSL = ("dos-qbasic", "dos-pascal", "dos-c", "dos-asm", "dos-batch")
+CODE_LANGS.update({k: k for k in DOSL})
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
 
@@ -83,7 +87,7 @@ class Block:
     def runnable(self) -> bool:
         if self.lang in NATIVE or self.lang in SCRIPT or self.lang in CSJAVA or self.lang in PHPL or self.lang in JSL:
             return self.role in ("run", "solution")
-        if self.lang in ASML:
+        if self.lang in ASML or self.lang in DOSL:
             return self.role in ("run", "solution")
         if self.lang in MOBGAME:
             return self.role in ("run", "solution")
@@ -109,6 +113,8 @@ class Block:
         return self.solution if self.role == "exercise" and self.solution is not None else self
 
     def reads_stdin(self) -> bool:
+        if self.lang in DOSL:                  # keys come from the hidden test (typed in DOSBox-X)
+            return False
         if self.lang in ASML:
             from .asm_support import reads_stdin as _asm_stdin
             return _asm_stdin(self)
@@ -277,9 +283,9 @@ def parse(md: str) -> list[tuple[str, object]]:
         items.append(("md", rest))
     # attach output / input to the code block before them, exercises to their solutions
     for i, b in enumerate(blocks):
-        if b.lang in ("vb", "cpp", "ring", "py", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML) and b.role in ("run", "solution", "exercise"):
+        if b.lang in ("vb", "cpp", "ring", "py", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML, *DOSL) and b.role in ("run", "solution", "exercise"):
             for nxt in blocks[i + 1:]:
-                if nxt.lang in ("vb", "cpp", "ring", "py", "quiz", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML):
+                if nxt.lang in ("vb", "cpp", "ring", "py", "quiz", *NATIVE, *SCRIPT, *CSJAVA, *PHPL, *JSL, *MOBGAME, *ASML, *DOSL):
                     break
                 if nxt.role == "output" and b.expected is None:
                     b.expected = nxt.code
@@ -313,6 +319,9 @@ def split_files(code: str, default: str) -> dict[str, str]:
 
 
 def default_file(block: Block) -> str:
+    if block.lang in DOSL:
+        from .dos_support import default_file as dos_default
+        return dos_default(block)
     if block.lang in ASML:
         from .asm_support import default_file as asm_default
         return asm_default(block)
@@ -413,6 +422,9 @@ def make_project(block: Block, dest: Path, code: str | None = None, name: str = 
     if block.lang in ASML:
         from . import asm_support
         return asm_support.make_project(block, block_files(block, code), dest, name)
+    if block.lang in DOSL:
+        from . import dos_support
+        return dos_support.make_project(block, block_files(block, code), dest, name)
     raise ValueError(f"block '{block.info}' cannot be run")
 
 
@@ -699,6 +711,9 @@ def check(block: Block, code: str | None = None, folder: Path | None = None, wor
     if block.lang in ASML:
         from . import asm_support
         return asm_support.check(block, code, folder, work, norm, CheckResult, block_files)
+    if block.lang in DOSL:
+        from . import dos_support
+        return dos_support.check(block, code, folder, work, norm, CheckResult, block_files)
     return CheckResult(False, "", None, ["هذه الكتلة لا تُشغَّل"])
 
 

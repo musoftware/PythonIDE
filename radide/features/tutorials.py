@@ -651,9 +651,18 @@ class TutorialsPanel(QWidget):
                         QTimer.singleShot(250, lambda: go(tries - 1))
                 QTimer.singleShot(300, go)
             return True
-        if run:
+        if run and b.lang in getattr(T, "DOSL", ()):
+            QTimer.singleShot(150, lambda: self._run_dos(b))
+        elif run:
             QTimer.singleShot(150, lambda: self._run(stdin))
         return True
+
+    def _run_dos(self, b):
+        """DOS lessons: build and run the program captured in DOSBox-X (no window; the lesson's keys are typed
+        for it) - its output and text screen appear in the Output window (radide/tutorials/dos_support.py)."""
+        from ..tutorials.dos_support import capture_args
+        from .dos_ide import run_variant
+        self.dos_proc = run_variant(self.win, capture_args(b), "Run with Captured Output (DOSBox-X)")
 
     def _run(self, stdin: str | None):
         win = self.win

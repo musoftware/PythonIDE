@@ -39,6 +39,11 @@ LANG_NAMES.update({"flutter": "Flutter", "game": "لعبة pygame"})
 # Assembly course: NASM x64 and 8086 programs (radide/tutorials/asm_support.py)
 LEXERS.update({"asm": "nasm", "asm16": "nasm"})
 LANG_NAMES.update({"asm": "Assembly", "asm16": "8086"})
+# DOS course: QBasic / Pascal / C / 16-bit assembly / batch programs run in DOSBox-X (tutorials/dos_support.py)
+LEXERS.update({"dos-qbasic": "qbasic", "dos-pascal": "pascal", "dos-c": "c", "dos-asm": "tasm", "dos-batch": "batch"})
+LANG_NAMES.update({"dos-qbasic": "QBasic", "dos-pascal": "Pascal", "dos-c": "C (DOS)", "dos-asm": "Assembly (DOS)",
+                   "dos-batch": "Batch"})
+CHECK_RUN_LANGS = {"dos-qbasic", "dos-pascal", "dos-c", "dos-asm", "dos-batch"}     # run blocks with "تحقق ✓"
 
 try:
     import markdown as _markdown
@@ -344,6 +349,11 @@ def block_html(b: Block, chm: bool = False, saved_code: str | None = None, quiz_
     if tryable(b):
         tag = f"مثال {lang_name}" + (" (نموذج)" if b.form or b.gui else "")
         buttons = [(f"radAct('try',{n})", "▶ جرّبه", ""), (f"radAct('open',{n})", "افتح في المحرر", "sec")]
+        if b.lang in CHECK_RUN_LANGS and b.role == "run":
+            # DOS programs: "تحقق" builds the example, runs it in DOSBox-X and compares the ```text output
+            buttons.insert(1, (f"radAct('check',{n})", "تحقق ✓", "sec"))
+            return (f'<div class="blk" id="b{n}">{_bar(tag, buttons, chm)}{code_html}'
+                    f'<div class="result" id="res{n}"></div></div>')
         return f'<div class="blk" id="b{n}">{_bar(tag, buttons, chm)}{code_html}</div>'
     return f'<div class="blk" id="b{n}">{code_html}</div>'
 

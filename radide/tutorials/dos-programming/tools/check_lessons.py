@@ -64,115 +64,24 @@ def runnable_blocks(lesson):
     return out
 
 
-def lines_of(text: str) -> list[str]:
-    rows = [ln.rstrip() for ln in text.replace("\r\r\n", "\n").replace("\r\n", "\n").split("\n")]
-    while rows and not rows[-1]:
-        rows.pop()
-    return rows
+from radide.tutorials import dos_support as D  # noqa: E402  (the same code as the tutorial's "Check" button)
 
-
-def contains(hay: list[str], needle: list[str]) -> bool:
-    needle = [n for n in needle]
-    while needle and not needle[0]:
-        needle.pop(0)
-    if not needle:
-        return True
-    for i in range(len(hay) - len(needle) + 1):
-        if hay[i:i + len(needle)] == needle:
-            return True
-    return False
-
-
-def build_block(block, kind: str, spec: dict, work: Path, log: list):
-    """Write the block into a new DOS project and build it -> (ok, folder, settings)."""
-    from radide.languages import get_plugin
-    from radide.model import Project
-    from radide.retro.dos import build as B
-    from radide.retro.dos.templates import BY_ID, write_dos_text
-    shutil.rmtree(work, ignore_errors=True)
-    plugin = get_plugin(B.LANGUAGE_OF_KIND[kind])
-    plugin.create_new_project(work, "Lesson", HELLO[kind])
-    main = BY_ID[HELLO[kind]].main
-    write_dos_text(work / main, block.code)
-    if spec.get("com") or spec.get("model"):
-        p = Project.load(work)
-        dos = p.extra.setdefault("dos", {})
-        if spec.get("com"):
-            dos["output"] = "com"
-        if spec.get("model"):
-            dos["model"] = spec["model"]
-        p.save()
-    ok = B.Builder(work, log=log.append).build()
-    return ok, work, B.settings_for(Project.load(work)), main
-
-
-def screen_run(run, folder: Path, cmd: str, keys: str, timeout: int) -> dict:
-    """Like dosbox.capture_text but without redirecting standard output (a program that draws with LOCATE /
-    COLOR / PRINT must write to the screen): the text screen is saved by RADSCR.COM afterwards."""
-    import os
-    from radide.retro.dos import dosbox, helpers
-    tools = folder / "_build" / "radtools"
-    helpers.write_helpers(tools)
-    for f in ("_SCREEN.TXT", "_SCR13.RAW"):
-        try:
-            (folder / f).unlink()
-        except OSError:
-            pass
-    rel = os.path.relpath(tools, folder).replace("/", "\\")
-    pre = [f"C:\\{rel}\\RADCAP.COM"] + ([f"C:\\{rel}\\RADKEYS.COM {keys}"] if keys else [])
-    run.commands = list(run.commands) + pre + [cmd, f"C:\\{rel}\\RADSCR.COM"]
-    rc, timed_out = dosbox.run_headless(run, folder / "_build", timeout, log=lambda *_a: None)
-    res = {"rc": rc, "timed_out": timed_out, "stdout": "", "screen": "", "graphics": None}
-    try:
-        res["screen"] = (folder / "_SCREEN.TXT").read_bytes().decode("cp437", "replace")
-    except OSError:
-        pass
-    if (folder / "_SCR13.RAW").is_file():
-        res["graphics"] = str(folder / "_SCR13.RAW")
-    return res
+lines_of, contains = D.lines_of, D.contains
 
 
 def check_block(block, kind, role, expected, work: Path) -> tuple[bool, str]:
-    from radide.retro.dos import build as B
-    from radide.retro.dos import dosbox, helpers
+    """Build the block in a new DOS project and run it captured in DOSBox-X (radide/tutorials/dos_support.py)."""
     spec = block.spec or {}
     log: list[str] = []
-    ok, folder, s, main = build_block(block, kind, spec, work, log)
-    diags = B.read_diagnostics(folder).get("diags", [])
-    if "error_line" in spec:
-        rows = [d for d in diags if d["severity"] == "Error" and d["file"].upper() == main.upper()
-                and d["line"] == spec["error_line"]]
-        return (not ok and bool(rows)), "\n".join(log[-12:])
-    if not ok:
-        return False, "build failed:\n" + "\n".join(log[-15:])
-    if role == "exercise" or spec.get("build_only"):
+    ok, folder, s, main = D.build_block(block, None, work, T.block_files, log)
+    good, out, problems = D.run_and_compare(block, block, folder, s, main, ok, log, expected=expected)
+    if good and expected is None and role != "exercise" and not (spec.get("mode13") or spec.get("build_only")
+                                                                 or "error_line" in spec):
+        good, problems = False, ["no ```text output``` block and no test"]
+    if good:
         return True, ""
-    cmd = ("CALL " + s["main"]) if kind == "batch" else B.output_name(s)
-    run = dosbox.DosRun(mounts=[("C", folder)], path=["Z:\\BIN", "Z:\\DOS"])
-    if spec.get("screen"):
-        r = screen_run(run, folder, cmd, spec.get("keys", ""), int(spec.get("timeout", 25)))
-    else:
-        r = dosbox.capture_text(run, folder, cmd, keys=spec.get("keys", ""), timeout=int(spec.get("timeout", 25)),
-                                log=lambda *_a: None)
-    if r["timed_out"]:
-        return False, "timed out (does the program wait for more keys?)\n" + r["stdout"][-400:] + r["screen"][-600:]
-    problems = []
-    if spec.get("mode13"):
-        st = helpers.mode13_stats(r["graphics"]) if r["graphics"] else {}
-        if not st or st.get("nonzero", 0) < 1000:
-            problems.append(f"no mode 13h frame captured ({st})")
-    if expected is not None:
-        want = lines_of(expected)
-        if not (contains(lines_of(r["stdout"]), want) or contains(lines_of(r["screen"]), want)):
-            problems.append("output differs")
-    elif not spec.get("mode13"):
-        problems.append("no ```text output``` block and no test")
-    detail = ""
-    if problems:
-        detail = ("; ".join(problems) + "\n--- stdout ---\n" + "\n".join(lines_of(r["stdout"])[-25:]) +
-                  "\n--- screen ---\n" + "\n".join(x for x in lines_of(r["screen"]) if x.strip())[-1500:] +
-                  ("\n--- expected ---\n" + expected if expected else ""))
-    return not problems, detail
+    tail = ("\n--- expected ---\n" + expected) if expected else ""
+    return False, "; ".join(problems) + "\n" + out[-2500:] + tail
 
 
 def main(argv: list[str]) -> int:

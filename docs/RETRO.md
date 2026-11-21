@@ -29,6 +29,21 @@ no autostart disk image is written. VICE still creates `%APPDATA%\vice` for its 
 `%LOCALAPPDATA%\DOSBox-X\dosbox-x-<version>.conf` on its first start, and there is no switch to prevent it.
 You can set your own emulator paths in the manager (QSettings `retro/emu/<id>`).
 
+Controllers (`radide/retro/emu/inputs.py`): a portable Mesen 2 started from an empty `settings.json` skips Mesen's
+first-run wizard, so NES / SNES / Game Boy port 1 stay `None` and the game cannot be played. When RAD IDE creates
+that file it writes port 1 = the standard controller of each console (Mesen 2.1 schema, Avalonia key codes):
+arrows = D-pad, X / Z = A / B (SNES: S / A = X / Y, Q / W = L / R; NES: S / A = turbo), Enter = Start, Right Shift /
+Backspace / Left Shift = Select, Mesen's Xbox pad layout in the second mapping, and `Preferences.SingleInstance =
+false`. A file that exists is never rewritten. For a RAD-created config whose port 1 is still `None` without keys,
+the IDE shows once (QSettings `retro/emu/mesen_input_offered`) a bar at the bottom of the window with
+"Apply Controller Defaults" (only those ports change). FCEUX, mGBA and Stella start with their built-in keyboard
+defaults (Stella's portable database has its keymaps), so they need nothing.
+
+Single instance: Mesen 2's default "Single instance" preference makes a second `Mesen.exe` hand the ROM to the
+window already open and exit at once with code 0. `RetroProcess.alive()` then follows the process that really shows
+the ROM (`handed_off`, `real_pid`: the open Mesen window, or a child left by a launcher); `stop()` never closes a
+window it did not start. `exit_info()` says why an emulator is gone (exit code, when, hand-off).
+
 ### API for the other retro slices
 
 ```python
@@ -68,8 +83,8 @@ setting: the script prints the PNG as hex on stdout and Python writes the files.
 copy (hard links of `Mesen.exe` and its DLLs in `%LOCALAPPDATA%\RADIDE\retro\mesen-runner` with its own
 portable `settings.json`), so the user's Mesen settings are never touched and an open Mesen is not disturbed. Its
 settings put a standard controller in port 1: a portable Mesen started from an empty `settings.json` has `None`
-there (so `emu.setInput` does nothing, and an interactive Mesen started by RAD IDE has no controller until the
-user sets one up in Mesen's input settings). CLI: `python -m radide.retro.emu shots <rom> --frames 60,240
+there (so `emu.setInput` does nothing; the interactive Mesen gets its controller defaults as described under
+"Controllers" above). CLI: `python -m radide.retro.emu shots <rom> --frames 60,240
 [--press 120-126:start] [--out DIR]`.
 
 ### Hot reload

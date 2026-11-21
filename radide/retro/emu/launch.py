@@ -97,6 +97,10 @@ def _place_symbols(rom: Path, symbols, exts) -> list[str]:
     return placed
 
 
+# emulators whose second start hands the ROM to the window already open and exits at once
+SINGLE_INSTANCE = {"mesen"}
+
+
 class RetroProcess:
     """A running emulator started by RAD IDE."""
 
@@ -115,6 +119,10 @@ class RetroProcess:
         self._gdb = None
         self.started_at = 0.0
         self.rebuild = None             # optional callable() -> rom path, used by hot reload
+        self.exited_after = None        # seconds from start until alive() saw the started process gone
+        self.handed_off = False         # the ROM went to an emulator window that was already open
+        self.real_pid = 0               # that window's process (single instance) / the launcher's child
+        self._stopped = False
 
     # ------------------------------------------------------------------ process
     @property
@@ -125,17 +133,68 @@ class RetroProcess:
         if os.environ.get("QT_QPA_PLATFORM", "") == "offscreen":
             self.minimized = True           # automated test: never pop a window in front of the user
         env = external_env(self.env)
+        self.exited_after, self.handed_off, self.real_pid, self._stopped = None, False, 0, False
+        self.started_at = time.time()
         self.popen = subprocess.Popen(self.command, cwd=self.cwd, env=env, startupinfo=_startupinfo(self.minimized),
                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.started_at = time.time()
         return self
 
     @property
     def pid(self) -> int:
         return self.popen.pid if self.popen else 0
 
+    def _find_real(self) -> int:
+        """The process that shows the ROM when the one started here is gone: a child it left running (a
+        launcher), or - for an emulator in single-instance mode (Mesen 2's default "Single instance"
+        preference) - the window of the same exe that was already open and received the ROM. 0 = none."""
+        try:
+            import psutil
+        except ImportError:
+            return 0
+        exe = os.path.normcase(os.path.abspath(self.exe))
+        child = other = 0
+        for p in psutil.process_iter(["pid", "ppid", "exe", "create_time"]):
+            try:
+                info = p.info
+                if info["pid"] == self.pid:
+                    continue
+                if info["ppid"] == self.pid and (info["create_time"] or 0) >= self.started_at - 1:
+                    child = info["pid"]
+                elif (self.emulator in SINGLE_INSTANCE and info["exe"]
+                      and os.path.normcase(info["exe"]) == exe and (info["create_time"] or 0) < self.started_at):
+                    other = info["pid"]
+            except (psutil.Error, KeyError, TypeError):
+                continue
+        if child:
+            return child
+        if other and self.popen is not None and self.popen.returncode == 0:
+            self.handed_off = True
+            return other
+        return 0
+
     def alive(self) -> bool:
-        return self.popen is not None and self.popen.poll() is None
+        """The emulator RAD IDE started (or, see _find_real, the process now showing its ROM) is running."""
+        if self.popen is None:
+            return False
+        if self.popen.poll() is None:
+            return True
+        if self.exited_after is None:
+            self.exited_after = round(time.time() - self.started_at, 2)
+            if not self._stopped and self.exited_after < 10:
+                self.real_pid = self._find_real()
+        if self.real_pid and not self._stopped:
+            try:
+                import psutil
+                return psutil.pid_exists(self.real_pid) and psutil.Process(self.real_pid).status() != "zombie"
+            except Exception:  # noqa: BLE001
+                return False
+        return False
+
+    def exit_info(self) -> dict:
+        """Why alive() is False (for messages and test reports)."""
+        rc = self.popen.poll() if self.popen is not None else None
+        return {"emulator": self.emulator, "returncode": rc, "exited_after": self.exited_after,
+                "handed_off": self.handed_off, "real_pid": self.real_pid, "command": self.command}
 
     def wait(self, timeout: float | None = None) -> int | None:
         if self.popen is None:
@@ -154,7 +213,8 @@ class RetroProcess:
             except Exception:  # noqa: BLE001
                 pass
         self._monitor = self._gdb = None
-        if not self.alive():
+        self._stopped = True                # an adopted window (handed_off) is the user's: never closed here
+        if self.popen is None or self.popen.poll() is not None:
             return
         self.popen.terminate()
         try:

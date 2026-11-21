@@ -125,6 +125,12 @@ def _lookup(core: str, depth: int = 0) -> str | None:
         if t is not None:
             return core[:len(core) - len(core.lstrip())] + t + core[len(core.rstrip()):]
         return None
+    if "  " in s:
+        # labels spaced for layout ("NES  (cc65 / ca65)" in File > New Project) use the catalog's
+        # single-spaced key ("NES (cc65 / ca65)")
+        t = _lookup(re.sub(r" {2,}", " ", s), depth)
+        if t is not None:
+            return t
     for suf in ("...", "…", ":", " :", " *", "*", ".", "!"):
         if s.endswith(suf) and len(s) > len(suf):
             t = _strings.get(s[:-len(suf)])

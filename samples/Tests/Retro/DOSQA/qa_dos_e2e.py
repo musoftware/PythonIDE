@@ -444,6 +444,21 @@ def phase_ansi():
 GAMES = [("a2600", "Stella"), ("nes", "Mesen"), ("gb", "mGBA"), ("dos13h", "DOSBox-X")]
 
 
+def keeps_running(proc, seconds: float) -> bool:
+    """The emulator is still running *seconds* after its start. RetroProcess.alive() follows the process that
+    really shows the ROM (radide/retro/emu/launch.py: a launcher's child, or the Mesen window that was already
+    open and took the ROM over in single-instance mode - before, that run "exited" after a moment with code 0)
+    instead of only the handle started here. Polled, so an early exit is reported with when / how
+    (proc.exit_info()) and a slow start is not mistaken for a crash."""
+    t_end = getattr(proc, "started_at", 0.0) + seconds if getattr(proc, "started_at", 0.0) else time.time() + seconds
+    while True:
+        alive = proc.alive() if hasattr(proc, "alive") else proc.poll() is None
+        if not alive or time.time() >= t_end:
+            return alive
+        qh.app.processEvents()
+        time.sleep(0.1)
+
+
 def phase_game():
     from radide.retro.design.game.ui import GameDesigner
     feat = getattr(w, "retro_designs", None)
@@ -480,11 +495,9 @@ def phase_game():
             {k: v for k, v in (res or {}).items() if k in ("ok", "missing", "checks", "warnings")})
         proc = (res or {}).get("process")
         if proc is not None:
-            time.sleep(3)
-            alive = proc.alive() if hasattr(proc, "alive") else proc.poll() is None
-            pop = getattr(proc, "popen", None)
+            alive = keeps_running(proc, 3.0)
             qh.check(f"[{system}] {emu} starts with the program and keeps running", alive,
-                     (getattr(pop, "returncode", None), getattr(proc, "command", None)))
+                     proc.exit_info() if hasattr(proc, "exit_info") else getattr(proc, "command", None))
             if hasattr(proc, "stop"):                     # radide.retro.emu RetroProcess
                 proc.stop()
             else:
