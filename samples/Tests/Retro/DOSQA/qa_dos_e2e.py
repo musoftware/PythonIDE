@@ -481,13 +481,14 @@ def phase_game():
         proc = (res or {}).get("process")
         if proc is not None:
             time.sleep(3)
-            alive = proc.poll() is None if hasattr(proc, "poll") else True
+            alive = proc.alive() if hasattr(proc, "alive") else proc.poll() is None
             qh.check(f"[{system}] {emu} starts with the program and keeps running", alive)
-            try:
+            if hasattr(proc, "stop"):                     # radide.retro.emu RetroProcess
+                proc.stop()
+            else:
                 proc.kill()
-                proc.wait(10)
-            except Exception:  # noqa: BLE001
-                pass
+            qh.check(f"[{system}] {emu} stopped again", not (proc.alive() if hasattr(proc, "alive") else
+                                                              proc.poll() is None))
         else:
             qh.check(f"[{system}] {emu} started", False, (res or {}).get("log", "")[-300:] if res else "")
 
@@ -515,6 +516,7 @@ def phase_i18n():
         mine = [t for t in missing() if any(k in t for k in ("DOS", "Text-Mode", "ANSI", "Splash", "QBasic",
                                                               "Turbo", "Game Design", "Atari", "NES", "Game Boy",
                                                               "mode 13h", "Mode 13h", "DOSBox"))]
+        (Path(qh.OUT) / f"missing_{TAG}.txt").write_text(chr(10).join(missing()), encoding="utf-8")
         qh.check("Arabic: no DOS / designer string seen on screen is missing from ar.json", not mine, mine[:25])
     else:
         qh.check(f"DOS / designer menus present ({len(texts)} items)", len(texts) >= 20, texts)

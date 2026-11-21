@@ -60,6 +60,24 @@ def _startupinfo(minimized: bool):
     return si
 
 
+_QT_VARS = ("QT_QPA_PLATFORM", "QT_QPA_PLATFORM_PLUGIN_PATH", "QT_PLUGIN_PATH", "QML2_IMPORT_PATH",
+            "QML_IMPORT_PATH", "QT_QPA_FONTDIR", "QT_OPENGL", "QT_QUICK_BACKEND", "QTWEBENGINE_CHROMIUM_FLAGS",
+            "QTWEBENGINE_DISABLE_SANDBOX", "QT_LOGGING_RULES")
+
+
+def external_env(extra: dict | None = None) -> dict:
+    """Environment for an external GUI program (emulators are Qt / SDL / .NET apps with their own toolkit).
+    The IDE's Qt settings must not leak into it: with QT_QPA_PLATFORM=offscreen (automated tests) mGBA /
+    FCEUX stop with "no Qt platform plugin could be initialized", and QT_PLUGIN_PATH or the IDE's own
+    PyQt6/PySide6 Qt bin folder on PATH make them load the wrong Qt plugins."""
+    env = {k: v for k, v in os.environ.items() if k.upper() not in _QT_VARS}
+    ide_qt = ("\\pyqt6\\qt6", "\\pyqt5\\qt5", "\\pyside6", "\\pyside2")
+    env["PATH"] = os.pathsep.join(p for p in env.get("PATH", "").split(os.pathsep)
+                                  if p and not any(m in p.replace("/", "\\").lower() for m in ide_qt))
+    env.update(extra or {})
+    return env
+
+
 def _place_symbols(rom: Path, symbols, exts) -> list[str]:
     """Copy symbol / listing files next to *rom* named <rom stem><ext> (what Stella / Mesen look for). Files
     already in place are left alone; an older copy RAD IDE made is replaced."""
@@ -104,8 +122,9 @@ class RetroProcess:
         return [self.exe] + list(self.args)
 
     def start(self) -> "RetroProcess":
-        env = dict(os.environ)
-        env.update(self.env or {})
+        if os.environ.get("QT_QPA_PLATFORM", "") == "offscreen":
+            self.minimized = True           # automated test: never pop a window in front of the user
+        env = external_env(self.env)
         self.popen = subprocess.Popen(self.command, cwd=self.cwd, env=env, startupinfo=_startupinfo(self.minimized),
                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.started_at = time.time()
