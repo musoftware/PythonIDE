@@ -573,6 +573,37 @@ def _project_menu(win):
     return None
 
 
+def _project_resources(win, what: str) -> None:
+    """Project > Flutter Assets / Fonts / App Theme (radide/flutterdesign/asset_dialogs.py). After a change the
+    project files are regenerated (pubspec assets/fonts, lib/theme/app_theme.dart wired into main.dart)."""
+    prj = getattr(win, "project", None)
+    if prj is None or getattr(prj, "language", "") != "flutter":
+        QMessageBox.information(win, "Flutter", "Open a Flutter project first.")
+        return
+    from ..flutterdesign import asset_dialogs as AD
+    folder = Path(prj.folder)
+    if what == "assets":
+        changed = True
+        AD.open_asset_manager(win, folder)
+    elif what == "fonts":
+        e = AD.pick_font(win, folder)
+        changed = bool(e)
+        if e:
+            try:
+                win.log(f"[flutter] font {e.get('family')} ({e.get('source')}) added to the project")
+            except Exception:  # noqa: BLE001
+                pass
+    else:
+        changed = AD.edit_theme(win, folder)
+    if not changed:
+        return
+    try:
+        from ..languages import get_plugin
+        get_plugin("flutter").write_project_files(prj)
+    except Exception:  # noqa: BLE001 - the dialogs already wrote their own files
+        pass
+
+
 def install(win) -> None:
     mgr = FlutterDesignerManager(win)
     mgr.wrap()
@@ -585,14 +616,21 @@ def install(win) -> None:
         act.setObjectName("actAddFlutterScreen")
         imp = QAction("Import Flutter Screen from &Dart...", win)
         imp.triggered.connect(lambda _c=False: mgr.import_dart_screen())
-        for a in (act, imp):
+        res_acts = []
+        for text, fn in (("Flutter Assets...", lambda: _project_resources(win, "assets")),
+                         ("Flutter Fonts (Google Fonts)...", lambda: _project_resources(win, "fonts")),
+                         ("Flutter App Theme...", lambda: _project_resources(win, "theme"))):
+            ra = QAction(text, win)
+            ra.triggered.connect(lambda _c=False, fn=fn: fn())
+            res_acts.append(ra)
+        for a in (act, imp, *res_acts):
             m.insertAction(before, a) if before is not None else m.addAction(a)
 
         def visible():
             prj = getattr(win, "project", None)
             on = prj is not None and getattr(prj, "language", "") == "flutter"
-            act.setVisible(on)
-            imp.setVisible(on)
+            for a in (act, imp, *res_acts):
+                a.setVisible(on)
         m.aboutToShow.connect(visible)
         win.act_add_flutter_screen = act
     try:
@@ -610,5 +648,11 @@ def install(win) -> None:
                          "Project")
         register_command("flutter.importScreen", "Flutter: Import Screen from Dart...", mgr.import_dart_screen,
                          "Project")
+        register_command("flutter.assets", "Flutter: Project Assets...",
+                         lambda: _project_resources(win, "assets"), "Project")
+        register_command("flutter.fonts", "Flutter: Add Google Font...",
+                         lambda: _project_resources(win, "fonts"), "Project")
+        register_command("flutter.theme", "Flutter: App Theme...",
+                         lambda: _project_resources(win, "theme"), "Project")
     except Exception:  # noqa: BLE001
         pass

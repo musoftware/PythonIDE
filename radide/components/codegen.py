@@ -86,12 +86,23 @@ def _import_lines(pkg, rt: dict) -> list[str]:
                     ", ".join(repr(x) for x in parts) + ")"
         except ValueError:
             pass
-    return [f"try:                      # component package {pkg.name} {pkg.version}",
-            f"    from {mod} import {cls}",
-            "except ImportError:       # runtime not copied into the project yet: the package folder",
-            "    import sys as _rc_sys",
-            f"    _rc_sys.path.append({where})",
-            f"    from {mod} import {cls}"]
+    lines = [f"try:                      # component package {pkg.name} {pkg.version}",
+             f"    from {mod} import {cls}",
+             "except ImportError:       # runtime not copied into the project yet: the package folder",
+             "    import sys as _rc_sys"]
+    if pkg.source == "user" and pkg.path is not None:   # no user-specific absolute path in the project
+        try:
+            from . import user_components_dir
+            parts = runtime_dir.relative_to(user_components_dir(False).resolve()).parts
+            lines += ["    import os as _rc_os",
+                      "    _rc_dir = _rc_os.environ.get(\"RADIDE_COMPONENTS_DIR\") or _rc_os.path.join(",
+                      "        _rc_os.environ.get(\"APPDATA\") or _rc_os.path.expanduser(\"~/.config\"), "
+                      "\"RADIDE\", \"components\")"]
+            where = "_rc_os.path.join(_rc_dir, " + ", ".join(repr(x) for x in parts) + ")"
+        except ValueError:
+            pass
+    return lines + [f"    _rc_sys.path.append({where})",
+                    f"    from {mod} import {cls}"]
 
 
 def _custom_events(c) -> set[str]:
@@ -99,6 +110,19 @@ def _custom_events(c) -> set[str]:
     if pkg is None:
         return set()
     return {str(e["name"]) for e in pkg.manifest.get("events") or [] if isinstance(e, dict) and e.get("name")}
+
+
+def _bind_line(c, n: str, e: str) -> str:
+    """``rad_bind`` of a package event. An event whose handler takes ``e`` (``args`` in the manifest, the same
+    rule the IDE uses when it writes the handler) gets the runtime's event-args object (X, Y, Button / KeyCode,
+    KeyChar / Cancel) unchanged - or an empty EventArgs if the runtime passed none; other handlers are called
+    without arguments."""
+    from ..controls import event_args
+    h = f"{n}_{e}"
+    if event_args(e):
+        return (f"self.{n}.rad_bind({e!r}, lambda *a: getattr(self, {h!r}, lambda *_a: None)"
+                f"(*(a[:1] or (EventArgs(),))))")
+    return f"self.{n}.rad_bind({e!r}, self._ev({h!r}))"
 
 
 def _no_runtime(c, target: str) -> str:
@@ -130,10 +154,8 @@ def tk_control_lines(plugin, c, used: set, master: str, place) -> list[str]:
         out += _import_lines(pkg, rt)
         out.append(f"self.{n} = {cls}({', '.join([master] + _kwargs(c))})")
         custom = _custom_events(c)
-        from ..controls import event_args
         for e in sorted(used & custom):
-            kind = event_args(e)
-            out.append(f"self.{n}.rad_bind({e!r}, self._ev(\"{n}_{e}\"{', ' + repr(kind) if kind else ''}))")
+            out.append(_bind_line(c, n, e))
     from ..languages.python_tk import TK_SEQ
     for e in sorted(set(used) - custom):
         if e in TK_SEQ:
@@ -169,7 +191,7 @@ def qt_control_lines(plugin, c, parent: str, used: set) -> list[str]:
         out.append(f"self.{n} = {cls}({', '.join([parent] + _kwargs(c))})")
         custom = _custom_events(c)
         for e in sorted(used & custom):
-            out.append(f"self.{n}.rad_bind({e!r}, self._ev(\"{n}_{e}\"))")
+            out.append(_bind_line(c, n, e))
     out.append(f"self.{n}.setGeometry({int(p.get('Left', 0))}, {int(p.get('Top', 0))}, "
                f"{int(p.get('Width', 4))}, {int(p.get('Height', 4))})")
     if p.get("ToolTip"):

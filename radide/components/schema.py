@@ -246,4 +246,19 @@ def version_key(v: str) -> tuple:
     return (nums, 0 if m.group(2) else 1, m.group(2) or "")
 
 
-__all__ = ["SCHEMA", "SCHEMA_VERSION", "validate", "validate_manifest", "version_key"]
+def schema_document() -> dict:
+    """The schema as published in docs/component.schema.json (``$schema`` allowed in manifests so editors
+    such as VS Code validate and complete component.json)."""
+    import copy
+    doc = copy.deepcopy(SCHEMA)
+    doc["properties"]["$schema"] = {"type": "string"}
+    return doc
+
+
+__all__ = ["SCHEMA", "SCHEMA_VERSION", "validate", "validate_manifest", "version_key", "schema_document"]
+
+
+if __name__ == "__main__":       # python -m radide.components.schema > docs/component.schema.json
+    import json
+    import sys
+    sys.stdout.write(json.dumps(schema_document(), indent=2, ensure_ascii=False) + "\n")

@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://radide.local/schemas/component-1.json",
+  "title": "RAD IDE component package manifest (component.json)",
+  "type": "object",
+  "required": [
+    "name",
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "description": "Control type name (unique)."
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+){0,3}([-+][0-9A-Za-z.-]+)?$"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "homepage": {
+      "type": "string"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "category": {
+      "type": "string",
+      "description": "Toolbox group."
+    },
+    "order": {
+      "type": "number",
+      "description": "Position inside the Toolbox group."
+    },
+    "icon": {
+      "type": "string",
+      "description": "16..32 px .png / .svg / .ico inside the package."
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "description": "Name prefix of new instances."
+    },
+    "defaultSize": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "visual",
+        "container",
+        "nonvisual"
+      ]
+    },
+    "hasText": {
+      "type": "boolean",
+      "description": "Has the common Text property (default true)."
+    },
+    "commonProperties": {
+      "type": "boolean",
+      "description": "Name/Left/Top/.../Anchor/Dock (default true)."
+    },
+    "commonEvents": {
+      "type": "boolean",
+      "description": "Click/Mouse*/Key*/Focus events (default true)."
+    },
+    "defaultEvent": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "builtin": {
+      "type": "boolean"
+    },
+    "overrideBuiltin": {
+      "type": "boolean",
+      "description": "Replace a built-in control of the same name."
+    },
+    "overrides": {
+      "type": "object",
+      "description": "Default values of common properties."
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "description": "Property name used in code (VB style)."
+          },
+          "type": {
+            "type": "string",
+            "description": "Property kind (see the type table)."
+          },
+          "default": {
+            "description": "Default value (its JSON type must match the kind)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Shown in the Properties window's help box."
+          },
+          "category": {
+            "type": "string",
+            "description": "Properties window category (Appearance, Behavior, ...)."
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "enum / flags values."
+          },
+          "editor": {
+            "type": "string",
+            "description": "Custom editor id from the package's editors.py."
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "decimals": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "filter": {
+            "type": "string",
+            "description": "file / image: dialog filter, e.g. 'CSV (*.csv)'."
+          },
+          "browsable": {
+            "type": "boolean",
+            "description": "false = not shown in the Properties window."
+          },
+          "designOnly": {
+            "type": "boolean",
+            "description": "true = not passed to the runtime."
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "args": {
+            "type": "string",
+            "enum": [
+              "none",
+              "mouse",
+              "key",
+              "cancel"
+            ],
+            "description": "Event-args object the handler receives (mouse: e.X/e.Y/e.Button, key: e.KeyCode/e.KeyChar, cancel: e.Cancel)."
+          }
+        }
+      }
+    },
+    "methods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "returns": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "object",
+      "description": "Runtime per target language/toolkit id (python-tk, python-qt, ring-qt, ...).",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "native": {
+            "type": "boolean",
+            "description": "Generated by the language plugin itself (built-ins)."
+          },
+          "file": {
+            "type": "string",
+            "description": "Runtime module copied into the project."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Extra files copied with it."
+          },
+          "class": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "description": "Class (or factory) the form creates."
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "designer": {
+      "type": "string",
+      "description": "designer.py: create()/apply() for the design surface."
+    },
+    "editors": {
+      "type": "string",
+      "description": "editors.py: EDITORS = {id: editor}."
+    },
+    "help": {
+      "type": "string",
+      "description": "help.md shown by F1."
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "radide": {
+          "type": "string",
+          "pattern": "^\\s*>=?\\s*\\d+(\\.\\d+)?\\s*$"
+        }
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  }
+}

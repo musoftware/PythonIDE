@@ -866,8 +866,49 @@ def _ring(folder: Path) -> list:
                       "app", folder, 0.85, rings[:3], startup=st, modules=rings[:500])]
 
 
+def _asm(folder: Path) -> list:
+    """Assembly sources (.asm / .s / .nasm, RadASM .rap, WinAsm .wap): dialect guessed per program
+    (radide/foreign/asm_folder.py); opens in place, 8086 / DOS programs in the teaching emulator."""
+    files = walk(folder, 2, 1500)
+    srcs = [f for f in files if f.lower().endswith((".asm", ".s", ".nasm", ".fasm", ".masm"))]
+    ide = [f for f in files if "/" not in f and f.lower().endswith((".rap", ".wap"))]
+    if not srcs and not ide:
+        return []
+    from .foreign.asm_folder import DIALECT_TITLES, scan_folder
+    info = scan_folder(folder, [f for f in files if f.lower().endswith((".asm", ".s", ".nasm", ".fasm", ".masm",
+                                                                        ".inc", ".mac"))][:600])
+    others = [f for f in files if f.lower().endswith((".c", ".cpp", ".cc", ".rs", ".go", ".cs", ".pas", ".dpr"))]
+    d = info.dialect
+    where = f"{len(info.sources)} source{'s' if len(info.sources) != 1 else ''}"
+    if ide:
+        title = f"{'RadASM' if ide[0].lower().endswith('.rap') else 'WinAsm Studio'} project ({ide[0]}, {where})"
+    else:
+        title = f"Assembly program ({info.title()}, {where}" + \
+            (f", entry {info.programs[0].file}" if info.programs else "") + ")"
+    conf = 0.9 if ide else (0.85 if info.programs and len(srcs) >= len(others) else 0.55)
+    pid = ""
+    try:
+        from .languages import plugins_for_ext
+        cands = plugins_for_ext(".asm")
+        pid = cands[0].id if cands else ""
+    except Exception:  # noqa: BLE001
+        pass
+    c = Candidate("asm", title, pid, "app", folder, conf, (ide or []) + srcs[:3],
+                  startup=Path(info.programs[0].file).with_suffix("").as_posix() if info.programs else "",
+                  modules=info.sources + info.includes, inplace="loose",
+                  inplace_file=ide[0] if ide else "", can_create=bool(pid) and d in ("nasm", "masm", "fasm", "gas"))
+    c.extra["_prefer_inplace"] = True
+    c.extra["asm_dialect"] = d
+    c.notes.append(f"Dialect: {DIALECT_TITLES.get(d, d)} (guessed from the code). Opens in place: each program "
+                   "with an entry point is a run target, built in the IDE state folder"
+                   + ("; 8086 / DOS programs run in the 8086 emulator." if "8086" in info.dialects else "."))
+    if any(p.sasm for p in info.programs):
+        c.notes.append("SASM programs (%include \"io64.inc\"): SASM's include folder is used when SASM is installed.")
+    return [c]
+
+
 DETECTORS = [_dotnet, _vb6, _pascal, _rust, _go, _java, _godot, _dart, _ruby, _php, _python, _node, _cmake_make,
-             _vscode, _ring, _jupyter, _static]
+             _vscode, _ring, _asm, _jupyter, _static]
 
 
 # =============================================================================== loose files
@@ -995,6 +1036,8 @@ def _dedupe(folder: Path, cands: list) -> list:
             continue                          # helper scripts of another project
         if c.kind == "ring" and kinds - {"ring", "static"}:
             c.confidence = min(c.confidence, 0.6)
+        if c.kind == "asm" and kinds - {"asm", "static", "vscode-workspace"} and not c.inplace_file:
+            c.confidence = min(c.confidence, 0.5)    # .asm / .s helpers of a C / Rust / CMake ... project
         if c.kind == "vscode-workspace" and len(kinds) > 1:
             c.confidence = 0.5
         if c.kind in ("intellij", "eclipse", "netbeans", "vscode-workspace") and any(

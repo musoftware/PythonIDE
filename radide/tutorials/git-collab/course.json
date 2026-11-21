@@ -1,0 +1,20 @@
+{
+  "id": "git-collab",
+  "kind": "guide",
+  "title_ar": "دليل Git والعمل الجماعي في RAD IDE",
+  "title_en": "RAD IDE Guide: Git and Collaboration",
+  "language": "powershell",
+  "level": "beginner",
+  "description_ar": "دليل عربي خطوة بخطوة لحفظ تاريخ مشروعك والعمل مع فريق في RAD IDE: نافذة تغييرات Git والإيداع والفروع، وحل تعارضات الدمج بالمحرر الثلاثي، والسجل و Blame والتخزين المؤقت، والمستودعات البعيدة و GitHub وطلبات السحب، وجلسات التعاون المباشر، والتطوير البعيد عبر SSH و WSL والحاويات، و Docker والنشر إلى السحابة، مع سكربتات Git حقيقية تجرّبها بزر «جرّبه».",
+  "lessons": [
+    {"id": "01-git-basics", "file": "01-git-basics.md", "title_ar": "أول مستودع: التغييرات والتجهيز والإيداع", "minutes": 30},
+    {"id": "02-branches", "file": "02-branches.md", "title_ar": "الفروع والدمج", "minutes": 25},
+    {"id": "03-merge-conflicts", "file": "03-merge-conflicts.md", "title_ar": "حل تعارضات الدمج", "minutes": 30},
+    {"id": "04-history-stash", "file": "04-history-stash.md", "title_ar": "السجل و Blame والتخزين المؤقت والتراجع", "minutes": 25},
+    {"id": "05-remotes-github", "file": "05-remotes-github.md", "title_ar": "المستودعات البعيدة و GitHub وطلبات السحب", "minutes": 30},
+    {"id": "06-live-share", "file": "06-live-share.md", "title_ar": "التعاون المباشر (Live Share)", "minutes": 20},
+    {"id": "07-remote-dev", "file": "07-remote-dev.md", "title_ar": "التطوير البعيد: SSH و WSL والحاويات", "minutes": 25},
+    {"id": "08-docker-deploy", "file": "08-docker-deploy.md", "title_ar": "Docker والنشر إلى السحابة", "minutes": 25},
+    {"id": "09-team-project", "file": "09-team-project.md", "title_ar": "مشروع ختامي: يوم عمل في فريق", "minutes": 30}
+  ]
+}

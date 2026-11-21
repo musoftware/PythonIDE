@@ -47,6 +47,10 @@ except ImportError:  # pragma: no cover - markdown is a dependency of the IDE
 def md_to_html(text: str) -> str:
     if _markdown is not None:
         out = _markdown.markdown(text, extensions=["tables", "sane_lists"], output_format="html")
+        # a "|" inside a table cell is written "\|" (GFM); python-markdown keeps the backslash in code spans
+        out = re.sub(r"<(td|th)([^>]*)>(.*?)</\1>",
+                     lambda m: f"<{m.group(1)}{m.group(2)}>{m.group(3).replace(chr(92) + '|', '|')}</{m.group(1)}>",
+                     out, flags=re.S)
     else:
         out = "\n".join("<p>" + html.escape(para).replace("\n", "<br>") + "</p>"     # minimal fallback
                         for para in re.split(r"\n\s*\n", text.strip()))

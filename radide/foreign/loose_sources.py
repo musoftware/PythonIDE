@@ -181,6 +181,9 @@ class LooseSourcesAdapter(ForeignAdapter):
 
 
 def open_loose(win, folder, lang: str) -> bool:
+    if lang == "asm":                        # assembly sources: radide/foreign/asm_folder.py (dialect per program)
+        from .asm_folder import open_asm
+        return open_asm(win, Path(folder))
     if lang not in LANGS:
         return False
     project = ForeignProject(LooseSourcesAdapter(Path(folder), lang))

@@ -49,7 +49,8 @@ TYPE_GUIDS = {
 FOLDER_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}"
 
 ITEM_KINDS = ("Compile", "None", "Content", "EmbeddedResource", "Page", "ApplicationDefinition", "Resource",
-              "ClCompile", "ClInclude", "ResourceCompile", "Image", "Text", "Natvis", "Folder", "Manifest")
+              "ClCompile", "ClInclude", "ResourceCompile", "Image", "Text", "Natvis", "Folder", "Manifest",
+              "MASM")     # MASM: .asm items of a vcxproj with the masm build customization (masm.props/targets)
 REF_KINDS = ("Reference", "PackageReference", "ProjectReference", "COMReference", "FrameworkReference")
 SKIP_DIRS = {"bin", "obj", ".vs", ".git", ".idea", ".vscode", "node_modules", "packages", "x64", "x86",
              "Debug", "Release", "ARM64", "TestResults", ".radide"}

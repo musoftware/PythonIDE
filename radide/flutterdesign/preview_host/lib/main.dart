@@ -481,12 +481,12 @@ class HostState extends ChangeNotifier implements FactoryHost {
     double r1(double v) => (v * 10).roundToDouble() / 10;
     for (final e in NodeRegistry.nodes.entries) {
       final ro = e.value;
-      if (ro.attached && ro.hasSize && !ro.size.isFinite) {
+      if (ro.attached && ro.hasSize && (ro.unbounded || !ro.size.isFinite)) {
         // what a debug build reports as "unbounded constraints": release builds lay it out silently
         issues.putIfAbsent(e.key, () => <String>{}).add(
             'error	${ro.type} has an infinite size (it is inside a scroll view / Row / Column that does not bound '
             'it): give it a width / height or wrap it in SizedBox / Expanded');
-        continue;
+        if (!ro.size.isFinite) continue;
       }
       final r = ro.globalRect();
       if (r == null || !r.isFinite) continue;

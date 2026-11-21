@@ -59,6 +59,44 @@ class RenderNode extends RenderProxyBox {
   @override
   bool hitTestSelf(Offset position) => NodeRegistry.designHit;
 
+  /// The child asked for an infinite size (e.g. an InkWell without a child inside a ListView). Flutter would
+  /// throw "unbounded constraints"; the preview keeps the rest of the screen usable: the node gets a finite
+  /// 48 px box painted as an error and the host reports the problem on the node.
+  bool unbounded = false;
+
+  @override
+  void performLayout() {
+    final c = child;
+    if (c == null) {
+      unbounded = false;
+      size = computeSizeForNoChild(constraints);
+      return;
+    }
+    c.layout(constraints, parentUsesSize: true);
+    final s = c.size;
+    unbounded = !s.isFinite;
+    size = unbounded
+        ? constraints.constrain(Size(s.width.isFinite ? s.width : 48, s.height.isFinite ? s.height : 48))
+        : s;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (!unbounded) return super.paint(context, offset);
+    final r = offset & size;
+    context.canvas.drawRect(r, Paint()..color = const Color(0x22FF0000));
+    context.canvas.drawRect(
+        r.deflate(0.75),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = const Color(0xFFE53935));
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      !unbounded && super.hitTestChildren(result, position: position);
+
   /// Local bounds; a Spacer (an empty box) is widened to the cross size of its Row / Column so it can be seen
   /// and clicked.
   Rect localBounds() {

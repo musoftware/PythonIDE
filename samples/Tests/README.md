@@ -121,6 +121,13 @@ File > Open Project.
 |---|---|---|---|
 | [`VB6Compat`](VB6Compat/) | VB6 opened in place / F5 / Migrate | Reproductions of the gaps found with 8 downloaded VB6 database programs: line continuation, `rs!Field`, Enums, ADO and DAO over Access `.mdb` (32-bit ADO helper), Data control + bound controls, MSFlexGrid / SSTab / DTPicker / ListView / TreeView / MonthView / Line in the designer and runtime, DataEnvironment + DataReport. | Open a `.vbp` in `VB6Compat/<Folder>` and press F5; expected output in [`VB6Compat/README.md`](VB6Compat/README.md). |
 
+## Component packages (dynamic Toolbox controls)
+
+| Folder | Language / feature | What it tests | How to try it |
+|---|---|---|---|
+| [`Components/StarRating`](Components/StarRating/) | Component package (docs/COMPONENTS.md) | A complete external control: manifest (custom-editor property, enum, color, padding, design-only text, events, methods), `designer.py` paint, inline Properties editor in `editors.py`, python-tk and python-qt runtimes, help, icon; `Components/StarRating.radcomp` to install it. | Tools > Component Packages > Install Component Package (.radcomp)... > `StarRating.radcomp`: the Toolbox gets "Rating & Input" > Star Rating. |
+| [`Components/StarRating_PythonTk`](Components/StarRating_PythonTk/), [`Components/StarRating_PythonQt`](Components/StarRating_PythonQt/) | python-tk / python-qt | A form with two StarRatings (ValueChanged handlers, `Reset()` / `SetValue()` methods); the runtime copied into the project. | Install the package, open the folder, F5, click the stars and Reset. |
+
 ## Not in the front door (yet)
 
 - **GUI-Bridge forms with controls** exist in the test runs only for C++, Rust, Fortran and TypeScript (above); the C,

@@ -75,7 +75,7 @@ OPEN_WITH_BASE = (
     ".toml .ini .cfg .conf .properties .env .editorconfig .gitignore .html .htm .xhtml .css .scss .sass .less "
     ".js .mjs .cjs .ts .tsx .jsx .vue .svelte .php .phtml .blade .twig .sql .sh .bash .bat .cmd .ps1 .psm1 "
     ".c .h .cpp .hpp .cc .cxx .hxx .cs .vb .fs .fsx .java .kt .kts .groovy .gradle .scala .go .rs .rb .lua "
-    ".pl .pm .r .dart .swift .m .gd .ring .rh .f90 .f .for .pas .pp .inc .dpr .dpk .lpr .lpi .dfm .lfm .asm "
+    ".pl .pm .r .dart .swift .m .gd .ring .rh .f90 .f .for .pas .pp .inc .dpr .dpk .lpr .lpi .dfm .lfm .asm .s .nasm .mac .rap .wap "
     ".vbp .vbg .frm .bas .cls .ctl .dsr .sln .slnx .csproj .vbproj .fsproj .vcxproj .props .targets .dproj "
     ".groupproj .pro .pri .ui .qml .code-workspace .cmake .mk .makefile .dockerfile .svg .rpt .resx .manifest"
 ).split()

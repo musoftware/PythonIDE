@@ -37,8 +37,13 @@ class DesignContext:
         return str(self.root / p)
 
     def icon(self) -> QIcon:
-        from ..toolbox import control_icon
-        return control_icon(self.type)
+        return _type_icon(self.type)
+
+
+def _type_icon(type_name: str) -> QIcon:
+    """The Toolbox icon of a control type (the package icon, else the generic component icon)."""
+    from ..toolbox import Toolbox
+    return Toolbox._icon(type_name)
 
 
 class ComponentPreview(QWidget):
@@ -77,8 +82,7 @@ def draw_default(p: QPainter, r: QRect, type_name: str, props: dict, error: str 
     x = 4
     if r.height() >= 20 and r.width() >= 30:
         try:
-            from ..toolbox import control_icon
-            control_icon(type_name).paint(p, QRect(4, (r.height() - 16) // 2 if r.height() < 40 else 4, 16, 16))
+            _type_icon(type_name).paint(p, QRect(4, (r.height() - 16) // 2 if r.height() < 40 else 4, 16, 16))
             x = 24
         except Exception:  # noqa: BLE001
             pass

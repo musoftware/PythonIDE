@@ -1,0 +1,18 @@
+{
+  "id": "fortran",
+  "title_ar": "أساسيات لغة Fortran",
+  "title_en": "Fortran Basics",
+  "language": "fortran-bridge",
+  "level": "beginner",
+  "description_ar": "دورة عربية قصيرة في Fortran، أقدم لغة برمجة عالية المستوى وما زالت ملكة الحسابات العلمية: المترجم gfortran من MinGW، والمتغيرات والأنواع، والطباعة المنسقة، والإدخال والشروط، والحلقات، والمصفوفات وعملياتها، والدوال والإجراءات والوحدات، والنصوص والملفات، ثم نافذة رسومية بمصمم النماذج عبر GUI Bridge.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "مرحبًا بك في Fortran وأول برنامج بـ gfortran", "minutes": 25},
+    {"id": "02-variables", "file": "02-variables.md", "title_ar": "المتغيرات والأنواع والطباعة المنسقة", "minutes": 35},
+    {"id": "03-input-conditions", "file": "03-input-conditions.md", "title_ar": "الإدخال والشروط", "minutes": 30},
+    {"id": "04-loops", "file": "04-loops.md", "title_ar": "حلقات التكرار `do`", "minutes": 30},
+    {"id": "05-arrays", "file": "05-arrays.md", "title_ar": "المصفوفات: قوة Fortran الحقيقية", "minutes": 40},
+    {"id": "06-procedures-modules", "file": "06-procedures-modules.md", "title_ar": "الدوال والإجراءات والوحدات", "minutes": 40},
+    {"id": "07-strings-files", "file": "07-strings-files.md", "title_ar": "النصوص والملفات", "minutes": 35},
+    {"id": "08-gui-form", "file": "08-gui-form.md", "title_ar": "نافذة رسومية بـ Fortran في مصمم النماذج", "minutes": 40}
+  ]
+}

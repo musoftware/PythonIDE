@@ -1,0 +1,20 @@
+{
+  "id": "codeigniter",
+  "title_ar": "دليل CodeIgniter 4 في RAD IDE",
+  "title_en": "CodeIgniter 4 in RAD IDE (Guide)",
+  "language": "php-web",
+  "level": "intermediate",
+  "description_ar": "دليل عربي عملي لبناء مواقع CodeIgniter 4 داخل RAD IDE خطوة بخطوة: إنشاء المشروع وتجهيزه، وقائمة CodeIgniter ولوحة Spark وأوامر المجلدات في مستكشف الحلول، والمسارات والمتحكمات، والقوالب والتخطيطات، والترحيلات والبيانات الأولية وقاعدة SQLite، والنماذج و Query Builder، وبناء CRUD مع التحقق وحماية CSRF، وIntelliSense المأخوذ من مشروعك، والتصحيح بـ Xdebug والاختبارات والنشر. يفترض أنك أنهيت دورة PHP أو تعرف أساسياتها.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "ما هو CodeIgniter 4؟ وإنشاء أول مشروع", "minutes": 25},
+    {"id": "02-ide-tools", "file": "02-ide-tools.md", "title_ar": "التشغيل وأدوات CodeIgniter في الـ IDE", "minutes": 25},
+    {"id": "03-routes-controllers", "file": "03-routes-controllers.md", "title_ar": "المسارات والمتحكمات", "minutes": 35},
+    {"id": "04-views", "file": "04-views.md", "title_ar": "القوالب والتخطيطات والمساعدات", "minutes": 35},
+    {"id": "05-migrations", "file": "05-migrations.md", "title_ar": "قاعدة البيانات والترحيلات والبيانات الأولية", "minutes": 35},
+    {"id": "06-models", "file": "06-models.md", "title_ar": "النماذج و Query Builder", "minutes": 40},
+    {"id": "07-crud-validation", "file": "07-crud-validation.md", "title_ar": "تطبيق CRUD كامل مع التحقق", "minutes": 50},
+    {"id": "08-intellisense", "file": "08-intellisense.md", "title_ar": "IntelliSense والانتقال إلى التعريف", "minutes": 20},
+    {"id": "09-debug-publish", "file": "09-debug-publish.md", "title_ar": "التصحيح والاختبارات والنشر", "minutes": 35},
+    {"id": "10-reference", "file": "10-reference.md", "title_ar": "مرجع سريع: الأوامر والمصطلحات", "minutes": 15}
+  ]
+}
