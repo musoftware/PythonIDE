@@ -517,6 +517,8 @@ class MainWindow(QMainWindow):
         from . import icons
         self.a_open_file = A("Open &File...", self.open_file_dialog, "Ctrl+O")
         self.a_open_file.setIcon(icons.icon("open_file"))
+        self.a_new_window = A("New &Window", self.new_window, "Ctrl+Alt+N")
+        self.a_new_window.setToolTip("Open another RAD IDE window (Ctrl+Alt+N)")
         self.a_open_folder = A("Open Fol&der...", self.open_folder_dialog, "Ctrl+K, Ctrl+O", SP.SP_DirIcon)
         self.a_open_folder.setToolTip("Open any folder: a RAD IDE project, a Visual Studio/VB6/... project "
                                       "or just a folder of files (Ctrl+K Ctrl+O)")
@@ -553,7 +555,8 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
         m = mb.addMenu("&File")
         self.file_menu = m
-        for a in (self.a_new, self.a_open, self.a_open_file, self.a_open_folder, None, self.a_close_sln, None,
+        for a in (self.a_new, self.a_new_window, None, self.a_open, self.a_open_file, self.a_open_folder, None,
+                  self.a_close_sln, None,
                   self.a_save_file, self.a_save, None):
             m.addSeparator() if a is None else m.addAction(a)
         self.recent_menu = m.addMenu("Recent &Projects and Solutions")
@@ -701,6 +704,23 @@ class MainWindow(QMainWindow):
         f, _ = QFileDialog.getOpenFileName(self, "Open Project/Solution", "", filters)
         if f:
             self.open_project(Path(f))
+
+    def new_window(self):
+        """File > New Window: start another, independent RAD IDE window (its own process)."""
+        import subprocess
+        if getattr(sys, "frozen", False):
+            argv = [sys.executable, "--new-window"]
+        else:
+            exe = Path(sys.executable)
+            pyw = exe.with_name("pythonw.exe")
+            argv = [str(pyw if pyw.exists() else exe), "-m", "radide", "--new-window"]
+        try:
+            subprocess.Popen(argv, cwd=str(Path(__file__).resolve().parent.parent),
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if not getattr(
+                                 sys, "frozen", False) else 0)
+            self.statusBar().showMessage("Opening a new RAD IDE window...", 4000)
+        except OSError as e:
+            QMessageBox.warning(self, "New Window", f"Cannot start a new window:\n{e}")
 
     def open_folder_dialog(self):
         """File > Open Folder...: a RAD IDE project/solution folder, a foreign project folder (Visual Studio,
