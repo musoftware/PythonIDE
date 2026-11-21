@@ -420,6 +420,219 @@ endhandler
 
 FORM_CODE = {"nasm32": NASM_FORM_X86, "fasm64": FASM_FORM, "gas64": GAS_FORM_ATT, "gas64i": GAS_FORM_INTEL}
 
+# ---------------------------------------------------------------------------------------------- class library
+NASM_DLL = r"""; {name} - an Assembly Class Library: a DLL (x64, NASM) whose functions C, C#, Python ... can call.
+; Build (Ctrl+Shift+B) writes {name}.dll and the import library lib{name}.a (for C / gcc); {name}.h has the
+; C declarations. Ctrl+F5 builds and runs UseFromPython.py, which loads the DLL with ctypes and calls every
+; function. UseFromC.c and UseFromCSharp.cs show the same calls from C and from a RAD IDE C# project.
+;
+; Every exported function uses the Microsoft x64 calling convention, like any C function on Windows:
+; arguments in RCX, RDX, R8, R9, the result in RAX; RBX, RBP, RSI, RDI, R12-R15 must be kept.
+; 'global' makes a label visible to the linker, 'export' puts it into the DLL's export table.
+default rel
+
+global DllMain
+global asm_add, asm_factorial, asm_sum_array, asm_strlen, asm_upper, asm_version
+export asm_add
+export asm_factorial
+export asm_sum_array
+export asm_strlen
+export asm_upper
+export asm_version
+
+section .rdata
+    version     db "{name} 1.0 (x64 assembly)", 0
+
+section .text
+
+; BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) - TRUE: the DLL may be loaded
+DllMain:
+    mov eax, 1
+    ret
+
+; long long asm_add(long long a, long long b)
+asm_add:
+    lea rax, [rcx + rdx]
+    ret
+
+; long long asm_factorial(long long n)       n! (1 for n <= 1)
+asm_factorial:
+    mov eax, 1
+.next:
+    cmp rcx, 1
+    jle .done
+    imul rax, rcx
+    dec rcx
+    jmp .next
+.done:
+    ret
+
+; long long asm_sum_array(const long long *values, long long count)
+asm_sum_array:
+    xor eax, eax
+    test rdx, rdx
+    jle .done
+.next:
+    add rax, [rcx]
+    add rcx, 8
+    dec rdx
+    jnz .next
+.done:
+    ret
+
+; long long asm_strlen(const char *text)
+asm_strlen:
+    mov rax, rcx
+.next:
+    cmp byte [rax], 0
+    je .done
+    inc rax
+    jmp .next
+.done:
+    sub rax, rcx
+    ret
+
+; char *asm_upper(char *text)                  changes a..z to A..Z in place and returns text
+asm_upper:
+    mov rax, rcx
+    mov rdx, rcx
+.next:
+    mov r8b, [rdx]
+    test r8b, r8b
+    jz .done
+    cmp r8b, 'a'
+    jb .skip
+    cmp r8b, 'z'
+    ja .skip
+    sub r8b, 32
+    mov [rdx], r8b
+.skip:
+    inc rdx
+    jmp .next
+.done:
+    ret
+
+; const char *asm_version(void)
+asm_version:
+    lea rax, [version]
+    ret
+"""
+
+NASM_DLL_H = r"""/* {name}.h - the functions of {name}.dll (an assembly class library made with RAD IDE).
+ * C / C++: #include "{name}.h", link with lib{name}.a (gcc: -L. -l{name}) and keep {name}.dll next to the program.
+ */
+#ifndef {guard}
+#define {guard}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+__declspec(dllimport) long long asm_add(long long a, long long b);
+__declspec(dllimport) long long asm_factorial(long long n);
+__declspec(dllimport) long long asm_sum_array(const long long *values, long long count);
+__declspec(dllimport) long long asm_strlen(const char *text);
+__declspec(dllimport) char *asm_upper(char *text);
+__declspec(dllimport) const char *asm_version(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+"""
+
+NASM_DLL_PY = r'''"""Calls {name}.dll (the assembly class library of this project) from Python with ctypes.
+
+Ctrl+F5 builds the DLL and runs this file. In a RAD IDE Python project: copy {name}.dll next to your .py file
+and use the same lines.
+"""
+import ctypes
+import os
+import sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+lib = ctypes.CDLL(os.path.join(here, "{name}.dll"))
+
+lib.asm_add.argtypes = [ctypes.c_longlong, ctypes.c_longlong]
+lib.asm_add.restype = ctypes.c_longlong
+lib.asm_factorial.argtypes = [ctypes.c_longlong]
+lib.asm_factorial.restype = ctypes.c_longlong
+lib.asm_sum_array.argtypes = [ctypes.POINTER(ctypes.c_longlong), ctypes.c_longlong]
+lib.asm_sum_array.restype = ctypes.c_longlong
+lib.asm_strlen.argtypes = [ctypes.c_char_p]
+lib.asm_strlen.restype = ctypes.c_longlong
+lib.asm_upper.argtypes = [ctypes.c_char_p]
+lib.asm_upper.restype = ctypes.c_char_p
+lib.asm_version.argtypes = []
+lib.asm_version.restype = ctypes.c_char_p
+
+values = (ctypes.c_longlong * 5)(1, 2, 3, 4, 5)
+text = ctypes.create_string_buffer(b"hello from python")
+print("version      :", lib.asm_version().decode())
+print("asm_add      : 40 + 2 =", lib.asm_add(40, 2))
+print("asm_factorial: 10! =", lib.asm_factorial(10))
+print("asm_sum_array: 1+2+3+4+5 =", lib.asm_sum_array(values, 5))
+print("asm_strlen   :", lib.asm_strlen(b"assembly"))
+print("asm_upper    :", lib.asm_upper(text).decode())
+ok = (lib.asm_add(40, 2) == 42 and lib.asm_factorial(10) == 3628800 and lib.asm_sum_array(values, 5) == 15
+      and lib.asm_strlen(b"assembly") == 8 and text.value == b"HELLO FROM PYTHON")
+print("all calls OK" if ok else "SOMETHING IS WRONG")
+sys.exit(0 if ok else 1)
+'''
+
+NASM_DLL_C = r"""/* UseFromC.c - calls {name}.dll from C.
+ *   gcc UseFromC.c -L. -l{name} -o UseFromC.exe      (keep {name}.dll next to UseFromC.exe)
+ */
+#include <stdio.h>
+#include "{name}.h"
+
+int main(void)
+{
+    long long values[5] = {1, 2, 3, 4, 5};
+    char text[] = "hello from c";
+    printf("version      : %s\n", asm_version());
+    printf("asm_add      : 40 + 2 = %lld\n", asm_add(40, 2));
+    printf("asm_factorial: 10! = %lld\n", asm_factorial(10));
+    printf("asm_sum_array: %lld\n", asm_sum_array(values, 5));
+    printf("asm_strlen   : %lld\n", asm_strlen("assembly"));
+    printf("asm_upper    : %s\n", asm_upper(text));
+    return (asm_add(40, 2) == 42 && asm_factorial(10) == 3628800 && asm_sum_array(values, 5) == 15) ? 0 : 1;
+}
+"""
+
+NASM_DLL_CS = r"""// UseFromCSharp.cs - calls {name}.dll from C# (a RAD IDE C# / .NET project): copy {name}.dll into the
+// project (Copy to Output Directory = Copy if newer) and add this class. x64 programs only (the DLL is x64).
+using System;
+using System.Runtime.InteropServices;
+
+static class {ident}Native
+{
+    const string Dll = "{name}.dll";
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern long asm_add(long a, long b);
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern long asm_factorial(long n);
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern long asm_sum_array(long[] values, long count);
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern long asm_strlen(string text);
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] static extern IntPtr asm_version();
+
+    public static string Version() => Marshal.PtrToStringAnsi(asm_version());
+}
+
+static class UseFromCSharp
+{
+    static int Main()
+    {
+        Console.WriteLine("version      : " + {ident}Native.Version());
+        Console.WriteLine("asm_add      : 40 + 2 = " + {ident}Native.asm_add(40, 2));
+        Console.WriteLine("asm_factorial: 10! = " + {ident}Native.asm_factorial(10));
+        Console.WriteLine("asm_sum_array: " + {ident}Native.asm_sum_array(new long[] { 1, 2, 3, 4, 5 }, 5));
+        Console.WriteLine("asm_strlen   : " + {ident}Native.asm_strlen("assembly"));
+        return {ident}Native.asm_add(40, 2) == 42 && {ident}Native.asm_factorial(10) == 3628800 ? 0 : 1;
+    }
+}
+"""
+
 # ---------------------------------------------------------------------------------------------- FASM
 FASM_X64 = r"""; {name} - an x64 Windows console program written with FASM (flat assembler).
 ; FASM writes the .exe itself (format PE64): there is no separate link step. The 'invoke' / 'cinvoke' macros
@@ -761,6 +974,13 @@ TEMPLATES: list[AsmTemplate] = [
                 "The same program with .intel_syntax noprefix: GNU as with the operand order of NASM / MASM.",
                 "rad:console", {"assembler": "gas", "arch": "x64", "linker": "gcc", "entry": "main"},
                 (("main.s", GAS_INTEL),)),
+    AsmTemplate("nasm_dll_x64", "asm-nasm", "Assembly Class Library (x64 DLL, NASM)",
+                "A DLL written in assembly with exported functions (asm_add, asm_factorial, asm_sum_array, "
+                "asm_strlen, asm_upper, asm_version): a C header + import library, UseFromPython.py (ctypes, "
+                "run by Ctrl+F5), UseFromC.c and UseFromCSharp.cs (P/Invoke).", "SP_DirIcon",
+                {"assembler": "nasm", "arch": "x64", "linker": "gcc", "entry": "DllMain", "output": "dll"},
+                (("{name}.asm", NASM_DLL), ("{name}.h", NASM_DLL_H), ("UseFromPython.py", NASM_DLL_PY),
+                 ("UseFromC.c", NASM_DLL_C), ("UseFromCSharp.cs", NASM_DLL_CS))),
     AsmTemplate("nasm_forms_x86", "asm-nasm", "Assembly Windows Forms (x86, NASM + GUI Bridge)",
                 "The Windows Forms template in 32-bit assembly: cdecl macros that push their arguments, EAX "
                 "results. The GUI Bridge client is compiled with gcc -m32 and linked with GNU ld against "

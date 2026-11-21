@@ -1277,6 +1277,8 @@ class FlutterDesigner(QWidget):
         for s in list((node.get("slots") or {})):
             if spec is not None and s not in spec.slots:
                 kid = node["slots"][s]
+                if s == "itemBuilder" and spec.children:
+                    continue                 # the item template becomes the first child (_ctor_data_patches)
                 if s == "child" and "label" in spec.slots and isinstance(kid, dict):
                     patches.append(M.move(self.screen, kid["id"], nid, M.Where("label")))
                 else:

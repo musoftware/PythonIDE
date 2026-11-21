@@ -1,7 +1,8 @@
 """Qt side of the 8086 emulator: the text screen, the debugger panels and the IDE run / debug session.
 
     Emu8086Panel     the "8086 Emulator" dock: screen + toolbar (run, pause, step, step over, step back,
-                     reset, speed) + Registers / Flags, Memory, Stack, Variables and Listing views
+                     reset, speed, Export .COM / .EXE for DOSBox) + Registers / Flags, Memory, Stack,
+                     Variables and Listing views
     Emu8086Session   what MainWindow._make_session returns for an "8086 Assembly (Emulator)" project: it
                      speaks the IDE's Session interface (output / stopped / resumed / finished signals, cont,
                      step_into / step_over / step_out, set_breakpoint, evaluate, watch, children) and runs the
@@ -528,14 +529,23 @@ class Emu8086Panel(QWidget):
         self.b_over = QPushButton("Step Over")
         self.b_back = QPushButton("Step Back")
         self.b_reset = QPushButton("Reload")
+        self.b_export = QPushButton("Export...")
+        self.b_export.setToolTip("Write the program as a DOS .COM or MZ .EXE file next to the source "
+                                 "(runs in DOSBox / FreeDOS)")
         self.b_run.setToolTip("Run / continue (F5)")
         self.b_step.setToolTip("Execute one source line, entering procedures (F11)")
         self.b_over.setToolTip("Execute one source line; CALL and INT run until they return (F10)")
         self.b_back.setToolTip("Undo the last step (reverse debugging)")
         self.b_reset.setToolTip("Load the program again and stop at the first instruction")
-        for b in (self.b_run, self.b_pause, self.b_step, self.b_over, self.b_back, self.b_reset):
+        for b in (self.b_run, self.b_pause, self.b_step, self.b_over, self.b_back, self.b_reset, self.b_export):
             b.setAutoDefault(False)
             bar.addWidget(b)
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self.b_export)
+        menu.addAction("Export .COM / .EXE (the program's kind)", lambda: self.export_dos(""))
+        menu.addAction("Export as .COM", lambda: self.export_dos("com"))
+        menu.addAction("Export as MZ .EXE", lambda: self.export_dos("exe"))
+        self.b_export.setMenu(menu)
         bar.addSpacing(10)
         bar.addWidget(QLabel("Speed:"))
         self.speed = QSlider(Qt.Orientation.Horizontal)
@@ -592,6 +602,46 @@ class Emu8086Panel(QWidget):
         self.screen.keyTyped.connect(lambda: self.session and self.session.key_typed())
         self.listing.lineActivated.connect(self._goto_line)
         self.update_buttons(False, False)
+
+    def export_source(self) -> Path | None:
+        """The 8086 source to export: the running session's program, else the active editor's file."""
+        s = self.session
+        if s is not None and getattr(s, "startup_file", ""):
+            p = Path(s.startup_file)
+            return p if p.is_absolute() else Path(s.folder) / p
+        win = self.window()
+        for name in ("current_path", "current_file"):
+            f = getattr(win, name, None)
+            try:
+                f = f() if callable(f) else f
+            except Exception:  # noqa: BLE001
+                f = None
+            if f and str(f).lower().endswith((".asm", ".8086", ".a86")):
+                return Path(f)
+        return None
+
+    def export_dos(self, kind: str = "", source: Path | None = None) -> Path | None:
+        """Export .COM / .EXE (radide/emu8086/dosexe.py); the result is shown in the status line."""
+        from .dosexe import ExportError, export_file
+        from .messages import text as msg_text
+        src = source or self.export_source()
+        if src is None:
+            self.status.setText("Export: open or run an 8086 program first")
+            return None
+        try:
+            out = export_file(src, kind=kind)
+        except (ExportError, OSError) as e:
+            why = str(e)
+            self.status.setText("Export failed: " + (msg_text(why, ui_language()) if why.startswith("E-") else why))
+            return None
+        self.status.setText(f"Exported {out.name} ({out.stat().st_size} bytes) - run it in DOSBox: {out}")
+        win = self.window()
+        if hasattr(win, "log"):
+            try:
+                win.log(f"[8086] exported {out}")
+            except Exception:  # noqa: BLE001
+                pass
+        return out
 
     def steps_per_second(self) -> float:
         v = self.speed.value()

@@ -4,7 +4,7 @@
   "title_en": "Visual Studio Projects in RAD IDE (Guide)",
   "language": "csharp-bridge",
   "level": "beginner",
-  "description_ar": "دليل عملي خطوة بخطوة: افتح حلول ومشاريع Visual Studio (.sln و.csproj و.vbproj) في مكانها دون تحويل، وصمّم نماذج Windows Forms ذهابًا وإيابًا مع ملف Designer، وابنِ وشغّل وصحّح الأخطاء، وأدر حزم NuGet والمراجع، ثم حوّل مشروعًا قديمًا بمعالج الترحيل.",
+  "description_ar": "دليل عملي خطوة بخطوة: افتح حلول ومشاريع Visual Studio (.sln و.csproj و.vbproj) في مكانها دون تحويل، وصمّم نماذج Windows Forms ذهابًا وإيابًا مع ملف Designer، وابنِ وشغّل وصحّح الأخطاء، وأدر حزم NuGet والمراجع، ثم حوّل مشروعًا قديمًا بمعالج الترحيل، وتعلّم مدير حزم NuGet ووحدة التحكم، ومدير المراجع ومستعرض الكائنات، والمشاريع المشتركة، والحلول متعددة المشاريع.",
   "lessons": [
     {
       "id": "01-overview",
@@ -53,6 +53,30 @@
       "file": "08-migration-wizard.md",
       "title_ar": "معالج الترحيل: تحويل مشروع إلى RAD IDE",
       "minutes": 30
+    },
+    {
+      "id": "09-nuget-package-manager",
+      "file": "09-nuget-package-manager.md",
+      "title_ar": "مدير حزم NuGet ووحدة تحكم الحزم",
+      "minutes": 35
+    },
+    {
+      "id": "10-references-object-browser",
+      "file": "10-references-object-browser.md",
+      "title_ar": "المراجع (DLL وCOM والمشاريع) ومستعرض الكائنات",
+      "minutes": 35
+    },
+    {
+      "id": "11-shared-projects-multitargeting",
+      "file": "11-shared-projects-multitargeting.md",
+      "title_ar": "المشاريع المشتركة واستهداف عدة أطر عمل",
+      "minutes": 35
+    },
+    {
+      "id": "12-multi-project-solutions",
+      "file": "12-multi-project-solutions.md",
+      "title_ar": "حلول متعددة المشاريع: الدمج وبدء التشغيل والإعدادات والنشر",
+      "minutes": 40
     }
   ]
 }

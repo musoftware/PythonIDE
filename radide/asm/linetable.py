@@ -493,8 +493,9 @@ _ML_LINE = re.compile(r"^ ([0-9A-Fa-f]{8})\s(.*)$")
 
 def parse_masm_listing(text: str, source_lines: list[str]) -> tuple[list[tuple[int, int, int]], dict[str, int]]:
     """([(1-based source line, offset in the code segment, bytes)], {proc name: offset}) of an ml / ml64
-    listing (``/Fl``). Listing lines are matched to the source in order; macro expansion lines (a nesting
-    digit before the text) belong to the line that called the macro; lines of include files (``C``) are skipped."""
+    listing (``/Fl /Sa``). Listing lines are matched to the source in order; macro expansion lines (a nesting
+    digit before the text) and generated code (``*``: INVOKE, .IF ...) belong to the line that produced them;
+    lines of include files (``C``) are skipped."""
     rows: list[tuple[int, int, int]] = []
     procs: dict[str, int] = {}
     src = [s.strip() for s in source_lines]
@@ -508,7 +509,7 @@ def parse_masm_listing(text: str, source_lines: list[str]) -> tuple[list[tuple[i
         expanded = raw.expandtabs(8)
         head, body = expanded[:32], expanded[32:]
         marker = ""
-        mm = re.match(r"^(\s*[0-9A-Fa-f]{8}.*?|\s*)(?:\s([C1-9]))?$", head.rstrip())
+        mm = re.match(r"^(\s*[0-9A-Fa-f]{8}.*?|\s*)(?:\s([C*1-9]))?$", head.rstrip())
         if mm and mm.group(2):
             marker = mm.group(2)
         text_part = body.strip()
@@ -524,8 +525,8 @@ def parse_masm_listing(text: str, source_lines: list[str]) -> tuple[list[tuple[i
             continue
         if marker == "C":
             continue
-        if marker and marker.isdigit():
-            line_no = cur_line                              # macro expansion: the calling line
+        if marker and (marker.isdigit() or marker == "*"):
+            line_no = cur_line                              # macro / INVOKE expansion (/Sa): the calling line
         else:
             line_no = 0
             for j in range(si, min(len(src), si + 400)):

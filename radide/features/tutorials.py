@@ -209,12 +209,36 @@ def open_chm(win, name: str) -> bool:
         QMessageBox.information(win, "Tutorials",
                                 f"{name} is not built yet.\nRun:  python tools\\build_chm.py\n\n({path})")
         return False
-    if os.environ.get("RADIDE_NO_BROWSER"):
-        open_chm.last = str(path)
+    from PyQt6.QtCore import QCoreApplication
+    if os.environ.get("RADIDE_NO_BROWSER") or QCoreApplication.organizationName().upper().startswith("RADIDE-TEST"):
+        open_chm.last = str(path)          # automated tests never start hh.exe windows
+        return True
+    proc = open_chm.procs.get(str(path))
+    if proc is not None and proc.poll() is None:
+        open_chm.last = str(path)          # already open: don't start a second hh.exe for the same book
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            found = []
+
+            @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+            def _cb(hwnd, _l):
+                pid = wintypes.DWORD()
+                user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                if pid.value == proc.pid and user32.IsWindowVisible(hwnd):
+                    found.append(hwnd)
+                return True
+            user32.EnumWindows(_cb, 0)
+            if found:
+                user32.ShowWindow(found[0], 9)         # SW_RESTORE
+                user32.SetForegroundWindow(found[0])
+        except Exception:  # noqa: BLE001
+            pass
         return True
     hh = Path(os.environ.get("WINDIR", r"C:\Windows")) / "hh.exe"
     try:
-        subprocess.Popen([str(hh) if hh.exists() else "hh.exe", str(path)])
+        open_chm.procs[str(path)] = subprocess.Popen([str(hh) if hh.exists() else "hh.exe", str(path)])
     except OSError:
         os.startfile(str(path))  # noqa: S606 - a local help file
     open_chm.last = str(path)
@@ -222,6 +246,7 @@ def open_chm(win, name: str) -> bool:
 
 
 open_chm.last = ""
+open_chm.procs = {}
 
 
 class _Signals(QObject):

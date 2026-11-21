@@ -27,8 +27,9 @@ for t in TEMPLATES:
     run_out = ""
     if ok and not t.forms:
         exe = folder / "_radapp.exe"
+        argv = plugin.run_command(folder, project) if t.settings.get("output") == "dll" else [str(exe)]
         try:
-            r = subprocess.run([str(exe)], input="7\n", capture_output=True, text=True, timeout=8, cwd=folder)
+            r = subprocess.run(argv, input="7\n", capture_output=True, text=True, timeout=30, cwd=folder)
             run_out = (r.stdout + r.stderr).strip().replace("\n", " | ")
             ok = ok and r.returncode == 0
         except subprocess.TimeoutExpired as e:

@@ -173,16 +173,17 @@ class NewProjectWizard(QDialog):
         right.addLayout(top)
         combos = QHBoxLayout()
         langs, plats, types = C.filter_values(self.templates)
+        from ...i18n import tr as _tr                    # combo items are not seen by the widget translator
         self.lang_combo = QComboBox()
-        self.lang_combo.addItem("All languages", "")
+        self.lang_combo.addItem(_tr("All languages"), "")
         for x in langs:
             self.lang_combo.addItem(x, x)
         self.plat_combo = QComboBox()
-        self.plat_combo.addItem("All platforms", "")
+        self.plat_combo.addItem(_tr("All platforms"), "")
         for x in plats:
             self.plat_combo.addItem(x, x)
         self.type_combo = QComboBox()
-        self.type_combo.addItem("All project types", "")
+        self.type_combo.addItem(_tr("All project types"), "")
         for x in types:
             self.type_combo.addItem(x, x)
         for c in (self.lang_combo, self.plat_combo, self.type_combo):

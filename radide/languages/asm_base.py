@@ -149,16 +149,25 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
             project = create_project(folder, name, self.id)
             self._form_template(project, flavor)
         else:
+            import re
             project = Project(folder, name, self.id)
+            ident = re.sub(r"\W", "_", name)
+            subst = {"{name}": name, "{guard}": ident.upper() + "_H", "{ident}": ident}
+            first = ""
             for fname, text in t.files:
+                for k, v in subst.items():
+                    fname, text = fname.replace(k, v), text.replace(k, v)
                 p = folder / fname
                 if not p.exists():
-                    p.write_text(text.replace("{name}", name), encoding="utf-8")
-                project.modules.append(fname)
-            project.startup = Path(t.files[0][0]).stem if t.files else ""
+                    p.write_text(text, encoding="utf-8")
+                if Path(fname).suffix.lower() in (".asm", ".s", ".nasm", ".fasm", ".inc"):
+                    project.modules.append(fname)        # (C / Python / C# helpers stay plain files)
+                    first = first or fname
+            project.startup = Path(first).stem if first else ""
         project.extra["asm"] = dict(t.settings)
         if not (folder / ".gitignore").exists():
-            (folder / ".gitignore").write_text("_build/\n_radapp.exe\n_radmain.asm\n", encoding="utf-8")
+            extra = f"{name}.dll\nlib{name}.a\n" if t.settings.get("output") == "dll" else ""
+            (folder / ".gitignore").write_text("_build/\n_radapp.exe\n_radmain.asm\n" + extra, encoding="utf-8")
         project.save()
         return project
 
@@ -298,6 +307,10 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
         return f'"{sys.executable}" -m radide.asm.build "{Path(folder)}"'
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
+        if self.settings(project).get("output") == "dll":     # a class library: run its Python ctypes client
+            client = Path(folder) / "UseFromPython.py"
+            return [sys.executable, "-u", str(client)] if client.is_file() else \
+                [sys.executable, "-c", f"print('{project.name}.dll built')"]
         exe = str(Path(folder) / "_radapp.exe")
         if not project.forms and self.settings(project).get("console") == "external":
             return [sys.executable, "-m", "radide.asm.console", exe]
@@ -323,6 +336,11 @@ class AsmPluginBase(_IntelBase, BridgeLanguagePlugin):
             from ..nativedbg import asm_console_session
         except Exception:  # noqa: BLE001 - the native debugger is optional
             return None
+        try:
+            if self.settings(Project.load(Path(spec.cwd))).get("output") == "dll":
+                return None                      # a class library runs its client (Python) the usual way
+        except Exception:  # noqa: BLE001
+            pass
         return asm_console_session(win, self, spec, debug)
 
     def debug_info(self, project: Project) -> dict:

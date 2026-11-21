@@ -7,7 +7,7 @@
   line, "End of input" closes stdin) - its output is in the Output window.
 * Tools > Assembly Toolchains...: where NASM, FASM, GNU as / ld / gcc / gdb, MASM and GoLink are, one-click
   download of NASM / FASM / GoLink (official sites, SHA-256 checked), and the project's "asm" settings
-  (architecture, linker, console mode, debug information).
+  (architecture, linker, console mode, debug information, program or class library, GNU as syntax).
 """
 from __future__ import annotations
 
@@ -301,12 +301,23 @@ class AsmToolchainsDialog(QDialog):
         self.console.setCurrentIndex(1 if s.get("console") == "external" else 0)
         self.debug = QCheckBox("Debug information for gdb (line numbers)")
         self.debug.setChecked(bool(s.get("debug", True)))
+        self.output = QComboBox()
+        self.output.addItem("Program (_radapp.exe)", "exe")
+        self.output.addItem("Class library (<Project>.dll + import library)", "dll")
+        self.output.setCurrentIndex(1 if s.get("output") == "dll" else 0)
+        self.syntax = QComboBox()                     # GNU as forms: which radgui include (AT&T / Intel)
+        self.syntax.addItem("AT&T", "att")
+        self.syntax.addItem("Intel (.intel_syntax noprefix)", "intel")
+        self.syntax.setCurrentIndex(1 if s.get("syntax") == "intel" else 0)
         f.addRow("Architecture:", self.arch)
         f.addRow("Linker:", self.linker)
         f.addRow("Entry point:", self.entry)
         f.addRow("Subsystem:", self.subsystem)
         f.addRow("Extra libraries:", self.libs)
         f.addRow("Run console programs in:", self.console)
+        f.addRow("Output:", self.output)
+        if s.get("assembler") == "gas":
+            f.addRow("Syntax (forms):", self.syntax)
         f.addRow("", self.debug)
         save = QPushButton("Save settings")
         save.clicked.connect(self.save_settings)
@@ -319,7 +330,12 @@ class AsmToolchainsDialog(QDialog):
         cur.update({"arch": self.arch.currentText(), "linker": self.linker.currentText(),
                     "entry": self.entry.text().strip() or None, "subsystem": self.subsystem.currentText(),
                     "libs": [x for x in self.libs.text().replace(",", " ").split() if x],
-                    "console": self.console.currentData(), "debug": self.debug.isChecked()})
+                    "console": self.console.currentData(), "debug": self.debug.isChecked(),
+                    "output": self.output.currentData() if self.output.currentData() == "dll" else None})
+        if cur.get("output") is None:
+            cur.pop("output", None)
+        if (cur.get("assembler") or project.language) in ("gas", "asm-gas"):
+            cur["syntax"] = self.syntax.currentData()
         project.extra["asm"] = {k: v for k, v in cur.items() if v is not None}
         project.save()
         self.log.appendPlainText("Saved in project.radproj")

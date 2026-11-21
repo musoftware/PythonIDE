@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../../../../docs/component.schema.json",
+  "schemaVersion": 1,
+  "name": "MiniGauge",
+  "displayName": "Mini Gauge",
+  "version": "1.0.0",
+  "publisher": "RAD IDE Samples",
+  "description": "A small horizontal gauge - test package with a reduced set of common properties.",
+  "category": "Rating & Input",
+  "prefix": "gauge",
+  "defaultSize": [120, 16],
+  "kind": "visual",
+  "hasText": false,
+  "commonProperties": ["position", "appearance", "Enabled"],
+  "properties": [
+    {"name": "Value", "type": "int", "default": 40, "min": 0, "max": 100, "category": "Behavior",
+     "description": "Percentage shown."}
+  ],
+  "events": [],
+  "methods": [],
+  "targets": {
+    "python-tk": {"file": "runtime/minigauge_tk.py", "class": "MiniGauge"}
+  }
+}

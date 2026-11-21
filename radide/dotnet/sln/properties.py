@@ -191,10 +191,13 @@ class ProjectPropertiesDocument(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search properties (Ctrl+E)")
         self.search.setClearButtonEnabled(True)
+        self.search.setMinimumWidth(170)
         top.addWidget(self.search, 1)
         top.addWidget(QLabel("Configuration:"))
         self.cfg = QComboBox()
         self.cfg.addItems([ALL] + self.ms.configuration_names())
+        from ...i18n import tr as _tr                    # combo items are not seen by the widget translator
+        self.cfg.setItemText(0, _tr(ALL))
         top.addWidget(self.cfg)
         top.addWidget(QLabel("Platform:"))
         self.plat = QComboBox()
@@ -205,7 +208,8 @@ class ProjectPropertiesDocument(QWidget):
         lay.addLayout(body, 1)
         self.nav = QTreeWidget()
         self.nav.setHeaderHidden(True)
-        self.nav.setMaximumWidth(220)
+        self.nav.setIndentation(12)
+        self.nav.setFixedWidth(170)
         body.addWidget(self.nav)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -244,7 +248,8 @@ class ProjectPropertiesDocument(QWidget):
             if s.page not in self.headers:
                 child = QTreeWidgetItem(pages[top_name], [sub])
                 child.setData(0, ROLE, s.page)
-                h = QLabel(s.page.replace("/", " > "))
+                from ...i18n import tr as _tr
+                h = QLabel(" > ".join(_tr(x) for x in s.page.split("/")))
                 f = QFont()
                 f.setBold(True)
                 f.setPointSize(f.pointSize() + 2)
@@ -387,7 +392,7 @@ class ProjectPropertiesDocument(QWidget):
 
     # ------------------------------------------------------------------ values
     def condition(self) -> str:
-        if self.cfg.currentText() == ALL:
+        if self.cfg.currentIndex() == 0:              # ALL (shown translated)
             return ""
         return msprops.cfg_condition(self.cfg.currentText(), self.plat.currentText())
 
@@ -470,7 +475,10 @@ class ProjectPropertiesDocument(QWidget):
         """Test/automation entry: set a property as if typed in the page."""
         s = next(x for x in SPECS if x.name == name)
         if s.per_config:
-            self.cfg.setCurrentText(configuration)
+            if configuration == ALL:
+                self.cfg.setCurrentIndex(0)
+            else:
+                self.cfg.setCurrentText(configuration)
         return self._write(s, value)
 
     def _saved(self, what: str, tree: bool = False):

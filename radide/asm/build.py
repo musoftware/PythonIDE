@@ -16,6 +16,7 @@ Project settings: the "asm" entry of project.radproj (defaults from the language
             "subsystem": "console" | "windows",
             "libs": ["user32", ...],    (extra libraries / DLLs)
             "debug": true,              (line debug information gdb can read: radide/asm/dwarf.py)
+            "output": "exe" | "dll",    (dll: a class library <Project>.dll + lib<Project>.a, entry DllMain)
             "console": "ide" | "external"}   (where Ctrl+F5 runs a console program)
 
 Pipelines (x64 / x86):
@@ -24,7 +25,7 @@ Pipelines (x64 / x86):
     gas    as --64|--32 -g -> .o                                                              -> gcc | ld i386pe
     fasm   fasm -s main.fas main.asm _radapp.exe (format PE / PE64)  (+ DWARF lines added to the exe: linetable.py)
            or  format MS COFF / MS64 COFF -> .obj (+ DWARF object from the .fas) -> gcc | ld
-    masm   vcvars + ml64 /c /Zi /Fl | ml /c /coff /Zi /Fl -> .obj -> link /DEBUG /MAP (C runtime: msvcrt +
+    masm   vcvars + ml64 /c /Zi /Sa /Fl | ml /c /coff /Zi /Sa /Fl -> .obj -> link /DEBUG /MAP (C runtime: msvcrt +
            legacy_stdio)  (+ DWARF lines from the listing + map added to the exe: linetable.py)
 
 GUI Bridge form projects (radide/asm/formgen.py flavors): the form files + modules + _radmain.asm / _radmain.s
@@ -176,6 +177,15 @@ class Builder:
             self.log(text)
         return r.returncode
 
+    @property
+    def is_dll(self) -> bool:
+        return self.s.get("output") == "dll"
+
+    @property
+    def output_path(self) -> Path:
+        """_radapp.exe, or <Project>.dll for a class library."""
+        return self.folder / (f"{self.project.name}.dll" if self.is_dll else EXE_NAME)
+
     def need(self, tool: str) -> str:
         exe = tc.ensure(tool, self.log)
         if not exe:
@@ -325,6 +335,24 @@ class Builder:
         if self.run(argv) != 0:
             raise BuildError("link failed (ld, 32-bit GUI Bridge program)")
 
+    def _link_dll(self, objs: list[str], dll: Path) -> None:
+        """A class library: the exported functions ('export' / .drectve) in <Project>.dll + the import library."""
+        implib = self.folder / f"lib{self.project.name}.a"
+        entry = self.s.get("entry") or "DllMain"
+        libs = [f"-l{name}" for name in self._libs()]
+        if self.arch == "x64":
+            gcc = self.need("gcc")
+            argv = [gcc, "-shared", "-nostdlib", f"-Wl,--entry,{entry}", f"-Wl,--out-implib,{implib}"] + \
+                (["-g"] if self.debug else ["-s"]) + objs + ["-o", str(dll), "-lkernel32", "-luser32", "-lmsvcrt"] + libs
+        else:
+            ld = self.need("ld")
+            ent = entry if entry.startswith("_") else f"_{entry}@12"
+            argv = [ld, "-m", "i386pe", "--dll", "-e", ent, "--enable-stdcall-fixup", "--out-implib", str(implib)] + \
+                ([] if self.debug else ["-s"]) + ["-o", str(dll)] + objs + \
+                ["-L", system_dll_dir("x86"), "-lkernel32", "-luser32", "-lmsvcrt"] + libs
+        if self.run(argv) != 0:
+            raise BuildError("link failed (class library)")
+
     def _link_gcc(self, objs: list[str], exe: Path) -> None:
         gcc = self.need("gcc")
         argv = [gcc] + (["-g"] if self.debug else ["-s"]) + objs
@@ -375,7 +403,7 @@ class Builder:
             objs.append(obj)
             flags = "/nologo /c" + (" /coff" if self.arch == "x86" else "") + (" /Zi" if self.debug else "")
             if self.debug:                                  # listing: the source lines' offsets (linetable.py)
-                flags += f' /Fl"{BUILD_DIR}\\{Path(s).stem}.lst"'
+                flags += f' /Sa /Fl"{BUILD_DIR}\\{Path(s).stem}.lst"'
             steps.append(f'{mlname} {flags} /Fo"{obj}" "{s}"')
         entry = self.s.get("entry") or "main"
         libs = " ".join(f"{lib}.lib" for lib in self._libs())
@@ -414,7 +442,7 @@ class Builder:
 
     def build(self) -> bool:
         self.bdir.mkdir(exist_ok=True)
-        exe = self.folder / EXE_NAME
+        exe = self.output_path
         ok = False
         message = ""
         try:
@@ -435,7 +463,7 @@ class Builder:
                 try:
                     exe.unlink()
                 except OSError:
-                    raise BuildError(f"{EXE_NAME} is in use (is the program still running?)")
+                    raise BuildError(f"{exe.name} is in use (is the program still running?)")
             if self.assembler == "masm":
                 self._masm(srcs, exe)
             elif self.assembler == "fasm" and self.is_forms():
@@ -476,7 +504,7 @@ class Builder:
                     self._link(objs, exe)
             ok = exe.is_file()
             if not ok:
-                raise BuildError(f"{EXE_NAME} was not produced")
+                raise BuildError(f"{exe.name} was not produced")
             self.log(f"Build succeeded: {exe.name}")
         except BuildError as e:
             message = str(e)
@@ -506,6 +534,9 @@ class Builder:
         return bool(re.search(r"^\s*format\s+(MS64\s+COFF|MS\s+COFF|COFF)\b", text, re.M | re.I))
 
     def _link(self, objs: list[str], exe: Path) -> None:
+        if self.is_dll:
+            self._link_dll(objs, exe)
+            return
         linker = self.s.get("linker") or "gcc"
         if linker == "golink":
             self._link_golink(objs, exe)

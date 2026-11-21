@@ -346,9 +346,64 @@ def decompile(chm: Path, dest: Path, timeout: float = 60) -> bool:
     return any(dest.rglob("*"))
 
 
+def _encint(b: bytes, i: int) -> tuple[int, int]:
+    v = 0
+    while True:
+        c = b[i]
+        i += 1
+        v = (v << 7) | (c & 0x7F)
+        if c < 0x80:
+            return v, i
+
+
+def chm_listing(chm: Path) -> dict[str, int]:
+    """Names and sizes of the files inside a .chm, read from its PMGL directory in pure Python (no hh.exe:
+    starting many hh.exe processes makes Windows sluggish)."""
+    b = chm.read_bytes()
+    if b[:4] != b"ITSF":
+        raise ValueError("not a CHM file")
+    dir_off = int.from_bytes(b[0x48:0x50], "little")
+    if b[dir_off:dir_off + 4] != b"ITSP":
+        raise ValueError("no ITSP directory header")
+    hlen = int.from_bytes(b[dir_off + 8:dir_off + 12], "little")
+    chunk = int.from_bytes(b[dir_off + 0x10:dir_off + 0x14], "little")
+    count = int.from_bytes(b[dir_off + 0x2C:dir_off + 0x30], "little")
+    files: dict[str, int] = {}
+    base = dir_off + hlen
+    for n in range(count):
+        c = b[base + n * chunk: base + (n + 1) * chunk]
+        if c[:4] != b"PMGL":
+            continue
+        end = chunk - int.from_bytes(c[4:8], "little")
+        i = 0x14
+        while i < end:
+            ln, i = _encint(c, i)
+            name = c[i:i + ln].decode("utf-8", "replace")
+            i += ln
+            _sec, i = _encint(c, i)
+            _off, i = _encint(c, i)
+            size, i = _encint(c, i)
+            files[name] = size
+    return files
+
+
 def verify(chm: Path, key: str, enc: str, work: Path, log=print) -> list[str]:
-    """Decompile and check: every page is there and decodes in its charset with the Arabic text intact, the
-    TOC (cp1256) names every lesson."""
+    """Check the CHM's directory (pure Python): every page and the .hhc are inside and not empty. With
+    RADIDE_CHM_DEEP_VERIFY=1 also decompile with hh.exe and compare bytes / Arabic titles / TOC."""
+    if os.environ.get("RADIDE_CHM_DEEP_VERIFY") != "1":
+        problems = []
+        try:
+            files = {k.lstrip("/").lower(): v for k, v in chm_listing(chm).items()}
+        except Exception as e:  # noqa: BLE001
+            return [f"{chm.name}: cannot read the CHM directory ({e})"]
+        pages = sorted(p.name for p in (work / key).glob("*.html"))
+        for name in pages:
+            if not files.get(name.lower()):
+                problems.append(f"{chm.name}: {name} missing or empty")
+        if not any(k.endswith(".hhc") and v for k, v in files.items()):
+            problems.append(f"{chm.name}: no .hhc inside")
+        log(f"verify {chm.name}: {len(pages)} pages, {'OK' if not problems else f'{len(problems)} problem(s)'}")
+        return problems
     problems = []
     dest = work / "_decompiled" / chm.stem
     if not decompile(chm, dest):

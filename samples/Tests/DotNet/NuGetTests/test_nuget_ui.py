@@ -18,7 +18,7 @@ from qh import check, pump, shot, wait  # noqa: E402
 from radide.dotnet.nuget import config as C, projects as P  # noqa: E402
 from radide.foreign import msbuild as MB, vs_ui  # noqa: E402
 
-WORK = Path(qh.WORK) / "nuget-ui"
+WORK = Path(qh.WORK) / f"nuget-ui-{os.getpid()}"   # unique: a language server may still lock an old copy
 shutil.rmtree(WORK, ignore_errors=True)
 SOL = WORK / "NuGetSolution"
 shutil.copytree(HERE.parent / "NuGetSolution", SOL, ignore=shutil.ignore_patterns("bin", "obj", ".vs"))
@@ -255,7 +255,8 @@ check("solution builds after the NuGet changes", code == 0, out[-800:])
 
 # ---------------------------------------------------------------- RAD IDE C# GUI-Bridge project
 bridge = WORK / "CsBridge"
-shutil.copytree(HERE.parents[1] / "All" / "agents2" / "qa" / "probe" / "csharp-bridge", bridge)
+shutil.copytree(HERE.parents[1] / "All" / "agents2" / "qa" / "probe" / "csharp-bridge", bridge,
+                ignore=shutil.ignore_patterns("bin", "obj", ".vs"), dirs_exist_ok=True)
 w.open_project(bridge, ask=False)
 pump(2)
 from radide.dotnet.nuget import context as CX  # noqa: E402

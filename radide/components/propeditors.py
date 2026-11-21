@@ -75,8 +75,9 @@ def _commit(panel, name, value) -> None:
     panel._refresh_values()
 
 
-def cell_widget(panel, row: int, d, value) -> None:
-    """Create (once) or update the value cell's editor of property *d* in the Properties table."""
+def cell_widget(panel, row: int, d, value, mixed: bool = False) -> None:
+    """Create (once) or update the value cell's editor of property *d* in the Properties table. *mixed*: the
+    selected controls have different values (multi-select) - the cell is blank."""
     table = panel.props
     w = table.cellWidget(row, 1)
     if w is not None and getattr(w, "rad_peng", None) != (d.name, d.kind, d.editor):
@@ -103,11 +104,14 @@ def cell_widget(panel, row: int, d, value) -> None:
         if w is None:
             w = QComboBox()
             w.addItems(list(d.choices or proptypes.ALIGNMENTS))
-            w.currentTextChanged.connect(lambda t, n=d.name: panel._set(n, t))
+            w.currentTextChanged.connect(lambda t, n=d.name: t and panel._set(n, t))
             w.rad_peng = (d.name, d.kind, d.editor)
             table.setCellWidget(row, 1, w)
         w.blockSignals(True)
-        w.setCurrentText(str(value or "MiddleLeft"))
+        if mixed:
+            w.setCurrentIndex(-1)
+        else:
+            w.setCurrentText(str(value or "MiddleLeft"))
         w.blockSignals(False)
         return
     if w is None:
@@ -120,6 +124,10 @@ def cell_widget(panel, row: int, d, value) -> None:
         text = text or "(none)"
     if d.kind == "custom" and ed is None and not d.editor:
         text = text or "(value)"
+    if mixed:
+        w.setText("   ...")
+        w.setIcon(QIcon())
+        return
     w.setText(text + "   ...")
     w.setIcon(_icon_for(d.kind, value))
 

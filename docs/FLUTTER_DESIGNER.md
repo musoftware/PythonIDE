@@ -100,6 +100,8 @@ designable. The preview shows a Code node as a dashed placeholder box with its f
 | `"replace:/home"` | `() => Navigator.pushReplacementNamed(context, '/home')` |
 | `"push:Home"` | `() => Navigator.push(context, MaterialPageRoute(builder: (context) => const Home()))` |
 | `"back"` | `() => Navigator.pop(context)` |
+| `"validate:form1"` | `() => form1.currentState!.validate()` (a `Form` named `form1`, section 1.7) |
+| `"validate:form1:onSubmit"` | `() { if (form1.currentState!.validate()) { onSubmit(); } }` (`onSubmit` = a handler) |
 
 A button without an `onPressed` event is generated with `onPressed: () {}` (enabled, as designers expect).
 Handler signatures come from the catalog (`"onChanged": "String value"` for TextField, `"bool? value"` for
@@ -160,6 +162,12 @@ state at once. The twelve original types generate exactly the same code as befor
   prop kinds `timeline` / `timeline_offset`) take
   `{"$timeline": "intro", "from": 0, "to": 1, "interval": [0, 0.5], "curve": "Curves.easeOut"}` ->
   `radDrive(intro, 0.0, 1.0, end: 0.5, curve: Curves.easeOut)` (a plain number = `AlwaysStoppedAnimation`).
+  A `$timeline` on a plain **number** property (`double` / `int`: `Container.width`, `Opacity.opacity`,
+  `Text.maxLines` ...) really animates: the widget is generated inside
+  `AnimatedBuilder(animation: intro, builder: (context, child) => Container(width: radDrive(intro, 80.0, 220.0).value))`
+  (`.value.round()` for an int, `Listenable.merge([a, b])` for two timelines); the importer turns it back into
+  `$timeline` values. Other kinds (colours ...) and parent-data widgets (`Positioned.left` ...) keep the old
+  behaviour: a warning and the end value.
   Events: `play:intro` (`intro.forward(from: 0)`), `reverse:intro`.
 * `transition` (`fade` | `slideLeft` | `slideUp` | `scale` | `none`): the screen class gets
   `static const transition = RadRouteSpec(...)`; `routes.dart` moves it from `designedRoutes` to
@@ -167,7 +175,15 @@ state at once. The twelve original types generate exactly the same code as befor
   `push:Home?transition=slideUp&ms=400` pushes with `RadRoute(...)`.
 * Catalog: implicit `AnimatedPadding / Align / Positioned / Scale / Rotation / Slide / Size / DefaultTextStyle /
   CrossFade`, explicit `Fade / Slide / Scale / Rotation / SizeTransition`, `Lottie` (package:lottie, added to
-  pubspec) and `RiveAnimation` (package:rive) - placeholders in the previews.
+  pubspec) and `RiveAnimation` (package:rive). Previews: the live preview host plays Lottie files with
+  package:lottie (`Lottie.network` on the served project asset; a placeholder when it cannot be loaded); the Qt
+  preview draws the **first frame** of a `Lottie.asset` file (`flutterdesign/lottie_thumb.py`: shape / solid /
+  image / precomp layers, transforms, fills, strokes; masks, mattes, trim paths and effects are ignored) with a
+  "Lottie 2.0s" tag, else the placeholder. `RiveAnimation` stays a placeholder in both previews: the current
+  package:rive (0.14) renders through rive_native, whose web/wasm and native binaries are fetched by a separate
+  `dart run rive_native:setup` step (not by `flutter pub get`), which does not fit the once-per-Flutter-version
+  host build; the older 0.13 line (rive_common, what generated projects use) was not added because RAD IDE has no
+  original `.riv` file to verify the host with (`.riv` is a binary format made with the Rive editor).
 
 ### 1.6 Sizes (layout variants) and foldables
 
@@ -198,6 +214,48 @@ Reset to base, Copy to, Hide / Show on this size, and to animate the value with 
 Structural edits (add, move, delete) always change every size. The previews render
 `variants_fd.preview_data(screen, active sizes)`; the live host receives the device's display features.
 
+### 1.7 Data widgets: item templates, rich text, forms, radio groups (`flutterdesign/datawidgets.py`)
+
+```json
+{"type": "ListView", "ctor": "builder", "props": {"itemCount": 6, "items": ["Apple", "Banana"]},
+ "slots": {"itemBuilder": {"type": "ListTile", "slots": {"title": {"type": "Text", "props": {"data": {"$code": "item"}}},
+                                                        "subtitle": {"type": "Text", "props": {"data": {"$code": "'Row $index'"}}}}}}}
+{"type": "GridView", "ctor": "builder", "props": {"crossAxisCount": 3, "mainAxisSpacing": 8, "itemCount": 9},
+ "slots": {"itemBuilder": {...}}}
+{"type": "Text", "ctor": "rich", "props": {"spans": [{"text": "Fruit "}, {"text": "Market", "style": {"fontWeight": "FontWeight.bold"}}]}}
+{"type": "RichText", "props": {"spans": [...], "style": {...root span style}, "textAlign": "TextAlign.center"}}
+{"type": "Form", "name": "form1", "props": {"autovalidateMode": "AutovalidateMode.onUserInteraction"}, "slots": {"child": ...}}
+{"type": "TextFormField", "name": "txtEmail", "props": {"validators": [{"rule": "required"}, {"rule": "email"},
+   {"rule": "minLength", "value": 8, "message": "At least 8 characters"}, {"rule": "regex", "value": "^[0-9]{7,15}$"}]},
+ "events": {"validator": "checkEmail"}}
+{"type": "RadioGroup", "name": "rdoPlan", "props": {"groupValue": "free"}, "events": {"onChanged": "planChanged"},
+ "slots": {"child": {"type": "Column", "children": [{"type": "RadioListTile", "props": {"value": "free"}, ...},
+                                                    {"type": "Radio", "props": {"value": "team"}}]}}}
+```
+
+* **ListView.builder / GridView.builder** (ctor `builder`): `itemCount` and one item template in the slot
+  `itemBuilder`. The template reads `index` and - when `items` (sample data, a string list) is set - `item`
+  (= `items[index % items.length]`) in `$code` values. Generated: `itemBuilder: (context, index) => <template>` or
+  a block `{ const items = [...]; final item = items[index % items.length]; return <template>; }`;
+  GridView.builder gets `gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount, mainAxisSpacing,
+  crossAxisSpacing, childAspectRatio)`. Switching the constructor in the inspector moves the first child into the
+  template (and back). Previews: `variants_fd.preview_data` expands the template `itemCount` times (40 at most)
+  with `item` / `index` substituted in simple values (`item`, `index`, `'Row ${index + 1}'`, `item.toUpperCase()`
+  ...); the first copy keeps the model ids, the others are `<id>~<n>` and select the template when clicked.
+* **Text.rich / RichText** (`text_spans` values): `Text.rich(TextSpan(children: [TextSpan(text:, style:), ...]))`
+  inherits the DefaultTextStyle; `RichText(text: TextSpan(style: <style>, children: [...]))` does not (give the
+  spans a colour). A span that is not `TextSpan(text:, style:)` (WidgetSpan ...) imports as a `{"$code"}` item.
+* **Form**: a named Form gets `final form1 = GlobalKey<FormState>();` and `key: form1`; buttons validate it with
+  the events `validate:form1` / `validate:form1:onSubmit` (section 1.3). **TextFormField.validators** (rules
+  `required`, `email`, `minLength`, `maxLength`, `regex` - the whole text must match - each with an optional
+  `message`) and the event `validator` (a custom handler `String? checkX(String? value)` in the events file:
+  null = valid) generate `validator: radValidate(const [RadRule.required(), RadRule.email()], custom: checkX)`
+  with the helper `lib/radform.dart` (written when used); only a handler: `validator: checkX`. Rules run in order,
+  the first message wins, the custom handler runs last; empty text passes every rule except `required`.
+* **RadioGroup** (Flutter 3.41 API, no deprecated `groupValue` / `onChanged` on the radios): a named state field
+  `String? rdoPlan = 'free';`, `RadioGroup<String>(groupValue: rdoPlan, onChanged: (value) => setState(...))`;
+  `Radio(value: 'x')` and `RadioListTile(value: 'x', title: ...)` anywhere inside it.
+
 ## 2. Property values
 
 Every property value is plain JSON; the catalog gives each property a **kind** that decides the encoding.
@@ -224,11 +282,13 @@ not in the catalog are allowed only as `$code` values (extra named arguments suc
 | `box_shadows` | `[{"color": "#338F94FB", "blur": 20, "spread": 0, "offset": [0, 10]}]` | `[BoxShadow(...)]` |
 | `border` | `{"color": "#FFE0E0E0", "width": 1}` (all sides) / `{"top": {...}, "bottom": {...}, "left":..., "right":...}` | `Border.all(...)` / `Border(top: BorderSide(...))` |
 | `box_decoration` | `{"color", "gradient", "image": {"source", "src", "fit": "BoxFit.cover"}, "borderRadius", "border", "boxShadow", "shape": "BoxShape.circle"}` | `BoxDecoration(...)` with `DecorationImage(image: ..., fit: ...)` |
-| `text_style` | `{"fontSize": 18, "fontWeight": "FontWeight.bold", "color": "#FF1F1F1F", "fontStyle": "FontStyle.italic", "letterSpacing": 1.2, "height": 1.4, "decoration": "TextDecoration.underline", "fontFamily": "Brand", "googleFont": "Poppins"}` | `TextStyle(...)`, or `GoogleFonts.getFont('Poppins', ...)` when `googleFont` is set |
+| `text_style` | `{"fontSize": 18, "fontWeight": "FontWeight.bold", "color": "#FF1F1F1F", "fontStyle": "FontStyle.italic", "letterSpacing": 1.2, "height": 1.4, "decoration": "TextDecoration.underline", "fontFamily": "Brand", "googleFont": "Poppins", "shadows": [{"color": "#55000000", "blur": 2, "offset": [1, 1]}]}` | `TextStyle(...)`, or `GoogleFonts.getFont('Poppins', ...)` when `googleFont` is set |
 | `shape` | `{"type": "rounded", "radius": 12, "side": {"color": "#FFE0E0E0", "width": 1}}` / `{"type": "circle"}` / `{"type": "stadium"}` | `RoundedRectangleBorder(...)` / `CircleBorder()` / `StadiumBorder()` |
 | `button_style` | `{"backgroundColor", "foregroundColor", "padding" (edge_insets), "shape" (shape), "elevation", "minimumSize": [w, h], "textStyle"}` | `ElevatedButton.styleFrom(...)` (the style factory of the button class) |
 | `input_decoration` | `{"hintText", "labelText", "helperText", "prefixIcon": "Icons.email", "suffixIcon": "Icons.visibility", "border": "none" \| "outline" \| "underline", "borderRadius", "borderColor", "focusedBorderColor", "filled", "fillColor", "contentPadding" (edge_insets), "hintStyle", "labelStyle" (text_style), "isDense"}` | `InputDecoration(...)` with `OutlineInputBorder(...)` etc. |
 | `nav_items` | `[{"icon": "Icons.home", "label": "Home", "activeIcon": "Icons.home_filled"}]` | `BottomNavigationBarItem` / `NavigationDestination` list |
+| `text_spans` | `[{"text": "Hello ", "style": {text_style}}, {"$code": "WidgetSpan(...)"}]` | `TextSpan(children: [TextSpan(text: ..., style: ...), ...])` |
+| `validators` | `[{"rule": "minLength", "value": 8, "message": "..."}]` (section 1.7) | `radValidate(const [RadRule.minLength(8, '...')])` |
 | `constraints` | `{"minWidth", "maxWidth", "minHeight", "maxHeight"}` | `BoxConstraints(...)` |
 | `code` | `"..."` | verbatim |
 
@@ -278,6 +338,9 @@ For `screens/Login.fscreen.json`:
 - `lib/screens/routes.dart` - generated: `final Map<String, WidgetBuilder> designedRoutes = {Login.route: ...}`
   for every screen; RAD IDE Flutter projects merge it into `lib/main.dart` routes.
 - `lib/radfx.dart` - the animation helper (`RadFx`), written when a screen uses `anim`.
+- `lib/radform.dart` - the validator rules helper (`radValidate`, `RadRule`), written when a TextFormField has
+  `validators`. Handlers of the `validator` event are declared `String? checkX(String? value);` and their stubs
+  `return null;`.
 - `pubspec.yaml` - asset folders of `"assets"` (only folders that exist), asset fonts, and `google_fonts` when a
   text style / the theme uses a Google font.
 
@@ -315,6 +378,17 @@ changes); `importer.ensure_tool()` builds it, `importer.tool_status()` says whet
 - The report lists what was imported exactly and what became Code / `$code`; `ImportResult.stats[name]` has
   `exact`, `code_nodes`, `code_props`, `anim_helpers`.
 - `importer.import_expression(dart_expr) -> node` imports one pasted widget expression.
+- `void main() => runApp(MaterialApp(home: <widget tree>, theme: ThemeData(colorSchemeSeed: ...)))` (also a
+  block body) becomes a screen named after `title` (else `Home`) with route `/`; a widget class whose build()
+  returns such a MaterialApp is imported as its `home` tree. `home: const HomePage()` of a class of the same file
+  is left alone (that class is imported itself). Other MaterialApp arguments are reported as dropped.
+- Colours with `.withValues(alpha: a)`, `.withOpacity(a)` and `.withAlpha(n)` on `Color(0x...)`, `Colors.x` and
+  `Colors.x.shade300` become `#AARRGGBB` (alpha = round(a * 255)); `TextStyle(shadows: [Shadow(...)])` becomes
+  `shadows`. Scheme colours with an alpha stay `$code`.
+- Data widgets (section 1.7): `ListView.builder` / `GridView.builder` with `(context, index) => ...` or the
+  generated block body, `Text.rich`, `RichText(text: TextSpan(...))`, `radValidate(...)`, `key: <GlobalKey<FormState>
+  field>`, the `validate:` closures, `RadioGroup<String>` bindings and the AnimatedBuilder of timeline values.
+- The designer name of a plain widget (not in the Dart code) is kept from `previous`.
 
 ## 6. Tree operations and undo (model.py)
 
@@ -367,5 +441,16 @@ node|None}` and `{"op": "set", "id": id, "field": "props"|"events"|"anim"|"name"
 - **Exact mode**: `LivePreview.start_exact(project, route)` runs `codegen.write_all` + `flutter run -d web-server`
   and shows the real app in the same view; `exact_reload()` (PreviewPane.screen_saved) regenerates and hot
   reloads. The first debug compile takes 40-90 s; a watchdog reloads the page (twice at most) when the app
-  connected but created no Flutter view within 25 s.
+  connected but created no Flutter view within 25 s. Cold starts are measured by
+  `samples/Tests/FlutterDesigner/DataFormsScreens/test_exact_coldstart.py [runs] [--watchdog off]`. With the watchdog off,
+  15 cold starts in a row (Flutter 3.41.9, Windows 11) all showed the app on the first load: the Flutter view appeared
+  0.3-3 s after the app connected and nothing ever needed a reload. The blank first load did not come back, so the
+  watchdog stays as a safety net.
+- **Project theme**: the designer reads `screens/app.ftheme.json` (themes.py): the live host gets it through
+  `LivePreview.set_app_theme(spec)`, the Qt canvas uses it (as `themes.screen_theme`) when the screen has no theme
+  of its own. `FlutterDesigner.refresh_theme()` re-reads it and redraws canvas, inspector swatches and live
+  preview; `designer.refresh_project_theme(folder)` refreshes every open designer of a project and is called by
+  the App Theme editor after Save.
+- **Lottie / Rive**: the host depends on package:lottie (plays `Lottie` nodes from the served project);
+  `RiveAnimation` stays a placeholder (see the note in section 1.5).
 - `live.PreviewPane` is the ready-made widget (tool bar + view) used by the designer.

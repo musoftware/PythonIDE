@@ -28,7 +28,7 @@ from PyQt6.QtCore import QEvent, QMargins, QObject, QRect, Qt, QTimer
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import (QAbstractButton, QApplication, QBoxLayout, QComboBox,
                              QDialogButtonBox, QDockWidget, QFormLayout, QFrame, QGridLayout,
-                             QLayout, QMainWindow, QMenu, QScrollArea, QWidget, QWizard)
+                             QLayout, QMainWindow, QMenu, QScrollArea, QTabBar, QWidget, QWizard)
 
 ENABLED = os.environ.get("RADIDE_NO_SCREENFIT", "") not in ("1", "true", "yes")
 SMALL_W, SMALL_H = 1400, 900          # logical px: below this the screen counts as "small"
@@ -124,7 +124,7 @@ def _relax(w: QWidget) -> None:
             f.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
 
-def wrap_in_scroll(w: QWidget) -> bool:
+def wrap_in_scroll(w: QWidget, max_width: int | None = None) -> bool:
     """Move the content of w's layout into a QScrollArea (the dialog's button row stays outside).
     Works with box, grid and form layouts; returns False when w was left unchanged."""
     lay = w.layout()
@@ -139,7 +139,9 @@ def wrap_in_scroll(w: QWidget) -> bool:
         items = [(lay.itemAt(i), lay.stretch(i)) for i in range(lay.count())]
         vertical = lay.direction() in (QBoxLayout.Direction.TopToBottom, QBoxLayout.Direction.BottomToTop)
         if vertical and len(items) > 1 and _is_button_row(items[-1][0]):
-            keep = [items[-1][0]]
+            last = items[-1][0]
+            if max_width is None or last.minimumSize().width() <= max_width:
+                keep = [last]                    # (a row wider than the screen scrolls with the rest)
         new = QBoxLayout(lay.direction())
         for _ in range(lay.count()):
             lay.takeAt(0)
@@ -219,7 +221,7 @@ def _wrap_wizard(wz: QWizard, area: QRect) -> None:
             nw, nh = needed_size(page)
             if nw > area.width() - 40 or nh > area.height() - 160:
                 _relax(page)
-                wrap_in_scroll(page)
+                wrap_in_scroll(page, area.width() - 40)
 
 
 # ----------------------------------------------------------------------------- fitting
@@ -235,6 +237,7 @@ def fit_window(w: QWidget, wrap: bool = True) -> None:
     area = client_area(w)
     if area.width() < 200 or area.height() < 150:
         return
+    g0 = w.geometry()                           # the size the window asked for (wrapping may change it)
     if wrap and not isinstance(w, QMainWindow):
         nw, nh = needed_size(w)
         if nw > area.width() or nh > area.height():
@@ -244,7 +247,7 @@ def fit_window(w: QWidget, wrap: bool = True) -> None:
             else:
                 nw, nh = needed_size(w)
                 if nw > area.width() or nh > area.height():
-                    wrap_in_scroll(w)
+                    wrap_in_scroll(w, area.width())
     if isinstance(w, QMainWindow):
         fit_docks(w)
     if w.layout() is not None:                  # minimums of the new content (scroll area, docks)
@@ -262,6 +265,8 @@ def fit_window(w: QWidget, wrap: bool = True) -> None:
     if w.maximumHeight() < w.minimumHeight():
         w.setMaximumHeight(w.minimumHeight())
     g = w.geometry()
+    if g.size() != g0.size():
+        g = QRect(g.topLeft(), g0.size().expandedTo(w.minimumSize()))
     big = g.width() > area.width() or g.height() > area.height()
     if isinstance(w, QMainWindow) and big and not w.property("rad_screenfit_no_maximize"):
         w.setGeometry(area)
@@ -305,12 +310,24 @@ def fit_docks(mw: QMainWindow) -> None:
     for d in mw.findChildren(QDockWidget):
         if d.parentWidget() is mw:
             fit_dock(d)
+    for tb in mw.findChildren(QTabBar):
+        fit_dock_tabbar(tb)
+
+
+def fit_dock_tabbar(tb: QTabBar) -> None:
+    """The tab bar of a group of docked tool windows on a small screen: whole titles and scroll
+    arrows instead of "P...", "A..." when many tool windows share the group."""
+    mw = tb.parentWidget()
+    if not isinstance(mw, QMainWindow) or tb.property("rad_screenfit_tabs") or not is_small_screen(mw.screen()):
+        return
+    tb.setElideMode(Qt.TextElideMode.ElideNone)
+    tb.setUsesScrollButtons(True)
+    tb.setProperty("rad_screenfit_tabs", True)
 
 
 def apply_small_screen_layout(mw: QMainWindow) -> None:
     """First run on a small screen (no saved layout): Solution Explorer and Properties share one
     tab group when the screen is too low to stack them, and the Output panel is lower."""
-    sys.__stderr__.write(f"SSDBG called {mw.size()} {mw.dockWidgetArea(mw.dock_solution)} {mw.dockWidgetArea(mw.dock_props)}\n")
     scr = mw.screen() or QGuiApplication.primaryScreen()
     if not ENABLED or scr is None or not is_small_screen(scr):
         return
@@ -318,8 +335,17 @@ def apply_small_screen_layout(mw: QMainWindow) -> None:
     sol, props = getattr(mw, "dock_solution", None), getattr(mw, "dock_props", None)
     if av.height() < 700 and sol is not None and props is not None and not sol.isFloating() \
             and not props.isFloating() and mw.dockWidgetArea(sol) == mw.dockWidgetArea(props):
-        mw.tabifyDockWidget(props, sol)
+        # Qt cannot tabify a dock that already sits in another tab group: take the whole
+        # Solution Explorer group out first, then add it to the Properties group
+        group = [sol] + [d for d in mw.tabifiedDockWidgets(sol) if d is not props]
+        visible = {id(d): d.isVisible() for d in group}
+        for d in group:
+            mw.removeDockWidget(d)
+        for d in group:
+            mw.tabifyDockWidget(props, d)
+            d.setVisible(visible[id(d)])
         props.raise_()
+        mw.resizeDocks([props], [max(260, min(340, int(mw.width() * 0.26)))], Qt.Orientation.Horizontal)
     out = getattr(mw, "dock_output", None)
     if out is not None and not out.isFloating():
         mw.resizeDocks([out], [max(90, min(150, int(av.height() * 0.17)))], Qt.Orientation.Vertical)
@@ -336,6 +362,8 @@ class _ScreenFit(QObject):
                         fit_window(obj)
                     elif isinstance(obj, QDockWidget):
                         fit_dock(obj)
+                    elif isinstance(obj, QTabBar):
+                        fit_dock_tabbar(obj)
             except RuntimeError:          # a window being destroyed
                 pass
             except Exception as e:  # noqa: BLE001 - never break showing a window

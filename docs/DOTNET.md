@@ -286,3 +286,208 @@ configuration combos and file watcher refreshed). IDE-only state that Visual Stu
   in the Output); "Start" of a library is skipped like VS.
 * Launch profiles of kind IIS Express / Docker / WSL run as a plain Project profile.
 * Publish targets other than Folder (Azure, FTP, IIS, ClickOnce) are not offered.
+
+## NuGet: Manage NuGet Packages, Package Manager Console, package sources (`radide/dotnet/nuget/`)
+
+Visual Studio 2022's NuGet experience for Visual Studio solutions (C# / VB / F# projects) and for RAD IDE's own
+C# GUI-Bridge projects (their NuGet manifest is `<project>/_build/csharp/RadApp.csproj`).
+
+### Modules
+
+| Module | What it does |
+|---|---|
+| `versions.py` | `NuGetVersion` (SemVer 2 + 4th part, NuGet ordering), `VersionRange` (`1.0`, `[1.0]`, `[1.0,2.0)`, `1.*`), target frameworks (`parse_tfm`, `compatible`, `nearest` = NuGet's reducer for net4x / netX.0 / netstandard / platform TFMs). |
+| `http.py` | GET with a disk cache under `%LOCALAPPDATA%\RADIDE\cache\nuget` (stale copy used offline); recorded fixtures for tests: `RADIDE_NUGET_FIXTURES=<dir>` + `RADIDE_NUGET_FIXTURE_MODE=record|replay`. |
+| `config.py` | nuget.config chain (solution folder upwards, `%APPDATA%\NuGet\NuGet.Config`, machine `%ProgramFiles(x86)%\NuGet\Config\*.config`), `<clear/>`, disabled sources, `globalPackagesFolder`, `repositoryPath`; `ConfigFile` reads/writes one file (comments kept). |
+| `feed.py` | `V3Feed` (service index: search, autocomplete, registration = every version's dependencies per TFM / license / project URL / deprecation / vulnerabilities, flat container versions + .nupkg, README template), `LocalFeed` (folder of .nupkg, `id/version/` layout, the global packages folder), `AggregateFeed` ("All"), `parse_nuspec`. |
+| `projects.py` | `NuGetProject`: style detection and install / update / uninstall / restore for **PackageReference** (`dotnet add/remove package`; legacy projects: direct XML edit + `msbuild -t:restore`), **Central Package Management** (`Directory.Packages.props` `PackageVersion`, `PackageReference` without Version, `VersionOverride` read; the CLI maintains both files, direct-edit fallback) and **packages.config** (dependency resolution with Lowest / HighestPatch / HighestMinor / Highest / IgnoreDependencies, extraction to the solution `packages` folder, `<Reference>` + `HintPath` for the best `lib/<tfm>` with the full assembly identity, frameworkAssemblies, `build/<Id>.props/.targets` imports + `EnsureNuGetPackageBuildImports`, refusal to uninstall a package another one depends on, `-RemoveDependencies`, restore by RAD IDE with `nuget.exe` from dist.nuget.org as fallback). `updates()` / `consolidation()` / `restore_all()` for the solution; the transitive packages come from `obj/project.assets.json`. |
+| `console.py` | Package Manager Console engine (no Qt): `Install-Package`, `Uninstall-Package`, `Update-Package` (`-Safe`, `-Reinstall`), `Get-Package` (`-ListAvailable`, `-Updates`, `-Filter`, `-First`, `-Skip`), `Find-Package` (`-ExactMatch`, `-AllVersions`), `Get-Project`, `Restore-Package`, `Clear-Host`, `Get-Help`, `dotnet <args>`; PowerShell-style parameters with unique prefixes, `-ProjectName/-Version/-Source/-IncludePrerelease`, `-WhatIf`; tab completion of commands, parameters, projects, sources, package ids (autocomplete endpoint) and versions. |
+| `ui.py` | The "NuGet Package Manager" document (`NuGet: <Project>` / `NuGet - Solution` tab): Browse / Installed (top-level + transitive) / Updates (badge, Select all + Update) / Consolidate (badge, solution only); search (Ctrl+L), Include prerelease, Package source combo (All, each enabled source, Global packages folder (offline)) + settings gear; rows with cached icons, verified badge, downloads, installed version and update arrow, infinite scroll; details: version combo (Latest stable), Install / Update / Uninstall, solution project list with installed versions, deprecation / vulnerability banners, Options (Show preview window, Dependency behavior), Package Details (license link, downloads, date, project URL, report abuse, tags, dependencies per framework) and README (Markdown); License Acceptance and Preview Changes dialogs. |
+| `console_ui.py` | Package Manager Console tool window (Package source, Default project, Clear; `PM>` prompt, history in QSettings, Tab completion popup, Esc). |
+| `options_ui.py` | Tools > Options > NuGet Package Manager: General (package restore, binding redirects, default package management format, Clear All NuGet Storage) and Package Sources (checkable list, + / x / up / down, Name / Source / Update, machine-wide sources). Writes the solution nuget.config when there is one, else the user file. |
+| `context.py` | Which .NET projects the window has (VS solution projects, C# GUI-Bridge projects of a .radsln or the open project) and Solution Explorer reload after a change. |
+| `qtasync.py` | Worker threads with results / log lines delivered on the GUI thread. |
+
+### In the IDE
+
+* `radide/features/nuget_ide.py`: Tools > NuGet Package Manager > Package Manager Console / Manage NuGet Packages for
+  Solution... / Package Manager Settings; View > Other Windows > Package Manager Console; the Options page hook.
+* `radide/foreign/vs_ui.py`: `manage_packages` opens the NuGet document (project context menu, Dependencies node,
+  Packages node, Project menu provider); the solution context menu has Manage NuGet Packages for Solution... and
+  Restore NuGet Packages.
+* `radide/features/packages.py`: Project > Manage Packages... opens the NuGet document for .NET projects (C# GUI-Bridge,
+  VS projects); every other language keeps its own package manager dialog.
+* Private feeds: credentials are left to the dotnet CLI / NuGet credential providers (nothing is stored by RAD IDE).
+
+### Tests (`samples/Tests/DotNet/NuGetTests`)
+
+* `test_nuget_backend.py` - 48 checks: versions / ranges / frameworks, nuget.config merge and `<clear/>`, search,
+  metadata, autocomplete, deprecation and vulnerability info (live or `--offline` with the recorded `fixtures/`),
+  install / update / uninstall + build on temp copies of `NuGetSdk` (PackageReference), `NuGetLegacy` (packages.config,
+  .NET Framework 4.8, MSBuild build, dependencies, build/*.props import, restore, downgrade, -RemoveDependencies) and
+  `NuGetCpm` (Central Package Management), solution updates / consolidation / restore on `NuGetSolution`.
+* `test_nuget_ui.py` (qh.py harness) - 40 checks: menus, solution document (badges, Consolidate), project document
+  (search, details, README, license decline, install, Solution Explorer refresh, Installed, uninstall, Updates,
+  deprecation banner), Package Manager Console (Get-Package, Find-Package, Install/Uninstall-Package, error, tab
+  completion, history), Options > Package Sources with a local feed, global packages folder browsing, solution
+  build, C# GUI-Bridge project.
+
+### Not done
+
+* Content files (`content/`), `install.ps1` / `init.ps1` scripts and automatic binding redirects for packages.config
+  packages; "Automatically check for missing packages during build" is a stored setting only (dotnet / MSBuild
+  `-restore` restore PackageReference projects on build; packages.config projects use Restore NuGet Packages).
+* "Choose a NuGet Package Manager Format" dialog on the first install into a legacy project (the default format
+  setting is used; `NuGetProject.forced_style` is the hook), File conflict action, package signature verification
+  UI, the "Packages with prerelease versions" filter of Updates, per-version download counts in the version combo.
+* Credentials UI for authenticated feeds (left to credential providers).
+
+## Tools: Test Explorer, analyzers, .editorconfig, Code Cleanup, quick actions, decompiler, dotnet CLI (`radide/dotnet/tools/`, `radide/dotnet/decompile.py`)
+
+The rest of Visual Studio 2022's .NET tooling. Installed by `radide/features/dotnet_tooling.py` -> `radide.dotnet.tools.ui.install(win)`,
+which only *hooks* existing code (wraps `vs_ui._fill_deps / project_menu / solution_menu / activate`, patches
+`TestExplorer._show_detail`, adds an Error List context menu + `win.diag_providers` entry, `refactor.EXTRA_QUICK_ACTIONS`,
+`editkit.READY`).
+
+### API for other slices
+
+* `radide.dotnet.decompile.decompile_to_text(assembly, type_name=None, install=True) -> str` - C# of one type (full name,
+  `List<T>` / ``List`1`` both accepted) or of the whole assembly, with ILSpy's `ilspycmd`. `decompiled_file(assembly, type)`
+  caches it as `%LOCALAPPDATA%\RADIDE\cache\decompiled\<asm>-<hash>\<Type>.cs` (header `#region Assembly ...`).
+  `find_ilspycmd()` / `ensure_ilspycmd()` (installs `dotnet tool install --tool-path %LOCALAPPDATA%\RADIDE\tools ilspycmd`
+  from nuget.org - call it only after the user agreed). Raises `DecompileError`. Used by the Object Browser.
+* `radide.dotnet.tools.metadata.type_names(dll)` (pure-Python ECMA-335 TypeDef reader) and `project_index(project)` ->
+  `TypeIndex.lookup(simple) -> [(namespace, assembly)]`, `find_type(full)`, `raw_name(ns, simple, generic)`.
+* `radide.dotnet.tools.editorconfig`: `effective(path)`, `set_value(file, section, key, value)`,
+  `set_severity(file, rule, sev)`, `rule_severities(path)`, `editor_options(path)`.
+* `radide.dotnet.tools.sdk.msbuild_eval(project, items, properties, targets)` (`dotnet msbuild -getItem/-getProperty`).
+* `refactor.EXTRA_QUICK_ACTIONS` (new, tiny hook in radide/features/refactor.py): `fn(win, ed, line, col) -> [(title, callback)]`.
+* Test Explorer adapters may now provide `group_path(item) -> [(key, text)]`, `live_results(chunk) -> [Result]` and
+  `debug(explorer, keys)` (small hooks in radide/features/test_explorer.py); the explorer uses the solution folder as root
+  when a Visual Studio solution is open.
+
+### Test Explorer for .NET (`testing.py`)
+
+`DotnetTestAdapter` replaces the old source-scan `radide.testing.DotnetAdapter` in `testing.ADAPTERS` (same id `dotnet`).
+Discovery = `dotnet vstest <test.dll> --ListFullyQualifiedTests` for every built, up-to-date test project (real test cases,
+NUnit `[TestCase]` rows included) merged with a source scan (file/line, tests added since the last build, VB `<TestMethod>`).
+Tree: **Project > Namespace > Class > Test** (> method for data rows). Run = one `dotnet test <proj>` per project with an
+escaped `--filter FullyQualifiedName=...`, `--logger trx` (messages, stack traces, output, durations) and
+`--logger console;verbosity=normal` parsed while running (live pass/fail icons). Run Failed, Run with Coverage
+(coverlet "XPlat Code Coverage" -> Cobertura -> editor gutter colours). **Debug**: `dotnet test` with `VSTEST_HOST_DEBUG=1`,
+the testhost PID is read from the output and netcoredbg *attaches* to it (DAP `attach`) with every editor breakpoint; the
+results then come from the TRX. Test Detail underlines `in File.cs:line N` / `File.cs(N,M)` locations: double-click or
+Ctrl+click opens them.
+
+### Dependencies > Analyzers (`analyzers.py`)
+
+`dotnet msbuild -t:ResolveTargetingPackAssets;ResolveLockFileAnalyzers -getItem:Analyzer` lists the analyzer assemblies
+(SDK, targeting packs, NuGet packages). Their rules (id, title, category, default severity, enabled, help link) and source
+generators come from **AnalyzerInfo** (`helpers/AnalyzerInfo`, a tiny C# program compiled once per SDK into
+`%LOCALAPPDATA%\RADIDE\cache\dotnet-tools\` against the Roslyn shipped inside the SDK - no NuGet download), cached per
+assembly. The node loads in a thread on first expand. Each rule shows its **effective severity** (.editorconfig
+`dotnet_diagnostic.ID.severity`, category / global keys, else the default) with a coloured icon; right-click > Set severity
+(Error / Warning / Suggestion / Silent / None / Default) writes the nearest .editorconfig (or a new one in the solution
+folder), View Help. Generators list the files of `obj/<cfg>/<tf>/generated/<asm>/<generator>/` (read-only tabs);
+"Show Generated Files" runs `dotnet build --no-incremental -p:EmitCompilerGeneratedFiles=true` (the project file is not changed).
+
+### .editorconfig, Code Cleanup, usings, Error List (`editorconfig.py`, `cleanup.py`, `diagnostics.py`)
+
+* Editors take `indent_style / indent_size / tab_width` from the .editorconfig files that apply (Monaco model options).
+* **Analyze > Configure Code Analysis (.editorconfig)**: Whitespace / Code Style / Analyzers tabs (rule list with search,
+  multi-select + Set severity), writes only what changed, keeps comments and order.
+* **Analyze > Run Code Analysis** (Alt+F11): `dotnet build --no-incremental -p:RunAnalyzersDuringBuild=true
+  -p:EnforceCodeStyleInBuild=true`; MSBuild diagnostics -> Error List as `ID: message`. Error List context menu: Copy,
+  Show Error Help (learn.microsoft.com per CS/CA/IDE/BC/NU... id), **Configure severity**, Suppress > In Source
+  (`#pragma warning disable/restore`, VB `#Disable Warning`) / In Suppression File (`GlobalSuppressions.cs`).
+* **Code Cleanup** (Ctrl+K, Ctrl+E on the document; project / solution from the menu or Solution Explorer):
+  `dotnet format [whitespace|style|analyzers] --include <relative file>`; profile chosen in Configure Code Cleanup
+  (QSettings `dotnet/cleanupProfile`); open editors without unsaved edits reload the result.
+* **Remove and Sort Usings** (Ctrl+R, Ctrl+G; Edit > IntelliSense): AnalyzerInfo `--usings` builds a Roslyn compilation of
+  the project (`Compile` + `ReferencePathWithRefAssemblies` items, LangVersion, defines, nullable) and removes the
+  compiler's own CS8019 / CS0105 directives (implicit global usings respected), then sorts (System first and group
+  separation from .editorconfig). Without a restorable project it only sorts.
+
+### Quick actions (`quickfix.py`)
+
+Next to the C# language server's own code actions (Ctrl+.): unknown type -> `using Ns;` / fully qualify (only real public
+types of the project's runtime + packages, from the metadata type index), a type of another solution project ->
+"Add reference to 'X' and using ..." (`dotnet add reference`, XML edit for old-style projects), a curated map of
+well-known package types -> "Install package 'Newtonsoft.Json'" (`dotnet add package`; nuget.org has no reliable
+type-name search, so nothing is guessed), "Search NuGet.org for 'X'..." opens the NuGet Package Manager on Browse.
+
+### Decompiler
+
+Analyze > **Go To Decompiled Definition** (also in the C# editor's context menu): the type under the caret (qualified
+names and generics resolved, usings respected, a choice when ambiguous) is found in the project's assemblies and
+opened decompiled in a read-only tab. Analyze > Decompile Assembly... for any dll / type.
+
+### dotnet CLI (`cli.py`, Project menu > dotnet CLI)
+
+Restore, Build, Clean, Test, Pack (output / version / symbols), Publish (runtime, self-contained, single file, trim,
+ReadyToRun), Format / Verify Formatting, Watch Run with Hot Reload (startup project), User Secrets (init / set / list /
+remove / clear / open secrets.json), Tools (restore / list / tool-manifest / install local tool), Workloads (list / search;
+**Install Workload...** only opens the official page and prints the command - no silent installs), SDK info.
+
+### Tests (`samples/Tests/DotNet/ToolsSolution` + `samples/Tests/DotNet/ToolsTests`)
+
+`test_tools_core.py` 34/34 (discovery, run, TRX, live, filter, coverage, analyzers, generators, .editorconfig, code
+analysis, usings, dotnet format, decompile, quick fixes, CLI menu); `ui_test.py` 41/41 in the IDE (incl. debugging an
+xUnit test with a breakpoint in the library through netcoredbg).
+
+### Not done
+
+* Live Unit Testing, test playlists, "Analyze Code Coverage" window with blocks, test traits grouping.
+* Rules of analyzers built against a newer Roslyn than the SDK's cannot be listed (shown with the load error).
+* Light bulb: no fixes for extension methods (e.g. a missing `using System.Linq;` for `.Where()`), the language server's
+  own actions cover those when it provides them.
+* Decompiled Go To Definition is a separate command (F12 stays the language server's), member positions are not jumped to.
+
+## QA: end-to-end checks, Arabic + Dark, regression, course lessons
+
+Cross-slice QA of the five parts above, run as a user would in the IDE window (`samples/Tests/DotNet/EndToEnd`,
+qh.py harness, QSettings `RADIDE-TEST`, temp copies only, `widget.grab()` screenshots in `%TEMP%\radide-qa\shots`).
+
+### Scripts
+
+| Script | Result | Covers |
+|---|---|---|
+| `EndToEnd/test_e2e_ui.py` | 50/50 | One journey on `SolutionVS2022` + `SolutionMerge`: New Project wizard (classlib, shared, xUnit, .NET Framework classlib, console) -> Add > Existing Solution's Projects from `Tools.slnx` -> Reference Manager (shared project, project references, circular refusal, Browse DLL with HintPath, System.Numerics + COM Scripting on the old-style project) -> Package Manager Console `Install-Package` (two versions), solution Consolidate, project Install / Uninstall -> code using shared project + package + project + DLL references -> Build Solution (dotnet + VS MSBuild) -> Configuration Manager `QA` + build in it -> Project Properties round trip -> launch profile args/env + multiple startup (Ctrl+F5, both outputs) -> Save As .slnx + reopen + Build Solution -> Test Explorer pass/fail -> Object Browser + ilspycmd -> Code Cleanup + Remove and Sort Usings. |
+| `EndToEnd/test_arabic_dark.py` | 55/55 | Every new .NET window in Arabic + Dark: right-to-left, translated buttons, solution context menu, and no untranslated string from the .NET modules' own source in `i18n.missing()`. |
+| `EndToEnd/test_regression_ui.py` | 25/25 | ForeignProjects .NET samples (VsSolution .sln/.slnx, LegacyCsApp, WinForms C#/VB, complex WinForms, migration samples, NativeCpp) open in place and build; `HelloCSharp` (GUI Bridge) and `HelloPython` build and run. |
+| `Tutorials/VisualStudioProjects/check_course.py` | 28/28 | Every runnable block of the course (12 lessons) built + run with `radide.tutorials.check`, exercise starters fail as given. |
+
+### Fixes made during QA
+
+* Arabic: 28 strings added to `radide/i18n/ar.json` (Configuration:, Platform:, Solution Configurations / Platforms,
+  Object Browser, Show Private Members, Type Libraries, Search (Ctrl+E), Projects > Solution, NuGet - Solution,
+  NuGet package details labels, ...).
+* Labels inside HTML are invisible to the widget translator, so they now go through `i18n.tr()`: the NuGet package
+  details (`nuget/ui.py details_html`: Description, Version, Author(s), License, Downloads, Date published, Report
+  Abuse, Dependencies, ...) and the Reference Manager details pane (`refs/manager.py`: Name, Version, Target framework,
+  Strong name, Guid, Created by, File).
+* Combo items are not translated by the widget translator either: the New Project wizard filters ("All languages",
+  "All platforms", "All project types", matched by item data) and the Project Properties "All configurations" item
+  (now detected by index 0 instead of its text, so it also works when shown in Arabic); the Properties page headers
+  ("Application > General") translate each part.
+
+### Course lessons (`radide/tutorials/visual-studio-projects`, CHM rebuilt and verified: 13 pages)
+
+* 09 NuGet Package Manager and Package Manager Console: the four tabs, details pane, license / preview dialogs,
+  console commands and switches, PackageReference / packages.config / Central Package Management (runnable with
+  `Directory.Packages.props`), Consolidate, package sources.
+* 10 References and Object Browser: Reference Manager pages, FrameworkReference, circular refusal, Browse + HintPath,
+  COMReference (VS MSBuild), native DLLs with `DllImport` (runnable), reference properties, Add As Link, Object
+  Browser, a reflection "mini object browser" (runnable).
+* 11 Shared Projects and multi-targeting: .shproj / .projitems, Add Shared Project Reference, a runnable shared
+  project import, `#if` symbols (runnable), the editor's Project context bar, `TargetFrameworks`, when to use which.
+* 12 Multi-project solutions: Add > Existing Solution's Projects, solution folders, Unload / Reload, dependencies and
+  build order, startup projects, launch profiles, Configuration Manager, `Directory.Build.props` (runnable), Project
+  Properties, Publish, .sln vs .slnx.
+
+### Not done (found during QA, left as is)
+
+* The template names and descriptions in the New Project wizard stay English (they come from the dotnet template
+  engine; the RAD-written .NET Framework templates follow the same style).
+* The Reference Manager's Path column elides from the wrong side in right-to-left mode.
+* Configuration Manager's `<New...>` / `<Edit...>` combo items are not translated.

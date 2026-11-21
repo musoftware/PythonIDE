@@ -84,8 +84,14 @@
       "description": "Has the common Text property (default true)."
     },
     "commonProperties": {
-      "type": "boolean",
-      "description": "Name/Left/Top/.../Anchor/Dock (default true)."
+      "type": [
+        "boolean",
+        "array"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "The common properties: true (default) = all of them; false = only Name and the position (Left, Top, Width, Height); or a list of property sets (layout, position, appearance, font, behavior, text) and common property names, e.g. [\"layout\", \"font\", \"Enabled\"] (radide/components/commonprops.py)."
     },
     "commonEvents": {
       "type": "boolean",
@@ -368,6 +374,11 @@
         "library": {
           "type": "string",
           "description": "OCX library of 'class' (frm 'Object =' line), e.g. MSComctlLib."
+        },
+        "object": {
+          "type": "string",
+          "pattern": "^\\{[0-9A-Fa-f-]{36}\\}#[0-9.]+#\\d+;\\s*\\S.*$",
+          "description": "'Object =' line of a third-party OCX 'library' that VB6 does not ship: '{GUID}#1.0#0; STARS.OCX'."
         },
         "imports": {
           "type": "array",

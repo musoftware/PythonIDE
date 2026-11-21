@@ -43,6 +43,8 @@ TYPE_ICONS = {
     "CupertinoPageScaffold": "phone_iphone", "CupertinoNavigationBar": "web", "CupertinoButton": "smart_button",
     "CupertinoTextField": "input", "CupertinoSwitch": "toggle_on", "CupertinoSlider": "tune",
     "CupertinoActivityIndicator": "autorenew", "CupertinoListTile": "list", "Code": "code",
+    "RichText": "format_color_text", "RadioGroup": "radio_button_checked", "Radio": "radio_button_unchecked",
+    "RadioListTile": "playlist_add_check",
 }
 
 

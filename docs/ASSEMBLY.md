@@ -25,13 +25,17 @@ creates them with `create_new_project()` (`radide/asm/templates.py`).
 
 | Plugin id | Display name | Ext. | Templates (template id) |
 |---|---|---|---|
-| `asm-nasm` | Assembly (NASM) | `.asm` | Assembly Console (x64 Windows, NASM) `nasm_console_x64` - Assembly Console (x86 Windows, NASM) `nasm_console_x86` - Win32 API (x64, NASM) `nasm_winapi_x64` - Assembly Windows Forms (NASM + GUI Bridge) `nasm_forms` |
-| `asm-fasm` | Assembly (FASM) | `.asm` | FASM Console (x64) `fasm_console_x64` - FASM Console (x86) `fasm_console_x86` |
+| `asm-nasm` | Assembly (NASM) | `.asm` | Assembly Console (x64 Windows, NASM) `nasm_console_x64` - Assembly Console (x86 Windows, NASM) `nasm_console_x86` - Win32 API (x64, NASM) `nasm_winapi_x64` - Assembly Windows Forms (NASM + GUI Bridge) `nasm_forms` - Assembly Class Library (x64 DLL, NASM) `nasm_dll_x64` - Assembly Windows Forms (x86, NASM + GUI Bridge) `nasm_forms_x86` |
+| `asm-fasm` | Assembly (FASM) | `.asm` | FASM Console (x64) `fasm_console_x64` - FASM Console (x86) `fasm_console_x86` - FASM Windows Forms (x64, GUI Bridge) `fasm_forms` |
 | `asm-masm` | Assembly (MASM) | `.asm` | MASM Console (x64) `masm_console_x64` - MASM Console (x86) `masm_console_x86` (only usable with Visual Studio) |
-| `asm-gas` | Assembly (GNU as) | `.s` | GNU as Console (x64, AT&T syntax) `gas_console_x64` - GNU as Console (x64, Intel syntax) `gas_console_x64_intel` |
+| `asm-gas` | Assembly (GNU as) | `.s` | GNU as Console (x64, AT&T syntax) `gas_console_x64` - GNU as Console (x64, Intel syntax) `gas_console_x64_intel` - GNU as Windows Forms (x64, AT&T syntax, GUI Bridge) `gas_forms` - GNU as Windows Forms (x64, Intel syntax, GUI Bridge) `gas_forms_intel` |
 
 Every console template shows Hello World, the C runtime (`puts`, `printf`, `scanf`, `fflush`) and a Win32 API
-call (`GetComputerNameA`); the Win32 API template shows `MessageBoxA` / `MessageBeep`. `.asm` files open with
+call (`GetComputerNameA`); the Win32 API template shows `MessageBoxA` / `MessageBeep`. The class library
+template writes `<Project>.asm` (exports `asm_add`, `asm_factorial`, `asm_sum_array`, `asm_strlen`, `asm_upper`,
+`asm_version` with NASM's `export` directive), `<Project>.h`, `UseFromPython.py` (ctypes; Ctrl+F5 runs it),
+`UseFromC.c` (`gcc UseFromC.c -L. -l<Project>`) and `UseFromCSharp.cs` (`DllImport`, for a RAD IDE C# project);
+only the `.asm` is a project module. `.asm` files open with
 `asm-nasm` unless the project language is another `.asm` plugin (`PREFERRED_FOR_EXT` in
 `radide/languages/__init__.py`). The New Project dialog shows the group "Assembly" (`radide/dialogs.py`).
 
@@ -39,7 +43,8 @@ call (`GetComputerNameA`); the Win32 API template shows `MessageBoxA` / `Message
 
 ```json
 "asm": {"assembler": "nasm", "arch": "x64", "linker": "gcc", "entry": "main",
-        "subsystem": "console", "libs": ["user32"], "debug": true, "console": "ide"}
+        "subsystem": "console", "libs": ["user32"], "debug": true, "console": "ide",
+        "output": "exe", "syntax": "att"}
 ```
 
 | Key | Values | Default |
@@ -51,7 +56,9 @@ call (`GetComputerNameA`); the Win32 API template shows `MessageBoxA` / `Message
 | `subsystem` | `console` `windows` | `console` |
 | `libs` | extra libraries / DLLs (`user32`, `gdi32` ...) | `[]` |
 | `debug` | line debug information for gdb | `true` |
-| `console` | `ide` (Output window + Program Input bar) or `external` (own console window, "Press any key") | `ide` |
+| `console` | `ide` (Output window + Program Input bar) or `external` (own console window, "Press any key"; under F5 the program gets its own console too: gdb's `new-console`) | `ide` |
+| `output` | `exe` (`_radapp.exe`) or `dll` (a class library: `<Project>.dll` + `lib<Project>.a`, entry `DllMain`, linked with `gcc -shared -nostdlib` (x64) / `ld -m i386pe --dll` (x86); Ctrl+F5 runs `UseFromPython.py`) | `exe` |
+| `syntax` | GNU as forms: `att` (`radgui_att.inc`) or `intel` (`radgui_intel.inc`) | `att` |
 
 `radide.asm.build.settings_for(project)` merges them with the defaults. Tools > **Assembly Toolchains...**
 edits them for the current project.
@@ -84,8 +91,10 @@ forms runs as a GUI Bridge program. `radide.asm.build.Builder`:
 | NASM x64 | `nasm -f win64 -I <folder>\ -P _build\<m>.anchor.inc -l _build\<m>.lst -o _build\<m>.obj <m>.asm` (+ DWARF object, below) -> `gcc -g objs -static -o _radapp.exe` |
 | NASM x86 | `nasm -f win32 ...` -> `ld -m i386pe --subsystem console -e _main --enable-stdcall-fixup objs -L C:\Windows\SysWOW64 -lmsvcrt -lkernel32 -luser32` (links straight against the system DLLs: the MinGW-w64 gcc has no 32-bit libraries) |
 | GNU as | `as --64|--32 --gdwarf-3 -o _build\<m>.o <m>.s` -> gcc (x64) / ld i386pe (x86). Plain `-g` writes STABS on PE, which breaks the link. |
-| FASM | `fasm main.asm _radapp.exe` with `INCLUDE=<fasm>\INCLUDE` (`format PE` / `PE64`); a source with `format MS COFF` / `MS64 COFF` becomes an object linked with gcc / ld. FASM assembles one file: the file with `format` is the main file, the others are `include`d. |
-| MASM | `cmd: call vcvars64.bat (vcvars32.bat) && ml64 /c /Zi (ml /c /coff /Zi) && link /DEBUG /SUBSYSTEM:CONSOLE objs msvcrt.lib legacy_stdio_definitions.lib ucrt.lib vcruntime.lib kernel32.lib user32.lib` |
+| FASM | `fasm -s _build\main.fas main.asm _radapp.exe` with `INCLUDE=<fasm>\INCLUDE` (`format PE` / `PE64`), then the DWARF lines from the `.fas` are added to the exe (below); a source with `format MS COFF` / `MS64 COFF` becomes an object (+ a DWARF object) linked with gcc / ld. FASM assembles one file: the file with `format` is the main file, the others are `include`d. FASM forms: every form file / module with a `format` line and `_radmain.asm` is its own object. |
+| MASM | `cmd: call vcvars64.bat (vcvars32.bat) && ml64 /c /Zi /Sa /Fl_build\m.lst (ml /c /coff /Zi /Sa /Fl...) && link /DEBUG /INCREMENTAL:NO /MAP:_build\_radapp.map /SUBSYSTEM:CONSOLE objs msvcrt.lib legacy_stdio_definitions.lib ucrt.lib vcruntime.lib kernel32.lib user32.lib`, then the DWARF lines from the listing + map are added to the exe |
+| NASM x86 forms | the NASM objects + `gcc -m32 -c` of radgui.c / radasm.c / radcrt32.c, `dlltool` makes a 32-bit ws2_32 import library, `ld -m i386pe -e _main ... -lucrtbase -lkernel32` (SysWOW64) |
+| class library | `gcc -shared -nostdlib -Wl,--entry,DllMain -Wl,--out-implib,lib<Project>.a objs -o <Project>.dll -lkernel32 -luser32 -lmsvcrt` |
 | GoLink | `GoLink /console /ni /entry <entry> [/64] objs kernel32.dll user32.dll msvcrt.dll /fo _radapp.exe` |
 
 The builder prints every command and message (Output window), ends with `Build succeeded: _radapp.exe` or
@@ -108,11 +117,32 @@ errors) and, after a build, replaces the Error List rows with `_build\diagnostic
 * `console: "ide"` (default): the program's output is in the Output window; a **Program Input** dock (Enter =
   one line, "End of input" closes stdin) appears while a Ctrl+F5 console run is active.
 * `console: "external"`: `python -m radide.asm.console _radapp.exe` opens its own console window, keeps it
-  open at the end ("Program exited with code N", pause) and returns the exit code.
+  open at the end ("Program exited with code N", pause) and returns the exit code. **F5** starts gdb with
+  `-iex "set new-console on"` (`AsmDapSession(new_console=True)` from `asm_console_session`): the program runs
+  under the debugger in its own console window and reads its input there (no Program Input bar); the window
+  closes when the program ends (put a breakpoint on the last line to read it).
 
-### Windows Forms through the GUI Bridge (NASM x64)
+### Windows Forms through the GUI Bridge (NASM x64 / x86, FASM x64, GNU as x64)
 
-The form is designed in the normal designer; the program is linked from:
+Five flavors (`radide/asm/formgen.py` `flavor_for(settings)`), the same files in each assembler's syntax:
+
+| Flavor | Template | Runtime include | Form1.inc | Main program | Linked by |
+|---|---|---|---|---|---|
+| `nasm64` | `nasm_forms` | `radgui.inc` | `%define btnAdd "btnAdd"` | `_radmain.asm` | gcc + radgui.c |
+| `nasm32` | `nasm_forms_x86` | `radgui32.inc` (cdecl: the macros push their arguments, results in EAX) | `%define` | `_radmain.asm` (`_main`, strcpy / strcat / _stricmp, ExitProcess) | gcc -m32 -c + ld i386pe + ucrtbase.dll (`radcrt32.c`: printf / snprintf wrappers) |
+| `fasm64` | `fasm_forms` | `radgui_fasm.inc` (starts the object: `format MS64 COFF`; strings with `eqtype ''`) | `btnAdd equ 'btnAdd'` | `_radmain.asm` (FASM) | gcc + radgui.c |
+| `gas64` | `gas_forms` | `radgui_att.inc` | `.equ CTL_btnAdd, 1` | `_radmain.s` | gcc + radgui.c |
+| `gas64i` | `gas_forms_intel` | `radgui_intel.inc` | `.equ` | `_radmain.s` | gcc + radgui.c |
+
+GNU as removes the quotes of macro arguments, so its macros decide by the argument's role: object / property /
+text arguments are a register (a char* you prepared) or anything else, taken as text (`rad_set lblOut, Text,
+"Hello world"`); integer arguments are `$42` / `%rbx` / `clicks(%rip)` (AT&T) or `42` / `rbx` /
+`QWORD PTR [rip + clicks]` (Intel). Strings are kept inline in the code (`jmp` over them: GNU as on PE has no
+`.pushsection`). `plugin.code_flavor(code)` reads the flavor from the include a form's code names;
+`prepare()` copies the flavor's files, writes the main program and rewrites an untouched new form's code that
+was made before the project's flavor was known.
+
+The NASM x64 form is designed in the normal designer; the program is linked from:
 
 | File | Written by | What |
 |---|---|---|
@@ -128,8 +158,8 @@ operands (`[clicks]`); arguments go to RCX, RDX, R8, R9 in order (do not pass RC
 Every macro aligns the stack itself, so it works anywhere. `handler` saves RBX, RSI, RDI, R12 (free to use in
 the handler) and aligns RSP; do not change RBP / RSP inside a handler. Handlers are found by
 `radide.asm.formgen.handlers_in()` (`handler X_Y` blocks, or `X_Y:` labels declared `global`).
-Double-clicking a control adds `handler btnAdd_Click` / `endhandler` (`add_handler`). Forms are x64 NASM only
-(radgui.c needs a gcc for the same architecture).
+Double-clicking a control adds `handler btnAdd_Click` / `endhandler` (`add_handler`). The other flavors work
+the same way (see the table above); handlers declared with `.globl` / `public` labels are found too.
 
 ### Debug information (for the native debugger)
 
@@ -148,9 +178,27 @@ Findings on Windows with the WinLibs gdb 16 / binutils 2.47:
   Verified: `break main.asm:50`, `next` (steps over `call printf`), `info line *$pc`, `stepi`, breakpoints in a
   form handler (`break Form1.asm:21`), also for **32-bit** NASM programs debugged by the 64-bit gdb (WOW64).
 * GNU as: `--gdwarf-3` (not `-g`, which writes STABS).
-* FASM: no debug information (FASM's own `.fas` symbols are not read by gdb) - instruction-level debugging
-  only, without symbols for `format PE` programs.
-* MASM: `/Zi` + `link /DEBUG` = PDB; needs the Visual Studio debugger. `debug_info()` says `codeview`.
+* **FASM** (`radide/asm/linetable.py`): the build asks FASM for its symbolic information (`fasm -s`, format
+  in FASM's `TOOLS\FAS.TXT`): for every assembled line the preprocessed line (macro lines lead back to the
+  line that called the macro: `cinvoke printf, ...` is one line) and the `$` address. For `format PE / PE64`
+  the rows inside the code sections become a DWARF 3 compile unit + line table + one `DW_TAG_subprogram` per
+  label (gdb names the frame `start`), written as raw bytes and **appended to the exe as new `.debug_abbrev` /
+  `.debug_info` / `.debug_line` sections** (`pe_add_sections`: long names in a COFF string table, the header
+  block grown when FASM filled it; objcopy is not used - it rewrites a FASM image and breaks it). For `format
+  MS64 COFF` objects (FASM forms) the same table is a GNU as source with relocations against a public label
+  of the section, assembled and linked next to the object.
+* **MASM**: `/Zi` + `link /DEBUG` = PDB for the Visual Studio debugger, and for gdb: the listing (`/Fl /Sa`:
+  INVOKE / .IF code is listed with `*`, macro expansions with a nesting digit - both belong to the line that
+  produced them) gives each line's offset in the code segment, the map (`/MAP`, `/INCREMENTAL:NO`) the address
+  of a procedure of the module, which fixes the module's base; the DWARF sections are appended to the exe as
+  for FASM. gdb relocates them itself when Windows loads the program elsewhere (ASLR). Verified with ml64 and ml
+  14.44: `break main.asm:32` on an `invoke` line, `info line *$pc`, frame `main`.
+* The builder leaves `_build\dwarf.ok` when FASM / MASM got DWARF lines; `debug_info()` then says `"dwarf"`.
+* F10 on an assembly line with DWARF (`nativedbg._AsmMixin`): gdb's line `next` needs unwind information to
+  notice it entered a call, and a line that moves RSP / ESP (FASM `cinvoke`, MASM `INVOKE`) would stop inside
+  the called function. The session steps by instructions (`next`, granularity instruction) until the line
+  changes; when an instruction step still lands in a function without source (an import thunk, 32-bit code),
+  it reads the return address from the stack, puts a temporary instruction breakpoint there and continues.
 * There is no call-frame information (CFI) for assembly code: `bt` past an assembly frame is unreliable
   (frame 0 and the registers are always right).
 * `plugin.debug_info(project)` returns `{"exe", "arch", "assembler", "linker", "line_info": "dwarf" |
@@ -162,7 +210,11 @@ Findings on Windows with the WinLibs gdb 16 / binutils 2.47:
 
 ### Tests (curated projects in `samples/Tests/Assembly`)
 
-Create + build + run of all 10 templates (input `7`), the form handlers over the GUI Bridge protocol and in
+Create + build + run of all 15 templates (input `7`; the class library through its Python client), the form
+handlers of all five flavors over the GUI Bridge protocol, in the bridge host window and with a gdb breakpoint
+by line (`CoreTests/test_form_flavors.py`, 40 checks), the class library from Python / C / C# (`test_class_library.py`),
+FASM / MASM line tables and F10 (`test_linetables.py`, 43 checks), F5 in an external console with input typed
+into the program's own console (`test_external_console.py`), the form handlers over the GUI Bridge protocol and in
 the bridge host window (`btnAdd_Click` changes `txtNumber`, `lblClicks`, `lblMessage`), the Ctrl+F5 path
 (`run_spec`), gdb by line for NASM x64 / x86 and GNU as, error rows (file + line) for NASM, GNU as, FASM, MASM,
 ld, MS link and a form, and the IDE (New Project group, opening a form project, Error List on save,
@@ -201,9 +253,10 @@ starts at the function start found with `info symbol`), `next` / `stepIn` with `
 
 ### Assembly debugging (F5)
 
-* **RAD IDE NASM / GNU as projects** carry DWARF lines (core section above): gdb handles the breakpoints of
-  `.asm` lines itself; F10 steps by line (over `call printf`), the windows above add the machine view.
-* **Programs without DWARF lines** (FASM / MASM builds, `"debug": false`, Open Folder projects built by
+* **RAD IDE NASM / GNU as / FASM / MASM projects** carry DWARF lines (core section above; FASM and MASM since
+  `radide/asm/linetable.py`): gdb handles the breakpoints of `.asm` lines itself; F10 steps by line over the
+  calls of the line (by instructions, see "Debug information"), the windows above add the machine view.
+* **Programs without DWARF lines** (`"debug": false`, Open Folder FASM / MASM folders, projects built by
   other scripts, NASM objects from elsewhere): `AsmLineMap.build(exe, sources)` assembles each `.asm` again
   into `%LOCALAPPDATA%\RADIDE\cache\asmdbg\<hash>` with a listing, takes the section offsets from `objdump -t`
   of that object and `nm` of the program, and maps `.asm` line <-> static address. ASLR is handled with the
@@ -274,21 +327,39 @@ installed, and it works the same on every machine.
 / `ends`, `assume`, `org`, `even`, `align`, `db dw dd dq` (and `byte word dword` aliases) with strings, `?`,
 nested `n dup(...)`, `equ` / `=` (numeric; text equates such as `arg equ [bp+4]` or `equ <...>`), `label`,
 `proc [near|far]` / `endp` (RET inside a far proc = RETF), `macro` / `endm` with parameters, defaults and `local`,
-`rept`, `irp`, `include`, `end [entry]`, emu8086 lines `#make_com#` / `#make_exe#` (others ignored), `name`,
+`rept`, `irp`, `include`, `struc` / `ends` (fields with defaults, nested structures, instances `p Point <1, 2>`
+/ `<>` / `n dup (<...>)` - an empty value keeps the default, a shorter string for a byte array is padded with
+zeros; `var.field`, `[bx].field`, `(Point ptr [bx]).field` are sized memory operands, `Point.field` is the
+field's offset, `size` / `type` `Point` its size, `length` / `size` of an instance array), conditional assembly
+(`if` / `ife` / `ifdef` / `ifndef` / `ifb` / `ifnb` / `ifidn` / `ifidni` / `ifdif` / `ifdifi` / `if1` / `if2`, the
+matching `elseif...`, `else`, `endif`, nested, also inside macros - `IF` expressions see numeric equates defined
+above them, `IFDEF` the names defined so far), `end [entry]`, emu8086 lines `#make_com#` / `#make_exe#` (others ignored), `name`,
 `title`, `page`, `public`, `extrn` (ignored). Expressions: decimal, `0Ah`, `0x0A`, `1010b`, `17o`, `'A'`, `$`,
 `+ - * / mod shl shr and or xor not`, comparisons, `offset`, `seg`, `type`, `length` (MASM: elements of the first
 initializer), `size`, `lengthof`, `sizeof`, `low`, `high`, `byte/word/dword ptr`, `short`, `near ptr`, `far ptr`,
 `@data`, `@code`, segment names as values, overrides (`es:[di]`, `cs:var`, `[es:di]`), all addressing modes
 (`[bx+si+4]`, `var[si]`, `[bx][di]`, `var+2`). `size`, `length`, `type`, `low`, `high` may also be variable names.
 Conditional jumps out of range become an opposite jump over a near JMP (warning `W-JCC-LONG`); LOOP / JCXZ
-out of range is an error. 80186 instructions assemble with a warning (`W-186`). Not supported: STRUC / RECORD,
-conditional assembly (`if` / `ifdef`), 32-bit registers, the FPU (ESC opcodes are decoded and ignored).
+out of range is an error. 80186 instructions assemble with a warning (`W-186`). Not supported: RECORD / UNION,
+32-bit registers, the FPU (ESC opcodes are decoded and ignored).
 
 Layout (like DOS at segment 0700h): a COM program (`org 100h`, `.model tiny`, `#make_com#` or no segment
 directive at all) is one segment with the PSP below 100h and SP = FFFEh (a final RET goes to INT 20h); an EXE
 program has its PSP at 0700h, DS = ES = PSP at start (so `mov ax, @data / mov ds, ax` is needed, as in DOS) and
 its segments paragraph-aligned from 0710h in DOSSEG order (code, data, stack) for the simplified directives,
 source order for full segment definitions. No stack segment: a 4 KB stack is given (warning `W-NOSTACK`).
+
+### Export to DOS: .COM and MZ .EXE (`radide/emu8086/dosexe.py`)
+
+The dock's **Export...** button (Export .COM / .EXE by the program's kind, as .COM, as MZ .EXE) writes
+`<source>.com` / `<source>.exe` next to the source; they run in DOSBox / FreeDOS / MS-DOS. `com_image(prog)` is
+the segment's bytes from 100h (the program must start at 100h). `mz_image(text)` assembles the program twice
+(load segments 0700h and 1700h): words that differ by exactly 1000h are segment fixups (`mov ax, @data`,
+`seg x`, far calls / jumps, `dd far_label`); they are stored relative to the image and listed in the MZ
+relocation table. Header: size in 512-byte pages, header paragraphs, `e_minalloc` for the `?` data / stack after
+the image, `e_maxalloc` FFFFh, SS:SP and CS:IP relative to the image, `e_lfarlc` 1Ch. `load_dos_file(data)` loads
+a .COM / .EXE back the way DOS does (PSP, fixups applied at any segment) into a Program the emulator runs - the
+tests run every exported sample that way at other load segments and compare the output with the run from source.
 
 ### DOS / BIOS services
 
@@ -337,7 +408,8 @@ a fixed clock so tests are reproducible.
 Samples (original, each with a README and `project.radproj`): `samples/Tests/Assembly/Emu8086Hello`,
 `Emu8086SumArray`, `Emu8086StringReverse` (full segments, INT 21h 0Ah), `Emu8086InputNumber` (macros, binary
 output), `Emu8086Factorial` (recursion, `[bp+4]`), `Emu8086BubbleSort`, `Emu8086Colors` (INT 10h + B800h),
-`Emu8086KeyGame` (INT 16h arrow keys).
+`Emu8086KeyGame` (INT 16h arrow keys), `Emu8086Structs` (STRUC array, `[si].field`, `size student`, `IF` /
+`IFDEF` / `IFB` - and the program to export as an EXE for DOSBox).
 
 Tests in `samples/Tests/Assembly/Emu8086Tests/`:
 
@@ -350,6 +422,10 @@ Tests in `samples/Tests/Assembly/Emu8086Tests/`:
   operators, the built-in emu8086.inc, error codes and lines, Arabic messages.
 * `test_samples.py` - every sample headless: program output and screen text; colour attributes of Emu8086Colors;
   KeyGame played with arrow keys until two stars are caught.
+* `test_struc_cond_export.py` - 12 tests: structure fields / instances / every reference form / nested
+  structures, all conditional directives (also in macros) and their errors, COM bytes, MZ header and relocation
+  table checks, every sample exported and run again from the file at two other load segments, a program with
+  far calls / far pointers / `seg`, `export_file`, the dock's Export button.
 * `test_ide.py` - the real IDE (offscreen, QSettings "RADIDE-TEST"): templates, F5 paused at entry, F10, a
   breakpoint, Locals / Call Stack / registers panel, Step Back, Step Out, Variables / Memory views, Watch, output
   in the Output window and on the emulator screen, keys typed on the screen, slow motion + Pause + Stop, an
@@ -451,10 +527,17 @@ from the project's `"asm": {"arch": "x86" | "x64"}`, else from the text (`bits` 
 
 ### asm-lsp (optional)
 
-[asm-lsp](https://github.com/bergercookie/asm-lsp) is used when found on PATH, in
-`%LOCALAPPDATA%\RADIDE\tools\asm-lsp\bin` or `~/.cargo/bin` (its releases have no Windows binary, so Tools >
-Language Servers... > asm-lsp > Install runs `cargo install asm-lsp --locked --root <tools>\asm-lsp` from crates.io
-when Rust is installed). `radide/lsp.py` maps the four `rad-asm-*` ids to one server per project (`SERVER_GROUP`
+[asm-lsp](https://github.com/bergercookie/asm-lsp) is used when found in
+`%LOCALAPPDATA%\RADIDE\tools\asm-lsp\bin`, `~/.cargo/bin` or on PATH. Tools > Language Servers... > asm-lsp >
+Install (only on request) takes the pinned GitHub release (`RELEASE` = 0.10.1 in `radide/asm_intel/lsp.py`):
+on Linux x86-64 / macOS the release's prebuilt archive is downloaded from
+`github.com/bergercookie/asm-lsp/releases/download/v0.10.1/` and must match the SHA-256 digest GitHub
+publishes for it (pinned in `ASSETS`); the releases have **no Windows binary** (checked for v0.9.0 - v0.10.1),
+so on Windows the same release tag is built from the official repository:
+`cargo install --git https://github.com/bergercookie/asm-lsp --tag v0.10.1 --locked --root <tools>\asm-lsp`
+(needs Rust). `samples/Tests/Assembly/AsmLsp/test_asm_lsp.py` checks the plan, the release metadata, a real
+download + verification + unpack of the Linux archive, the LSP client with the server (the real asm-lsp when
+installed, else a stand-in server with the same protocol) and the fallback. `radide/lsp.py` maps the four `rad-asm-*` ids to one server per project (`SERVER_GROUP`
 "rad-asm", languageId `asm`). While it is attached its hover and completions are used and the built-in items are
 merged into its completion list (`MonacoEditor.completion_providers`); without it (the normal case) the built-in
 provider answers everything. QSettings `asm/useAsmLsp = false` turns the server off.
@@ -493,7 +576,8 @@ provider answers everything. QSettings `asm/useAsmLsp = false` turns the server 
 * `AsmFolderAdapter` (a `ForeignAdapter`): one run target per program (`hello.asm  [NASM 64-bit]`), modules =
   sources + includes, editor language = the dialect's plugin. Builds go to the IDE state folder (never the user's
   folder): NASM `nasm -f win64|win32 [-g -F cv8] -I<dir>` + `gcc` (entry other than main: `-nostartfiles
-  -Wl,-e,<entry>`), GNU as `gcc src.s`, FASM `fasm src out.exe` (INCLUDE = FASM's include folder), MASM a small
+  -Wl,-e,<entry>`); 32-bit NASM / GNU as programs are linked with `ld -m i386pe` against the SysWOW64 DLLs like
+  the x86 templates (`_ld32_step`, never `gcc -m32`: the MinGW-w64 toolchain has no 32-bit libraries), GNU as `gcc src.s`, FASM `fasm src out.exe` (INCLUDE = FASM's include folder), MASM a small
   batch file in the state folder: `call vcvars64.bat` + `ml64 /Zi ... /link` (C runtime start-up for main /
   WinMain, else `/entry:`), run from the state folder (ml writes `mllink$.lnk` into the current folder). F5 = gdb
   (`_others_base.gdb_session`) for NASM / GNU as programs. Native menu: "Disassemble <file> (objdump -d -M intel)".

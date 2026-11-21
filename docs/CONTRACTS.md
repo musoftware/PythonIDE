@@ -748,3 +748,10 @@ kivy / expo).
   Node via esbuild + stubs, WinForms C# / VB dotnet build + self test on temp copies, web page in QtWebEngine,
   GrapesJS Design View) and `samples/Tests/Variants/Targets/check_targets.py`; samples rebuilt by
   `make_targets.py` in each folder.
+
+## 11. Retro slices - shared file bus and menu (details: docs/RETRO.md)
+
+- After writing into a ROM / binary, call `radide.retro.filebus.file_changed(win, path, source=self)`. Editors
+  that show a file expose `retro_path` (and optionally a `retro_watch` list) plus `reload_from_disk()`; they are
+  refreshed automatically (the hex editor, tile editor, tile map ...).
+- Retro menus go under Tools > Retro via `radide.retro.menu.retro_menu(win)` / `section(win, title)`.

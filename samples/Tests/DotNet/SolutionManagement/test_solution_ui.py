@@ -20,7 +20,7 @@ from qh import *  # noqa: E402,F401,F403
 
 from radide.dotnet import sln as S  # noqa: E402
 from radide.dotnet.sln import dialogs as D  # noqa: E402
-from radide.dotnet.sln import launch, ops, run, secrets  # noqa: E402
+from radide.dotnet.sln import launch, ops, run  # noqa: E402
 from radide.dotnet.sln.model import SolutionDoc  # noqa: E402
 from radide.features import solution_ui  # noqa: E402
 from radide.foreign import vs_ui  # noqa: E402
@@ -71,6 +71,10 @@ check("solution folders src and tests", node("foreign_slnfolder", "src") is not 
 check("Directory.Build.props shown", node("vs_dirbuild") is not None)
 check("launch profile drop-down visible", w.vs_profile_combo_action.isVisible() and w.vs_profile_combo.count() >= 1)
 
+check("Build menu: Configuration Manager...", any(a.text() == "Configuration Manager..." and a.isVisible()
+                                                for a in w.build_menu.actions()))
+check("File menu: New Solution from Existing Folders...", any(a.text() == "New Solution from Existing Folders..."
+                                                             for a in w.file_menu.actions()))
 root_menu = solution_ui.build_menu(w, w.solution.topLevelItem(0))
 acts = actions(root_menu)
 for a in ("Configuration Manager...", "Existing Solution's Projects...", "New Solution Folder",

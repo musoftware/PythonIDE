@@ -124,7 +124,12 @@ SCHEMA = {
                         "maxItems": 2},
         "kind": {"type": "string", "enum": ["visual", "container", "nonvisual"]},
         "hasText": {"type": "boolean", "description": "Has the common Text property (default true)."},
-        "commonProperties": {"type": "boolean", "description": "Name/Left/Top/.../Anchor/Dock (default true)."},
+        "commonProperties": {"type": ["boolean", "array"], "items": _STR,
+                             "description": "The common properties: true (default) = all of them; false = only "
+                                            "Name and the position (Left, Top, Width, Height); or a list of "
+                                            "property sets (layout, position, appearance, font, behavior, "
+                                            "text) and common property names, e.g. [\"layout\", \"font\", "
+                                            "\"Enabled\"] (radide/components/commonprops.py)."},
         "commonEvents": {"type": "boolean", "description": "Click/Mouse*/Key*/Focus events (default true)."},
         "defaultEvent": {"type": "string", "pattern": IDENT},
         "builtin": {"type": "boolean"},
@@ -238,6 +243,11 @@ def validate_manifest(data, folder: Path | None = None, api: str = "1.0") -> lis
                 errs.append(f"{where}: default {p['default']!r} is not one of the choices")
         if nk == "custom" and not p.get("editor"):
             errs.append(f"{where}: a custom property needs an 'editor' id")
+    cp = data.get("commonProperties")
+    if isinstance(cp, list):
+        from .commonprops import unknown_names
+        for bad in unknown_names(cp):
+            errs.append(f"commonProperties: unknown property set or common property {bad!r}")
     events = set()
     for i, e in enumerate(data.get("events") or []):
         if isinstance(e, dict) and isinstance(e.get("name"), str):

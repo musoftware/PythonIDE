@@ -102,7 +102,7 @@ plus a warning.
 | `kind` | `visual` / `container` / `nonvisual` | Containers host child controls; non-visual components live in the component tray under the form (like Timer). |
 | `hasText` | bool (true) | The control has the common `Text` property. |
 | `commonEvents` | bool (true) | Adds Click, DoubleClick, Mouse*, Key*, GotFocus, LostFocus. |
-| `commonProperties` | bool (true) | Reserved: Name/Left/Top/Width/Height/colours/font/Enabled/Visible/ToolTip/TabIndex/Anchor/Dock are always present for visual controls. |
+| `commonProperties` | bool / list (true) | Which common properties a visual control has: `true` = all (Name, Text, Left/Top/Width/Height, colours, font, Enabled, Visible, ToolTip, TabIndex, Anchor, Dock); `false` = only Name and the position; a list = Name + position + the listed **shared property sets** `position`, `layout` (position + Anchor, Dock), `appearance` (BackColor, ForeColor), `font` (FontName/Size/Bold/Italic), `behavior` (Enabled, Visible, ToolTip, TabIndex), `text` and single common property names, e.g. `["layout", "font", "Enabled"]`. `Text` follows `hasText`. The Properties window, the new control's properties, generated code and multi-select use the chosen ones (`radide/components/commonprops.py`). |
 | `overrides` | object | Different defaults for common properties, e.g. `{"Dock": "Bottom", "Height": 22}`. |
 | `defaultEvent` | event name | The handler double-clicking the control creates (default: the first event). |
 | `properties` / `events` / `methods` | arrays | Sections 4 and 5. |
@@ -110,7 +110,7 @@ plus a warning.
 | `designer`, `editors`, `help` | files | Sections 7, 8, 9. |
 | `overrideBuiltin` | bool | Allows a package to replace a built-in control of the same name (otherwise it is ignored with a conflict message). |
 | `mobile` | bool | A mobile control (the Toolbox "Mobile" group of phone forms; drawn by `radide/mobile/render.py`). Used by the built-in AppBar, BottomNav, Fab, Card, MListView, Switch, MSlider, MTextField, MImage, MIcon, Drawer, MTabBar, MWebView, Column, Row, Stack. |
-| `vb6` | object | VB6 `.frm` import / export mapping: `class` (written for a new control, e.g. `VB.CommandButton`), `library` (its OCX, e.g. `MSComctlLib`), `imports` (VB6 / ActiveX classes imported as this control, any case, e.g. `mscomctllib.listview`), `approx` (the imports that are approximations - the importer warns), `properties` (neutral -> VB6 name of plain integer properties, e.g. `{"Minimum": "Min"}`). Read by `radide/components/vb6map.py` for `radide/importers/vb6_import.py` and `radide/foreign/frm_writer.py`. |
+| `vb6` | object | VB6 `.frm` import / export mapping: `class` (written for a new control, e.g. `VB.CommandButton`), `library` (its OCX, e.g. `MSComctlLib`), `imports` (VB6 / ActiveX classes imported as this control, any case, e.g. `mscomctllib.listview`), `approx` (the imports that are approximations - the importer warns), `properties` (neutral -> VB6 property name, e.g. `{"Minimum": "Min"}`), `object` (the `Object =` line of a third-party OCX `library`: `"{GUID}#1.0#0; STARS.OCX"`). Package controls in a .frm: section 6 "VB6 .frm files". Read by `radide/components/vb6map.py` for `radide/importers/vb6_import.py` and `radide/foreign/frm_writer.py`. |
 | `requires.radide` | `">=1.0"` | Minimum component API version (`radide.components.API_VERSION`). |
 | `x-...` | anything | Vendor data, ignored by the IDE. |
 
@@ -168,7 +168,9 @@ The helpers in `radide/components/proptypes.py` (`parse_padding`, `parse_gradien
 the few lines they need.
 
 **Multi-select**: when several controls are selected, the Properties window shows only the properties they all
-have (never `(Name)`), and a change is applied to every selected control in one undo step.
+have (never `(Name)`); a property whose value differs between them is shown **blank** (like Visual Studio), an
+equal one shows the value, and a change - typed, or picked in a blank drop-down - is applied to every selected
+control in one undo step. (A package's inline custom editor shows the primary control's value.)
 
 ## 5. Events and methods
 
@@ -275,6 +277,42 @@ from `lib/radapp.dart` (the screen designers are `part`s of libraries that impor
             "template": {"widget": "RatingBar(value: {Value}, maxStars: {MaxStars}, onChanged: () {{{on_ValueChanged} }})"}}
 ```
 
+Every package control of a Flutter screen has a **state object** named like the control, so user Dart code
+reads and sets its properties: `rate1.value` / `rate1.maxStars` (a typed member per manifest property,
+lowerCamelCase; `int`, `double`, `bool`, `String`), `rate1['Value']` (by name), `rate1.value = 4;` (redraws the
+screen). On a phone form it is a private `RadControl` subclass (`_RadRatingBar`, so `visible` / `enabled` work);
+in the Flutter designer a field of the screen whose setters call `setState`. Two more template placeholders use
+it: `{state}` (the object) and `{<Prop>_live}` (the current value, `rate1.value`); a widget that reports a new
+value writes it back with `{state}['Value'] = v;`:
+
+```json
+"flutter": {"files": ["runtime/rating_bar.dart"],
+            "template": {"widget": "RatingBar(value: {Value_live}, maxStars: {MaxStars_live}, onChanged: (v) {{ {state}['Value'] = v;{on_ValueChanged} }})"}}
+```
+
+```dart
+void rate1_ValueChanged() { lblOut.text = 'Rating: ${rate1.value}'; }     // phone form (lib/form1.dart)
+@override void onRate2ValueChanged() { lastRating = rate2.value; }       // Flutter designer (*_events.dart)
+```
+
+**Flutter designer palette**: every installed package with a `"flutter"` template / emit appears in the Flutter
+designer's widget palette (group "Components", with the package icon); its manifest properties are inspector
+properties (int / double / bool / colour / text), its events designer events (double-click writes the handler),
+`designer.py` draws it on the canvas, and the generated screen imports the Dart files (copied into `lib/`),
+declares the state field and fills the template (`radide/components/dart.py`). Complete test:
+`samples/Tests/Components/RatingBar_Flutter` (phone form + designer screen, `flutter analyze` and `flutter test`
+reading the rating from user code).
+
+**VB6 .frm files** (VB6 projects opened in place, `radide/foreign/frm_writer.py`): a package control is written
+as the class of its manifest's `vb6` section (with the `Object =` line of its `library` / `object`), or - without
+one - as a **UserControl reference** `Begin <Project>.<Type> name`; the IDE then writes `<Type>.ctl` next to the
+.vbp (a VB6 UserControl with the manifest's properties saved through the PropertyBag, its events and method
+stubs) and adds `UserControl=<Type>.ctl`, so VB6 itself loads the form. The manifest properties are property
+lines (`MaxStars = 7`, `StarColor = &H000000FF&`, `ReadOnly = -1 'True`; a default value has no line, like
+VB6), named by `vb6.properties` when given. Reopening reads them back: `<anything>.<Type>` of an installed
+package (or a class in its `vb6.imports`) becomes that package's control with its values
+(`samples/Tests/Components/RatingBar_VB6Frm`).
+
 **Web pages** - a `template` with `html`, `css`, `js` (and `files`); `radide.components.codegen.web_snippet(control)`
 returns them filled in, for web page generators (the web workspace has no control-based form designer yet).
 
@@ -368,7 +406,9 @@ A property names an editor with `"editor": "starrating.stars"`. An editor is eit
 
 ## 9. Help (`help.md`)
 
-F1 on a selected control (or its type name in the code editor) opens the package's `help.md`. Document the
+F1 on a selected control (or an installed package's type name in the code editor) opens the package's
+`help.md` in the Help window, with a link to the language reference of the form's language (the bundled VB6
+topic, the Qt or tkinter page). The built-in controls have one too (`builtin/<Type>/help.md`). Document the
 properties, events and methods, and an example.
 
 ## 10. Packaging, installing, sharing

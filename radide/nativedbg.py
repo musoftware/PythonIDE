@@ -655,6 +655,10 @@ _CHATTER = re.compile(r"\s*(\[(New )?Thread |\[Inferior |\[Thread |No source fil
                       r"|Make breakpoint pending on future shared library load)")
 
 
+ASM_SOURCE_EXTS = (".asm", ".s", ".nasm", ".fasm", ".inc", ".mac")
+ASM_LINE_STEP_LIMIT = 20000             # instructions of one F10 on an assembly line (a long loop: stop anyway)
+
+
 class _AsmMixin:
     """Line table, slide and instruction breakpoints shared by the launched and the attached session."""
 
@@ -666,6 +670,10 @@ class _AsmMixin:
         self._entry_bp: int | None = None
         self._phase = "entry"
         self.top_is_asm = False
+        self.top_asm_source: tuple[str, int] | None = None   # top frame on a line of an assembly file (DWARF)
+        self._line_step: list | None = None                   # F10 by instructions: [path, line, steps, pc]
+        self._temp_ibp: int | None = None                     # F10: the return address of a call it stepped into
+        self.frame_pc: int | None = None
         self._noise_until = 0
 
     # breakpoints of .asm lines (mapped) are instruction breakpoints; the others go to gdb as usual
@@ -674,6 +682,8 @@ class _AsmMixin:
 
     def own_instruction_breakpoints(self) -> dict[int, str]:
         out: dict[int, str] = {}
+        if getattr(self, "_temp_ibp", None) is not None:
+            out[self._temp_ibp] = ""
         if not self.slide_known:
             return out
         for path, lines in self.breakpoints.items():
@@ -759,9 +769,42 @@ class _AsmMixin:
             else:
                 reason_ = reason
             if top.get("source", {}).get("path"):         # C / GAS with DWARF: the normal Locals
+                path, line = top["source"]["path"], int(top.get("line") or 0)
+                ls = self._line_step
+                if ls is not None:
+                    if self._temp_ibp is not None and pc == self._temp_ibp:
+                        self._temp_ibp = None             # back from the call: go on with the line
+                        send_ibps(self)
+                        reason_ = "step"
+                    if reason_ == "step" and (os.path.normcase(path), line) == (os.path.normcase(ls[0]), ls[1]) \
+                            and ls[2] < ASM_LINE_STEP_LIMIT:
+                        ls[2] += 1                        # still on the same line: one more instruction
+                        ls[3] = pc
+                        self._request("next", {"threadId": self.thread_id, "granularity": "instruction"})
+                        return
+                    self._line_step = None
                 self.top_is_asm = False
+                self.top_asm_source = (path, line) if path.lower().endswith(ASM_SOURCE_EXTS) else None
+                self.frame_pc = pc
                 DapSession._on_stopped(self, reason_)
                 return
+            ls = self._line_step
+            if ls is not None and reason_ == "step" and ls[2] < ASM_LINE_STEP_LIMIT and ls[3] is not None:
+                # nexti went INTO the called function (gdb could not tell it was a call: no unwind information,
+                # an import thunk): the return address is on top of the stack - run to it
+                def got_ret(text, ok):
+                    m = re.search(r"0x[0-9a-fA-F]+", text or "") if ok else None
+                    ret = int(m.group(0), 16) if m else None
+                    if ret is None or not 2 <= ret - ls[3] <= 7:          # not a call: stop here
+                        self._line_step = None
+                        self._asm_stop("step")
+                        return
+                    ls[2] += 1
+                    self._temp_ibp = ret
+                    send_ibps(self, lambda _ok: self._request("continue", {"threadId": self.thread_id}))
+                gdb_command(self, "output/x *(void**)$sp", got_ret)
+                return
+            self._line_step = None
             self.top_is_asm = True
             where = self.linemap.line_for(pc - self.slide) if pc is not None and self.linemap else None
             info = StopInfo(where[0] if where else "", where[1] if where else 0,
@@ -801,6 +844,16 @@ class _AsmMixin:
         if self.paused and self.top_is_asm and command in ("next", "stepIn"):
             self.paused = False
             self._request(command, {"threadId": self.thread_id, "granularity": "instruction"})
+            self.resumed.emit()
+            return True
+        # F10 on a line of an assembly file with DWARF lines (NASM / GNU as / FASM / MASM builds): instructions
+        # (calls stepped over) until the line changes. gdb's own line 'next' needs unwind information to know
+        # it entered a call; assembly has none, so a line that moves RSP (FASM's cinvoke, MASM's INVOKE: the
+        # arguments are pushed) would stop inside the called function.
+        if self.paused and command == "next" and self.top_asm_source:
+            self.paused = False
+            self._line_step = [self.top_asm_source[0], self.top_asm_source[1], 0, self.frame_pc]
+            self._request("next", {"threadId": self.thread_id, "granularity": "instruction"})
             self.resumed.emit()
             return True
         return False
@@ -849,12 +902,17 @@ class AsmDapSession(_AsmMixin, DapSession):
     """gdb -i dap that launches an assembly program (see the module doc)."""
 
     def __init__(self, exe, args, cwd, env, breakpoints, linemap: AsmLineMap | None = None,
-                 stop_at_entry: bool | None = None, gdb: str = "", parent=None, stdin_pipe: bool = False):
+                 stop_at_entry: bool | None = None, gdb: str = "", parent=None, stdin_pipe: bool = False,
+                 new_console: bool = False):
         from .bridgedebug import gdb_env
         gdb = gdb or find_gdb()
         env = {**(env or {}), **(gdb_env(gdb) if gdb else {})}
         super().__init__("gdb", str(exe), list(args or []), Path(cwd), env, breakpoints, parent)
-        self.argv = [gdb, "-i", "dap"] if gdb else None
+        # "console": "external": the program gets its own console window (gdb's new-console), where it reads
+        # its input itself - the Program Input bar is not used then
+        self.new_console = bool(new_console and os.name == "nt")
+        self.argv = ([gdb] + (["-iex", "set new-console on"] if self.new_console else []) + ["-i", "dap"]) \
+            if gdb else None
         self.launch_args["stopOnEntry"] = True
         self.break_on_exception = False
         self._stdin_server = self._stdin_sock = None
@@ -988,7 +1046,8 @@ def asm_sources(folder, files=None) -> list[Path]:
 
 
 def asm_debug_session(win, exe, args=(), cwd=None, env=None, sources=None, nasm_args=None,
-                      breakpoints=None, stop_at_entry: bool | None = None, stdin_pipe: bool = False):
+                      breakpoints=None, stop_at_entry: bool | None = None, stdin_pipe: bool = False,
+                      new_console: bool = False):
     """A ready (not started) debug session of an assembly program for the IDE (Session API).
 
     *sources*: the NASM files linked into *exe* (default: every .asm of the project folder);
@@ -1001,7 +1060,8 @@ def asm_debug_session(win, exe, args=(), cwd=None, env=None, sources=None, nasm_
     srcs = list(sources) if sources is not None else asm_sources(folder)
     lm = AsmLineMap.build(exe, srcs, nasm_args)
     bps = breakpoints if breakpoints is not None else (win._all_breakpoints() if hasattr(win, "_all_breakpoints") else [])
-    return AsmDapSession(exe, list(args), folder, env, bps, lm, stop_at_entry, gdb, win, stdin_pipe=stdin_pipe)
+    return AsmDapSession(exe, list(args), folder, env, bps, lm, stop_at_entry, gdb, win, stdin_pipe=stdin_pipe,
+                         new_console=new_console)
 
 
 def asm_attach_dap(argv, attach_args, cwd, env, breakpoints, exe, sources=None, nasm_args=None, parent=None):
@@ -1042,7 +1102,8 @@ def asm_console_session(win, plugin, spec, debug: bool, breakpoints=None):
         pipe = True
 
     def factory():
-        return asm_debug_session(win, exe, [], folder, env or None, breakpoints=breakpoints, stdin_pipe=pipe)
+        return asm_debug_session(win, exe, [], folder, env or None, breakpoints=breakpoints, stdin_pipe=pipe,
+                                 new_console=not pipe)
     chain = ChainSession(steps, factory, win)
     chain.end_input = lambda: chain._fwd("end_input")
     return chain

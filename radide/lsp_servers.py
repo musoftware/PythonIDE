@@ -312,8 +312,8 @@ def install_hint(language: str) -> str:
         "lua": "official lua-language-server release zip -> tools\\lua-language-server",
         "powershell": "official PowerShellEditorServices release zip -> tools\\pses",
         "perl": "cpanm PLS into tools\\perl-pls (Linux / macOS - PLS needs fork())",
-        "asm": "cargo install asm-lsp (official crate) into tools\\asm-lsp - the built-in assembly IntelliSense "
-               "works without it",
+        "asm": "asm-lsp from its official GitHub release into tools\\asm-lsp (Windows: the release tag built with "
+               "cargo - no Windows binary is published) - the built-in assembly IntelliSense works without it",
     }.get(language, "")
 
 

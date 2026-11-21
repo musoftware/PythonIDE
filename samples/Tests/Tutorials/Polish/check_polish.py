@@ -4,8 +4,9 @@
     python samples/Tests/Tutorials/Polish/check_polish.py --chm      # also build + verify two CHM books
 
 1. every course loads, every lesson file exists, every quiz block is valid JSON (question / choices / answer);
-2. the code blocks (everything but quiz blocks) of every lesson that exists in git HEAD are byte-identical to
-   HEAD - wording edits must never touch code, so the course checkers keep passing;
+2. the code blocks (everything but quiz blocks) of every lesson are byte-identical to the commit before the
+   polish pass (BASE, a9eb160; --base <rev> changes it) - wording edits must never touch code, so the course
+   checkers keep passing;
 3. Arabic terms: class = صنف (فئة only as the "also called" note of a glossary), method = دالة (no تابع for
    a method in the JavaScript / Rust lessons);
 4. code names in section headings are in backticks (VB keywords, PHP / Dart / C keywords, assembly mnemonics);
@@ -51,9 +52,12 @@ def code_blocks(md: str) -> list[str]:
     return [m.group(0) for m in FENCE.finditer(md) if not m.group(1).strip().startswith("quiz")]
 
 
-def git_head(path: Path) -> str | None:
+BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "a9eb160"
+
+
+def git_base(path: Path) -> str | None:
     rel = path.relative_to(REPO).as_posix()
-    r = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=REPO, capture_output=True)
+    r = subprocess.run(["git", "show", f"{BASE}:{rel}"], cwd=REPO, capture_output=True)
     return r.stdout.decode("utf-8").replace("\r\n", "\n") if r.returncode == 0 else None
 
 
@@ -73,12 +77,12 @@ def check_courses() -> None:
             for b in les.blocks():
                 if b.lang == "quiz" and b.quiz is None:
                     bad_quiz.append(f"{c.id}/{les.file}:{b.line}")
-            old = git_head(les.path)
+            old = git_base(les.path)
             if old is not None and code_blocks(old) != code_blocks(md):
                 changed.append(f"{c.id}/{les.file}")
     check("every lesson file exists", not missing, ", ".join(missing[:5]))
     check("every quiz block is valid JSON", not bad_quiz, ", ".join(bad_quiz[:5]))
-    check("code blocks unchanged against git HEAD", not changed, ", ".join(changed[:8]) or f"{lessons} lessons")
+    check(f"code blocks unchanged against {BASE}", not changed, ", ".join(changed[:8]) or f"{lessons} lessons")
 
 
 # ------------------------------------------------------------------------------------------------ 3

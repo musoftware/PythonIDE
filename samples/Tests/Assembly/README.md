@@ -16,6 +16,8 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 | [CoreMasmX64](CoreMasmX64/README.md) / [CoreMasmX86](CoreMasmX86/README.md) | asm-masm (Visual Studio) | ml64 / ml + link.exe, PROTO / INVOKE |
 | [CoreGasAtt](CoreGasAtt/README.md) / [CoreGasIntel](CoreGasIntel/README.md) | asm-gas | AT&T and `.intel_syntax noprefix` |
 | [CoreErrorList](CoreErrorList/README.md) | asm-nasm | an assembler error and a linker error in the Error List |
+| (templates `nasm_forms_x86`, `fasm_forms`, `gas_forms`, `gas_forms_intel`) | NASM x86, FASM x64, GNU as AT&T / Intel + GUI Bridge | the form template in every flavor - built by `CoreTests/test_form_flavors.py` |
+| (template `nasm_dll_x64`) | asm-nasm, class library | a DLL with exports, called from Python / C / C# - `CoreTests/test_class_library.py` |
 
 ## 8086 teaching emulator (New Project > Assembly > 8086 Assembly (Emulator))
 
@@ -29,6 +31,7 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 | [Emu8086BubbleSort](Emu8086BubbleSort/README.md) | sorting in memory |
 | [Emu8086Colors](Emu8086Colors/README.md) | INT 10h and the B800h text screen |
 | [Emu8086KeyGame](Emu8086KeyGame/README.md) | INT 16h arrow keys |
+| [Emu8086Structs](Emu8086Structs/README.md) | STRUC / ENDS, IF / IFDEF / IFB, export to a DOS .EXE |
 
 ## Open Folder, other assembly IDEs, Visual Studio + MASM
 
@@ -49,13 +52,15 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 |---|---|
 | [AsmIntel](AsmIntel/README.md) | highlighting, IntelliSense, hover, outline of every dialect |
 | [NativeDebug](NativeDebug/README.md) | Registers / Disassembly / Memory / Stack windows, step instruction |
+| [AsmLsp](AsmLsp/README.md) | asm-lsp: install plan / GitHub release download, the LSP client, the built-in fallback |
 
 ## Test scripts
 
 | Script | Tests |
 |---|---|
-| `CoreTests/run_all.py` | toolchains, templates, build, Error List, run specs, form bridge, IDE ([README](CoreTests/README.md)) |
-| `Emu8086Tests/test_*.py` | the emulator: assembler, CPU, samples, IDE |
+| `CoreTests/run_all.py` | toolchains, templates, build, Error List, run specs, form bridge (all flavors), class library, FASM / MASM line tables, F5 in an external console, IDE ([README](CoreTests/README.md)) |
+| `Emu8086Tests/test_*.py` | the emulator: assembler, CPU, samples, IDE, STRUC / conditional assembly / .COM and MZ .EXE export (`test_struc_cond_export.py`) |
+| `AsmLsp/test_asm_lsp.py` | asm-lsp install / LSP client / fallback |
 | `AsmIntel/tests` | editor intelligence |
 | `NativeDebug/test_native_debug.py` | the native debugger windows |
 | `OpenFolder/test_open_folder.py`, `OpenFolder/test_ide_open.py` | detection, in-place builds, foreign projects, exe -> NASM listing, IDE |

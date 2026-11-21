@@ -44,7 +44,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import proptypes
+from . import commonprops, proptypes
 from .schema import SCHEMA, SCHEMA_VERSION, validate_manifest, version_key
 
 MANIFEST = "component.json"
@@ -281,7 +281,8 @@ def control_type_of(pkg: ComponentPackage):
                        has_text=bool(m.get("hasText", True)), container=kind == "container",
                        nonvisual=kind == "nonvisual", common_events=bool(m.get("commonEvents", True)),
                        description=pkg.description, overrides=overrides, package=pkg,
-                       category=pkg.category, methods=methods)
+                       category=pkg.category, methods=methods,
+                       common=commonprops.resolve(m.get("commonProperties", True)))
 
 
 def _event_meta(pkg: ComponentPackage) -> None:
@@ -590,9 +591,10 @@ def is_component_type(type_name: str) -> bool:
     return pkg is not None and not pkg.builtin
 
 
-def help_file(type_name: str) -> str:
+def help_file(type_name: str, include_builtin: bool = False) -> str:
+    """The package's help.md (F1); built-in controls' too with *include_builtin*."""
     pkg = package_of(type_name)
-    p = pkg.help_path if pkg is not None and not pkg.builtin else None
+    p = pkg.help_path if pkg is not None and (include_builtin or not pkg.builtin) else None
     return str(p) if p else ""
 
 

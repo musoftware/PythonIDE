@@ -8,7 +8,6 @@ line table of the debug build (gdb `break Form1.<ext>:<line of btnAdd_Click>` re
 
     python samples/Tests/Assembly/CoreTests/test_form_flavors.py [template ...]
 """
-import os
 import shutil
 import subprocess
 import sys

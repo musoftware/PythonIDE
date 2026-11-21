@@ -1108,8 +1108,10 @@ def _date(s: str) -> str:
 
 
 def details_html(m: PackageMetadata, rec: Record | None = None) -> str:
+    from ...i18n import tr as _tr                    # labels inside HTML are not seen by the widget translator
+
     def row(k, v):
-        return f"<tr><td style='padding-right:12px;color:gray' valign='top'><b>{k}:</b></td><td>{v}</td></tr>"
+        return f"<tr><td style='padding-right:12px;color:gray' valign='top'><b>{_tr(k)}:</b></td><td>{v}</td></tr>"
     rows = [row("Version", html.escape(m.version))]
     if m.authors:
         rows.append(row("Author(s)", html.escape(m.authors)))
@@ -1117,7 +1119,7 @@ def details_html(m: PackageMetadata, rec: Record | None = None) -> str:
         rows.append(row("License", f"<a href='{html.escape(m.license_link)}'>{html.escape(m.license_text)}</a>"
                         if m.license_link else html.escape(m.license_text)))
     if m.require_license_acceptance:
-        rows.append(row("License acceptance", "required"))
+        rows.append(row("License acceptance", _tr("required")))
     if rec is not None and rec.downloads >= 0:
         rows.append(row("Downloads", f"{rec.downloads:,}"))
     if m.published and m.listed:
@@ -1132,14 +1134,14 @@ def details_html(m: PackageMetadata, rec: Record | None = None) -> str:
     deps = []
     for g in m.dependency_groups:
         from .versions import parse_tfm
-        title = parse_tfm(g.framework).display() if g.framework else "(any framework)"
+        title = parse_tfm(g.framework).display() if g.framework else _tr("(any framework)")
         items = "".join(f"<li>{html.escape(d.id)} ({html.escape(VersionRange.parse(d.range).pretty() if d.range else '')})"
-                        f"</li>" for d in g.dependencies) or "<li style='color:gray'>No dependencies</li>"
+                        f"</li>" for d in g.dependencies) or f"<li style='color:gray'>{_tr('No dependencies')}</li>"
         deps.append(f"<p style='margin:4px 0 0 0'><b>{html.escape(title)}</b></p><ul style='margin-top:0'>{items}</ul>")
     desc = html.escape(m.description or m.summary).replace("\n", "<br>")
-    return (f"<h3 style='margin-bottom:2px'>Description</h3><p>{desc}</p><table>{''.join(rows)}</table>"
-            f"<h3 style='margin-bottom:2px'>Dependencies</h3>" + ("".join(deps) or "<p style='color:gray'>No dependencies"
-                                                                 "</p>"))
+    return (f"<h3 style='margin-bottom:2px'>{_tr('Description')}</h3><p>{desc}</p><table>{''.join(rows)}</table>"
+            f"<h3 style='margin-bottom:2px'>{_tr('Dependencies')}</h3>" +
+            ("".join(deps) or f"<p style='color:gray'>{_tr('No dependencies')}</p>"))
 
 
 # ====================================================================== open as a document

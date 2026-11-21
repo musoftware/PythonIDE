@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QCoreApplication, QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QFont, QKeySequence
-from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QFrame, QGroupBox, QHBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QBoxLayout, QDockWidget, QFileDialog, QFrame, QGroupBox, QHBoxLayout,
                              QInputDialog, QLabel, QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox,
                              QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStyle, QTabWidget,
                              QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
@@ -165,9 +165,11 @@ class StartPage(QWidget):
         lay.addWidget(title)
         sub = QLabel("Visual RAD environment for scripting languages - design forms, write code, run and debug.")
         sub.setProperty("radRole", "muted")
+        sub.setWordWrap(True)
         lay.addWidget(sub)
         cols = QHBoxLayout()
         cols.setSpacing(18)
+        self._cols = cols                  # side by side; one under the other on a narrow page
         lay.addLayout(cols, 1)
         self.left = QVBoxLayout()
         self.right = QVBoxLayout()
@@ -193,6 +195,12 @@ class StartPage(QWidget):
             tips.addWidget(lbl)
         self.right.addStretch(1)
         self.refresh()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        want = QBoxLayout.Direction.TopToBottom if self.width() < 760 else QBoxLayout.Direction.LeftToRight
+        if self._cols.direction() != want:
+            self._cols.setDirection(want)
 
     def _box(self, title: str, column, index: int | None = None):
         box = QGroupBox(title)

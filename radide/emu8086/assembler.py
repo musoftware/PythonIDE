@@ -9,8 +9,11 @@ university courses use.
 Supported: ``.model tiny/small/...``, ``.stack``, ``.data``, ``.code``, ``.startup``, ``.exit``, full segment
 definitions (``name segment`` / ``ends`` / ``assume``), ``org``, ``even``, ``align``, ``db dw dd dq`` (+ ``byte
 word dword`` aliases) with strings, ``?`` and nested ``dup``, ``equ`` / ``=`` (numeric and text equates),
-``label``, ``proc`` / ``endp`` (near / far), ``macro`` / ``endm`` with ``local``, ``rept``, ``include``, the
-emu8086 ``#make_com#`` / ``#make_exe#`` lines, the 8086 instruction set plus the 80186 extras (push imm,
+``label``, ``proc`` / ``endp`` (near / far), ``macro`` / ``endm`` with ``local``, ``rept``, ``include``,
+``struc`` / ``ends`` (fields, ``var Name <...>`` / ``N dup (<...>)`` instances, ``var.field``, ``[bx].field``,
+``(Name ptr [bx]).field``, ``Name.field`` offsets, ``size`` / ``type`` of a structure), conditional assembly
+(``if`` / ``ife`` / ``ifdef`` / ``ifndef`` / ``ifb`` / ``ifnb`` / ``ifidn[i]`` / ``ifdif[i]`` with ``elseif...`` /
+``else`` / ``endif``), the emu8086 ``#make_com#`` / ``#make_exe#`` lines, the 8086 instruction set plus the 80186 extras (push imm,
 pusha/popa, shifts by an immediate count, enter/leave). Expressions: numbers in decimal / hex (``0Ah``,
 ``0x0A``) / binary (``1010b``) / octal (``17o``), characters, ``$``, ``+ - * / mod shl shr and or xor not``,
 ``offset``, ``seg``, ``type``, ``length``, ``size``, ``low``, ``high``, ``byte/word/dword ptr``, ``short``,
@@ -350,6 +353,69 @@ def _subst_words(text: str, mapping: dict) -> str:
     return "".join(out)
 
 
+
+# ============================================================================ STRUC and conditional assembly
+COND_IF = {"if", "ife", "ifdef", "ifndef", "ifb", "ifnb", "ifidn", "ifidni", "ifdif", "ifdifi", "if1", "if2"}
+COND_ELSEIF = {"else" + d for d in COND_IF if d not in ("if1", "if2")}
+PTR_OF = {1: "byte", 2: "word", 4: "dword", 8: "qword"}
+
+
+@dataclass
+class StrucField:
+    name: str                # "" for an unnamed field
+    offset: int
+    size: int                # total bytes
+    elem: int                # element size (1 / 2 / 4 / 8)
+    directive: str           # db / dw / dd / dq
+    init: str                # default initializer text
+    count: int               # elements
+    struc: "Struc | None" = None     # a field that is itself a structure
+
+
+@dataclass
+class Struc:
+    name: str
+    fields: list
+    size: int
+
+    def field(self, name: str):
+        return next((f for f in self.fields if f.name.lower() == name.lower()), None)
+
+
+def _item_count(item: str, elem: int) -> int:
+    """Elements of one data item: 3 dup (?) / 'abc' / 5."""
+    m = re.match(r"^(.+?)\s+dup\s*\((.*)\)\s*$", item, re.I | re.S)
+    if m:
+        try:
+            n = Evaluator(None).const(tokenize(m.group(1)))
+        except AsmError:
+            n = 1
+        return max(0, n) * sum(_item_count(x, elem) for x in split_text_commas(m.group(2)) if x != "")
+    s = item.strip()
+    if elem == 1 and len(s) >= 2 and s[0] in "'\"" and s[-1] == s[0]:
+        return max(1, len(s) - 2 - s[1:-1].count(s[0] * 2))
+    return 1
+
+
+def _outside_quotes(text: str, fn) -> str:
+    """Apply *fn* to the parts of *text* outside quotes."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        q = text[i] if text[i] in "'\"" else ""
+        if q:
+            j = text.find(q, i + 1)
+            j = n - 1 if j < 0 else j
+            out.append(text[i:j + 1])
+            i = j + 1
+            continue
+        j = i
+        while j < n and text[j] not in "'\"":
+            j += 1
+        out.append(fn(text[i:j]))
+        i = j
+    return "".join(out)
+
+
 class Preprocessor:
     def __init__(self, read_include, diags: list):
         self.read_include = read_include
@@ -358,6 +424,10 @@ class Preprocessor:
         self.text_equ: dict[str, str] = {}
         self.local_counter = 0
         self.out: list[SrcLine] = []
+        self.structs: dict[str, Struc] = {}
+        self.struct_vars: dict[str, tuple[Struc, int]] = {}    # instance name -> (structure, count)
+        self.num_equ: dict[str, int] = {}                       # numeric equates seen so far (for IF)
+        self.defined: set[str] = set()                          # names defined so far (for IFDEF)
 
     def error(self, sl: SrcLine, code: str, **args):
         self.diags.append(Diagnostic("Error", sl.file, sl.line, code, args))
@@ -395,6 +465,7 @@ class Preprocessor:
                 self.error(site, "E-MACRO-DEPTH")
             return
         i = 0
+        conds: list[list] = []          # [parent active, a branch was taken, active, line] of open IF blocks
         while i < len(lines):
             sl = lines[i]
             i += 1
@@ -404,6 +475,38 @@ class Preprocessor:
                 self.out.append(SrcLine("", sl.file, sl.line) if site is None else SrcLine("", site.file, site.line))
                 continue
             lw = [w.lower() for w in words]
+            # conditional assembly
+            d = lw[0]
+            if d in COND_IF or d in COND_ELSEIF or d in ("else", "endif"):
+                arg = raw.split(None, 1)[1].strip() if len(raw.split(None, 1)) > 1 else ""
+                active = conds[-1][2] if conds else True
+                if d in COND_IF:
+                    val = self._cond(d, arg, sl) if active else False
+                    conds.append([active, val, active and val, sl])
+                elif not conds:
+                    self.error(sl, "E-COND", name=d)
+                elif d in COND_ELSEIF:
+                    top = conds[-1]
+                    if top[0] and not top[1]:
+                        val = self._cond(d[4:], arg, sl)
+                        top[1], top[2] = val, val
+                    else:
+                        top[2] = False
+                elif d == "else":
+                    top = conds[-1]
+                    top[2] = top[0] and not top[1]
+                    top[1] = True
+                else:
+                    conds.pop()
+                self.out.append(self._here(sl, site))
+                continue
+            if conds and not conds[-1][2]:
+                continue
+            # structure definition:  Name struc ... Name ends
+            if len(lw) >= 2 and lw[1] in ("struc", "struct") and words[0].lower() not in self.macros:
+                i = self._struc(words[0], lines, i, sl)
+                self.out.append(self._here(sl, site))
+                continue
             # macro definition
             if len(lw) >= 2 and lw[1] == "macro":
                 name = words[0]
@@ -463,7 +566,15 @@ class Preprocessor:
                     self.out.append(SrcLine(m.group(1), *(self._pos(sl, site))))
                 self._expand(self.macros[m.group(2).lower()], m.group(3), depth, site or sl)
                 continue
+            # structure instance:  p1 Point <1, 2>  /  arr Point 3 dup (<>)  /  Point <>
+            if self.structs and self._instance(text, sl, site):
+                continue
+            if self.structs:
+                text = self._struct_refs(text)
+            self._track(text)
             self.out.append(SrcLine(text, *(self._pos(sl, site))))
+        for c in conds:
+            self.error(c[3], "E-COND-OPEN")
 
     @staticmethod
     def _pos(sl, site):
@@ -508,6 +619,208 @@ class Preprocessor:
                 break
             sub.append(SrcLine(_subst_words(t, mapping), b.file, b.line))
         self._process(sub, depth + 1, site)
+
+    # ------------------------------------------------------------------ conditional assembly
+    def is_defined(self, name: str) -> bool:
+        k = name.strip().lower()
+        return k in self.defined or k in self.macros or k in self.text_equ or k in self.num_equ or \
+            k in self.structs
+
+    def _number(self, expr: str, sl: SrcLine) -> int | None:
+        text = self._apply_equ(expr)
+        if self.num_equ:
+            text = _subst_words(text, {k: str(v) for k, v in self.num_equ.items()})
+        if self.structs:
+            text = self._struct_refs(text)
+        try:
+            return Evaluator(None).const(tokenize(text))
+        except AsmError as e:
+            if sl is not None:
+                self.diags.append(Diagnostic("Error", sl.file, sl.line, e.code, e.args_))
+            return None
+
+    def _cond(self, kind: str, arg: str, sl: SrcLine) -> bool:
+        def angle(s):
+            s = s.strip()
+            return s[1:-1] if s.startswith("<") and s.endswith(">") else s
+        if kind == "if1":
+            return True
+        if kind == "if2":
+            return False
+        if kind in ("if", "ife"):
+            v = self._number(arg, sl)
+            return (v not in (None, 0)) if kind == "if" else v == 0
+        if kind in ("ifdef", "ifndef"):
+            name = arg.split()[0] if arg.split() else ""
+            return self.is_defined(name) == (kind == "ifdef")
+        if kind in ("ifb", "ifnb"):
+            return (angle(arg).strip() == "") == (kind == "ifb")
+        parts = split_text_commas(arg)
+        a, b = (angle(parts[0]), angle(parts[1])) if len(parts) >= 2 else (angle(arg), "")
+        a, b = a.strip(), b.strip()
+        if kind.endswith("i"):
+            a, b = a.lower(), b.lower()
+        return (a == b) == kind.startswith("ifidn")
+
+    def _track(self, text: str) -> None:
+        """Remember the names a line defines (IFDEF) and numeric equates (IF expressions)."""
+        m = re.match(r"\s*([A-Za-z_@?$.][\w@?$]*)\s*:(?!:)", text)
+        if m:
+            self.defined.add(m.group(1).lower())
+            return
+        w = text.split(None, 2)
+        if len(w) >= 2 and w[0].lower() not in MNEMONICS:
+            second = w[1].lower()
+            if second in DATA_DIRS or second in ("dt", "proc", "segment", "label", "group") or \
+                    second in self.structs:
+                self.defined.add(w[0].lower())
+            elif second in ("equ", "=") and len(w) == 3:
+                self.defined.add(w[0].lower())
+                v = self._number(w[2], None)
+                if v is not None:
+                    self.num_equ[w[0].lower()] = v
+        m = re.match(r"\s*([A-Za-z_@?$][\w@?$]*)\s*=\s*(.+)$", text)
+        if m and m.group(1).lower() not in MNEMONICS:
+            self.defined.add(m.group(1).lower())
+            v = self._number(m.group(2), None)
+            if v is not None:
+                self.num_equ[m.group(1).lower()] = v
+
+    # ------------------------------------------------------------------ STRUC
+    def _struc(self, name: str, lines, i: int, start: SrcLine) -> int:
+        """Read the fields of ``name struc`` up to ``name ends``; returns the index after it."""
+        fields, off = [], 0
+        while i < len(lines):
+            sl = lines[i]
+            i += 1
+            raw = strip_comment(sl.text).strip()
+            if not raw:
+                continue
+            w = raw.split(None, 2)
+            if w[0].lower() == "ends" or (len(w) >= 2 and w[1].lower() == "ends"):
+                st = Struc(name, fields, off)
+                self.structs[name.lower()] = st
+                self.defined.add(name.lower())
+                return i
+            if w[0].lower() in DATA_DIRS:
+                fname, directive, init = "", w[0].lower(), raw.split(None, 1)[1] if len(w) > 1 else "?"
+            elif len(w) >= 2 and w[1].lower() in DATA_DIRS:
+                fname, directive, init = w[0], w[1].lower(), w[2] if len(w) > 2 else "?"
+            elif len(w) >= 2 and w[1].lower() in self.structs:          # nested structure field
+                inner = self.structs[w[1].lower()]
+                init = w[2] if len(w) > 2 else "<>"
+                fields.append(StrucField(w[0], off, inner.size, 1, "db", init, inner.size, inner))
+                off += inner.size
+                continue
+            else:
+                self.error(sl, "E-SYNTAX", what=f"a structure field is 'name db|dw|dd|dq value' ({raw})")
+                continue
+            elem = DATA_DIRS[directive]
+            count = sum(_item_count(x, elem) for x in split_text_commas(init) if x != "") or 1
+            fields.append(StrucField(fname, off, elem * count, elem, directive, init, count))
+            off += elem * count
+        self.error(start, "E-STRUC-OPEN", name=name)
+        return i
+
+    def _instance(self, text: str, sl: SrcLine, site) -> bool:
+        """``[name] Struc <values>`` / ``[name] Struc N dup (<values>)`` -> data lines. False: not an instance."""
+        m = re.match(r"^\s*(?:([A-Za-z_@?$][\w@?$]*)\s+)?([A-Za-z_@?$][\w@?$]*)\s+(.*)$", text)
+        if not m or m.group(2).lower() not in self.structs:
+            return False
+        st = self.structs[m.group(2).lower()]
+        name, rest = m.group(1), m.group(3).strip()
+        count, inits = 1, rest
+        dm = re.match(r"^(.+?)\s+dup\s*\((.*)\)\s*$", rest, re.I)
+        if dm:
+            v = self._number(dm.group(1), sl)
+            count, inits = (v if v is not None else 1), dm.group(2).strip()
+        values = split_text_commas(inits[1:-1]) if inits.startswith("<") and inits.endswith(">") else \
+            ([] if inits in ("", "?") else split_text_commas(inits))
+        pos = self._pos(sl, site)
+        items: list[str] = []
+        for _ in range(max(0, count)):
+            items += self._field_items(st, values)
+        for k, it in enumerate(items):
+            self.out.append(SrcLine(f"{name} {it}" if (k == 0 and name) else it, *pos))
+        if not st.fields:
+            self.out.append(SrcLine(f"{name} label byte" if name else "", *pos))
+        if name:
+            self.defined.add(name.lower())
+            self.struct_vars[name.lower()] = (st, count)
+        return True
+
+    def _field_items(self, st: Struc, values: list[str]) -> list[str]:
+        """Data lines of one instance of *st* (positional *values*; "" = the field's default)."""
+        items: list[str] = []
+        for k, f in enumerate(st.fields):
+            val = values[k] if k < len(values) and values[k] != "" else f.init
+            if f.struc is not None:                           # nested structure: its own fields
+                v = val.strip()
+                inner = split_text_commas(v[1:-1]) if v.startswith("<") and v.endswith(">") else []
+                items += self._field_items(f.struc, inner)
+                continue
+            items.append(f"{f.directive} {val}")
+            if val is not f.init and f.count > 1 and f.directive == "db" and val[:1] in "'\"":
+                n = _item_count(val, 1)
+                if n < f.count:
+                    items.append(f"db {f.count - n} dup (0)")
+        return items
+
+    def _field_any(self, fname: str):
+        for st in self.structs.values():
+            f = st.field(fname)
+            if f is not None:
+                return f
+        return None
+
+    def _struct_refs(self, text: str) -> str:
+        """Rewrite structure references: Name.field -> offset, var.field / [bx].field / (Name ptr [bx]).field
+        -> sized memory operands, size / type / length Name|var -> numbers."""
+        structs = self.structs
+
+        def fn(seg: str) -> str:
+            def ptr_rx(m):
+                st, f = structs.get(m.group(1).lower()), None
+                if st is not None:
+                    f = st.field(m.group(3))
+                if f is None:
+                    return m.group(0)
+                inner = m.group(2)[1:-1]
+                return f"{PTR_OF.get(f.elem, 'byte')} ptr [{inner}+{f.offset}]"
+            seg = re.sub(r"\(\s*([A-Za-z_@?$][\w@?$]*)\s+ptr\s+(\[[^\]]*\])\s*\)\.([A-Za-z_@?$][\w@?$]*)", ptr_rx, seg,
+                         flags=re.I)
+
+            def bracket_rx(m):
+                f = self._field_any(m.group(2))
+                if f is None:
+                    return m.group(0)
+                return f"{PTR_OF.get(f.elem, 'byte')} ptr [{m.group(1)[1:-1]}+{f.offset}]"
+            seg = re.sub(r"(\[[^\]]*\])\.([A-Za-z_@?$][\w@?$]*)", bracket_rx, seg)
+
+            def dot_rx(m):
+                a, b = m.group(1), m.group(2)
+                st = structs.get(a.lower())
+                if st is not None:
+                    f = st.field(b)
+                    return str(f.offset) if f is not None else m.group(0)
+                var = self.struct_vars.get(a.lower())
+                f = var[0].field(b) if var else self._field_any(b)
+                if f is None:
+                    return m.group(0)
+                return f"{PTR_OF.get(f.elem, 'byte')} ptr {a}+{f.offset}"
+            seg = re.sub(r"(?<![\w@?$.])([A-Za-z_@?$][\w@?$]*)\.([A-Za-z_@?$][\w@?$]*)", dot_rx, seg)
+
+            def size_rx(m):
+                op, name = m.group(1).lower(), m.group(2).lower()
+                if name in structs:
+                    return str(structs[name].size) if op in ("size", "sizeof", "type") else "1"
+                if name in self.struct_vars:
+                    st, n = self.struct_vars[name]
+                    return {"type": st.size, "size": st.size * n, "sizeof": st.size * n,
+                            "length": n, "lengthof": n}[op].__str__()
+                return m.group(0)
+            return re.sub(r"\b(size|sizeof|type|length|lengthof)\s+([A-Za-z_@?$][\w@?$]*)", size_rx, seg, flags=re.I)
+        return _outside_quotes(text, fn)
 
 
 def _is_text_equ(rhs: str) -> bool:

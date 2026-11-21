@@ -238,7 +238,26 @@ class PropertiesPanel(QWidget):
         return sorted(defs, key=lambda d: (d.name != "Name", d.name))
 
     def _props_dict(self) -> dict:
-        c = self._owner()
+        return self._display_props(self._owner())
+
+    def _mixed(self) -> set:
+        """Names of the properties whose values differ between the selected controls - shown blank, like
+        Visual Studio's multi-select (an edit then applies the new value to all of them)."""
+        owner = self._owner()
+        sel = [x for x in getattr(self.doc, "selection", []) or [] if x is not owner and x.type in CONTROL_TYPES]
+        if owner is None or not sel:
+            return set()
+        mine = self._display_props(owner)
+        others = [self._display_props(x) for x in sel]
+        defaults = {d.name: d.default for d in CONTROL_TYPES[owner.type].prop_defs()}
+        out = set()
+        for name in mine.keys() | defaults.keys():
+            v = mine.get(name, defaults.get(name))
+            if any(o.get(name, defaults.get(name)) != v for o in others):
+                out.add(name)
+        return out
+
+    def _display_props(self, c) -> dict:
         props = c.props if c else self.doc.form.props
         shown = getattr(self.doc, "display_props", None)     # a form Language being edited (localization)
         out = shown(c, props) if shown is not None else props
@@ -384,6 +403,7 @@ class PropertiesPanel(QWidget):
         self._updating = True
         props = self._props_dict()
         defaults = self._defaults()
+        mixed = self._mixed()                              # multi-select: differing values are blank
         from .components import propeditors as _peng       # schema-driven editors (radide/components)
         for row in range(self.props.rowCount()):
             d = self._row_def(row)
@@ -392,23 +412,27 @@ class PropertiesPanel(QWidget):
             value = props.get(d.name, d.default)
             w = self.props.cellWidget(row, 1)
             name_item = self.props.item(row, 0)
+            blank = d.name in mixed
             if name_item is not None:          # VS: values that differ from the default are bold
                 f = name_item.font()
-                changed = d.name != "Name" and value != defaults.get(d.name, d.default)
+                changed = d.name != "Name" and not blank and value != defaults.get(d.name, d.default)
                 if f.bold() != changed:
                     f.setBold(changed)
                     name_item.setFont(f)
                 self._mark_row(name_item, d.name)
             if _peng.handles(self, d):
-                _peng.cell_widget(self, row, d, value)
+                _peng.cell_widget(self, row, d, value, mixed=blank)
             elif d.kind == "bool":
                 if w is None:
                     w = QComboBox()
                     w.addItems(["True", "False"])
-                    w.currentTextChanged.connect(lambda t, n=d.name: self._set(n, t == "True"))
+                    w.currentTextChanged.connect(lambda t, n=d.name: t and self._set(n, t == "True"))
                     self.props.setCellWidget(row, 1, w)
                 w.blockSignals(True)
-                w.setCurrentText("True" if value else "False")
+                if blank:
+                    w.setCurrentIndex(-1)
+                else:
+                    w.setCurrentText("True" if value else "False")
                 w.blockSignals(False)
             elif d.kind == "enum":
                 if w is None:
@@ -417,10 +441,13 @@ class PropertiesPanel(QWidget):
                     if d.name == "Icon":            # mobile Fab / MIcon: show the Material icons
                         for i in range(w.count()):
                             w.setItemIcon(i, material_icon(w.itemText(i), 16))
-                    w.currentTextChanged.connect(lambda t, n=d.name: self._set(n, t))
+                    w.currentTextChanged.connect(lambda t, n=d.name: t and self._set(n, t))
                     self.props.setCellWidget(row, 1, w)
                 w.blockSignals(True)
-                w.setCurrentText(str(value))
+                if blank:
+                    w.setCurrentIndex(-1)
+                else:
+                    w.setCurrentText(str(value))
                 w.blockSignals(False)
             elif d.kind == "font":
                 if w is None:
@@ -428,7 +455,10 @@ class PropertiesPanel(QWidget):
                     w.currentFontChanged.connect(lambda f, n=d.name: self._set(n, f.family()))
                     self.props.setCellWidget(row, 1, w)
                 w.blockSignals(True)
-                w.setCurrentFont(QFont(str(value or "Segoe UI")))
+                if blank:
+                    w.setCurrentIndex(-1)
+                else:
+                    w.setCurrentFont(QFont(str(value or "Segoe UI")))
                 w.blockSignals(False)
             elif d.kind == "menu":
                 if w is None:
@@ -442,22 +472,22 @@ class PropertiesPanel(QWidget):
                     w.setStyleSheet("text-align:left; padding-left:4px;")
                     w.clicked.connect(lambda _=False, n=d.name, b=w: self._edit_anchor(n, b))
                     self.props.setCellWidget(row, 1, w)
-                w.setText(format_anchor(parse_anchor(value)) + "   \u25be")
+                w.setText(("" if blank else format_anchor(parse_anchor(value))) + "   \u25be")
             elif d.kind == "file":
                 if w is None:
                     w = QPushButton()
                     w.setStyleSheet("text-align:left; padding-left:4px;")
                     w.clicked.connect(lambda _=False, n=d.name: self._pick_file(n))
                     self.props.setCellWidget(row, 1, w)
-                w.setText((value or "(none)") + "   ...")
+                w.setText(("" if blank else value or "(none)") + "   ...")
             elif d.kind == "color":
                 if w is None:
                     w = QPushButton()
                     w.setStyleSheet("text-align:left; padding-left:4px;")
                     w.clicked.connect(lambda _=False, n=d.name: self._pick_color(n))
                     self.props.setCellWidget(row, 1, w)
-                w.setText(value or "(default)")
-                w.setIcon(self._swatch(value))
+                w.setText("" if blank else value or "(default)")
+                w.setIcon(QIcon() if blank else self._swatch(value))
             elif d.kind == "dbref":                 # data binding (radide/databinding_sql.py)
                 from .databinding_sql import prop_choices
                 if w is None:
@@ -471,14 +501,14 @@ class PropertiesPanel(QWidget):
                 w.clear()
                 owner = self._owner()
                 w.addItems(prop_choices(self.doc.form, owner, d.name) if owner is not None else [""])
-                w.setCurrentText(str(value or ""))
+                w.setCurrentText("" if blank else str(value or ""))
                 w.blockSignals(False)
             else:
                 item = self.props.item(row, 1)
                 if item is None:
                     item = QTableWidgetItem()
                     self.props.setItem(row, 1, item)
-                item.setText(str(value))
+                item.setText("" if blank else str(value))
         self._updating = was
 
     @staticmethod
@@ -583,6 +613,7 @@ class PropertiesPanel(QWidget):
             self.doc.checkpoint()
             for t in targets:
                 self.doc.set_prop(t, name, value, record=False)
+            self._refresh_values()             # blank (differing) cells now show the common value
         else:
             self.doc.set_prop(owner, name, value)
 

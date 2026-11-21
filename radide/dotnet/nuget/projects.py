@@ -101,6 +101,18 @@ def run(argv: list[str], cwd=None, log=_noop, timeout: float = 900) -> tuple[int
     return code, "\n".join(lines)
 
 
+def run_retry(argv: list[str], cwd=None, log=_noop, tries: int = 4) -> tuple[int, str]:
+    """run() again when the project file was locked for a moment (a language server or file watcher reading it)."""
+    import time
+    for i in range(tries):
+        code, out = run(argv, cwd, log)
+        if code == 0 or "being used by another process" not in out or i == tries - 1:
+            return code, out
+        log("The project file is in use by another process - retrying ...")
+        time.sleep(1.0 + i)
+    return code, out
+
+
 def find_props_upward(start: Path, name: str) -> Path | None:
     p = Path(start).resolve()
     for d in [p, *p.parents]:
@@ -376,7 +388,7 @@ class NuGetProject:
                 else:
                     log(f"Note: '{extra[0]}' is not a configured package source; add it in Tools > Options > "
                         f"NuGet Package Manager > Package Sources so restore can use it.")
-            code, out = run(argv, self.folder, log)
+            code, out = run_retry(argv, self.folder, log)
             if code != 0:
                 raise NuGetError(_cli_error(out) or f"dotnet add package failed (exit code {code}).")
             return
@@ -403,7 +415,8 @@ class NuGetProject:
 
     def _pr_uninstall(self, package_id: str, log) -> None:
         if self.uses_cli:
-            code, out = run([MB.find_dotnet(), "remove", str(self.path), "package", package_id], self.folder, log)
+            code, out = run_retry([MB.find_dotnet(), "remove", str(self.path), "package", package_id], self.folder,
+                                  log)
             if code != 0:
                 raise NuGetError(_cli_error(out) or f"dotnet remove package failed (exit code {code}).")
             return
@@ -893,5 +906,5 @@ def clear_local_caches(log=_noop) -> None:
 
 __all__ = ["NuGetProject", "InstalledPackage", "NuGetError", "read_packages_config", "write_packages_config",
            "restore_packages_config", "restore_all", "updates", "consolidation", "ensure_nuget_exe", "run",
-           "assembly_identities", "add_build_import", "remove_build_imports", "clear_local_caches", "default_format",
+           "assembly_identities", "run_retry", "add_build_import", "remove_build_imports", "clear_local_caches", "default_format",
            "STYLE_PR", "STYLE_CPM", "STYLE_PC", "DEPENDENCY_BEHAVIORS", "pick_dependency_version"]

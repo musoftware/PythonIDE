@@ -1,0 +1,6 @@
+﻿index,pointer,offset,length,original,translation,note
+0,0x40,0x100,7,HELLO!<end>,أهلا!<end>,
+1,0x42,0x107,12,PRESS START<end>,اضغط ابدأ<end>,
+2,0x44,0x113,10,GAME OVER<end>,انتهت اللعبة<end>,
+3,0x46,0x11D,9,YOU WIN!<end>,فزت!<end>,
+4,0x48,0x126,7,HELLO!<end>,,

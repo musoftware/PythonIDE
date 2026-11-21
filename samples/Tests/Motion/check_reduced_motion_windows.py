@@ -105,7 +105,7 @@ def functions():
                       f"{label}: RADIDE_REDUCED_MOTION={env} wins over the setting (no SPI call)")
             with no_env(), mock.patch.object(ctypes, "windll", None, create=True):
                 check(fn() is False, f"{label}: no windll (broken ctypes) -> animations play")
-        with mock.patch.object(os, "name", "posix"), no_env(), patched(FakeUser32(False)) as _p:
+        with mock.patch.object(os, "name", "posix"), no_env(), patched(FakeUser32(False)):
             check(fn() is False, f"{label}: not Windows -> the Windows setting is not asked")
 
 

@@ -274,13 +274,29 @@ def help_target(plugin_id: str, word: str, control_type: str = "") -> tuple[str,
     """Return ("vb", <key>) for the bundled VB reference, ("url", <url>) to open, or ("", "")."""
     w = word.strip()
     if control_type and not w:
-        try:                                   # a component package's help.md (radide/components)
+        try:      # the control's package help.md (built-in controls too - radide/components/builtin/<T>/help.md)
             from ..components import help_file
-            hf = help_file(control_type)
+            hf = help_file(control_type, include_builtin=True)
             if hf:
-                return "local", hf
+                return "control", hf
         except Exception:  # noqa: BLE001
             pass
+        return control_reference(plugin_id, control_type)
+    if w and re.match(r"^[A-Za-z_]\w*$", w):    # an installed package's type name in the code editor
+        try:
+            from ..components import help_file
+            hf = help_file(w)
+            if hf:
+                return "control", hf
+        except Exception:  # noqa: BLE001
+            pass
+    return _word_target(plugin_id, w)
+
+
+def control_reference(plugin_id: str, control_type: str) -> tuple[str, str]:
+    """The toolkit / language reference of a control type: the bundled VB topic, the Qt or Tk page."""
+    w = ""
+    if control_type:
         tk_name, qt_cls = CONTROL_DOCS.get(control_type, ("", ""))
         if plugin_id == "vb-basic" or not plugin_id:
             return "vb", VB_CONTROL_TOPIC.get(control_type, "Caption")
@@ -294,6 +310,10 @@ def help_target(plugin_id: str, word: str, control_type: str = "") -> tuple[str,
                 return "url", f"https://docs.python.org/3/library/tkinter.{mod}.html"
             return "url", f"https://docs.python.org/3/library/tkinter.html#{quote_plus(tk_name)}"
         w = control_type
+    return _word_target(plugin_id, w)
+
+
+def _word_target(plugin_id: str, w: str) -> tuple[str, str]:
     if not w:
         return "", ""
     lw = w.lower()
@@ -440,6 +460,22 @@ class HelpViewer(QDialog):
             self.browser.scrollToAnchor(anchor)
         self._raise()
 
+    def show_control(self, md_path: str, control_type: str, reference: tuple[str, str] = ("", "")):
+        """F1 on a control: its package's help.md, with a link to the toolkit / language reference."""
+        try:
+            text = Path(md_path).read_text(encoding="utf-8")
+        except OSError:
+            text = f"# {control_type}\n\nThe help file {md_path} cannot be read."
+        kind, target = reference
+        if kind in ("vb", "url") and target:
+            link = f"vb:{target}" if kind == "vb" else target
+            label = f"VB6 reference: {target}" if kind == "vb" else target
+            text = text.rstrip() + f"\n\n---\n\n**Language reference:** [{label}]({link})\n"
+        self.browser.setSearchPaths([str(Path(md_path).parent)])
+        self.browser.setMarkdown(text)
+        self.current_help = md_path
+        self._raise()
+
     def show_vb(self, key: str):
         if key == "index" or not key:
             self.browser.setHtml(vb_index_html())
@@ -539,6 +575,8 @@ def context_help(win):
         open_url(target)
     elif kind == "local":
         viewer(win).show_file(target)
+    elif kind == "control":                  # help.md of the control's package + its language reference
+        viewer(win).show_control(target, word, control_reference(pid, word))
     else:
         viewer(win).show_manual()
     return kind, target

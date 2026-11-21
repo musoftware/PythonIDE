@@ -490,32 +490,33 @@ class ReferenceManager(QDialog):
         if it is None:
             self.details.setText("")
             return
+        from ...i18n import tr as _tr                # labels inside HTML are not seen by the widget translator
         d = it.data(0, ROLE) or {}
-        lines = [f"<b>Name:</b><br>{d.get('name', it.text(0))}"]
+        lines = [f"<b>{_tr('Name')}:</b><br>{d.get('name', it.text(0))}"]
         path = d.get("path", "")
         kind = d.get("kind")
         if kind in ("assembly", "browse") and path:
             try:
                 from .metadata import assembly_identity
                 ident = assembly_identity(path)
-                lines.append(f"<b>Version:</b><br>{ident['version']}")
+                lines.append(f"<b>{_tr('Version')}:</b><br>{ident['version']}")
                 if ident.get("framework"):
-                    lines.append(f"<b>Target framework:</b><br>{ident['framework']}")
-                lines.append(f"<b>Strong name:</b><br>{'Yes' if ident.get('token') else 'No'}")
+                    lines.append(f"<b>{_tr('Target framework')}:</b><br>{ident['framework']}")
+                lines.append(f"<b>{_tr('Strong name')}:</b><br>{_tr('Yes') if ident.get('token') else _tr('No')}")
                 if not it.text(1) and self.pages.get(d.get("page")) is not None and d.get("page") == "extensions":
                     it.setText(1, ident["version"])
             except Exception:  # noqa: BLE001
                 pass
         elif kind == "com":
             e = d["entry"]
-            lines.append(f"<b>Version:</b><br>{e.version_text}")
-            lines.append(f"<b>Guid:</b><br>{{{e.guid}}}")
+            lines.append(f"<b>{_tr('Version')}:</b><br>{e.version_text}")
+            lines.append(f"<b>{_tr('Guid')}:</b><br>{{{e.guid}}}")
         elif kind == "frameworkref":
             lines.append(d.get("desc", ""))
         if d.get("source"):
-            lines.append(f"<b>Created by:</b><br>{d['source']}")
+            lines.append(f"<b>{_tr('Created by')}:</b><br>{d['source']}")
         if path:
-            lines.append(f"<b>File:</b><br>{path}")
+            lines.append(f"<b>{_tr('File')}:</b><br>{path}")
         self.details.setText("<br><br>".join(lines))
 
     def check(self, pid: str, name: str, on: bool = True) -> bool:

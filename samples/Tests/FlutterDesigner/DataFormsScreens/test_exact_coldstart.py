@@ -19,6 +19,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[3]))
 
 from PyQt6.QtCore import QEventLoop, QTimer  # noqa: E402
+from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: E402,F401 - before QApplication
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 RUN_TIMEOUT_S = 240
@@ -33,7 +34,6 @@ def copy_project(dst: Path) -> Path:
 
 def one_run(app, folder: Path, watchdog: bool) -> dict:
     from radide.flutterdesign import live
-    from PyQt6.QtWebEngineWidgets import QWebEngineView
     view = QWebEngineView()
     view.resize(420, 860)
     view.setWindowTitle("RAD IDE exact preview cold start test")

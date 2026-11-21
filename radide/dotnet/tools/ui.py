@@ -306,8 +306,9 @@ def fill_analyzers(win, project, pi, key) -> None:
             break
     if deps is None:
         return
-    node = _vs_set(QTreeWidgetItem(deps, ["Analyzers"]), "dn_analyzers", str(ms.path), key, "SP_DirIcon", win,
+    node = _vs_set(QTreeWidgetItem(["Analyzers"]), "dn_analyzers", str(ms.path), key, "SP_DirIcon", win,
                    "Analyzers and source generators used by this project")
+    deps.insertChild(0, node)                       # Visual Studio: Analyzers, Frameworks, Packages, Projects
     data = _ANALYZERS.get(str(ms.path).lower())
     if data is not None:
         populate_analyzers(win, node, project, data)
@@ -325,7 +326,7 @@ def _find_nodes(win, kind: str, name: str) -> list:
     while stack:
         it = stack.pop()
         d = it.data(0, ROLE) or ("",)
-        if d[0] == kind and (len(d) < 2 or str(d[1]).lower() == name.lower()):
+        if d[0] == kind and (not name or len(d) < 2 or str(d[1]).lower() == name.lower()):
             out.append(it)
         stack.extend(it.child(i) for i in range(it.childCount()))
     return out
@@ -483,16 +484,24 @@ def set_rule_severity(win, project, rule_id: str, severity: str) -> Path:
                                                                    EC.DOTNET_SECTION)
     EC.set_severity(target, rule_id, severity, section)
     _log(win, f"{target}: {rule_id} severity = {severity}")
-    data = _ANALYZERS.get(str(project.ms.path).lower())
-    if data is not None:
-        for node in _find_nodes(win, "dn_analyzers", str(project.ms.path)):
-            try:
-                expanded = _expanded_names(node)
-                populate_analyzers(win, node, project, data)
-                _restore_expanded(node, expanded)
-            except RuntimeError:
-                continue
+    refresh_analyzer_nodes(win)
     return target
+
+
+def refresh_analyzer_nodes(win) -> None:
+    """Re-show the effective severities of every loaded Analyzers node (an .editorconfig changed)."""
+    for node in _find_nodes(win, "dn_analyzers", ""):
+        d = node.data(0, ROLE) or ("", "")
+        data = _ANALYZERS.get(str(d[1]).lower())
+        project = _project_by_path(win, str(d[1]))
+        if data is None or project is None:
+            continue
+        try:
+            expanded = _expanded_names(node)
+            populate_analyzers(win, node, project, data)
+            _restore_expanded(node, expanded)
+        except RuntimeError:
+            continue
 
 
 def _expanded_names(node) -> set:
@@ -690,14 +699,7 @@ class EditorConfigDialog(QDialog):
     def accept(self):
         n = self.apply()
         _log(self.win, f"{self.target}: {n} setting(s) changed")
-        if self.project is not None:
-            data = _ANALYZERS.get(str(self.project.ms.path).lower())
-            if data is not None:
-                for node in _find_nodes(self.win, "dn_analyzers", str(self.project.ms.path)):
-                    try:
-                        populate_analyzers(self.win, node, self.project, data)
-                    except RuntimeError:
-                        pass
+        refresh_analyzer_nodes(self.win)
         super().accept()
 
 
@@ -912,6 +914,7 @@ def configure_severity(win, row: dict, severity: str) -> Path | None:
     EC.set_severity(target, rid, severity, section)
     _log(win, f"{target}: dotnet_diagnostic.{rid}.severity = {severity}")
     _status(win, f"{rid}: severity set to {severity} in {target.name}")
+    refresh_analyzer_nodes(win)
     return target
 
 
@@ -1053,15 +1056,21 @@ def search_nuget(win, path: Path | None, term: str) -> None:
     if vp is not None:
         from ...foreign import vs_ui
         try:
-            vs_ui.manage_packages(win, vp, search=term)
-            return
-        except TypeError:
-            pass
-        try:
-            vs_ui.manage_packages(win, vp)
-            return
+            view = vs_ui.manage_packages(win, vp)          # the NuGet document (radide/dotnet/nuget/ui.py)
         except Exception:  # noqa: BLE001
-            pass
+            view = None
+        if view is not None and hasattr(view, "search"):
+            try:
+                if callable(getattr(view, "set_tab", None)):
+                    view.set_tab("browse")
+                view.search.setText(term)
+                if callable(getattr(view, "refresh", None)):
+                    view.refresh()
+            except Exception:  # noqa: BLE001
+                pass
+            return
+        if view is not None:
+            return
     _open_url(f"https://www.nuget.org/packages?q={term}")
 
 

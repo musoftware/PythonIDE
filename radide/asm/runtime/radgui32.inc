@@ -33,7 +33,7 @@ extern _rad_arg, _radcall, _rad_error, _rad_init, _rad_next_event, _rad_done
 extern _rad_obj, _rad_ev, _rad_args
 extern _rad_set_int, _rad_get_int, _rad_str_int, _rad_int_str
 
-; RADISREG name : %%isreg = 1 when the argument is a 32-bit general purpose register
+; RADISREG name : RADREG = 1 when the argument is a 32-bit general purpose register
 %macro RADISREG 1
   %assign RADREG 0
   %ifidni %1, eax

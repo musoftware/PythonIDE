@@ -168,6 +168,8 @@ class ControlType:
     package: object = field(default=None, compare=False, hash=False, repr=False)
     category: str = ""                    # Toolbox group ("" = by kind)
     methods: tuple = ()                   # ({"name", "signature", "description"}, ...) for IntelliSense
+    # common properties this type has (None = all of COMMON_PROPS); a component manifest's "commonProperties"
+    common: tuple | None = None
 
     @property
     def default_event(self) -> str | None:
@@ -182,7 +184,8 @@ class ControlType:
     def prop_defs(self) -> list[PropDef]:
         if self.nonvisual:
             return [COMMON_PROPS[0], *self.extra]
-        defs = [p for p in COMMON_PROPS if self.has_text or p.name != "Text"]
+        defs = [p for p in COMMON_PROPS if (self.has_text or p.name != "Text") and
+                (self.common is None or p.name in self.common)]
         return defs + list(self.extra)
 
     def default_props(self, name: str) -> dict:
