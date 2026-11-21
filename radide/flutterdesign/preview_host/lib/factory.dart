@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'fx.dart';
 import 'nodebox.dart';
+import 'radlayout.dart';
 import 'values.dart';
 
 /// What the factory needs from the host (implemented by HostState in main.dart).
@@ -39,21 +40,24 @@ class WidgetFactory {
     Widget w;
 
     // ---- parent-data widgets: no NodeBox around them (it would break the Stack / Flex parent data)
-    if (type == 'Positioned' || type == 'Expanded' || type == 'Flexible' || type == 'Spacer') {
+    if (type == 'Positioned' || type == 'AnimatedPositioned' || type == 'Expanded' || type == 'Flexible' ||
+        type == 'Spacer') {
       final props = (n['props'] as Map?) ?? const {};
       final slots = (n['slots'] as Map?) ?? const {};
       Widget inner = slots['child'] != null ? node(context, slots['child']) : const SizedBox.shrink();
       if (n['anim'] is Map) inner = _fx(n['anim'] as Map, inner, id);
       inner = NodeBox(key: ValueKey('rad:$id'), id: id, type: type, child: inner);
-      final okParent = type == 'Positioned' ? parent == 'Stack' : _flexParents.contains(parent);
+      final positioned = type == 'Positioned' || type == 'AnimatedPositioned';
+      final okParent = positioned ? parent == 'Stack' : _flexParents.contains(parent);
       if (!okParent) {
         host.nodeIssue(id, 'warning',
-            type == 'Positioned' ? 'Positioned must be a child of a Stack' : '$type must be a child of a Row / Column / Flex');
+            positioned ? '$type must be a child of a Stack' : '$type must be a child of a Row / Column / Flex');
         return inner;
       }
       try {
         switch (type) {
           case 'Positioned':
+          case 'AnimatedPositioned':
             if (n['ctor'] == 'fill') {
               w = Positioned.fill(left: numV(props['left'], c), top: numV(props['top'], c),
                   right: numV(props['right'], c), bottom: numV(props['bottom'], c), child: inner);
@@ -730,6 +734,54 @@ class WidgetFactory {
       case 'AnimatedSwitcher':
         return AnimatedSwitcher(duration: durationV(p['duration'], c) ?? const Duration(milliseconds: 300),
             child: child());
+      // design time: implicit animations show their target value, explicit transitions the resolved
+      // timeline value (Python resolves $when / $timeline before sending the screen)
+      case 'AnimatedPadding':
+        return Padding(padding: e('padding') ?? EdgeInsets.zero, child: child());
+      case 'AnimatedAlign':
+        return Align(alignment: alignV(p['alignment'], c) ?? Alignment.center, widthFactor: d('widthFactor'),
+            heightFactor: d('heightFactor'), child: child());
+      case 'AnimatedScale':
+      case 'ScaleTransition':
+        return Transform.scale(scale: d('scale') ?? 1, alignment: alignV(p['alignment'], c) ?? Alignment.center,
+            child: child());
+      case 'AnimatedRotation':
+      case 'RotationTransition':
+        return Transform.rotate(angle: (d('turns') ?? 0) * 6.283185307179586,
+            alignment: alignV(p['alignment'], c) ?? Alignment.center, child: child());
+      case 'AnimatedSlide':
+      case 'SlideTransition':
+        return FractionalTranslation(translation: offsetV(p['offset'] ?? p['position'], c) ?? Offset.zero,
+            child: child());
+      case 'FadeTransition':
+        return Opacity(opacity: (d('opacity') ?? 1).clamp(0.0, 1.0), child: child());
+      case 'SizeTransition':
+        final f = (d('sizeFactor') ?? 1).clamp(0.0, 1.0);
+        final horizontal = _tail(p['axis']) == 'horizontal';
+        return ClipRect(child: Align(alignment: Alignment.topLeft, widthFactor: horizontal ? f : null,
+            heightFactor: horizontal ? null : f, child: child()));
+      case 'AnimatedSize':
+        return child() ?? const SizedBox.shrink();
+      case 'AnimatedDefaultTextStyle':
+        return DefaultTextStyle.merge(style: ts('style'), textAlign: enumV(TextAlign.values, p['textAlign']),
+            child: child() ?? const SizedBox.shrink());
+      case 'AnimatedCrossFade':
+        final second = _tail(p['crossFadeState']) == 'showSecond';
+        return slot(second ? 'secondChild' : 'firstChild') ?? const SizedBox.shrink();
+      case 'Lottie':
+      case 'RiveAnimation':
+        return HostAssetPlaceholder(kind: type == 'Lottie' ? 'Lottie' : 'Rive', name: s('name') ?? '',
+            width: d('width'), height: d('height'));
+      case 'RadTwoPane':
+        return RadTwoPane(
+          start: slot('start') ?? const SizedBox.shrink(),
+          end: slot('end') ?? const SizedBox.shrink(),
+          paneMode: enumV(RadPaneMode.values, p['paneMode']) ?? RadPaneMode.auto,
+          ratio: d('ratio') ?? 0.5,
+          singlePane: enumV(RadPane.values, p['singlePane']) ?? RadPane.start,
+          hingeAware: b('hingeAware') ?? true,
+          minDualWidth: d('minDualWidth') ?? 600,
+        );
 
       // --------------------------------------------------------------------------------- cupertino
       case 'CupertinoPageScaffold':
@@ -815,5 +867,33 @@ class _TabScope extends StatelessWidget {
     if (ctl != null && ctl.length == length) return child;
     if (length == 0) return const SizedBox(height: 48);
     return DefaultTabController(length: length, child: child);
+  }
+}
+
+/// Lottie / Rive at design time: the packages are not part of the preview host.
+class HostAssetPlaceholder extends StatelessWidget {
+  const HostAssetPlaceholder({super.key, required this.kind, required this.name, this.width, this.height});
+
+  final String kind;
+  final String name;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width ?? 160,
+      height: height ?? 160,
+      decoration: BoxDecoration(
+        color: const Color(0x1800BFA5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF00BFA5)),
+      ),
+      alignment: Alignment.center,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.animation, color: Color(0xFF00897B)),
+        Text('$kind\n${name.split('/').last}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11)),
+      ]),
+    );
   }
 }

@@ -60,3 +60,4 @@ or **File > Open Folder** (the folders of `OpenFolder/` have none on purpose).
 | `NativeDebug/test_native_debug.py` | the native debugger windows |
 | `OpenFolder/test_open_folder.py`, `OpenFolder/test_ide_open.py` | detection, in-place builds, foreign projects, exe -> NASM listing, IDE |
 | `CourseTests/test_course_forms.py`, `radide/tutorials/assembly/tools/check_lessons.py` | the course ([README](CourseTests/README.md)) |
+| `QA/test_user_flow.py` | the IDE as a user drives it: New Project -> Ctrl+F5 with the Program Input bar, forms, Error List, IntelliSense, F5 with Registers / Disassembly / Memory (and stdin under the debugger), C regression, emulator, CHM / Tutorials, Open Folder F5, Arabic + dark screenshots ([README](QA/README.md)) |

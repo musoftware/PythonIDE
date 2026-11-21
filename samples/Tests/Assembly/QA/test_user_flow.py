@@ -137,7 +137,8 @@ def run(w, debug=False, answer=None, timeout=180):
     w.run_project(debug=debug)
     if answer is not None:
         ok = wait(lambda: getattr(w, "dock_program_input", None) is not None and w.dock_program_input.isVisible()
-                  and w.session is not None and ("Build succeeded" in w.output.toPlainText()), timeout)
+                  and w.session is not None and any(m in w.output.toPlainText() for m in ("Build succeeded", "------ Run:")),
+                  timeout)
         if ok:
             pump(1.5)                       # the prompt
             bar = w.dock_program_input.widget()
@@ -486,13 +487,14 @@ def p_tutor():
     w = window()
     from radide.features import tutorials as TU
     from radide import tutorials as T
+    from radide.tutorials.html import tryable
     course = next(c for c in T.courses() if c.id == "assembly")
     found = None
     for les in course.lessons:
         panel = TU.show_tutorials(w, "assembly", les.id)
         pump(1)
         for n, b in panel.blocks.items():
-            if b.lang == "asm" and not b.gui and b.role in ("run", "example", "plain", "solution")                     and not b.reads_stdin() and "run" in b.info.split():
+            if b.lang == "asm" and not b.gui and tryable(b) and not b.reads_stdin():     # has the button
                 found = (les.id, n)
                 break
         if found:
@@ -510,9 +512,69 @@ def p_tutor():
     check("tutor: the block builds and runs", "Build succeeded" in out and "exited with code 0" in out, out[-500:])
 
 
+def p_openfolder():
+    """File > Open Folder on loose NASM / GNU as folders (no project file): opened in place, F5 stops on a
+    breakpoint, the program ends with its output."""
+    _open_folder("NasmLoose", "hello.asm", "call printf", "6 * 7 = 42")
+    _open_folder("GasLoose", "hello.s", "call printf", "GNU as loose folder: 2026")
+    _open_folder("NasmLooseInput", "input.asm", "call scanf", "Twice 21 is 42", answer="21")
+
+
+def _open_folder(name, file, bp_text, expect, answer=None):
+    w = window()
+    from radide.features.open_detect import open_inplace
+    from radide.project_detect import detect
+    src = ROOT / "samples/Tests/Assembly/OpenFolder" / name
+    if not src.is_dir():
+        src = Path(__file__).resolve().parent / name
+    folder = WORK / name
+    shutil.copytree(src, folder)
+    cand = [c for c in detect(folder).candidates() if c.kind == "asm"]
+    check(f"openfolder {name}: detected as Assembly", cand, [c.kind for c in detect(folder).candidates()])
+    ok = open_inplace(w, folder, cand)
+    check(f"openfolder {name}: opened in place", ok and w.project is not None and getattr(w.project, "foreign", False))
+    lines = (folder / file).read_text(encoding="utf-8").splitlines()
+    bp = next(i for i, ln in enumerate(lines) if bp_text in ln)
+    w.open_module(file)
+    pump(2)
+    mv = w.modviews.get(file)
+    if mv is not None:
+        mv.editor.set_breakpoints({bp})
+    stops = []
+    orig = w._on_stopped
+    w._on_stopped = lambda info: (stops.append(info), orig(info))
+    w.output.clear()
+    w.run_project(debug=True)
+    wait(lambda: stops or w.session is None, 180)
+    check(f"openfolder {name}: F5 stops on the breakpoint in {file}",
+          stops and Path(stops[-1].file).name == file and stops[-1].line == bp + 1,
+          (stops and (stops[-1].file, stops[-1].line)) or w.output.toPlainText()[-2500:])
+    if stops:
+        w.session.set_breakpoint(file, bp + 1, False)
+        if mv is not None:
+            mv.editor.set_breakpoints(set())
+        w.session.cont()
+    if answer is not None:
+        dock = getattr(w, "dock_program_input", None)
+        check(f"openfolder {name}: Program Input bar shown under F5", dock is not None and dock.isVisible())
+        if dock is not None:
+            dock.widget().edit.setText(answer)
+            dock.widget().send()
+    wait(lambda: w.session is None, 30)
+    check(f"openfolder {name}: the program ends with its output", expect in w.output.toPlainText(),
+          w.output.toPlainText()[-400:])
+    if w.session is not None:
+        w.stop_project()
+        wait(lambda: w.session is None, 10)
+    w._on_stopped = orig
+    if answer is not None:                                   # Ctrl+F5 with the Program Input bar
+        out = run(w, False, answer, 120)
+        check(f"openfolder {name}: Ctrl+F5 reads the Program Input bar", expect in out, out[-400:])
+
+
 PHASES = {"newproj": p_newproj, "forms": p_forms, "errors": p_errors, "intel": p_intel, "debug": p_debug,
           "cdebug": p_cdebug, "emu": p_emu, "help": p_help, "regress": p_regress, "look": p_look,
-          "tutor": p_tutor}
+          "tutor": p_tutor, "openfolder": p_openfolder}
 
 if __name__ == "__main__":
     chosen = sys.argv[1:] or list(PHASES)

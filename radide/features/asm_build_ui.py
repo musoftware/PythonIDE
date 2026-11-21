@@ -163,6 +163,20 @@ def _input_dock(win) -> QDockWidget:
     return dock
 
 
+def _asm_folder_exe(win) -> bool:
+    """A loose assembly folder opened in place (radide/foreign/asm_folder.py) whose startup target is a console
+    program (not an 8086 emulator target): it gets the Program Input bar too."""
+    project = getattr(win, "project", None)
+    adapter = getattr(project, "adapter", None)
+    if getattr(adapter, "kind", "") != "asm":
+        return False
+    try:
+        t = adapter.target(project.startup)
+    except Exception:  # noqa: BLE001
+        return False
+    return t is not None and t.kind == "exe"
+
+
 def _attach_session(win, s, plugin, debug: bool) -> None:
     project = win.project
     state = {"buf": "", "done": False}
@@ -327,7 +341,7 @@ def install(win) -> None:
         def make_session(spec, debug, plugin, interp, startup=None):
             s = orig(spec, debug, plugin, interp, startup)
             try:
-                if str(getattr(plugin, "id", "")).startswith("asm-") and s is not None:
+                if s is not None and (str(getattr(plugin, "id", "")).startswith("asm-") or _asm_folder_exe(win)):
                     _attach_session(win, s, plugin, debug)
             except Exception:  # noqa: BLE001 - never stop F5
                 pass

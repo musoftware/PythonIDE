@@ -1,0 +1,120 @@
+{
+ "version": 1,
+ "name": "MailTwoPane",
+ "route": "/mail",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Mail"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "RadTwoPane",
+    "props": {
+     "ratio": 0.4,
+     "singlePane": "RadPane.start"
+    },
+    "slots": {
+     "start": {
+      "id": "w5",
+      "type": "ListView",
+      "children": [
+       {
+        "id": "w6",
+        "type": "ListTile",
+        "slots": {
+         "leading": {
+          "id": "w7",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.mail"
+          }
+         },
+         "title": {
+          "id": "w8",
+          "type": "Text",
+          "props": {
+           "data": "Inbox"
+          }
+         }
+        }
+       },
+       {
+        "id": "w9",
+        "type": "ListTile",
+        "slots": {
+         "leading": {
+          "id": "w10",
+          "type": "Icon",
+          "props": {
+           "icon": "Icons.send"
+          }
+         },
+         "title": {
+          "id": "w11",
+          "type": "Text",
+          "props": {
+           "data": "Sent"
+          }
+         }
+        }
+       }
+      ]
+     },
+     "end": {
+      "id": "w12",
+      "type": "Center",
+      "slots": {
+       "child": {
+        "id": "w13",
+        "type": "Text",
+        "props": {
+         "data": "Message",
+         "style": {
+          "fontSize": 18
+         }
+        },
+        "vprops": {
+         "tabletop": {
+          "style": {
+           "fontSize": 24
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "variants": [
+  {
+   "id": "tabletop",
+   "label": "Half-open",
+   "when": {
+    "posture": "half-opened"
+   },
+   "preview": {
+    "device": "galaxy_z_fold6",
+    "orientation": "Portrait",
+    "posture": "HalfOpened"
+   }
+  }
+ ]
+}

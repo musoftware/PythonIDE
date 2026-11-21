@@ -291,9 +291,9 @@ def two_pane(width, height, mode="Auto", ratio=0.5, single="Start", hinge=None, 
             return {"mode": "single", "split": "single", "shown": shown, "panes": [(0, 0, w, h), None]}
         mode = "Horizontal"
     if mode == "Vertical":
-        a = int(round(h * ratio))
+        a = int(h * ratio + 0.5)          # half rounds up (same as Dart roundToDouble)
         return {"mode": "vertical", "split": "ratio", "shown": None, "panes": [(0, 0, w, a), (0, a, w, h - a)]}
-    a = int(round(w * ratio))
+    a = int(w * ratio + 0.5)
     return {"mode": "horizontal", "split": "ratio", "shown": None, "panes": [(0, 0, a, h), (a, 0, w - a, h)]}
 
 

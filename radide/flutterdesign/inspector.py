@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (QButtonGroup, QCheckBox, QColorDialog, QComboBox, Q
 
 from . import iconfont
 from . import model as M
+from . import motion as MO
+from . import variants_fd as VF
 from .palette import type_icon
 
 SCHEME_KEYS = ["primary", "onPrimary", "primaryContainer", "onPrimaryContainer", "secondary", "onSecondary",
@@ -1534,11 +1536,27 @@ class PropRow(QWidget):
             self.committed.emit(self.key, None)
 
     def _code_done(self):
+        if self.code.isReadOnly():
+            return
         t = self.code.text().strip()
         self.committed.emit(self.key, {"$code": t} if t else None)
 
     def set_value(self, v):
         self._loading = True
+        animated = MO.is_when(v) or MO.is_timeline(v)
+        self.code.setReadOnly(animated)
+        self.dart.setEnabled(not animated)
+        if animated:                       # $when / $timeline: shown as text, edited with the row menu
+            from .motion_ui import describe_value
+            self.dart.setChecked(False)
+            self.ed.setVisible(False)
+            self.code.setVisible(True)
+            self.code.setText(describe_value(v))
+            self.code.setToolTip("Animated value - right-click the property name to change or remove it")
+            self.reset.setEnabled(True)
+            self._loading = False
+            return
+        self.code.setToolTip("")
         is_code = M.is_code(v)
         self.dart.setChecked(is_code)
         self.ed.setVisible(not is_code)
@@ -1624,7 +1642,9 @@ class Inspector(QScrollArea):
         lay.setContentsMargins(2, 2, 2, 2)
         lay.setSpacing(2)
         self.rows, self.events = {}, {}
+        self.labels: dict = {}
         self.anim_eds: dict = {}
+        self.anim_extra = None
         self.name_edit = None
         self.screen_eds: dict = {}
         if node is None or node is scr.tree:
@@ -1701,9 +1721,13 @@ class Inspector(QScrollArea):
                 lab = QLabel(k + (" *" if ps.required else ""))
                 lab.setProperty("i18n_skip", True)
                 lab.setToolTip(f"{k}: {ps.kind}{(' ' + ps.enum) if ps.enum else ''}"
-                               + (f"\n{ps.help}" if ps.help else ""))
+                               + (f"\n{ps.help}" if ps.help else "") + "\nRight-click: sizes / animate")
+                lab.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                lab.customContextMenuRequested.connect(lambda _pt, k=k, ps=ps, lab=lab: self._row_menu(k, ps, lab))
+                lab.setProperty("rad_text", k + (" *" if ps.required else ""))
                 sec.form.addRow(lab, row)
                 self.rows[k] = row
+                self.labels[k] = lab
             lay.addWidget(sec)
         extra = [k for k in (node.get("props") or {}) if k not in spec.props]
         if extra:
@@ -1757,6 +1781,27 @@ class Inspector(QScrollArea):
             rep.addAction(f"{name}  ({route})",
                           lambda r=route: self.designer.set_event(self.node_id, ev, f"replace:{r}"))
         m.addAction("Go back (Navigator.pop)", lambda: self.designer.set_event(self.node_id, ev, "back"))
+        scr = self.designer.screen
+        tr = m.addMenu("Push with transition")
+        for name, _route in self.designer.screens_list():
+            sub = tr.addMenu(name)
+            for t in MO.TRANSITIONS:
+                sub.addAction(t, lambda n=name, t=t: self.designer.set_event(self.node_id, ev,
+                                                                              f"push:{n}?transition={t}"))
+        tr.setEnabled(bool(tr.actions()))
+        tg = m.addMenu("Toggle state variable")
+        for s in MO.state_fields(scr):
+            if s.get("type", "bool") == "bool":
+                tg.addAction(s["name"], lambda n=s["name"]: self.designer.set_event(self.node_id, ev, f"toggle:{n}"))
+        tg.setEnabled(bool(tg.actions()))
+        pl = m.addMenu("Play / reverse animation")
+        ctrls = [t["name"] for t in MO.timelines(scr)] + sorted(
+            {MO.controller_name(n) for n, *_ in scr.walk()
+             if MO.trigger_of(n.get("anim"))[0] == "manual" or (n.get("anim") or {}).get("controller")})
+        for c in ctrls:
+            pl.addAction(f"play:{c}", lambda c=c: self.designer.set_event(self.node_id, ev, f"play:{c}"))
+            pl.addAction(f"reverse:{c}", lambda c=c: self.designer.set_event(self.node_id, ev, f"reverse:{c}"))
+        pl.setEnabled(bool(ctrls))
         m.addSeparator()
         m.addAction("Clear", lambda: self.designer.set_event(self.node_id, ev, None))
 
@@ -1771,9 +1816,13 @@ class Inspector(QScrollArea):
         preset.addItem("Apply a preset...", None)
         try:
             from . import animations as AN
+            group = None
             for p in AN.PRESETS:
+                if p.group != group and group is not None:
+                    preset.insertSeparator(preset.count())
+                group = p.group
                 preset.addItem(p.label, p.id)
-                preset.setItemData(preset.count() - 1, p.help, Qt.ItemDataRole.ToolTipRole)
+                preset.setItemData(preset.count() - 1, f"{p.group}: {p.help}", Qt.ItemDataRole.ToolTipRole)
         except Exception:  # noqa: BLE001
             pass
         delay, dur = NumberEd(self.ctx, as_int=True, placeholder="0"), NumberEd(self.ctx, as_int=True,
@@ -1798,6 +1847,10 @@ class Inspector(QScrollArea):
         sec.form.addRow("Offset Y", oy)
         sec.form.addRow("Curve", curve)
         sec.form.addRow("Scale", scale)
+        from .motion_ui import AnimExtra
+        self.anim_extra = AnimExtra(self.designer)
+        self.anim_extra.changed.connect(self._anim)
+        sec.form.addRow(self.anim_extra)
         sec.form.addRow("", play)
         return sec
 
@@ -1824,6 +1877,98 @@ class Inspector(QScrollArea):
         info.setStyleSheet("color: gray")
         sec.form.addRow(info)
         lay.addWidget(sec)
+        lay.addWidget(self._motion_section())
+
+    def _motion_section(self) -> Section:
+        """State variables, timelines, page transition and sizes of the screen."""
+        from . import motion_ui as MU
+        scr = self.designer.screen
+        sec = Section("Motion and sizes", expanded=bool(scr.data.get("state") or scr.data.get("timelines") or
+                                                        scr.data.get("transition") or scr.data.get("variants")))
+
+        def table(key, title, cols, help_text):
+            def run():
+                dlg = MU.RowsDialog(title, cols, MU.copy_screen_list(self.designer.screen, key), self, help_text)
+                if dlg.exec():
+                    self.designer.set_screen(key, dlg.rows() or None)
+            return run
+        b_state = QPushButton(f"State variables... ({len(MO.state_fields(scr))})")
+        b_state.clicked.connect(table("state", "State variables", MU.STATE_COLUMNS,
+                                      "Fields of the screen's State: animate properties with them ($when), toggle "
+                                      "them from events (toggle:name) or start animations (trigger state:name)."))
+        b_tl = QPushButton(f"Timelines... ({len(MO.timelines(scr))})")
+        b_tl.clicked.connect(table("timelines", "Timelines", MU.TIMELINE_COLUMNS,
+                                   "AnimationControllers of the screen: drive FadeTransition / SlideTransition ... "
+                                   "($timeline) and start them from events (play:name, reverse:name)."))
+        trans = QComboBox()
+        trans.addItem("(default)", None)
+        for t in MO.TRANSITIONS:
+            trans.addItem(t, t)
+        cur = MO.transition_of(scr) or {}
+        trans.setCurrentIndex(max(0, trans.findData(cur.get("type"))))
+        ms = QSpinBox()
+        ms.setRange(50, 5000)
+        ms.setSingleStep(50)
+        ms.setValue(int(cur.get("durationMs") or 300))
+        ms.setSuffix(" ms")
+
+        def set_trans(*_a):
+            t = trans.currentData()
+            self.designer.set_screen("transition", None if not t else
+                                     ({"type": t} if ms.value() == 300 else {"type": t, "durationMs": ms.value()}))
+        trans.activated.connect(set_trans)
+        ms.editingFinished.connect(set_trans)
+        b_sizes = QPushButton(f"Sizes... ({len(VF.sizes(scr))})")
+        b_sizes.clicked.connect(self.designer.edit_sizes_dialog)
+        sec.form.addRow("State", b_state)
+        sec.form.addRow("Timelines", b_tl)
+        sec.form.addRow("Page transition", trans)
+        sec.form.addRow("", ms)
+        sec.form.addRow("Sizes", b_sizes)
+        return sec
+
+    def _row_menu(self, key: str, ps: M.PropSpec, lab: QLabel):
+        """Right-click on a property name: per-size actions and animated values."""
+        from PyQt6.QtGui import QCursor
+        from . import motion_ui as MU
+        d = self.designer
+        node = d.screen.find(self.node_id) if self.node_id else None
+        if node is None:
+            return
+        m = QMenu(self)
+        vid = d.this_size()
+        sizes = VF.sizes(d.screen)
+        if vid:
+            o = VF.overrides(node, vid)
+            m.addAction("Apply to all sizes", lambda: d.apply(VF.apply_to_all, node["id"], vid, key,
+                                                              text=f"{key}: all sizes")).setEnabled(key in o)
+            m.addAction("Reset to base", lambda: d.apply(VF.remove_override, node["id"], vid, key,
+                                                         text=f"{key}: base")).setEnabled(key in o)
+            cp = m.addMenu("Copy to")
+            for s2 in sizes:
+                if s2["id"] != vid:
+                    cp.addAction(VF.label(s2), lambda t=s2["id"]: d.apply(VF.copy_to, node["id"], vid, key, t,
+                                                                          text=f"{key}: copy"))
+            cp.setEnabled(len(sizes) > 1)
+            hidden = VF.is_hidden(node, vid)
+            m.addAction("Show on this size" if hidden else "Hide on this size",
+                        lambda: d.set_hidden(node["id"], vid, False if hidden else True))
+            m.addSeparator()
+        elif sizes:
+            elsewhere = [VF.label(s2) for s2 in sizes if key in VF.overrides(node, s2["id"])]
+            a = m.addAction("Overridden on: " + (", ".join(elsewhere) if elsewhere else "no size"))
+            a.setEnabled(False)
+            m.addSeparator()
+        cur = (node.get("props") or {}).get(key)
+
+        def animate():
+            dlg = MU.WhenDialog(d.screen, key, ps.kind, cur, self)
+            if dlg.exec():
+                d.set_prop(node["id"], key, dlg.value())
+        m.addAction("Animate value (state / timeline)...", animate)
+        a = m.addAction("Remove animated value", lambda: d.set_prop(node["id"], key, None))
+        a.setEnabled(MO.is_when(cur) or MO.is_timeline(cur))
+        m.exec(QCursor.pos())
 
     # ------------------------------------------------------------------ values
     def refresh(self):
@@ -1843,9 +1988,16 @@ class Inspector(QScrollArea):
                 ed.blockSignals(False)
         if node is None:
             return
-        pr = node.get("props") or {}
+        pr = dict(node.get("props") or {})
+        vid = self.designer.this_size() if hasattr(self.designer, "this_size") else None
+        if vid:                            # This size only: the values seen on that size
+            pr.update({k: v for k, v in VF.overrides(node, vid).items() if k != VF.HIDDEN})
         for k, row in self.rows.items():
             row.set_value(pr.get(k))
+        for k, lab in getattr(self, "labels", {}).items():
+            mark = VF.marker(node, k, vid)
+            lab.setText((mark + " " if mark else "") + str(lab.property("rad_text") or k))
+            lab.setStyleSheet("color: #F7630C; font-weight: bold" if mark == VF.MARK_HERE else "")
         evs = node.get("events") or {}
         for k, le in self.events.items():
             le.setText(evs.get(k) or "")
@@ -1862,6 +2014,8 @@ class Inspector(QScrollArea):
                 ed.blockSignals(False)
             if a:
                 self.anim_sec.head.setChecked(True)
+            if self.anim_extra is not None:
+                self.anim_extra.set_anim(a)
 
     def _prop(self, key, value):
         if self.node_id:

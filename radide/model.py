@@ -21,6 +21,8 @@ class Control:
     props: dict
     # Visual States (Expression Blend, CONTRACTS 8.7): state name -> {property: value}
     states: dict = field(default_factory=dict)
+    # Layout variants (radide/variants, plan 1.5): size id -> {property: value} overriding the base design
+    variants: dict = field(default_factory=dict)
 
     @property
     def name(self) -> str:
@@ -38,6 +40,8 @@ class Control:
         d = {"type": self.type, "props": self.props}
         if self.states:
             d["states"] = self.states
+        if self.variants:
+            d["variants"] = self.variants
         return d
 
     @staticmethod
@@ -46,8 +50,10 @@ class Control:
         props = ctype.default_props("")
         props.update(json.loads(json.dumps(d.get("props", {}))))
         states = d.get("states")
+        variants = d.get("variants")
         return Control(d["type"], props,
-                       json.loads(json.dumps(states)) if isinstance(states, dict) else {})
+                       json.loads(json.dumps(states)) if isinstance(states, dict) else {},
+                       json.loads(json.dumps(variants)) if isinstance(variants, dict) else {})
 
 
 FORM_VERSION = 2      # 2: Button TextAlign defaults to Center (see Form.from_dict)

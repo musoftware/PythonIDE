@@ -235,7 +235,6 @@
          {
           "id": "w26",
           "type": "Icon",
-          "name": "spinner",
           "props": {
            "icon": "Icons.sync",
            "size": 40

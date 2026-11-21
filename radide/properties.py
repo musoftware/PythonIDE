@@ -23,6 +23,8 @@ from .model import Control
 
 CATEGORY_ORDER = ["Appearance", "Behavior", "Data", "Design", "Layout", "Misc"]
 CATEGORY_BACK = "#E4E8EE"     # category rows (Tools > Options dark theme changes it)
+LABEL_ROLE = Qt.ItemDataRole.UserRole + 1       # a property row's name without the layout-size marker
+MARK_ROLE = Qt.ItemDataRole.UserRole + 2        # True while the row is drawn as "changed on this size"
 
 
 _GENERIC_HELP = {"color": "A colour: click the value to pick one ((default) = the system colour).",
@@ -239,7 +241,9 @@ class PropertiesPanel(QWidget):
         c = self._owner()
         props = c.props if c else self.doc.form.props
         shown = getattr(self.doc, "display_props", None)     # a form Language being edited (localization)
-        return shown(c, props) if shown is not None else props
+        out = shown(c, props) if shown is not None else props
+        size = getattr(self.doc, "variant_display", None)     # the layout size shown (features/variants.py)
+        return size(c, out) if callable(size) else out
 
     def _defaults(self) -> dict:
         """Default values of the selected object (a new control of its type) - bold / Reset compare to them."""
@@ -275,7 +279,41 @@ class PropertiesPanel(QWidget):
         a = m.addAction("&Reset", lambda n=d.name: self.reset_property(n))
         a.setEnabled(value != self._defaults().get(d.name, d.default))
         m.addAction("&Description", lambda: self._on_current_cell(row))
+        extra = getattr(self.doc, "prop_menu", None)      # layout sizes: Apply to all sizes / Reset to base ...
+        if callable(extra):
+            try:
+                extra(m, self._owner(), d.name)
+            except Exception:  # noqa: BLE001 - a broken hook must not lose the menu
+                pass
         m.exec(self.props.viewport().mapToGlobal(pos))
+
+    def _mark_row(self, name_item: QTableWidgetItem, prop: str) -> None:
+        """Layout sizes (radide/features/variants.py): a property changed on the shown size gets a filled
+        diamond, one changed on other sizes a hollow one, with a tooltip (FormDocument.prop_marker)."""
+        label = name_item.data(LABEL_ROLE)
+        if label is None:
+            return
+        fn = getattr(self.doc, "prop_marker", None) if self.doc else None
+        mark = None
+        if callable(fn) and prop != "Name":
+            try:
+                mark = fn(self._owner(), prop)
+            except Exception:  # noqa: BLE001
+                mark = None
+        symbol, tip = (mark if isinstance(mark, tuple) else (mark, "")) if mark else ("", "")
+        symbol = {"here": "◆", "elsewhere": "◇"}.get(symbol, symbol or "")
+        text = f"{symbol} {label}" if symbol else label
+        if name_item.text() != text:
+            name_item.setText(text)
+        if name_item.toolTip() != tip:
+            name_item.setToolTip(tip)
+        here = symbol == "◆"
+        if bool(name_item.data(MARK_ROLE)) != here:
+            name_item.setData(MARK_ROLE, here)
+            if here:
+                name_item.setForeground(QColor("#C24E00"))
+            else:
+                name_item.setData(Qt.ItemDataRole.ForegroundRole, None)
 
     def refresh(self) -> None:
         self._updating = True
@@ -313,6 +351,7 @@ class PropertiesPanel(QWidget):
                 label or (d.meta or {}).get("displayName") or d.name))
             name_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             name_item.setData(Qt.ItemDataRole.UserRole, d)
+            name_item.setData(LABEL_ROLE, name_item.text())      # without a layout-size marker (_mark_row)
             self.props.setItem(row, 0, name_item)
         self._refresh_values()
         self._refresh_events()
@@ -359,6 +398,7 @@ class PropertiesPanel(QWidget):
                 if f.bold() != changed:
                     f.setBold(changed)
                     name_item.setFont(f)
+                self._mark_row(name_item, d.name)
             if _peng.handles(self, d):
                 _peng.cell_widget(self, row, d, value)
             elif d.kind == "bool":

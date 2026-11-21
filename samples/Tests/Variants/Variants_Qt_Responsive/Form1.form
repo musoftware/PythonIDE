@@ -1,0 +1,348 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Customers",
+    "Width": 760,
+    "Height": 460,
+    "BackColor": "#f4f6fb",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Panel",
+      "props": {
+        "Name": "pnlHeader",
+        "Left": 0,
+        "Top": 0,
+        "Width": 760,
+        "Height": 56,
+        "BackColor": "#1f6feb",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Top",
+        "Parent": ""
+      },
+      "variants": {
+        "tablet": {
+          "BackColor": "#0b8a5f"
+        }
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblTitle",
+        "Text": "Customers",
+        "Left": 16,
+        "Top": 14,
+        "Width": 320,
+        "Height": 28,
+        "BackColor": "#1f6feb",
+        "ForeColor": "#ffffff",
+        "FontName": "Segoe UI",
+        "FontSize": 14,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": "pnlHeader"
+      },
+      "variants": {
+        "phone": {
+          "Text": "Customers (phone)"
+        },
+        "tablet": {
+          "BackColor": "#0b8a5f"
+        }
+      }
+    },
+    {
+      "type": "Panel",
+      "props": {
+        "Name": "pnlSide",
+        "Left": 0,
+        "Top": 56,
+        "Width": 180,
+        "Height": 404,
+        "BackColor": "#e8eefc",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Left",
+        "Parent": ""
+      },
+      "variants": {
+        "phone": {
+          "Visible": false
+        }
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnHome",
+        "Text": "Home",
+        "Left": 12,
+        "Top": 12,
+        "Width": 156,
+        "Height": 30,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": "pnlSide"
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnOrders",
+        "Text": "Orders",
+        "Left": 12,
+        "Top": 50,
+        "Width": 156,
+        "Height": 30,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": "pnlSide"
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtSearch",
+        "Text": "",
+        "Left": 200,
+        "Top": 72,
+        "Width": 540,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left, Right",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      },
+      "variants": {
+        "phone": {
+          "Left": 16,
+          "Top": 72,
+          "Width": 368,
+          "Height": 24
+        }
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "lstItems",
+        "Left": 200,
+        "Top": 108,
+        "Width": 540,
+        "Height": 296,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Items": "Ada Lovelace;Alan Turing;Grace Hopper;Linus Torvalds",
+        "DataSource": "",
+        "DisplayMember": "",
+        "ValueMember": "",
+        "DataMember": "",
+        "Parent": ""
+      },
+      "variants": {
+        "phone": {
+          "Left": 16,
+          "Top": 108,
+          "Width": 368,
+          "Height": 520
+        },
+        "tabletop": {
+          "Height": 140,
+          "Anchor": "Top, Left, Right"
+        }
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnSave",
+        "Text": "Save",
+        "Left": 640,
+        "Top": 418,
+        "Width": 100,
+        "Height": 30,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Bottom, Right",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      },
+      "variants": {
+        "phone": {
+          "Left": 16,
+          "Top": 650,
+          "Width": 368,
+          "Height": 34,
+          "Anchor": "Bottom, Left, Right"
+        },
+        "tablet": {
+          "Text": "Save changes",
+          "Left": 640,
+          "Top": 558,
+          "Width": 140,
+          "Height": 30
+        }
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblStatus",
+        "Text": "4 customers",
+        "Left": 200,
+        "Top": 422,
+        "Width": 300,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Bottom, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      },
+      "variants": {
+        "phone": {
+          "Visible": false
+        }
+      }
+    }
+  ],
+  "variants": {
+    "sizes": [
+      {
+        "id": "phone",
+        "label": "Phone",
+        "when": {
+          "maxWidth": 599
+        },
+        "preview": {
+          "width": 400,
+          "height": 700
+        }
+      },
+      {
+        "id": "tablet",
+        "label": "Tablet",
+        "when": {
+          "minWidth": 600,
+          "maxWidth": 1023
+        },
+        "preview": {
+          "width": 800,
+          "height": 600
+        }
+      },
+      {
+        "id": "tabletop",
+        "label": "Tabletop",
+        "when": {
+          "posture": "half-opened"
+        },
+        "preview": {
+          "width": 882,
+          "height": 520
+        }
+      }
+    ]
+  }
+}

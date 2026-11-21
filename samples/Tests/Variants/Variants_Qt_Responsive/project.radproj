@@ -1,0 +1,9 @@
+{
+  "name": "Variants_Qt_Responsive",
+  "language": "python-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

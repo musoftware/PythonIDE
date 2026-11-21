@@ -596,3 +596,50 @@ any language may use: `MonacoEditor.plugin_overlays`, `plugin.monaco_language(pa
   `print-states`, they vary by image; fallback `adb emu fold|unfold`) and verifies with `print-state`.
 - **SuperPreview** foldable presets (`Preset.device / posture / segments`, `preset_segments()`): Fold6 open /
   cover, Pixel Fold, Flip6 (flat, half-open dual segments), Surface Duo 2 spanned (dual segments).
+
+### 10.9 Motion for classic forms - animation presets (owner: motion - radide/motion/*, features/states.py, features/timeline.py; small additions in runtimes/vbrun.py)
+Plan: docs/plans/MOTION_VARIANTS_FOLDABLES.md (contracts 1.1-1.4, 1.7; slice A).
+- **Model** `form.extra["animations"]` (list of `{id, target ("" = form), preset, params, durationMs, delayMs,
+  easing, repeat (0 = forever), autoreverse, trigger: {on, source, intervalMs, after, leave}, enabled}`) and
+  `form.extra["motion"] = {"respectReducedMotion": true}`. API `radide/motion/model.py`: `animations, add, remove,
+  move, find, for_target, new_id, rename_references, remove_target, validate -> [(fx, control, message)]`
+  (missing target / source, bad id, unknown preset / trigger, `after` without animation or in a loop, timer <= 0,
+  typewriter without Text). `states.rename_references` also renames animation targets / sources.
+- **Presets** `radide/motion/presets.py`: `CATALOG` (fadeIn, slideIn, scaleIn | fadeOut, slideOut, scaleOut | move,
+  bounce, shake, pulse, rotate, flip, zoom | colorTo | typewriter), `GROUPS` Entrance / Exit / Attention / Color /
+  Text, `Preset.params_schema` (`{name: {type: int|float|bool|choice|color, label, default, choices?, min?, max?}}`),
+  `Preset.build(anim, base_props, form, target) -> (tracks, note)`, `make`, `describe`, `by_group`, `EASINGS`
+  (linear in out inout back elastic bounce sine), `TRIGGERS`, `TARGET_CAPS` (child alpha, transform) per target
+  `py tk qt ring winforms kivy rn dart css`. The track builders are one source, `PRESETS_RT`, embedded in generated
+  Python designers.
+- **Relative keyframes** (COMMON_RT `_rad_resolve`, resolved in `_Storyboard._remember` against the values at
+  Begin): `{"d": n}`, `{"m": k}`, `{"of": "Width", "f": x}` (start + x * start Width), `{"reveal": 0..1}`
+  (typewriter, `_RadText` mixes by prefix), `"$parent"` (container background). `timeline.norm_keys` keeps them;
+  `timeline.props_at(sb, target, ms, base, parent_bg=None)` resolves them at design time and accepts dict tracks
+  or `(target, prop, keys)` tuples. New easings in `_rad_ease` / `timeline.EASES`; numbers may overshoot (back /
+  elastic). Old storyboards give the same values as before.
+- **Fallbacks** (no transform: rotate = wobble, flip / pulse / scale / zoom = Width / Height around the centre +
+  FontSize; no child alpha (tk, winforms): fade = colour blend into `$parent`, then Visible) are returned by
+  `expand()` as `fallbacks` - show them in the Error List, never silently.
+- **expand** `radide/motion/expand.py` `expand(form, target) -> FxPlan` (contract 1.3) with additive keys:
+  storyboards also carry `target, delayMs, restore (ends where it started), preset`; triggers carry `target`.
+  `storyboard_dict(sb)` = .form storyboard shape (for `BlendPreview.timeline`). `sb_name(fx) = "_fx_" + fx`.
+- **_Storyboard** (timeline.STORYBOARD_RT): `Count`, `Completed` (list of callables, run before
+  `<Name>_Completed`), `Reverse()`, `Finish()` (jump to end + Completed; reduced motion), relative keys.
+- **Python runtime** `radide/motion/runtime_py.py` `FX_RT` (`_RadFx`, `_RadQuietIO`, `_rad_reduced_motion`):
+  `python_blend` adds it when the form has animations or `extra["motion"]` (target "py" for tk, "qt" for qt):
+  `self._fx = _RadFx(self, self._rad, storyboards, triggers, reduced=..., alpha=...)`, `self._fx_<id>` storyboards,
+  `self._fx.start` after `<Form>_Load`. Designer methods `Animate(target, preset, **opts)` (opts durationMs,
+  delayMs, easing, repeat, autoreverse + preset params, `from_=` for `from`), `BeginAnimation(id)`,
+  `StopAnimation(id)`, `SetVisible(control, on)` (plays On show / On hide). `_RadIO` gained `bind(name,
+  "click"|"enter"|"leave", fn)`, `parent_bg(name)` and the `vis_hook` / `quiet` protocol (Visible changes go
+  through the On show / On hide animations). Reduced motion: `RADIDE_REDUCED_MOTION=1|0`, else Windows
+  `SPI_GETCLIENTAREAANIMATION`. `ensure_fx(ui, toolkit)` creates the runtime on demand (vbrun).
+- **VB6 / GUI Bridge**: `Command1.Animate "slideIn", 500, "from=right"` (preset, optional duration, `name=value`
+  options), `Form1.Animate "fadeIn"`, `Me.Animate "Command1", "shake"`, `Form1.BeginAnimation "fx1"` /
+  `StopAnimation`, storyboards and animations as objects (`Storyboard1.Begin`, `fx1.Stop`, `.Pause`, `.Resume`,
+  `.Reverse`, `.Seek ms`, `.IsPlaying`, `.Duration`, `.Position`), `lblInfo.Visible = False` plays its On hide
+  animation. Bridges: `CALL Button1 Animate shake` (`CALL Button1 Animate slideIn<TAB>600<TAB>from=right`).
+- Tests: `samples/Tests/Motion/check_motion_core.py`, `check_runtime.py` (tk, tk reduced motion, qt offscreen),
+  `check_vb6.py`, `test_motion_designer.py` (qh.py); samples Motion_Tk_Presets, Motion_Qt_Presets, Motion_VB6
+  (`make_samples.py` rebuilds them).

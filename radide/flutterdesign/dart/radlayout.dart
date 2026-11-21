@@ -145,16 +145,16 @@ class RadVariant {
   bool hides(List<String> ids) => ids.any(active.contains);
 }
 
-/// [child], or nothing on the sizes listed in [hiddenOn].
+/// [child], or nothing when [hidden] - generated as `hidden: rv.pick(false, [RadV('compact', true), ...])`
+/// so a later size can show the widget again.
 class RadShow extends StatelessWidget {
-  const RadShow({super.key, required this.rv, required this.hiddenOn, required this.child});
+  const RadShow({super.key, required this.hidden, required this.child});
 
-  final RadVariant rv;
-  final List<String> hiddenOn;
+  final bool hidden;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => rv.hides(hiddenOn) ? const SizedBox.shrink() : child;
+  Widget build(BuildContext context) => hidden ? const SizedBox.shrink() : child;
 }
 
 enum RadPaneMode { auto, horizontal, vertical }

@@ -278,8 +278,9 @@ class Overlay(QWidget):
             for c in self._movable():
                 s = self.starts.get(id(c))
                 if s is not None:     # size: the base value (a previewed state / keyframe size stays as is)
+                    gb = self.view.geometry_base(c)
                     self.doc.set_geometry(c, snap(s.x() + dx), snap(s.y() + dy),
-                                          int(c.props["Width"]), int(c.props["Height"]), relayout=False)
+                                          int(gb["Width"]), int(gb["Height"]), relayout=False)
                     moved = True
             if moved:                 # docked controls snap once per step, not once per moved control
                 self.doc.relayout_docked()
@@ -299,7 +300,8 @@ class Overlay(QWidget):
             if mb: bottom = max(snap(bottom + dy), top + MIN_SIZE)
             new = (left, top, right - left, bottom - top)
             old = (s.left(), s.top(), s.width(), s.height())
-            base = [int(c.props[k]) for k in ("Left", "Top", "Width", "Height")]
+            gb = self.view.geometry_base(c)
+            base = [int(gb[k]) for k in ("Left", "Top", "Width", "Height")]
             # edges the gesture did not move keep their base value (matters while previewing a state)
             self.doc.set_geometry(c, *[n if n != o else b for n, o, b in zip(new, old, base)])
             return
@@ -326,7 +328,7 @@ class Overlay(QWidget):
                     hits = self.doc.selection + [c for c in hits if c not in self.doc.selection]
                 self.doc.select_many(hits)
             self.update()
-        elif mode == "move" and self.recorded and not self.view.blend_recording():
+        elif mode == "move" and self.recorded and not self.view.blend_recording() and not self._variant_shown():
             moved = self._movable()
             for c in moved:                    # drop into / out of containers
                 r = self.abs_rect(c)
@@ -334,7 +336,13 @@ class Overlay(QWidget):
                 self.doc.reparent(c, target)
             self.update()
         if mode == "move":           # dropped inside a Column / Row: take that place in the order
-            self.view.phone.end_drag(self._movable() if self.recorded and not self.view.blend_recording() else [])
+            self.view.phone.end_drag(self._movable() if self.recorded and not self.view.blend_recording()
+                                     and not self._variant_shown() else [])
+
+    def _variant_shown(self) -> bool:
+        """A layout size is shown: a drag moves the control on that size, never into another container."""
+        vp = getattr(self.view, "_variant_preview", None)
+        return bool(vp is not None and vp.active)
 
     def mouseDoubleClickEvent(self, e):
         hit = self.control_at(e.position().toPoint())
@@ -376,13 +384,15 @@ class Overlay(QWidget):
             c = self.doc.selected
             if c is not None and not c.ctype.nonvisual:
                 p = self.view.design_props(c)
-                self.doc.set_geometry(c, int(c.props["Left"]), int(c.props["Top"]),
+                gb = self.view.geometry_base(c)
+                self.doc.set_geometry(c, int(gb["Left"]), int(gb["Top"]),
                                       max(MIN_SIZE, p["Width"] + step[0]), max(MIN_SIZE, p["Height"] + step[1]))
         else:
             for c in self._movable():
                 p = self.view.design_props(c)
-                self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], int(c.props["Width"]),
-                                      int(c.props["Height"]))
+                gb = self.view.geometry_base(c)
+                self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], int(gb["Width"]),
+                                      int(gb["Height"]))
 
     # ------------------------------------------------------------ drag & drop
     def dragEnterEvent(self, e):
@@ -410,6 +420,11 @@ class Overlay(QWidget):
         if self.view.tab_order_mode:
             self._paint_tab_order(p)
             return
+        vp = getattr(self.view, "_variant_preview", None)
+        if vp is not None and vp.active:          # controls hidden on the shown layout size: hatched
+            for c in self.shown():
+                if vp.hidden(c):
+                    self._paint_hidden(p, self.abs_rect(c))
         locked = self.doc.locked
         for c in self.doc.selection:
             if c.ctype.nonvisual or not design_visible(self.form, c):
@@ -431,6 +446,21 @@ class Overlay(QWidget):
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(self.band)
 
+
+    @staticmethod
+    def _paint_hidden(p: QPainter, r: QRect) -> None:
+        """Diagonal orange hatch: the control is hidden on this layout size (Hide on this size)."""
+        p.save()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(247, 99, 12, 30))
+        p.drawRect(r)
+        from PyQt6.QtGui import QBrush
+        p.setBrush(QBrush(QColor(247, 99, 12, 150), Qt.BrushStyle.BDiagPattern))
+        p.drawRect(r)
+        p.setPen(QPen(QColor("#F7630C"), 1, Qt.PenStyle.DashLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(r.adjusted(0, 0, -1, -1))
+        p.restore()
 
     @staticmethod
     def _paint_lock(p: QPainter, at: QPoint) -> None:
@@ -549,7 +579,7 @@ class FormFrame(QWidget):
         if self._resizing:
             dx, dy = pos.x() - self._press.x(), pos.y() - self._press.y()
             doc = self.view.doc
-            fp = doc.form.props                 # what set_prop compares with
+            fp = self.view.geometry_base(None)  # what set_prop compares with (a layout size's own size)
             w = max(80, snap(self._start[0] + dx)) if self._resizing[0] else None
             h = max(60, snap(self._start[1] + dy)) if self._resizing[1] else None
             if (w is None or w == fp.get("Width")) and (h is None or h == fp.get("Height")):
@@ -813,6 +843,9 @@ class DesignerView(QScrollArea):
         lp = getattr(self, "_loc_preview", None)          # a mirrored (RightToLeftLayout) language
         if lp is not None and lp.mirrored:
             return lp.design_props(c)
+        vp = getattr(self, "_variant_preview", None)      # a layout size is shown (radide/features/variants.py)
+        if vp is not None and vp.active:
+            return self._blend_over(c, vp.design_props(c))
         bp = getattr(self, "_blend_preview", None)
         if bp is not None:
             try:
@@ -826,6 +859,9 @@ class DesignerView(QScrollArea):
         lp = getattr(self, "_loc_preview", None)          # the Language being edited (its Text)
         if lp is not None and lp.code:
             return lp.form_props()
+        vp = getattr(self, "_variant_preview", None)      # a layout size is shown: its client area
+        if vp is not None and vp.active:
+            return self._blend_over(None, vp.design_props(None))
         bp = getattr(self, "_blend_preview", None)
         if bp is not None:
             try:
@@ -833,6 +869,31 @@ class DesignerView(QScrollArea):
             except (TypeError, ValueError, KeyError, AttributeError):
                 pass
         return self.doc.form.props
+
+    def _blend_over(self, c, props: dict) -> dict:
+        """*props* (a layout size's values) with a previewed visual state / timeline position on top."""
+        bp = getattr(self, "_blend_preview", None)
+        if bp is None or not (bp.state or bp.timeline is not None):
+            return props
+        try:
+            shown = bp.design_props(c)
+        except (TypeError, ValueError, KeyError, AttributeError):
+            return props
+        base = c.props if c is not None else self.doc.form.props
+        diff = {k: v for k, v in shown.items() if base.get(k) != v}
+        if not diff:
+            return props
+        out = dict(props)
+        out.update(diff)
+        return out
+
+    def geometry_base(self, c: Control) -> dict:
+        """The values a move / resize keeps for the edges it does not change: c.props, or what a layout
+        size shows for c (Edit: This size only / a previewed size)."""
+        vp = getattr(self, "_variant_preview", None)
+        if vp is not None and vp.active:
+            return vp.design_props(c)
+        return c.props if c is not None else self.doc.form.props
 
     def blend_begin_edit(self) -> None:
         """A move / resize of the designed form starts: with timeline Record off a scrubbed timeline
@@ -918,10 +979,16 @@ class DesignerView(QScrollArea):
                     w.setVisible(tab_page(c) == int(parent.props.get("SelectedIndex", 0) or 0))
 
     def on_control_changed(self, ctrl) -> None:
+        vp = getattr(self, "_variant_preview", None)
+        if vp is not None:
+            vp.invalidate()                     # the shown size is worked out again from the new values
         if ctrl is None or ctrl.type in MENU_TYPES:
             self.layout_form()
         elif id(ctrl) in self.previews:
-            apply_props(self.previews[id(ctrl)], ctrl)
+            if vp is not None and vp.active:    # the control as the shown layout size has it
+                vp.apply(ctrl)
+            else:
+                apply_props(self.previews[id(ctrl)], ctrl)
             if ctrl.type == "TabControl" or "TabPage" in ctrl.props:
                 self.sync_pages()
         self.overlay.update()
@@ -929,6 +996,9 @@ class DesignerView(QScrollArea):
     def on_live_changed(self, ctrl) -> None:
         """One step of a drag (FormDocument.begin_live): only geometry follows the mouse - the full
         preview update (apply_props, Blend / localization previews, Properties ...) runs on release."""
+        vp = getattr(self, "_variant_preview", None)
+        if vp is not None:
+            vp.invalidate()
         if ctrl is None or ctrl.type in MENU_TYPES:
             self.layout_form()
         else:
@@ -946,7 +1016,9 @@ class DesignerView(QScrollArea):
         timeline keyframes, in a mirrored (RightToLeftLayout) language or on a phone form: there the
         listeners rewrite every step (record, mirror, Column / Row order)."""
         lp = getattr(self, "_loc_preview", None)
-        return not (self.blend_recording() or (lp is not None and lp.mirrored) or self.phone.active)
+        vp = getattr(self, "_variant_preview", None)      # This size only: every step becomes an override
+        return not (self.blend_recording() or (lp is not None and lp.mirrored) or self.phone.active
+                    or (vp is not None and vp.active))
 
     def begin_live(self) -> None:
         if self.live_drag_ok():

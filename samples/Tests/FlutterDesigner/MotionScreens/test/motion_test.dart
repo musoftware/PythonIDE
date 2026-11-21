@@ -37,7 +37,8 @@ void main() {
     expect(a.dy, 40);
     final b = radFxFrame(RadFxType.keyframes, 0.5, keyframes: kf);
     expect(b.opacity, 1);
-    expect(b.dy, 0);
+    expect(b.dy, 20);
+    expect(radFxFrame(RadFxType.keyframes, 1, keyframes: kf).dy, 0);
     expect(radFxFrame(RadFxType.shake, 0).dx, 0);
     expect(radFxFrame(RadFxType.shake, 1).dx.abs() < 1e-9, isTrue);
     expect(radFxFrame(RadFxType.pulse, 0.5, scale: 1.2).scaleX, closeTo(1.2, 1e-9));

@@ -84,17 +84,28 @@ def flutter_version() -> str:
         return "unknown"
 
 
+# helpers shared with generated projects (flutterdesign/dart/*.dart -> host lib/): same animation maths
+SHARED_DART = {Path(__file__).resolve().parent / "dart" / "radfx.dart": "lib/radfx.dart",
+               Path(__file__).resolve().parent / "dart" / "radlayout.dart": "lib/radlayout.dart"}
+
+
 def _source_files() -> list[Path]:
     out = [HOST_SRC / "pubspec.yaml"]
     for sub in ("lib", "web"):
         out += sorted(p for p in (HOST_SRC / sub).rglob("*") if p.is_file())
+    out += list(SHARED_DART)
     return [p for p in out if p.exists()]
+
+
+def _rel(p: Path) -> str:
+    """Path of a source file inside the host work dir."""
+    return SHARED_DART.get(p) or p.relative_to(HOST_SRC).as_posix()
 
 
 def host_source_hash() -> str:
     h = hashlib.sha1(f"v{HOST_VERSION}".encode())
     for p in _source_files():
-        h.update(p.relative_to(HOST_SRC).as_posix().encode())
+        h.update(_rel(p).encode())
         h.update(p.read_bytes().replace(b"\r\n", b"\n"))
     return h.hexdigest()[:12]
 
@@ -153,7 +164,7 @@ def prepare_work_dir(log=print) -> Path:
     work = host_work_dir()
     work.mkdir(parents=True, exist_ok=True)
     for p in _source_files():
-        dst = work / p.relative_to(HOST_SRC)
+        dst = work / _rel(p)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(p, dst)
     for extra in ("analysis_options.yaml",):
@@ -585,7 +596,7 @@ class LivePreview(QObject):
         if height is not None:
             self.device["height"] = float(height)
         self.device.update({k: v for k, v in opts.items() if k in ("textScale", "dark", "frame", "platform",
-                                                                   "rtl", "zoom")})
+                                                                   "rtl", "zoom", "features")})
         self.send({"type": "device", **self.device, "seq": self._next_seq()})
 
     def rotate(self) -> None:

@@ -785,7 +785,8 @@ class PythonTkPlugin(LanguagePlugin):
             python_blend = None
         res = python_blend(form, toolkit) if python_blend is not None else None
         from ..databinding_sql import merge_blend      # Data Sources window: databases (TableAdapter)
-        return merge_blend(res, form, toolkit)
+        from ..variants.runtime_py import merge_variants   # layout variants: per-size overrides (radide/variants)
+        return merge_variants(merge_blend(res, form, toolkit), form, toolkit)
 
     @staticmethod
     def _runtime(form: Form) -> str:

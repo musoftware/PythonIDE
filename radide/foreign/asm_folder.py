@@ -489,10 +489,35 @@ class AsmFolderAdapter(ForeignAdapter):
         return Step([str(self._exe(target))], self.root, {}, target.name)
 
     def debug_session(self, win, target, pre):
+        """Build (*pre*), then debug: gdb with the .asm line table for NASM (NASM's only Windows debug format is
+        CodeView, which gdb ignores, so radide/nativedbg.py builds the table from a NASM listing; stdin comes
+        from the Program Input bar), plain gdb (DWARF from gcc -g) for GNU as."""
         if target is None or target.kind != "exe" or target.data.get("dialect") in ("masm", "fasm"):
             return None
-        from ._others_base import gdb_session
-        return gdb_session(win, self._exe(target), [], self.root, None)
+        from ..nativedbg import find_gdb
+        from ._others_base import ChainSession, gdb_session
+        if not find_gdb():
+            return None
+        exe = self._exe(target)
+
+        def factory():
+            if target.data.get("dialect") == "nasm":
+                try:
+                    from ..nativedbg import asm_debug_session
+                    src = self.root / target.data["file"]
+                    inc = [f"-I{src.parent}{os.sep}", f"-I{self.root}{os.sep}"]
+                    if target.data.get("sasm") and sasm_include():
+                        inc.append(f"-I{sasm_include()}{os.sep}")
+                    s = asm_debug_session(win, exe, [], self.root, None, sources=[src], nasm_args=inc,
+                                          stdin_pipe=True)
+                    if s is not None:
+                        return s
+                except Exception as e:  # noqa: BLE001 - plain gdb then
+                    win.log(f"[asm debug] line table unavailable ({e}) - plain gdb")
+            return gdb_session(win, exe, [], self.root, None)
+        chain = ChainSession(pre, factory, win)
+        chain.end_input = lambda: chain._fwd("end_input")
+        return chain
 
     def commands(self):
         out = []

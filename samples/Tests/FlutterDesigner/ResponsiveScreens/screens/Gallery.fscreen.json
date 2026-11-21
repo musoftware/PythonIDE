@@ -1,0 +1,390 @@
+{
+ "version": 1,
+ "name": "Gallery",
+ "route": "/",
+ "theme": {
+  "seedColor": "#FF00696D"
+ },
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w1",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w2",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w3",
+      "type": "Text",
+      "props": {
+       "data": "Gallery",
+       "style": {
+        "fontSize": 20
+       }
+      },
+      "vprops": {
+       "medium": {
+        "style": {
+         "fontSize": 24
+        }
+       },
+       "expanded": {
+        "data": "Gallery - desktop",
+        "style": {
+         "fontSize": 28
+        }
+       }
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w4",
+    "type": "Padding",
+    "props": {
+     "padding": {
+      "all": 12
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w5",
+      "type": "Row",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.start"
+      },
+      "children": [
+       {
+        "id": "w6",
+        "type": "Container",
+        "props": {
+         "width": 200,
+         "color": "#FFCCE8E7",
+         "padding": {
+          "all": 12
+         }
+        },
+        "slots": {
+         "child": {
+          "id": "w7",
+          "type": "Text",
+          "props": {
+           "data": "Sidebar"
+          }
+         }
+        },
+        "vprops": {
+         "compact": {
+          "$hidden": true
+         },
+         "tabletop": {
+          "$hidden": false
+         }
+        }
+       },
+       {
+        "id": "w8",
+        "type": "Expanded",
+        "slots": {
+         "child": {
+          "id": "w9",
+          "type": "Column",
+          "props": {
+           "crossAxisAlignment": "CrossAxisAlignment.stretch"
+          },
+          "children": [
+           {
+            "id": "w10",
+            "type": "Text",
+            "props": {
+             "data": "Phone layout",
+             "style": {
+              "fontSize": 16
+             }
+            },
+            "vprops": {
+             "medium": {
+              "data": "Tablet layout"
+             },
+             "expanded": {
+              "data": "Desktop layout"
+             },
+             "tabletop": {
+              "data": "Tabletop layout"
+             }
+            }
+           },
+           {
+            "id": "w11",
+            "type": "Text",
+            "props": {
+             "data": "Half-open: the controls move to the bottom half"
+            },
+            "vprops": {
+             "compact": {
+              "$hidden": true
+             },
+             "medium": {
+              "$hidden": true
+             },
+             "expanded": {
+              "$hidden": true
+             },
+             "tabletop": {
+              "$hidden": false
+             }
+            }
+           },
+           {
+            "id": "w12",
+            "type": "SizedBox",
+            "props": {
+             "height": 12
+            }
+           },
+           {
+            "id": "w13",
+            "type": "Expanded",
+            "slots": {
+             "child": {
+              "id": "w14",
+              "type": "GridView",
+              "ctor": "count",
+              "props": {
+               "crossAxisCount": 2,
+               "mainAxisSpacing": 8,
+               "crossAxisSpacing": 8
+              },
+              "children": [
+               {
+                "id": "w15",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w16",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w17",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 1"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w18",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w19",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w20",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 2"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w21",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w22",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w23",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 3"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w24",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w25",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w26",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 4"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w27",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w28",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w29",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 5"
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               {
+                "id": "w30",
+                "type": "Card",
+                "props": {
+                 "color": "#FFE8DEF8"
+                },
+                "slots": {
+                 "child": {
+                  "id": "w31",
+                  "type": "Center",
+                  "slots": {
+                   "child": {
+                    "id": "w32",
+                    "type": "Text",
+                    "props": {
+                     "data": "Item 6"
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              ],
+              "vprops": {
+               "medium": {
+                "crossAxisCount": 3
+               },
+               "expanded": {
+                "crossAxisCount": 4
+               },
+               "dual": {
+                "crossAxisCount": 2
+               }
+              }
+             }
+            }
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    "vprops": {
+     "medium": {
+      "padding": {
+       "all": 24
+      }
+     },
+     "expanded": {
+      "padding": {
+       "all": 40
+      }
+     }
+    }
+   }
+  }
+ },
+ "variants": [
+  {
+   "id": "compact",
+   "label": "Phone",
+   "when": {
+    "maxWidth": 599
+   },
+   "preview": {
+    "width": 412,
+    "height": 915
+   }
+  },
+  {
+   "id": "medium",
+   "label": "Tablet",
+   "when": {
+    "minWidth": 600,
+    "maxWidth": 1023
+   },
+   "preview": {
+    "width": 800,
+    "height": 1280
+   }
+  },
+  {
+   "id": "expanded",
+   "label": "Desktop",
+   "when": {
+    "minWidth": 1024
+   },
+   "preview": {
+    "width": 1280,
+    "height": 800
+   }
+  },
+  {
+   "id": "tabletop",
+   "label": "Half-open",
+   "when": {
+    "posture": "half-opened"
+   },
+   "preview": {
+    "device": "galaxy_z_fold6",
+    "orientation": "Portrait",
+    "posture": "HalfOpened"
+   }
+  },
+  {
+   "id": "dual",
+   "label": "Two screens",
+   "when": {
+    "span": "dual"
+   },
+   "preview": {
+    "device": "surface_duo2",
+    "orientation": "Landscape",
+    "posture": "Flat"
+   }
+  }
+ ]
+}

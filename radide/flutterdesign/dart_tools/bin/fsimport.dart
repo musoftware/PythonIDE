@@ -308,6 +308,15 @@ Map<String, Object?> _expr(Expression e) {
   if (e is IndexExpression && !e.isCascaded && e.target != null) {
     return {'k': 'index', 'tgt': _expr(e.target!), 'i': _expr(e.index), ...base};
   }
+  if (e is ConditionalExpression) {
+    return {
+      'k': 'cond',
+      'test': _expr(e.condition),
+      'then': _expr(e.thenExpression),
+      'else': _expr(e.elseExpression),
+      ...base,
+    };
+  }
   if (e is BinaryExpression) {
     return {
       'k': 'bin',

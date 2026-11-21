@@ -564,8 +564,7 @@ class TreeGen:
             self.ctx.warnings.append(f"{n.get('id')}: a {n.get('type')} cannot be animated (animate its child)")
         else:
             x = self.wrap_anim(x, n.get("anim"), n)
-        hidden = [v for v in VF.size_ids_in_order(self.ctx.screen, n) if VF.is_hidden(n, v)] \
-            if n.get("vprops") and self.ctx.screen is not None else []
+        hidden = VF.hidden_entries(self.ctx.screen, n) if n.get("vprops") and self.ctx.screen is not None else []
         if hidden:
             if n.get("type") in PARENT_DATA or n is self.ctx.screen.tree:
                 self.ctx.warnings.append(f"{n.get('id')}: a {n.get('type')} cannot be hidden per size")

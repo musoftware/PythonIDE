@@ -460,7 +460,7 @@ class _RadFxState extends State<RadFx> with SingleTickerProviderStateMixin {
   Future<void> _play({double? from}) async {
     if (!mounted) return;
     if (_reduced) {
-      _controller.value = _entrance || widget.trigger == RadFxTrigger.state ? 1 : 0;
+      _controller.value = 1; // the end look (attention seekers end where they started)
       return;
     }
     try {

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import model as M
+from . import motion as MO
 
 TOOL_DIR = Path(__file__).with_name("dart_tools")
 _NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -146,6 +147,9 @@ class _Ctx:
         self.bound: set[str] = set()
         self.dropped_imports: list[str] = []           # State fields wired to widgets (generated again)
         self.methods: set[str] = set()
+        self.state_used: set[str] = set()              # $when / toggle: / trigger state: fields
+        self.timelines_used: set[str] = set()          # radDrive / play: / reverse: controllers
+        self.generated: set[str] = set()               # fields the generator writes again (state, timelines)
 
         # the Dart CLI reports UTF-16 offsets: slice in UTF-16 when the text has non-BMP characters
         self.u16 = source.encode("utf-16-le") if any(ord(c) > 0xFFFF for c in source) else None
@@ -681,12 +685,36 @@ _NAV_RX = [
 _EMPTY_FN = re.compile(r"^\(\)\s*(\{\s*\}|=>\s*null)$")
 
 
+_MOTION_EV = [
+    (re.compile(r"^\(\)\s*=>\s*setState\(\(\)\s*=>\s*(\w+)\s*=\s*!\s*\1\s*\)$"), "toggle:"),
+    (re.compile(r"^\(\)\s*=>\s*(\w+)\.forward\(from:\s*0\)$"), "play:"),
+    (re.compile(r"^\(\)\s*=>\s*(\w+)\.reverse\(\)$"), "reverse:"),
+]
+_RADROUTE_RX = re.compile(r"^\(\)\s*=>\s*Navigator\.push\(context,\s*RadRoute\(builder:\s*\(\w*\)\s*=>\s*(?:const\s+)?"
+                          r"(\w+)\(\),\s*transition:\s*RadTransition\.(\w+)(?:,\s*durationMs:\s*(\d+))?\)\)$")
+
+
+def _motion_event(src: str, ctx: _Ctx) -> str | None:
+    for rx, kind in _MOTION_EV:
+        m = rx.match(src)
+        if m:
+            (ctx.state_used if kind == "toggle:" else ctx.timelines_used).add(m.group(1))
+            return kind + m.group(1)
+    m = _RADROUTE_RX.match(src)
+    if m:
+        return f"push:{m.group(1)}?transition={m.group(2)}" + (f"&ms={m.group(3)}" if m.group(3) else "")
+    return None
+
+
 def _event_value(e: dict, ctx: _Ctx) -> str | None:
     """Handler name / navigation action of a callback expression; None = keep it as code."""
     if e.get("k") == "id" and re.match(r"^[A-Za-z_]\w*$", e["s"]):
         ctx.handlers.add(e["s"])
         return e["s"]
     src = _tight(ctx.s(e))
+    mv = _motion_event(src, ctx)
+    if mv:
+        return mv
     for rx, kind in _NAV_RX:
         m = rx.match(src)
         if m:
@@ -699,7 +727,7 @@ def _widget_like(e: dict) -> bool:
     if e.get("k") != "call":
         return False
     head = (e.get("callee") or "").split(".")[0]
-    if head in M.CATALOG or head in _HELPER_ANIMS or head in ("RadFx", "FadeAnimation"):
+    if head in M.CATALOG or head in _HELPER_ANIMS or head in ("RadFx", "FadeAnimation", "RadShow"):
         return True
     return head[:1].isupper() and head not in _VALUE_CLASSES and \
         any(k in ("child", "children", "body") for k in _named(e))
@@ -795,7 +823,9 @@ class TreeImporter:
         if len(e["p"]) > len(positional):
             raise Unsupported
         for (_i, k, ps), a in zip(positional, e["p"]):
-            props[k] = parse_value(ps, a, self.ctx, head, k)
+            v = self._value(ps, a, head, k, node)
+            if v is not None:
+                props[k] = v
         args = e.get("a") or {}
         # stateful bindings: value: <field> / controller: <field> + onChanged: (value) => setState(...)
         if spec.needs_name:
@@ -829,7 +859,9 @@ class TreeImporter:
                     props[k] = {"$code": self.ctx.s(a)}
                     self.ctx.code_props.append(f"{head}.{k}: {_ws(self.ctx.s(a))[:80]}")
             elif k in spec.props:
-                props[k] = parse_value(spec.props[k], a, self.ctx, head, k)
+                v = self._value(spec.props[k], a, head, k, node)
+                if v is not None:
+                    props[k] = v
             else:
                 props[k] = {"$code": self.ctx.s(a)}
                 if k != "key":
@@ -854,6 +886,74 @@ class TreeImporter:
             if isinstance(c, dict):
                 c.pop("_lift", None)
         return node
+
+    # ---- motion / variants values
+    def _value(self, ps: M.PropSpec, a: dict, owner: str, key: str, node: dict):
+        """A property value: rv.pick(base, [RadV(id, v)]) -> base + node vprops, `state ? on : off` -> $when,
+        radDrive(...) -> $timeline, AlwaysStoppedAnimation(v) -> v; else parse_value."""
+        ctx = self.ctx
+        if a.get("k") == "call" and a.get("callee") == "rv.pick" and len(a.get("p") or []) == 2 \
+                and a["p"][1].get("k") == "list":
+            vals = {}
+            for it in a["p"][1]["items"]:
+                if not (_call(it, "RadV") and len(it["p"]) == 2 and it["p"][0].get("k") == "str"):
+                    return parse_value(ps, a, ctx, owner, key)
+                vals[it["p"][0]["v"]] = self._value(ps, it["p"][1], owner, key, node)
+            for vid, v in vals.items():
+                node.setdefault("vprops", {}).setdefault(vid, {})[key] = v
+            base = a["p"][0]
+            return None if base.get("k") == "null" else self._value(ps, base, owner, key, node)
+        if a.get("k") == "cond" and a["test"].get("k") == "id" and re.match(r"^[A-Za-z_]\w*$", a["test"]["s"]):
+            ctx.state_used.add(a["test"]["s"])
+            return {"$when": {"state": a["test"]["s"], "on": self._value(ps, a["then"], owner, key, node),
+                              "off": self._value(ps, a["else"], owner, key, node)}}
+        if a.get("k") == "call" and a.get("callee") in ("radDrive", "radDriveOffset") and len(a["p"]) == 3 \
+                and a["p"][0].get("k") == "id":
+            try:
+                conv = _offset if a["callee"] == "radDriveOffset" else _num
+                v = {"$timeline": a["p"][0]["s"], "from": conv(a["p"][1], ctx), "to": conv(a["p"][2], ctx)}
+                na = _named(a)
+                if "begin" in na or "end" in na:
+                    v["interval"] = [_num(na["begin"], ctx) if "begin" in na else 0,
+                                     _num(na["end"], ctx) if "end" in na else 1]
+                if "curve" in na:
+                    if na["curve"].get("k") != "id":
+                        raise Unsupported
+                    v["curve"] = na["curve"]["s"]
+                if set(na) - {"begin", "end", "curve"}:
+                    raise Unsupported
+                ctx.timelines_used.add(v["$timeline"])
+                return v
+            except Unsupported:
+                pass
+        if ps.kind in MO.TIMELINE_KINDS and _call(a, "AlwaysStoppedAnimation") and len(a["p"]) == 1:
+            try:
+                return _offset(a["p"][0], ctx) if ps.kind == "timeline_offset" else _num(a["p"][0], ctx)
+            except Unsupported:
+                pass
+        return parse_value(ps, a, ctx, owner, key)
+
+    def _keyframes(self, e: dict) -> dict:
+        if not _call(e, "RadKeyframes") or e["p"]:
+            raise Unsupported
+        tracks = {}
+        for tr, lst in _named(e).items():
+            if tr not in MO.KEY_TRACKS or lst.get("k") != "list":
+                raise Unsupported
+            keys = []
+            for it in lst["items"]:
+                if not (_call(it, "RadColorKey" if tr == "color" else "RadKey") and 2 <= len(it["p"]) <= 3):
+                    raise Unsupported
+                k = [int(_num(it["p"][0], self.ctx)),
+                     _color(it["p"][1], self.ctx) if tr == "color" else _num(it["p"][1], self.ctx)]
+                if len(it["p"]) == 3:
+                    c = it["p"][2]
+                    if c.get("k") != "id" or not c["s"].startswith("Curves."):
+                        raise Unsupported
+                    k.append(c["s"])
+                keys.append(k)
+            tracks[tr] = keys
+        return tracks
 
     def _binding(self, node, spec, args, props, events) -> None:
         ctx = self.ctx
@@ -966,11 +1066,57 @@ class TreeImporter:
                     if v.get("k") != "id" or not v["s"].startswith("Curves."):
                         raise Unsupported
                     a["curve"] = v["s"]
+                elif k == "trigger":
+                    if v.get("k") != "id" or not v["s"].startswith("RadFxTrigger."):
+                        raise Unsupported
+                    a["trigger"] = v["s"].split(".", 1)[1]
+                elif k == "repeat":
+                    a["repeat"] = int(_num(v, ctx))
+                elif k == "reverse":
+                    a["reverse"] = _bool(v, ctx)
+                elif k == "play":
+                    if v.get("k") != "id":
+                        raise Unsupported
+                    a["_play"] = v["s"]
+                    ctx.state_used.add(v["s"])
+                elif k == "turns":
+                    a["turns"] = _num(v, ctx)
+                elif k == "color":
+                    a["color"] = _color(v, ctx)
+                elif k == "keyframes":
+                    a["tracks"] = self._keyframes(v)
+                elif k == "controller":
+                    if v.get("k") != "id":
+                        raise Unsupported
+                    a["controller"] = v["s"]
+                    ctx.bound.add(v["s"])
                 elif k != "child":
                     raise Unsupported
+            if a.get("trigger") == "state":
+                a["trigger"] = "state:" + a.pop("_play", "state")
+            a.pop("_play", None)
+            if re.match(r"^_w\d+Fx$", a.get("controller", "")):
+                a.pop("controller")          # generated from the node id: generated again
             node = self.widget(args["child"])
             node["anim"] = {"type": a.pop("type", "fadeIn"), **a}
             node["_lift"] = True
+            return node
+        if callee == "RadShow" and not e["p"] and set(args) == {"hidden", "child"}:
+            h = args["hidden"]
+            if not (h.get("k") == "call" and h.get("callee") == "rv.pick" and len(h["p"]) == 2
+                    and h["p"][0].get("k") == "bool" and not h["p"][0]["v"] and h["p"][1].get("k") == "list"):
+                raise Unsupported
+            entries = []
+            for it in h["p"][1]["items"]:
+                if not (_call(it, "RadV") and len(it["p"]) == 2 and it["p"][0].get("k") == "str"
+                        and it["p"][1].get("k") == "bool"):
+                    raise Unsupported
+                entries.append((it["p"][0]["v"], it["p"][1]["v"]))
+            node = self.widget(args["child"])
+            if node.get("type") == "Code":
+                raise Unsupported
+            for vid, hid in entries:
+                node.setdefault("vprops", {}).setdefault(vid, {})[M_HIDDEN] = hid
             return node
         if callee == "FadeAnimation" and len(e["p"]) == 2:
             # the classic FadeAnimation(delaySeconds, child) helper (simple_animations based): fade + slide up
@@ -1027,7 +1173,42 @@ def _strip_internal(node):
 # ======================================================================================= screens
 _GENERATED_IMPORTS = {"package:flutter/material.dart", "package:flutter/cupertino.dart",
                       "package:google_fonts/google_fonts.dart", "../radfx.dart", "radfx.dart",
-                      "package:flutter/widgets.dart"}
+                      "package:flutter/widgets.dart", "../radlayout.dart", "radlayout.dart",
+                      "package:lottie/lottie.dart", "package:rive/rive.dart"}
+M_HIDDEN = "$hidden"
+_TIMELINE_FIELD = re.compile(r"^AnimationController\(vsync:\s*this,\s*duration:\s*(?:const\s+)?Duration\("
+                             r"milliseconds:\s*(\d+)\)\)$")
+_RADPLAY = re.compile(r"radPlay\((\w+),\s*context((?:,\s*(?:repeat|reverse):\s*true)*)\);")
+_GEN_INIT = re.compile(r"^@override\s*void initState\(\)\s*\{\s*super\.initState\(\);\s*WidgetsBinding\.instance\."
+                       r"addPostFrameCallback\(\(_\)\s*\{\s*if\s*\(!mounted\)\s*return;\s*((?:radPlay\([^;]*\);\s*)+)\}\);"
+                       r"\s*\}$")
+
+
+def _variants_of(cls: dict, ctx: _Ctx) -> list | None:
+    """``static const _radSizes = [RadSize('id', minWidth: ...), ...]`` -> screen variants."""
+    for m in cls["members"]:
+        if m.get("kind") != "field" or not m.get("static"):
+            continue
+        for v in m["vars"]:
+            init = v.get("init") or {}
+            if v["name"] != "_radSizes" or init.get("k") != "list":
+                continue
+            out = []
+            for it in init["items"]:
+                if not (_call(it, "RadSize") and len(it["p"]) == 1 and it["p"][0].get("k") == "str"):
+                    return None
+                when = {}
+                for k, a in _named(it).items():
+                    if k in ("minWidth", "maxWidth", "minHeight", "maxHeight"):
+                        when[k] = _num(a, ctx)
+                    elif a.get("k") == "id" and k in ("orientation", "posture", "span", "fold"):
+                        val = a["s"].split(".")[-1]
+                        when[k] = {"halfOpened": "half-opened"}.get(val, val) if k == "posture" else val
+                    else:
+                        return None
+                out.append({"id": it["p"][0]["v"], "when": when})
+            return out
+    return None
 
 
 def _theme_unwrap(e: dict, ctx: _Ctx) -> tuple[dict, dict] | None:
@@ -1100,6 +1281,42 @@ def _screen_from_class(info: dict, cls: dict, widget_name: str, source: str, pre
     prelude = ""
     if "blockStart" in body and "return" in body:
         prelude = _dedent(ctx.slice(body["blockStart"], body["return"]["o"]))
+        prelude = re.sub(r"^\s*final rv = RadVariant\.of\(context, _radSizes\);\s*", "", prelude).strip()
+    # ---- motion / variants members of a generated designer (or used by the tree)
+    variants = _variants_of(cls, ctx)
+    state, timelines = [], []
+    autostart: dict = {}
+    for m in cls["members"]:
+        if m.get("kind") == "method" and m.get("name") == "initState":
+            mm = _GEN_INIT.match(_ws(ctx.slice(m["o"], m["e"])))
+            if mm:
+                for r in _RADPLAY.finditer(mm.group(1)):
+                    autostart[r.group(1)] = r.group(2)
+                ctx.generated.add("initState")
+    for m in cls["members"]:
+        if m.get("kind") != "field" or m.get("static") or len(m["vars"]) != 1:
+            continue
+        v = m["vars"][0]
+        name, init, typ = v["name"], v.get("init") or {}, m.get("type")
+        if typ in MO.STATE_TYPES and not m.get("final") and name in ctx.state_used and init.get("k") in (
+                "bool", "int", "dbl", "str"):
+            val = init.get("v")
+            if typ == "double" and isinstance(val, int):
+                val = float(val)
+            state.append({"name": name, "type": typ, "init": val})
+            ctx.generated.add(name)
+        elif typ == "AnimationController" and m.get("late") and (designer_mode or name in ctx.timelines_used):
+            mt = _TIMELINE_FIELD.match(_tight(ctx.s(init)))
+            if mt:
+                t = {"name": name, "durationMs": int(mt.group(1))}
+                if name in autostart:
+                    t["autostart"] = True
+                    if "repeat" in autostart[name]:
+                        t["repeat"] = True
+                    if "reverse" in autostart[name]:
+                        t["reverse"] = True
+                timelines.append(t)
+                ctx.generated.add(name)
         if not body.get("last", True):
             prelude += "\n" + "// (statements after the return were dropped)"
     # members: everything except build / generated parts
@@ -1120,19 +1337,29 @@ def _screen_from_class(info: dict, cls: dict, widget_name: str, source: str, pre
             continue
         if kind == "method" and m.get("name") == "createState":
             continue
-        if kind == "field" and all(v["name"] in named or v["name"] in ctx.bound for v in m["vars"]):
-            continue                     # fields of named widgets are generated again
+        if kind == "field" and all(v["name"] in named or v["name"] in ctx.bound or v["name"] in ctx.generated
+                                   for v in m["vars"]):
+            continue                     # fields of named widgets / state / timelines are generated again
+        if kind == "method" and m.get("name") == "initState" and "initState" in ctx.generated:
+            continue                     # the generated timeline autostart
         if kind == "field" and m.get("static") and designer_mode:
             continue
         keep.append(_dedent(ctx.slice(m["o"], m["e"])))
     route = "/" + M.snake(widget_name)
+    transition = None
     wcls = next((c for c in info.get("classes", []) if c["name"] == widget_name), None)
     for m in (wcls or {}).get("members", []):
         if m.get("kind") == "field" and m.get("static"):
             for v in m["vars"]:
                 if v["name"] in ("route", "routeName") and (v.get("init") or {}).get("k") == "str":
                     route = v["init"]["v"]
-    pushed = {M.snake(n["events"][k][5:]) + ".dart" for n, *_ in M.walk_node(tree)
+                init = v.get("init") or {}
+                if v["name"] == "transition" and _call(init, "RadRouteSpec") and len(init["p"]) == 1 \
+                        and init["p"][0].get("k") == "id":
+                    transition = {"type": init["p"][0]["s"].split(".")[-1]}
+                    if "durationMs" in _named(init):
+                        transition["durationMs"] = int(_num(_named(init)["durationMs"], ctx))
+    pushed = {M.snake(MO.push_target(n["events"][k]) or n["events"][k][5:]) + ".dart" for n, *_ in M.walk_node(tree)
               for k in (n.get("events") or {}) if str(n["events"][k]).startswith("push:")}
     data = {"version": M.SCHEMA_VERSION, "name": M.class_name(widget_name),
             "route": route, "theme": theme,
@@ -1158,6 +1385,19 @@ def _screen_from_class(info: dict, cls: dict, widget_name: str, source: str, pre
         code["members"] = "\n\n".join(keep)
     if code:
         data["code"] = code
+    if state:
+        data["state"] = state
+    if timelines:
+        data["timelines"] = timelines
+    if transition:
+        data["transition"] = transition
+    if variants:
+        old = {s.get("id"): s for s in (previous or {}).get("variants") or [] if isinstance(s, dict)}
+        for s in variants:              # labels / preview devices are not in the Dart code
+            for k in ("label", "preview"):
+                if k in old.get(s["id"], {}):
+                    s[k] = old[s["id"]][k]
+        data["variants"] = [{k: s[k] for k in ("id", "label", "when", "preview") if k in s} for s in variants]
     data["tree"] = tree
     if previous:
         keep_ids(data["tree"], previous.get("tree") or {})

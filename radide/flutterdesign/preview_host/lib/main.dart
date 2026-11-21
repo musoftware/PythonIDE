@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show DisplayFeature, DisplayFeatureState, DisplayFeatureType;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,9 @@ class HostState extends ChangeNotifier implements FactoryHost {
   bool dark = false, frame = true, rtl = false;
   String platform = 'android';
   double? zoom;
+
+  /// Foldable hinge / fold of the previewed device (screen coordinates), from the device message.
+  List<DisplayFeature> features = const [];
   String mode = 'design';
   Map? appThemeSpec;
   int _epoch = 0;
@@ -180,6 +184,7 @@ class HostState extends ChangeNotifier implements FactoryHost {
         if (m['rtl'] is bool) rtl = m['rtl'] as bool;
         if (m['platform'] is String) platform = m['platform'] as String;
         if (m.containsKey('zoom')) zoom = m['zoom'] is num ? (m['zoom'] as num).toDouble() : null;
+        if (m['features'] is List) features = _features(m['features'] as List);
         _changed(m['seq']);
       case 'mode':
         mode = m['mode'] == 'interact' ? 'interact' : 'design';
@@ -210,6 +215,20 @@ class HostState extends ChangeNotifier implements FactoryHost {
   }
 
   static double _d(dynamic v, double def) => v is num ? v.toDouble() : def;
+
+  /// [{"type": "hinge" | "fold", "bounds": [x, y, w, h], "state": "postureFlat" | "postureHalfOpened"}]
+  static List<DisplayFeature> _features(List l) => [
+        for (final f in l)
+          if (f is Map && f['bounds'] is List && (f['bounds'] as List).length == 4)
+            DisplayFeature(
+              bounds: Rect.fromLTWH(_d(f['bounds'][0], 0), _d(f['bounds'][1], 0), _d(f['bounds'][2], 0),
+                  _d(f['bounds'][3], 0)),
+              type: f['type'] == 'hinge' ? DisplayFeatureType.hinge : DisplayFeatureType.fold,
+              state: f['state'] == 'postureHalfOpened'
+                  ? DisplayFeatureState.postureHalfOpened
+                  : DisplayFeatureState.postureFlat,
+            ),
+      ];
 
   void _changed(dynamic s) {
     if (s is int) seq = s;
@@ -585,6 +604,7 @@ class HostApp extends StatelessWidget {
       platformBrightness: brightness,
       padding: EdgeInsets.only(top: statusH, bottom: homeH),
       viewPadding: EdgeInsets.only(top: statusH, bottom: homeH),
+      displayFeatures: host.features,
     );
     final spec = host.appThemeSpec;
     final mode = '${spec?['mode'] ?? 'system'}';
@@ -619,6 +639,17 @@ class HostApp extends StatelessWidget {
                 child: Center(
                   child: Container(width: 134, height: 5, decoration: BoxDecoration(
                       color: host.dark ? Colors.white70 : Colors.black87, borderRadius: BorderRadius.circular(3))),
+                ),
+              ),
+            ),
+          for (final f in host.features)
+            Positioned.fromRect(
+              rect: f.bounds.width == 0 || f.bounds.height == 0
+                  ? f.bounds.inflate(0.75)
+                  : f.bounds,
+              child: IgnorePointer(
+                child: ColoredBox(
+                  color: f.type == DisplayFeatureType.hinge ? const Color(0xFF202124) : const Color(0x55000000),
                 ),
               ),
             ),

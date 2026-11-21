@@ -17,7 +17,7 @@ order and the later one wins (like CSS). Generated code (lib/radlayout.dart)::
     static const _radSizes = [RadSize('medium', minWidth: 600), ...];
     final rv = RadVariant.of(context, _radSizes);
     padding: rv.pick(const EdgeInsets.all(16), const [RadV('medium', EdgeInsets.all(32))]),
-    RadShow(rv: rv, hiddenOn: const ['medium'], child: ...)
+    RadShow(hidden: rv.pick(false, const [RadV('compact', true), RadV('tabletop', false)]), child: ...)
 """
 from __future__ import annotations
 
@@ -210,7 +210,7 @@ def set_override(screen: M.Screen, node_id: str, vid: str, key: str, value) -> M
     if value is not None and key != HIDDEN and base is None and spec and key in spec.props \
             and spec.props[key].default is not None:
         patch += M.set_prop(screen, node_id, key, spec.props[key].default)
-    if (node.get("props") or {}).get(key) == value and key != HIDDEN:
+    if key != HIDDEN and (node.get("props") or {}).get(key) == value:
         o.pop(key, None)                    # same as the base: no override needed
         vp[vid] = o
     return patch + _set_vprops(screen, node_id, vp)
@@ -220,8 +220,10 @@ def remove_override(screen: M.Screen, node_id: str, vid: str, key: str) -> M.Pat
     return set_override(screen, node_id, vid, key, None)
 
 
-def set_hidden(screen: M.Screen, node_id: str, vid: str, hidden: bool) -> M.Patch:
-    return set_override(screen, node_id, vid, HIDDEN, True if hidden else None)
+def set_hidden(screen: M.Screen, node_id: str, vid: str, hidden: bool | None) -> M.Patch:
+    """Hide (True) / show again (False: undoes the hiding of an earlier matching size) / follow the other
+    sizes (None) on *vid*."""
+    return set_override(screen, node_id, vid, HIDDEN, None if hidden is None else bool(hidden))
 
 
 def apply_to_all(screen: M.Screen, node_id: str, vid: str, key: str) -> M.Patch:
@@ -403,10 +405,17 @@ def pick_x(base, values: list[tuple]):
     return CG.Call("rv.pick", [base, CG.Lst(items)], const_ctor=False)
 
 
-def show_x(x, hidden_on: list[str]):
+def hidden_entries(screen, node: dict) -> list[tuple[str, bool]]:
+    """[(size id, hidden)] of a node, in size-list order."""
+    return [(v, bool(overrides(node, v)[HIDDEN])) for v in size_ids_in_order(screen, node)
+            if HIDDEN in overrides(node, v)]
+
+
+def show_x(x, entries: list[tuple[str, bool]]):
+    """RadShow(hidden: rv.pick(false, [RadV('compact', true), ...]), child: x)."""
     from . import codegen as CG
-    ids = CG.Lst([CG.Lit(CG.dart_string(v)) for v in hidden_on])
-    return CG.Call("RadShow", named=[("rv", CG.Raw("rv")), ("hiddenOn", ids), ("child", x)])
+    vals = [(vid, CG.Lit("true" if h else "false")) for vid, h in entries]
+    return CG.Call("RadShow", named=[("hidden", pick_x(CG.Lit("false"), vals)), ("child", x)])
 
 
 # ========================================================================================= validation

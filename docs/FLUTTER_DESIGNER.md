@@ -122,6 +122,82 @@ Generated code wraps the widget in `RadFx(...)`, a small helper written by RAD I
 third-party package). The importer also turns `FadeAnimation(delay, child)`-style helpers and animate_do widgets
 (`FadeInUp(delay: ..., child: ...)`) into `anim` (`"from": "<original helper>"` records where it came from).
 
+Since the motion work (`flutterdesign/motion.py`, plan `docs/plans/MOTION_VARIANTS_FOLDABLES.md`) an `anim` can
+also be an attention seeker, text / colour effect or keyframes, with a trigger:
+
+```json
+{"type": "shake", "trigger": "tap", "repeat": 0, "reverse": true}
+{"type": "keyframes", "durationMs": 1200, "tracks": {"opacity": [[0, 0], [300, 1, "Curves.easeOut"]],
+  "offsetY": [[0, 40], [600, 0]], "scale": [[0, 0.8], [600, 1]], "rotation": [[0, 0], [600, 0.05]],
+  "color": [[0, "#FF6750A4"], [1200, "#FF00BFA5"]]}}
+{"type": "rotate", "trigger": "manual", "controller": "spinFx"}      // final spinFx = RadFxController();
+{"type": "fadeIn", "trigger": "state:expanded"}                       // play: expanded
+```
+
+More types: `shake`, `pulse`, `bounce`, `flipX`, `flipY`, `rotate` (`turns`), `swing`, `heartBeat`, `typewriter`,
+`colorTo` (`color`), `keyframes` (`tracks`, rotation in turns). `trigger`: `load` (default), `tap`, `hover`,
+`longPress`, `visible` (first time on screen), `manual` (a `RadFxController` field, started with the
+`play:<name>` event or `name.forward()`), `state:<bool state variable>` (forward when true, back when false).
+`repeat`: runs (0 = forever, default 1); `reverse`: play back after each run. Entrance types are hidden until they
+play; attention seekers rest at their normal look. `MediaQuery.disableAnimations` (reduced motion) shows the end
+state at once. The twelve original types generate exactly the same code as before.
+
+### 1.5 State, timelines, page transitions
+
+```json
+"state": [{"name": "expanded", "type": "bool", "init": false}],
+"timelines": [{"name": "intro", "durationMs": 1500, "autostart": true, "repeat": false, "reverse": false}],
+"transition": {"type": "fade", "durationMs": 300}
+```
+
+* State variables are fields of the designer State. A property value
+  `{"$when": {"state": "expanded", "on": 200, "off": 100}}` is generated `expanded ? 200 : 100` (implicit
+  animation: put it on an `AnimatedContainer` / `AnimatedPadding` / `AnimatedCrossFade` ... property). Events:
+  `toggle:expanded` -> `setState(() => expanded = !expanded)`.
+* Timelines are `AnimationController`s (`TickerProviderStateMixin`, disposed, `autostart` through
+  `radPlay(intro, context)` after the first frame). Transition properties (`FadeTransition.opacity`,
+  `SlideTransition.position`, `ScaleTransition.scale`, `RotationTransition.turns`, `SizeTransition.sizeFactor`:
+  prop kinds `timeline` / `timeline_offset`) take
+  `{"$timeline": "intro", "from": 0, "to": 1, "interval": [0, 0.5], "curve": "Curves.easeOut"}` ->
+  `radDrive(intro, 0.0, 1.0, end: 0.5, curve: Curves.easeOut)` (a plain number = `AlwaysStoppedAnimation`).
+  Events: `play:intro` (`intro.forward(from: 0)`), `reverse:intro`.
+* `transition` (`fade` | `slideLeft` | `slideUp` | `scale` | `none`): the screen class gets
+  `static const transition = RadRouteSpec(...)`; `routes.dart` moves it from `designedRoutes` to
+  `designedOnGenerateRoute` and `lib/main.dart` gets `onGenerateRoute: designedOnGenerateRoute`. An event
+  `push:Home?transition=slideUp&ms=400` pushes with `RadRoute(...)`.
+* Catalog: implicit `AnimatedPadding / Align / Positioned / Scale / Rotation / Slide / Size / DefaultTextStyle /
+  CrossFade`, explicit `Fade / Slide / Scale / Rotation / SizeTransition`, `Lottie` (package:lottie, added to
+  pubspec) and `RiveAnimation` (package:rive) - placeholders in the previews.
+
+### 1.6 Sizes (layout variants) and foldables
+
+```json
+"variants": [{"id": "compact", "label": "Phone", "when": {"maxWidth": 599}, "preview": {"width": 412, "height": 915}},
+             {"id": "tabletop", "label": "Half-open", "when": {"posture": "half-opened"},
+              "preview": {"device": "galaxy_z_fold6", "posture": "HalfOpened"}}]
+// node
+"vprops": {"compact": {"padding": {"all": 8}, "$hidden": true}, "tabletop": {"$hidden": false}}
+```
+
+`when`: `minWidth`, `maxWidth`, `minHeight`, `maxHeight`, `orientation` (portrait | landscape), `posture`
+(flat | half-opened | folded), `span` (single | dual: a hinge, or a fold that is half opened), `fold` (vertical |
+horizontal: direction of the fold line). Every matching size applies in list order, the later one wins (like CSS)
+- also for `$hidden`, so a widget hidden on `compact` can be shown again on `tabletop`. Generated code uses
+`lib/radlayout.dart`: `static const _radSizes = [RadSize('compact', maxWidth: 599), ...]`,
+`final rv = RadVariant.of(context, _radSizes);` (MediaQuery size + display features), `rv.pick(base,
+[RadV('compact', value), ...])` and `RadShow(hidden: rv.pick(false, [...]), child: ...)`. `RadTwoPane` (slots
+`start` / `end`, `paneMode`, `ratio`, `singlePane`, `hingeAware`) splits at the hinge / fold, else at the ratio,
+and shows one pane on a narrow screen.
+
+Designer: the second tool bar row has **Edit: All sizes | This size only**, the size being edited (its preview
+device is shown, the canvas gets an orange frame), **Sizes** (add a preset set, add / edit / remove sizes) and
+**Side-by-side**; foldable devices (`radide/devices.py`: Galaxy Z Fold6 / Flip6, Pixel Fold, Pixel 9 Pro Fold,
+Surface Duo 2) add a posture choice and the hinge / crease is drawn. In This size only mode property edits go to
+`vprops` (◆ = overridden on this size, ◇ = on another size); right-click a property name for Apply to all sizes,
+Reset to base, Copy to, Hide / Show on this size, and to animate the value with a state variable or timeline.
+Structural edits (add, move, delete) always change every size. The previews render
+`variants_fd.preview_data(screen, active sizes)`; the live host receives the device's display features.
+
 ## 2. Property values
 
 Every property value is plain JSON; the catalog gives each property a **kind** that decides the encoding.

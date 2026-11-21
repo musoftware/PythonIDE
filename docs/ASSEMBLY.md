@@ -552,3 +552,22 @@ MASM, FASM, GNU as, 8086, SASM, RadASM, WinAsm and Visual Studio + MASM folders;
 43 checks incl. real builds of the NASM / GNU as / FASM / MASM folders and the exe -> NASM listing;
 `test_ide_open.py`: open in place, Ctrl+F5, RadASM, 8086 session, course in the IDE), `CourseNumberAnalyzer`,
 `CourseFormCalculator` and `CourseTests/`.
+
+## QA (end-to-end pass)
+
+`samples/Tests/Assembly/QA/test_user_flow.py` drives the IDE the way a user does (see its README). Fixes made in
+that pass:
+
+* **stdin under F5.** gdb on Windows gives the debuggee end-of-file on stdin, so a console program that reads
+  input (the templates' `scanf`) could not be debugged. `AsmDapSession(stdin_pipe=True)` now listens on a named
+  pipe (`QLocalServer`) and launches the program with `<\\.\pipe\radide-stdin-...`: the launch `args` are
+  sent as **one string**, so gdb's own redirection handles `<` (a list would be quoted). `send(text)` /
+  `end_input()` feed the pipe; `asm_console_session` turns it on unless the project's console is `external`,
+  and the Program Input bar is now shown under F5 too ("End of input" closes the pipe, never gdb's stdin).
+* **F5 on a loose folder (Open Folder).** `AsmFolderAdapter.debug_session` ignored the build steps (F5 debugged
+  a stale or missing exe) and used plain gdb on a NASM build whose only debug info is CodeView. It now returns
+  `ChainSession(pre, factory)`: build first, then `nativedbg.asm_debug_session` (the listing-based line table,
+  with the folder's `-I` options and the stdin pipe) for NASM and plain gdb (DWARF from `gcc -g`) for GNU as.
+* **Program Input bar** also for loose-folder console programs (Ctrl+F5 and F5), docked as a full-width row
+  under the Output tabs instead of a narrow column beside them.
+* Arabic: the Help > Help Files (CHM) entry of every course (`"{} (Arabic, CHM)"`) and the Assembly course title.

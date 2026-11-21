@@ -121,8 +121,12 @@ check("no conflicts on MasterDetail", M.hinge_conflicts(md) == [])
 conf = M.hinge_conflicts(duo)
 check("DuoHinge: Button1 crosses the hinge (only it)", [n for n, _ in conf] == ["Button1"], conf)
 check("conflicts gone when Folded", M.hinge_conflicts(duo, posture="Folded") == [])
-check("half-open fold reports a crossing control", True if M.hinge_conflicts(
-    md, orientation="Landscape", posture="HalfOpened") == [] else True)  # containers / spans are allowed
+f4 = copy.deepcopy(md)
+btn = f4.add("Button", 400, 300)
+btn.props.update(Width=100, Height=40)
+check("half-open fold reports a control across the crease",
+      [n for n, _ in M.hinge_conflicts(f4, posture="HalfOpened")] == [btn.name]
+      and M.hinge_conflicts(f4) == [], M.hinge_conflicts(f4, posture="HalfOpened"))
 
 # ---------------------------------------------------------------- SuperPreview presets
 from radide.web_site.superpreview import PRESETS, preset_segments  # noqa: E402

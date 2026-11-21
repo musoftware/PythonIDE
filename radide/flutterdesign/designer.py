@@ -24,22 +24,18 @@ from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog
 
 from . import iconfont
 from . import model as M
+from . import motion_ui as MU
 from . import qtpreview as Q
+from . import variants_fd as VF
+from .. import devices as D
 from .inspector import Inspector
 from .palette import MIME, Palette, type_icon
 
-# name, width, height (portrait dp), platform, status bar, bottom inset, frame corner radius
-DEVICES = [
-    ("Pixel 8", 412, 915, "android", 24, 16, 34),
-    ("iPhone 15", 393, 852, "ios", 59, 34, 55),
-    ("iPhone 15 Pro Max", 430, 932, "ios", 59, 34, 55),
-    ("iPhone SE", 375, 667, "ios", 20, 0, 0),
-    ("Galaxy S20", 360, 800, "android", 24, 16, 30),
-    ("Small phone", 360, 640, "android", 24, 0, 18),
-    ("iPad mini", 744, 1133, "ios", 24, 20, 24),
-    ("Android tablet", 800, 1280, "android", 24, 0, 24),
-    ("Desktop 1280x800", 1280, 800, "android", 0, 0, 0),
-]
+# name, width, height (portrait dp), platform, status bar, bottom inset, frame corner radius - from the shared
+# presets of radide/devices.py (phones, tablets, foldables with their hinge / postures) + a desktop window
+DEVICES = [(d.name.split(" (")[0], d.width, d.height, d.platform, d.insets[1], d.insets[3], d.radius)
+           for d in D.DEVICES.values()] + [("Desktop 1280x800", 1280, 800, "android", 0, 0, 0)]
+DEVICE_IDS = list(D.DEVICES) + ["desktop"]
 ZOOMS = [("Fit", 0.0), ("50%", .5), ("75%", .75), ("100%", 1.0), ("125%", 1.25), ("150%", 1.5), ("200%", 2.0)]
 SEL = QColor("#FF1E88E5")
 HOVER = QColor("#C01E88E5")
@@ -301,11 +297,14 @@ class QtCanvas(QWidget):
         w, h = d.device_size()
         dev = d.device()
         top, bottom = (dev[4], dev[5]) if not d.landscape else (0 if dev[3] == "android" else 0, dev[5] // 2)
-        ctx = Q.make_ctx(d.screen, d.dark, d.text_scale, d.project_folder(), self.images)
+        scr = d.preview_screen()
+        ctx = Q.make_ctx(scr, d.dark, d.text_scale, d.project_folder(), self.images)
         ctx.show_drawer = d.drawer_shown()
+        ctx.hinge = d.hinge_rect()
+        ctx.screen_size = (float(w), float(h))
         self.ctx = ctx
         try:
-            self.root = Q.render_tree(d.screen, w, h, ctx, pad_top=top, pad_bottom=bottom)
+            self.root = Q.render_tree(scr, w, h, ctx, pad_top=top, pad_bottom=bottom)
             self.bounds = Q.bounds(self.root)
         except Exception as e:  # noqa: BLE001 - never break the designer
             self.root, self.bounds = None, {}
@@ -361,7 +360,13 @@ class QtCanvas(QWidget):
         if img is not None:
             p.drawImage(s, img)
         self._status_bar(p, s, z, dev)
+        MU.paint_hinge(p, s, z, self.d.hinge_rect(), D.device(self.d.device_id()).fold, self.d.posture)
         p.setClipping(False)
+        vid = self.d.this_size()
+        if vid:
+            w, h = self.d.device_size()
+            MU.paint_size_frame(p, s, f"This size only: {VF.label(VF.size(self.d.screen, vid) or {'id': vid})}"
+                                      f"  {w}x{h}")
         self._overlay(p)
 
     def _status_bar(self, p: QPainter, s: QRectF, z: float, dev):
@@ -637,6 +642,10 @@ class FlutterDesigner(QWidget):
         self.selected: str | None = None
         self.device_index = 0
         self.landscape = False
+        self.posture = "Flat"                   # foldable posture (devices.POSTURES)
+        self.custom_size: tuple | None = None   # (w, h) portrait of a size's preview, None = the device
+        self.edit_mode = "all"                  # "all" | "size": edits go to one size (vprops)
+        self.edit_size: str | None = None       # the size edited in "size" mode
         self.dark = False
         self.text_scale = 1.0
         self.zoom = 0.0
@@ -676,6 +685,8 @@ class FlutterDesigner(QWidget):
         self.cbo_device = QComboBox()
         for d in DEVICES:
             self.cbo_device.addItem(f"{d[0]}  {d[1]}x{d[2]}")
+        self.size_bar = MU.SizeBar(self)
+        lay.addWidget(self.size_bar)
         self.cbo_device.setToolTip("Device")
         self.cbo_device.currentIndexChanged.connect(self._device_changed)
         tb.addWidget(self.cbo_device)
@@ -792,9 +803,112 @@ class FlutterDesigner(QWidget):
     def device(self):
         return DEVICES[self.device_index]
 
+    def device_id(self) -> str:
+        return DEVICE_IDS[self.device_index] if self.device_index < len(DEVICE_IDS) else "desktop"
+
     def device_size(self) -> tuple[int, int]:
+        if self.custom_size:
+            w, h = self.custom_size
+            return (h, w) if self.landscape else (w, h)
+        if self.device_id() in D.DEVICES:
+            return D.screen_size(self.device_id(), "Landscape" if self.landscape else "Portrait", self.posture)
         d = self.device()
         return (d[2], d[1]) if self.landscape else (d[1], d[2])
+
+    # ------------------------------------------------------------------ sizes (layout variants) / foldables
+    def orientation(self) -> str:
+        return "Landscape" if self.landscape else "Portrait"
+
+    def hinge_rect(self):
+        if self.custom_size or self.device_id() not in D.DEVICES:
+            return None
+        return D.hinge_screen_rect(self.device_id(), self.orientation(), self.posture)
+
+    def device_facts(self) -> dict:
+        w, h = self.device_size()
+        if self.device_id() in D.DEVICES and not self.custom_size:
+            return VF.device_facts(self.device_id(), self.orientation(), self.posture, w, h)
+        return {"width": w, "height": h, "orientation": "landscape" if w > h else "portrait", "posture": "flat",
+                "span": "single", "fold": None, "features": []}
+
+    def active_sizes(self) -> list[str]:
+        return VF.active_for(self.screen, self.device_facts()) if VF.sizes(self.screen) else []
+
+    def preview_screen(self) -> M.Screen:
+        """What the previews render: the sizes active on the device applied, $when / $timeline resolved."""
+        if not VF.sizes(self.screen) and not VF.needs_resolve(self.screen):
+            return self.screen
+        return M.Screen(VF.preview_data(self.screen, self.active_sizes()))
+
+    def this_size(self) -> str | None:
+        """The size edits go to (This size only mode), else None."""
+        if self.edit_mode == "size" and self.edit_size and VF.size(self.screen, self.edit_size):
+            return self.edit_size
+        return None
+
+    def set_edit_mode(self, mode: str):
+        if mode == "size" and not VF.sizes(self.screen):
+            self.status("Add sizes first (Sizes > Add sizes)")
+            mode = "all"
+        self.edit_mode = mode
+        if mode == "size" and not self.this_size():
+            self.edit_size = VF.sizes(self.screen)[0]["id"]
+            self._show_size(self.edit_size)
+        self.status("Edits change only " + VF.label(VF.size(self.screen, self.edit_size) or {"id": "?"})
+                    if self.this_size() else "Edits change every size")
+        self._settings_changed()
+        self.inspector.inspect(self.selected, force=True)
+
+    def set_edit_size(self, vid: str | None):
+        self.edit_size = vid
+        if vid:
+            self._show_size(vid)
+        self._settings_changed()
+        self.inspector.inspect(self.selected, force=True)
+
+    def _show_size(self, vid: str):
+        """Switch the preview to the size's preview device (when it has one)."""
+        s = VF.size(self.screen, vid) or {}
+        pv = s.get("preview") or {}
+        if pv.get("device") and pv["device"] in DEVICE_IDS:
+            self.custom_size = None
+            self.device_index = DEVICE_IDS.index(pv["device"])
+            self.landscape = D.landscape(pv.get("orientation"))
+            self.posture = D.posture_name(pv.get("posture"))
+            self.cbo_device.blockSignals(True)
+            self.cbo_device.setCurrentIndex(self.device_index)
+            self.cbo_device.blockSignals(False)
+        elif pv.get("width") and pv.get("height"):
+            w, h = int(pv["width"]), int(pv["height"])
+            self.landscape = w > h
+            self.custom_size = (min(w, h), max(w, h))
+
+    def set_posture(self, posture: str):
+        self.posture = D.posture_name(posture)
+        self._settings_changed()
+
+    def show_side_by_side(self):
+        if not VF.sizes(self.screen):
+            self.status("Add sizes first (Sizes > Add sizes)")
+            return
+        MU.SideBySide(self, self).exec()
+
+    def add_size_dialog(self):
+        dlg = MU.RowsDialog("Add Size", MU.SIZE_COLUMNS, [{"id": f"size{len(VF.sizes(self.screen)) + 1}",
+                                                          "when": {"minWidth": 600}}], self,
+                            "When keys: minWidth, maxWidth, minHeight, maxHeight, orientation (portrait | landscape), "
+                            "posture (flat | half-opened | folded), span (single | dual), fold (vertical | "
+                            "horizontal). Preview: {\"width\": 800, \"height\": 1280} or {\"device\": "
+                            "\"galaxy_z_fold6\", \"posture\": \"HalfOpened\"}.")
+        if dlg.exec():
+            for r in dlg.rows():
+                self.apply(VF.add_size, r, text="Add size")
+
+    def edit_sizes_dialog(self):
+        dlg = MU.RowsDialog("Edit Sizes", MU.SIZE_COLUMNS, VF.sizes(self.screen), self,
+                            "Every matching size applies in this order; the later one wins.")
+        if dlg.exec():
+            self.apply(M.set_screen, "variants", dlg.rows() or None, text="Edit sizes")
 
     def frame_on(self) -> bool:
         return self._frame and self.device()[3] != "desktop" and self.device()[0] != "Desktop 1280x800"
@@ -821,6 +935,8 @@ class FlutterDesigner(QWidget):
 
     def _device_changed(self, i):
         self.device_index = max(0, i)
+        self.custom_size = None
+        self.posture = "Flat"
         self._settings_changed()
 
     def _rotate(self):
@@ -854,6 +970,9 @@ class FlutterDesigner(QWidget):
     def _settings_changed(self):
         self.canvas.relayout()
         self._push_device()
+        self.size_bar.refresh()
+        if self.live is not None and (VF.sizes(self.screen) or VF.needs_resolve(self.screen)):
+            self.live.set_screen(self.preview_screen())
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -891,7 +1010,7 @@ class FlutterDesigner(QWidget):
         lv.issuesChanged.connect(self._live_issues)
         lv.log.connect(lambda lvl, t: lvl == "error" and self.status(f"Preview: {t[:160]}"))
         lv.rendered.connect(lambda _s, ms: self.lbl_status.setToolTip(f"last frame {ms:.0f} ms after the edit"))
-        lv.set_screen(self.screen)
+        lv.set_screen(self.preview_screen())
         self._push_device()
         lv.start(self.project_folder())
 
@@ -932,7 +1051,12 @@ class FlutterDesigner(QWidget):
             return
         w, h = self.device_size()
         self.live.set_device(w, h, platform=self.device()[3], dark=self.dark, textScale=self.text_scale,
-                             frame=self.frame_on(), zoom=self.zoom or None)
+                             frame=self.frame_on(), zoom=self.zoom or None,
+                             features=self.device_facts().get("features") or [])
+        if self.live_box is not None:       # orange frame around the live view in This size only mode
+            on = bool(self.this_size())
+            self.live_box.layout().setContentsMargins(*(4,) * 4 if on else (0,) * 4)
+            self.live_box.setStyleSheet("LiveBox { background: #F7630C; }" if on else "")
 
     def shutdown(self):
         self._anim_timer.stop()
@@ -1024,8 +1148,11 @@ class FlutterDesigner(QWidget):
         self.inspector.inspect(self.selected)
         self.tree.select_id(self.selected)
         self._show_issues()
+        self.size_bar.refresh()
         if self.live is not None:
-            if any(ch.get("op") == "screen" for ch in patch):
+            if VF.sizes(self.screen) or VF.needs_resolve(self.screen):
+                self.live.set_screen(self.preview_screen())     # per-size / animated values resolved
+            elif any(ch.get("op") == "screen" for ch in patch):
                 self.live.set_screen(self.screen)
             else:
                 self.live.push_patch(patch)
@@ -1061,7 +1188,13 @@ class FlutterDesigner(QWidget):
 
     # inspector API
     def set_prop(self, nid, key, value):
+        vid = self.this_size()
+        if vid:                     # This size only: the value is stored for that size (vprops)
+            return self.apply(VF.set_override, nid, vid, key, value, text=f"Set {key} ({vid})")
         return self.apply(M.set_prop, nid, key, value, text=f"Set {key}")
+
+    def set_hidden(self, nid, vid, hidden):
+        return self.apply(VF.set_hidden, nid, vid, hidden, text="Hide on size" if hidden else "Show on size")
 
     def set_event(self, nid, event, handler):
         return self.apply(M.set_event, nid, event, handler, text=f"Set {event}")
@@ -1458,8 +1591,11 @@ class FlutterDesigner(QWidget):
             an = m.addMenu("Animation")
             try:
                 from . import animations as AN
+                groups: dict = {}
                 for p in AN.PRESETS:
-                    an.addAction(p.label, lambda pid=p.id: self.set_anim(self.selected, AN.make_anim(pid)))
+                    sub = an if p.group == "Entrance" else groups.get(p.group) or groups.setdefault(
+                        p.group, an.addMenu(p.group))
+                    sub.addAction(p.label, lambda pid=p.id: self.set_anim(self.selected, AN.make_anim(pid)))
                 an.addSeparator()
                 kids = [c for c, _w in M._iter_children(node)]
                 if len(kids) > 1:
@@ -1468,6 +1604,11 @@ class FlutterDesigner(QWidget):
             except Exception:  # noqa: BLE001
                 pass
             an.addAction("Remove animation", lambda: self.set_anim(self.selected, None))
+            vid = self.this_size()
+            if vid:
+                hidden = VF.is_hidden(node, vid)
+                m.addAction("Show on this size" if hidden else "Hide on this size",
+                            lambda: self.set_hidden(self.selected, vid, False if hidden else True))
             spec = M.CATALOG.get(node.get("type"))
             if spec and spec.events:
                 ev = next(iter(spec.events))
