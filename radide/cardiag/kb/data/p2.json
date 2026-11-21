@@ -1100,6 +1100,174 @@
 "b9f142c9":[
 "pressure control solenoid sticking or mechanically worn",
 "سولينويد الضغط: تعلّق أو تآكل ميكانيكي"
+],
+"8ed5c1a9":[
+"Loose, corroded or wet connector at the AdBlue system",
+"فيشة نظام AdBlue مفكوكة أو عليها صدأ أو رطوبة"
+],
+"8b08c69b":[
+"Faulty AdBlue system (open or shorted winding)",
+"عطل في نظام AdBlue (ملف مفتوح أو به قصر)"
+],
+"53132472":[
+"No power feed to the AdBlue system (fuse, relay or wire)",
+"لا توجد تغذية كهربائية لـنظام AdBlue (فيوز أو ريلاي أو سلك)"
+],
+"c5f8884a":[
+"Look at the AdBlue system connector and wiring: damage, corrosion, oil or loose pins.",
+"افحص فيشة وأسلاك نظام AdBlue بالنظر: تلف أو صدأ أو زيت أو أطراف مفكوكة."
+],
+"d6172d0f":[
+"Measure the resistance of the AdBlue system and compare it with the service data.",
+"قِس مقاومة نظام AdBlue وقارنها بقيم دليل الصيانة."
+],
+"964435a2":[
+"Run the actuator test (Service Functions) and listen or feel for the AdBlue system working.",
+"شغّل اختبار المشغّلات (وظائف الصيانة) واستمع أو تحسّس عمل نظام AdBlue."
+],
+"5c81a9ff":[
+"Check the AdBlue level and quality (old or diluted fluid, crystals at the injector).",
+"افحص مستوى وجودة AdBlue (سائل قديم أو مخفف، تبلور عند الرشاش)."
+],
+"2f0afde4":[
+"AdBlue tank simply needs refilling",
+"تانك AdBlue يحتاج ملء فقط"
+],
+"ec124d70":[
+"Faulty AdBlue level sensor",
+"حساس مستوى AdBlue تالف"
+],
+"fa06e9cf":[
+"Leak in the AdBlue lines",
+"تسريب في خطوط AdBlue"
+],
+"44ca58b3":[
+"Refill with ISO 22241 AdBlue / DEF and drive a few minutes; the warning should go out.",
+"املأ بسائل AdBlue / DEF مطابق لمواصفة ISO 22241 وقُد بضع دقائق؛ يجب أن ينطفئ التحذير."
+],
+"57323788":[
+"If it stays on after filling, check the level sensor reading and look for white crystals at leaks.",
+"لو فضل منورًا بعد الملء افحص قراءة حساس المستوى وابحث عن تبلور أبيض عند أماكن التسريب."
+],
+"fdb4beac":[
+"Crystallised or blocked AdBlue injector",
+"رشاش AdBlue متبلور أو مسدود"
+],
+"ed0a2c3e":[
+"Weak AdBlue pump or blocked filter",
+"طلمبة AdBlue ضعيفة أو فلتر مسدود"
+],
+"525bd2e0":[
+"Frozen or contaminated fluid",
+"سائل متجمد أو ملوث"
+],
+"f9e8500a":[
+"Leaking line",
+"خط يسرب"
+],
+"9a38130a":[
+"Watch the live reading of the AdBlue system and check that it makes sense for the conditions.",
+"راقب القراءة الحية لـنظام AdBlue وتأكد أنها منطقية بالنسبة لحالة السيارة."
+],
+"07b8d71d":[
+"Check the AdBlue quality and look for crystals at the injector and lines.",
+"افحص جودة AdBlue وابحث عن تبلور عند الرشاش والخطوط."
+],
+"beb79f55":[
+"Poor quality or diluted AdBlue",
+"سائل AdBlue رديء أو مخفف"
+],
+"ed624531":[
+"Blocked or crystallised AdBlue injector",
+"رشاش AdBlue مسدود أو متبلور"
+],
+"bd34ab31":[
+"Exhaust leak before the SCR catalyst",
+"تسريب عادم قبل دبّة SCR"
+],
+"331abaa8":[
+"Aged SCR catalyst",
+"دبّة SCR قديمة"
+],
+"34c8bb82":[
+"Compare the NOx readings before and after the SCR catalyst in live data with the engine warm.",
+"قارن قراءات NOx قبل وبعد دبّة SCR في البيانات الحية والمحرك ساخن."
+],
+"3644f5dd":[
+"Loose, corroded or wet connector at the water-in-fuel sensor",
+"فيشة حساس المياه في الوقود مفكوكة أو عليها صدأ أو رطوبة"
+],
+"3e8fca75":[
+"Faulty water-in-fuel sensor",
+"عطل في حساس المياه في الوقود نفسه"
+],
+"125b7bdb":[
+"Look at the water-in-fuel sensor connector and wiring: damage, corrosion, oil or loose pins.",
+"افحص فيشة وأسلاك حساس المياه في الوقود بالنظر: تلف أو صدأ أو زيت أو أطراف مفكوكة."
+],
+"e50fa879":[
+"Drain the water from the fuel filter as the owner's manual describes, then clear the code.",
+"صفِّ المياه من فلتر السولار كما يشرح كتيب العربية ثم امسح الكود."
+],
+"11cdb65a":[
+"Watch the live reading of the water-in-fuel sensor and check that it makes sense for the conditions.",
+"راقب القراءة الحية لـحساس المياه في الوقود وتأكد أنها منطقية بالنسبة لحالة السيارة."
+],
+"a4f4277b":[
+"Water collected in the fuel filter (normal over time)",
+"تجمع مياه في فلتر السولار (طبيعي مع الوقت)"
+],
+"9b90b188":[
+"Contaminated fuel from a filling station",
+"وقود ملوث من محطة البنزين"
+],
+"ea23d549":[
+"Faulty water-in-fuel sensor",
+"حساس المياه في الوقود تالف"
+],
+"b495a9ab":[
+"Drain the water from the fuel filter (see the owner's manual) or replace the filter.",
+"صفِّ المياه من فلتر السولار (راجع كتيب العربية) أو غيّر الفلتر."
+],
+"10e4109c":[
+"If it comes back quickly, suspect the fuel source or a leaking tank seal.",
+"لو رجعت بسرعة اشتبه في مصدر الوقود أو جلدة تانك تسرب."
+],
+"ad3be8bc":[
+"Engine burning oil (raises ash)",
+"المحرك يحرق زيت (يزوّد الرماد)"
+],
+"8e630e79":[
+"Wrong engine oil (not low-SAPS)",
+"زيت محرك غير مناسب (ليس low-SAPS)"
+],
+"f74b001f":[
+"Read the ash load / distance since the last DPF replacement in live data if the car offers it.",
+"اقرأ نسبة الرماد / المسافة منذ آخر تغيير للفلتر في البيانات الحية لو متاحة."
+],
+"b6aebda6":[
+"Check oil consumption and that the oil meets the manufacturer's specification.",
+"افحص استهلاك الزيت وأن الزيت مطابق لمواصفة الشركة."
+],
+"7c86bf9c":[
+"Cracked filter element",
+"عنصر الفلتر مشروخ"
+],
+"add2ae77":[
+"Faulty DPF pressure sensor",
+"حساس ضغط الفلتر تالف"
+],
+"9d3e07a3":[
+"Exhaust leak before the filter",
+"تسريب عادم قبل الفلتر"
+],
+"a6c3c664":[
+"Check both pressure-sensor hoses for splits, disconnection and the right orientation.",
+"افحص خرطومي حساس الضغط بحثًا عن شروخ أو فصل وتأكد من الاتجاه الصحيح."
+],
+"e2cfcebe":[
+"If the soot load allows it, run a service regeneration (Service Functions) after finding why it loaded up.",
+"لو نسبة السناج تسمح، شغّل تجديدًا خدميًا (وظائف الصيانة) بعد معرفة سبب الامتلاء."
 ]
 },
 "codes":{
@@ -2507,6 +2675,121 @@
 "emissions":false,
 "source":"generic"
 },
+"P203F":{
+"title":[
+"Reductant Level Too Low",
+"مستوى سائل التنقية (AdBlue) منخفض جدًا"
+],
+"explain":[
+"The AdBlue (diesel exhaust fluid) tank is almost empty. Most cars count down the remaining distance and will not restart once it reaches zero, so refill soon.",
+"تانك AdBlue (سائل عادم الديزل) شبه فارغ. أغلب العربيات تعد تنازليًا المسافة المتبقية ولا تدور مرة أخرى عندما تصل للصفر، لذلك املأه قريبًا."
+],
+"causes":[
+"2f0afde4",
+"ec124d70",
+"fa06e9cf"
+],
+"checks":[
+"44ca58b3",
+"57323788",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P204F",
+"P20EE"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"nox",
+"tags":[
+"limp-mode"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P2047":{
+"title":[
+"Reductant Injector Circuit/Open (Bank 1 Unit 1)",
+"رشاش AdBlue - الدائرة مفتوحة (البنك 1 الوحدة 1)"
+],
+"explain":[
+"The engine computer controls the SCR reductant (AdBlue / DEF) system (Bank 1 Unit 1). Diesel engines inject AdBlue into the exhaust so a catalyst can turn NOx into nitrogen and water. The control circuit appears to be open: when the module switches it, no current flows.",
+"كمبيوتر المحرك يتحكم في نظام سائل التنقية SCR (AdBlue / DEF) (البنك 1 الوحدة 1). محركات الديزل تحقن AdBlue في العادم لتحوّل دبّة خاصة أكاسيد النيتروجين إلى نيتروجين ومياه. دائرة التحكم تبدو مفتوحة: عندما تشغلها وحدة التحكم لا يمر تيار."
+],
+"causes":[
+"8ed5c1a9",
+"e7764e32",
+"8b08c69b",
+"53132472",
+"79c1deab"
+],
+"checks":[
+"c5f8884a",
+"d6172d0f",
+"06a70084",
+"964435a2",
+"5c81a9ff",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[],
+"system":"exhaust-aftertreatment",
+"monitor":"nox",
+"tags":[
+"limp-mode"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P204F":{
+"title":[
+"Reductant System Performance (Bank 1)",
+"أداء نظام سائل التنقية (AdBlue) (البنك 1)"
+],
+"explain":[
+"The AdBlue system does not reach the pressure or dosing the computer expects.",
+"نظام AdBlue لا يصل للضغط أو كمية الحقن التي يتوقعها الكمبيوتر."
+],
+"causes":[
+"fdb4beac",
+"ed0a2c3e",
+"525bd2e0",
+"f9e8500a"
+],
+"checks":[
+"9a38130a",
+"07b8d71d",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P203F",
+"P20EE",
+"P2047"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"nox",
+"tags":[
+"limp-mode"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
 "P2080":{
 "title":[
 "Exhaust Gas Temperature Sensor Circuit Range/Performance (Bank 1 Sensor 1)",
@@ -3084,6 +3367,87 @@
 "pids":[
 20,
 21
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P20B9":{
+"title":[
+"Reductant Heater \"A\" Control Circuit/Open",
+"سخان AdBlue \"A\" - التحكم - الدائرة مفتوحة"
+],
+"explain":[
+"The engine computer controls the SCR reductant (AdBlue / DEF) system (\"A\"). Diesel engines inject AdBlue into the exhaust so a catalyst can turn NOx into nitrogen and water. The control circuit appears to be open: when the module switches it, no current flows.",
+"كمبيوتر المحرك يتحكم في نظام سائل التنقية SCR (AdBlue / DEF) (\"A\"). محركات الديزل تحقن AdBlue في العادم لتحوّل دبّة خاصة أكاسيد النيتروجين إلى نيتروجين ومياه. دائرة التحكم تبدو مفتوحة: عندما تشغلها وحدة التحكم لا يمر تيار."
+],
+"causes":[
+"8ed5c1a9",
+"e7764e32",
+"8b08c69b",
+"53132472",
+"79c1deab"
+],
+"checks":[
+"c5f8884a",
+"d6172d0f",
+"06a70084",
+"964435a2",
+"5c81a9ff",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P2047"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"nox",
+"tags":[
+"limp-mode"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P20EE":{
+"title":[
+"SCR NOx Catalyst Efficiency Below Threshold (Bank 1)",
+"كفاءة دبّة SCR لأكاسيد النيتروجين أقل من الحد (البنك 1)"
+],
+"explain":[
+"The NOx sensors show that the SCR catalyst removes less NOx than it should. The AdBlue dosing or quality is the most common reason, less often a worn catalyst or a faulty NOx sensor.",
+"حساسات NOx تبين أن دبّة SCR تزيل أكاسيد نيتروجين أقل من المطلوب. السبب الأشهر حقن AdBlue أو جودته، وأقل من ذلك دبّة متآكلة أو حساس NOx تالف."
+],
+"causes":[
+"beb79f55",
+"ed624531",
+"7937fe0e",
+"bd34ab31",
+"331abaa8"
+],
+"checks":[
+"9a38130a",
+"34c8bb82",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P204F",
+"P203F",
+"P2047"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"nox",
+"tags":[
+"limp-mode"
+],
+"pids":[
+12
 ],
 "safety":false,
 "emissions":true,
@@ -6890,6 +7254,218 @@
 "emissions":false,
 "source":"generic"
 },
+"P2264":{
+"title":[
+"Water in Fuel Sensor Circuit",
+"حساس المياه في الوقود - الدائرة"
+],
+"explain":[
+"The engine computer reads the water-in-fuel sensor. It sits in the diesel fuel filter and reports when the water separator is full of water. It has found an electrical problem in the circuit: the signal is missing, out of limits or not plausible.",
+"كمبيوتر المحرك يقرأ إشارة حساس المياه في الوقود. موجود في فلتر السولار ويبلغ عندما يمتلئ فاصل المياه بالمياه. اكتشف الكمبيوتر مشكلة كهربائية في الدائرة: الإشارة مفقودة أو خارج الحدود أو غير منطقية."
+],
+"causes":[
+"3644f5dd",
+"e7764e32",
+"3e8fca75",
+"9a2c6804",
+"79c1deab"
+],
+"checks":[
+"125b7bdb",
+"83a25b19",
+"b5545f83",
+"e50fa879",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"P2265",
+"P2266",
+"P2267"
+],
+"system":"fuel-air",
+"monitor":"components",
+"tags":[
+"rough-idle",
+"low-power"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"P2265":{
+"title":[
+"Water in Fuel Sensor Circuit Range/Performance",
+"حساس المياه في الوقود - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"The engine computer reads the water-in-fuel sensor. It sits in the diesel fuel filter and reports when the water separator is full of water. The signal is electrically fine but does not agree with what the module expects from the other sensors (out of range, stuck, or changing too slowly). It can be a tired sensor - or a real mechanical problem.",
+"كمبيوتر المحرك يقرأ إشارة حساس المياه في الوقود. موجود في فلتر السولار ويبلغ عندما يمتلئ فاصل المياه بالمياه. الإشارة سليمة كهربائيًا لكنها لا تتفق مع ما تتوقعه وحدة التحكم من الحساسات الأخرى (خارج المدى أو ثابتة أو تتغير ببطء). قد يكون الحساس ضعيفًا - أو توجد مشكلة ميكانيكية حقيقية."
+],
+"causes":[
+"3e8fca75",
+"3644f5dd",
+"7fe7854a",
+"79c1deab"
+],
+"checks":[
+"11cdb65a",
+"72e49406",
+"125b7bdb",
+"4b23db42",
+"e50fa879",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"P2264",
+"P2266",
+"P2267"
+],
+"system":"fuel-air",
+"monitor":"components",
+"tags":[
+"rough-idle",
+"low-power"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"P2266":{
+"title":[
+"Water in Fuel Sensor Circuit Low",
+"حساس المياه في الوقود - الدائرة - جهد منخفض"
+],
+"explain":[
+"The engine computer reads the water-in-fuel sensor. It sits in the diesel fuel filter and reports when the water separator is full of water. The signal voltage is below the normal range. This is usually a short to ground, a missing 5 V reference or a failed sensor - not necessarily a real problem with what it measures.",
+"كمبيوتر المحرك يقرأ إشارة حساس المياه في الوقود. موجود في فلتر السولار ويبلغ عندما يمتلئ فاصل المياه بالمياه. جهد الإشارة أقل من المدى الطبيعي. غالبًا السبب قصر مع الأرضي أو غياب جهد المرجع 5 فولت أو حساس تالف - وليس بالضرورة مشكلة حقيقية فيما يقيسه."
+],
+"causes":[
+"9a2c6804",
+"3e8fca75",
+"0029c56e",
+"3644f5dd",
+"79c1deab"
+],
+"checks":[
+"125b7bdb",
+"e9d2ff79",
+"b5545f83",
+"83a25b19",
+"e50fa879",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"P2264",
+"P2265",
+"P2267"
+],
+"system":"fuel-air",
+"monitor":"components",
+"tags":[
+"rough-idle",
+"low-power"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"P2267":{
+"title":[
+"Water in Fuel Sensor Circuit High",
+"حساس المياه في الوقود - الدائرة - جهد مرتفع"
+],
+"explain":[
+"The engine computer reads the water-in-fuel sensor. It sits in the diesel fuel filter and reports when the water separator is full of water. The signal voltage is above the normal range. An open signal or ground wire makes the module see its own pull-up voltage, so this is often a wiring or connector fault, a short to voltage or a failed sensor.",
+"كمبيوتر المحرك يقرأ إشارة حساس المياه في الوقود. موجود في فلتر السولار ويبلغ عندما يمتلئ فاصل المياه بالمياه. جهد الإشارة أعلى من المدى الطبيعي. انقطاع سلك الإشارة أو الأرضي يجعل وحدة التحكم ترى جهدها الداخلي، لذلك غالبًا السبب في الأسلاك أو الفيشة أو قصر مع جهد أو حساس تالف."
+],
+"causes":[
+"246ee90e",
+"3644f5dd",
+"3e8fca75",
+"f1c8b4ef",
+"79c1deab"
+],
+"checks":[
+"125b7bdb",
+"e9d2ff79",
+"b5545f83",
+"83a25b19",
+"e50fa879",
+"3c4cc633"
+],
+"severity":"green",
+"drive":"yes",
+"related":[
+"P2264",
+"P2265",
+"P2266"
+],
+"system":"fuel-air",
+"monitor":"components",
+"tags":[
+"rough-idle",
+"low-power"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"P2269":{
+"title":[
+"Water in Fuel Condition",
+"حالة وجود مياه في الوقود"
+],
+"explain":[
+"The fuel filter's water separator is full. Water in diesel damages the high-pressure pump and the injectors, so drain it soon.",
+"فاصل المياه في فلتر السولار ممتلئ. المياه في السولار تتلف طلمبة الضغط العالي والرشاشات، لذلك صفّها قريبًا."
+],
+"causes":[
+"a4f4277b",
+"9b90b188",
+"ea23d549"
+],
+"checks":[
+"b495a9ab",
+"10e4109c",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P2264",
+"P2265"
+],
+"system":"fuel-air",
+"monitor":"components",
+"tags":[
+"rough-idle",
+"low-power"
+],
+"pids":[
+12
+],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
 "P2270":{
 "title":[
 "O2 Sensor Signal Stuck Lean (Bank 1 Sensor 2)",
@@ -9132,6 +9708,46 @@
 "emissions":true,
 "source":"generic"
 },
+"P242F":{
+"title":[
+"Diesel Particulate Filter Restriction - Ash Accumulation",
+"انسداد فلتر الجزيئات - تراكم الرماد"
+],
+"explain":[
+"Ash (from engine oil additives) builds up in the particulate filter and, unlike soot, cannot be burnt off. After a high mileage the filter needs professional cleaning or replacement; regeneration does not help.",
+"الرماد (من إضافات زيت المحرك) يتراكم في فلتر الجزيئات ولا يحترق مثل السناج. بعد مسافة كبيرة يحتاج الفلتر تنظيفًا احترافيًا أو تغييرًا؛ التجديد لا يفيد."
+],
+"causes":[
+"f05678d6",
+"ad3be8bc",
+"8e630e79",
+"76054dfc"
+],
+"checks":[
+"f74b001f",
+"b6aebda6",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P2463",
+"P2002"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"pm",
+"tags":[
+"limp-mode",
+"low-power"
+],
+"pids":[
+122,
+123
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
 "P2440":{
 "title":[
 "Secondary Air Injection System Switching Valve Stuck Open (Bank 1)",
@@ -9463,6 +10079,87 @@
 ],
 "pids":[
 18
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P244A":{
+"title":[
+"Diesel Particulate Filter Differential Pressure Too Low (Bank 1)",
+"فرق ضغط فلتر الجزيئات منخفض جدًا (البنك 1)"
+],
+"explain":[
+"The pressure difference across the particulate filter is lower than possible for a working filter: the filter may be cracked or removed, or the pressure sensor lines are off or leaking.",
+"فرق الضغط على فلتر الجزيئات أقل مما يمكن لفلتر سليم: قد يكون الفلتر مشروخًا، أو خراطيم حساس الضغط مفصولة أو تسرب."
+],
+"causes":[
+"76054dfc",
+"7c86bf9c",
+"add2ae77",
+"9d3e07a3"
+],
+"checks":[
+"a6c3c664",
+"37a7414c",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P244B",
+"P2452",
+"P2002"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"pm",
+"tags":[
+"smoke"
+],
+"pids":[
+122
+],
+"safety":false,
+"emissions":true,
+"source":"generic"
+},
+"P244B":{
+"title":[
+"Diesel Particulate Filter Differential Pressure Too High (Bank 1)",
+"فرق ضغط فلتر الجزيئات مرتفع جدًا (البنك 1)"
+],
+"explain":[
+"The pressure difference across the particulate filter is too high: it is heavily loaded with soot or ash, or the sensor reading is wrong.",
+"فرق الضغط على فلتر الجزيئات مرتفع جدًا: الفلتر ممتلئ بالسناج أو الرماد، أو قراءة الحساس خاطئة."
+],
+"causes":[
+"47286581",
+"f05678d6",
+"76054dfc",
+"add2ae77"
+],
+"checks":[
+"de98fda8",
+"e2cfcebe",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P2463",
+"P244A",
+"P2452"
+],
+"system":"exhaust-aftertreatment",
+"monitor":"pm",
+"tags":[
+"limp-mode",
+"low-power",
+"smoke"
+],
+"pids":[
+122,
+123
 ],
 "safety":false,
 "emissions":true,

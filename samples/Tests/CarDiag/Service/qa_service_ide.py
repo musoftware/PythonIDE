@@ -160,6 +160,43 @@ if scan is not None:
     pump(0.5)
     check("Service tab in the Car Diagnostics workbench", getattr(wb, "service_panel", None) is not None and
           any(wb.tabs.tabText(i) == "Service" for i in range(wb.tabs.count())))
+    # the workbench connected to the Demo car through the (simulated) ELM327 adapter -> its built-in pack
+    from radide.cardiag.link import demo_link  # noqa: E402
+    from radide.cardiag.sim.car import VirtualCar  # noqa: E402
+    vcar = VirtualCar(time_scale=4.0, engine_running=False)
+    vlink = demo_link(vcar)
+    check("workbench uses the ELM327 Demo car link", wb.use_shared_link(vlink, ask=False) and wb.link is vlink)
+    sp = wb.service_panel
+    sp.conn.setCurrentIndex(sp.conn.findData("link"))
+    pump(0.3)
+    check("Service tab switches to the workbench connection with its pack", sp.car is None and sp.pack
+          and sp.pack.get("demo") == "workbench", sp.pack and sp.pack.get("name"))
+    check("profile = the simulator's VIN", sp.profile is not None and sp.profile.vin == vcar.vin)
+    check("select workbench fan test", sp.select("io_controls", "fan_test"))
+    sp.set_all_confirmed()
+    sp.io_time.setValue(2)
+    sp.io_state.setCurrentIndex(2)
+    sp.b_run.click()
+    wait(lambda: (vcar.update() or True) and vcar.fan_duty == 100, 6)
+    check("fan at 100 % through ELM327", vcar.fan_duty == 100)
+    wait(lambda: sp.worker is None or not sp.worker.is_alive(), 15)
+    pump(0.3)
+    vcar.update()
+    check("fan control returned (workbench link)", not vcar.engine.ios[0x4001].controlled and vcar.fan_duty == 0,
+          sp.status.text())
+    check("select battery registration (routine with inputs)", sp.select("routines", "battery_registration")
+          and len(sp.inputs) == 2)
+    sp.inputs[0].setText("95")
+    sp.inputs[1].setCurrentIndex(2)
+    sp.set_all_confirmed()
+    sp.b_run.click()
+    pump(0.2)
+    wait(lambda: sp.worker is None or not sp.worker.is_alive(), 15)
+    pump(0.3)
+    check("battery registered with the entered values", vcar.battery_info == bytes([95, 3]), sp.status.text())
+    shot(sp, "service_workbench_en")
+    sp.conn.setCurrentIndex(sp.conn.findData("demo"))
+    pump(0.2)
 
 # ------------------------------------------------------------- Arabic
 from radide import i18n  # noqa: E402

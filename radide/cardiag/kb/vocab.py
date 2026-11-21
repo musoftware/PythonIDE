@@ -52,7 +52,7 @@ TAGS = {
     "no-start": ("Engine will not start", "المحرك لا يدور",
                  ["no start", "won't start", "wont start", "doesn't start", "cranks no start", "hard to start",
                   "مش بتدور", "مبتدورش", "مش راضيه تدور", "لا تدور", "لا يدور", "ما بتشتغلش", "مش بتشتغل", "بتدور ومش بتمسك",
-                  "بتفضل تدور"]),
+                  "بتفضل تدور", "مش بيدور", "مبيدورش", "مش بيشتغل", "مبيشتغلش", "مش راضي يدور", "won t start"]),
     "no-crank": ("Starter does not turn", "المارش لا يلف",
                  ["no crank", "starter not turning", "click no start", "المارش مش بيلف", "مارش", "تكه ومش بتدور"]),
     "hard-start": ("Hard starting", "صعوبة في التشغيل",

@@ -79,10 +79,11 @@ _BLOCKED_EN = [
     (r"\b" + _EMI + r"[\s_-]*(off|aus)\b|\boff[\s_-]*" + _EMI + r"\b", "emissions defeat"),
     (r"\b" + _EMI + r"\b[\s\S]{0,24}\b" + _OFF + r"\b", "emissions defeat"),
     (r"\b" + _OFF + r"\b[\s\S]{0,24}\b" + _EMI + r"\b", "emissions defeat"),
-    (r"\breadiness\b[\s\S]{0,24}\b(set|fake\w*|force\w*|complete\w*|spoof\w*|ready)\b|\bfake\w*\s+readiness",
+    (r"\breadiness\b[\s\S]{0,24}\b(set|fak\w*|force\w*|complete\w*|spoof\w*|ready)\b|\bfak\w*\s+readiness",
      "readiness faking"),
     (r"\b(dtc|fault|code|monitor|mil|check\s*engine)s?[\s_-]*(off|disable\w*|mask\w*|suppress\w*|hide|hiding)\b|"
-     r"\b(disable|mask|suppress|hide)\w*\s+(the\s+)?(dtc|fault|code|monitor|mil|check\s*engine)", "fault masking"),
+     r"\b(disable|mask|suppress|hide)\w*\s+(the\s+)?(dtc|fault|code|monitor|mil|check\s*engine)|"
+     r"\b(disable|mask|suppress|hid)\w*\s+(the\s+)?[pbcu][0-9a-f]{4}\b", "fault masking"),
     (r"\bseed[\s_-]*key\s*(calc\w*|crack\w*|brute\w*|algorithm)|\bbrute[\s_-]?force", "security cracking"),
 ]
 _BLOCKED_AR = [
@@ -495,6 +496,29 @@ def demo_pack() -> dict:
     pack, _ = load_pack_file(BUILTIN_DIR / "demo_car.json")
     pack["_builtin"] = True
     return pack
+
+
+def workbench_pack() -> dict:
+    """The pack of the Car Diagnostics workbench's Demo car (radide/cardiag/sim) - only for that simulator."""
+    pack, _ = load_pack_file(BUILTIN_DIR / "workbench_car.json")
+    pack["_builtin"] = True
+    return pack
+
+
+def is_virtual_car_link(link) -> bool:
+    """True when *link* (a radide.cardiag.link DiagLink) talks to the built-in Demo car simulator (the simulated
+    ELM327 adapter or the virtual CAN bus) and not to a real vehicle."""
+    if link is None:
+        return False
+    try:
+        from ..sim.car import VirtualCar
+    except Exception:  # noqa: BLE001
+        return False
+    dev = getattr(getattr(link, "t", None), "device", None)
+    car = getattr(dev, "car", None)
+    if car is None:
+        car = getattr(getattr(link, "bus", None), "car", None)
+    return isinstance(car, VirtualCar)
 
 
 def user_packs() -> list[tuple[dict | None, Path, list[BiText]]]:

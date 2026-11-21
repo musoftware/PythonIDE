@@ -1,0 +1,285 @@
+{
+ "format": "radide-cardiag-service-pack",
+ "version": 1,
+ "name": "Demo car - Car Diagnostics workbench (simulator)",
+ "name_ar": "السيارة التجريبية - منصة تشخيص السيارات (محاكي)",
+ "description": "Service functions of the Demo car that the Car Diagnostics workbench connects to (radide/cardiag/sim, through the simulated ELM327 adapter). The identifiers belong to that simulator only - they are not the identifiers of any real vehicle.",
+ "description_ar": "وظائف الخدمة للسيارة التجريبية التي تتصل بها منصة تشخيص السيارات (radide/cardiag/sim عبر محوّل ELM327 محاكى). المعرّفات خاصة بهذا المحاكي فقط وليست معرّفات أي سيارة حقيقية.",
+ "demo": "workbench",
+ "source": "RAD IDE (simulator definitions)",
+ "ecus": {
+  "engine": {"name": "Engine control unit (ECM)", "name_ar": "وحدة التحكم في المحرك (ECM)", "tx": "7E0", "rx": "7E8", "protocol": "uds"},
+  "abs": {"name": "ABS / ESP", "name_ar": "وحدة الفرامل ABS / ESP", "tx": "760", "rx": "768", "protocol": "uds"},
+  "airbag": {"name": "Airbag (SRS)", "name_ar": "الوسائد الهوائية (SRS)", "tx": "770", "rx": "778", "protocol": "uds"},
+  "cluster": {"name": "Instrument cluster", "name_ar": "لوحة العدادات", "tx": "720", "rx": "728", "protocol": "uds"},
+  "climate": {"name": "Climate control", "name_ar": "التكييف والتدفئة", "tx": "744", "rx": "74C", "protocol": "uds"}
+ },
+ "dids": [
+  {"did": "F190", "name": "VIN", "name_ar": "رقم الشاسيه (VIN)", "type": "ascii", "bytes": 17},
+  {"did": "1001", "name": "Engine speed", "name_ar": "سرعة المحرك", "bytes": 2, "unit": "rpm"},
+  {"did": "1002", "name": "Coolant temperature", "name_ar": "حرارة سائل التبريد", "bytes": 1, "offset": -40, "unit": "°C"},
+  {"did": "1003", "name": "Battery voltage", "name_ar": "جهد البطارية", "bytes": 2, "scale": 0.001, "unit": "V"},
+  {"did": "1007", "name": "Vehicle speed", "name_ar": "سرعة السيارة", "bytes": 1, "unit": "km/h"},
+  {"did": "1020", "name": "Electric coolant pump duty", "name_ar": "نسبة تشغيل مضخة التبريد الكهربائية", "bytes": 1, "unit": "%"},
+  {"did": "1021", "name": "Radiator fan duty", "name_ar": "نسبة تشغيل مروحة الردياتير", "bytes": 1, "unit": "%"},
+  {"did": "1030", "name": "Long-term fuel trim", "name_ar": "تصحيح الوقود طويل المدى", "bytes": 2, "signed": true, "scale": 0.01, "unit": "%"},
+  {"did": "3100", "name": "Registered battery (Ah, type)", "name_ar": "البطارية المسجلة (أمبير/ساعة، النوع)", "bytes": 2, "type": "hex"},
+  {"did": "2010", "name": "Steering angle", "name_ar": "زاوية المقود", "bytes": 2, "signed": true, "scale": 0.1, "unit": "°"},
+  {"did": "2013", "name": "Steering angle sensor calibrated", "name_ar": "حساس زاوية المقود معاير", "bytes": 1, "type": "enum",
+   "map": {"00": {"en": "no", "ar": "لا"}, "01": {"en": "yes", "ar": "نعم"}}},
+  {"did": "2210", "name": "Distance to service", "name_ar": "المسافة حتى الصيانة", "bytes": 2, "signed": true, "unit": "km"},
+  {"did": "2211", "name": "Days to service", "name_ar": "الأيام حتى الصيانة", "bytes": 2, "signed": true, "unit": "days"},
+  {"did": "2212", "name": "Oil life", "name_ar": "عمر الزيت", "bytes": 1, "unit": "%"},
+  {"did": "3002", "name": "Temperature set point", "name_ar": "درجة الحرارة المطلوبة", "bytes": 1, "scale": 0.5, "unit": "°C"}
+ ],
+ "routines": [
+  {
+   "id": "cooling_bleed",
+   "name": "Cooling system bleed / coolant pump cycle",
+   "name_ar": "تنفيس نظام التبريد / دورة مضخة التبريد",
+   "category": "cooling",
+   "safety": "overheating",
+   "ecu": "engine",
+   "session": "extended",
+   "description": "After the coolant was drained or a cooling-system part was replaced, the control unit runs the electric coolant pump in a cycle so trapped air reaches the expansion tank. The unit refuses while the engine runs (NRC 0x22) and when the coolant is very hot (NRC 0x86).",
+   "description_ar": "بعد تفريغ سائل التبريد أو تغيير جزء من نظام التبريد، تشغّل وحدة التحكم مضخة التبريد الكهربائية في دورة حتى يصل الهواء المحبوس إلى خزان التمدد. ترفض الوحدة والمحرك يعمل (NRC 0x22) وعندما يكون السائل ساخنًا جدًا (NRC 0x86).",
+   "preconditions": [
+    {"text": "Ignition on, engine OFF", "text_ar": "الإشعال يعمل والمحرك متوقف",
+     "check": {"did": "1001", "op": "==", "value": 0}},
+    {"text": "Battery voltage at least 12.0 V (connect a support charger)", "text_ar": "جهد البطارية 12.0 فولت على الأقل (وصّل شاحنًا داعمًا)",
+     "check": {"did": "1003", "op": ">=", "value": 12.0}},
+    {"text": "Engine cold - never open the cap of a hot cooling system", "text_ar": "المحرك بارد - لا تفتح غطاء نظام تبريد ساخن أبدًا"},
+    {"text": "Expansion tank filled to MAX, cap open", "text_ar": "خزان التمدد ممتلئ حتى علامة MAX والغطاء مفتوح"},
+    {"text": "Heater set to maximum temperature", "text_ar": "التدفئة على أعلى درجة حرارة"}
+   ],
+   "rid": "0301",
+   "start_params": "",
+   "poll": {
+    "interval_s": 0.5,
+    "timeout_s": 60,
+    "status_byte": 0,
+    "progress_byte": 1,
+    "running": ["01"],
+    "done": ["02"],
+    "failed": ["03", "04"],
+    "statuses": {
+     "01": {"en": "running", "ar": "قيد التشغيل"},
+     "02": {"en": "completed", "ar": "اكتمل"},
+     "03": {"en": "aborted (engine started or conditions changed)", "ar": "توقف (تم تشغيل المحرك أو تغيرت الشروط)"},
+     "04": {"en": "stopped", "ar": "أُوقف"}
+    }
+   },
+   "results": [
+    {"name": "Coolant pump duty", "name_ar": "نسبة تشغيل مضخة التبريد", "byte": 2, "bytes": 1, "unit": "%"},
+    {"name": "Coolant temperature", "name_ar": "حرارة سائل التبريد", "byte": 3, "bytes": 1, "offset": -40, "unit": "°C"}
+   ],
+   "instructions": [
+    {"at": 0, "text": "Watch the coolant level in the expansion tank and top up when it drops.", "text_ar": "راقب مستوى السائل في خزان التمدد وأضف عندما ينخفض."},
+    {"at": 50, "text": "Halfway: top up to MAX again.", "text_ar": "منتصف المدة: أضف السائل حتى MAX مرة أخرى."},
+    {"at": 100, "text": "Close the cap. Check the level again after the first drive.", "text_ar": "أغلق الغطاء. افحص المستوى مرة أخرى بعد أول قيادة."}
+   ],
+   "stop": {"params": ""}
+  },
+  {
+   "id": "throttle_reset",
+   "name": "Throttle body adaptation reset",
+   "name_ar": "إعادة ضبط مواءمة جسم الخانق (البوابة)",
+   "category": "throttle",
+   "ecu": "engine",
+   "session": "extended",
+   "description": "Forgets the learned throttle positions after cleaning or replacing the throttle body.",
+   "description_ar": "يمسح أوضاع الخانق المحفوظة بعد تنظيف جسم الخانق أو تغييره.",
+   "preconditions": [
+    {"text": "Ignition on, engine OFF", "text_ar": "الإشعال يعمل والمحرك متوقف", "check": {"did": "1001", "op": "==", "value": 0}},
+    {"text": "Do not press the accelerator pedal", "text_ar": "لا تضغط على دواسة الوقود"}
+   ],
+   "rid": "0302",
+   "start_params": "",
+   "poll": {"interval_s": 0.5, "timeout_s": 20, "status_byte": 0, "progress_byte": 1, "running": ["01"], "done": ["02"], "failed": ["03", "04"]}
+  },
+  {
+   "id": "fuel_trim_reset",
+   "name": "Fuel trim adaptation reset",
+   "name_ar": "إعادة ضبط مواءمة تصحيح الوقود",
+   "category": "engine",
+   "ecu": "engine",
+   "session": "extended",
+   "description": "Sets the learned long-term fuel trim back to zero after a repair (for example a fixed vacuum leak) so the control unit learns again from a clean start.",
+   "description_ar": "يعيد تصحيح الوقود طويل المدى المتعلَّم إلى الصفر بعد الإصلاح (مثل سد تسريب هواء) لتتعلم الوحدة من جديد.",
+   "preconditions": [
+    {"text": "Ignition on, engine OFF", "text_ar": "الإشعال يعمل والمحرك متوقف", "check": {"did": "1001", "op": "==", "value": 0}},
+    {"text": "The cause of the fuel trim fault was repaired", "text_ar": "تم إصلاح سبب خطأ تصحيح الوقود"}
+   ],
+   "rid": "0303",
+   "start_params": ""
+  },
+  {
+   "id": "injector_test",
+   "name": "Injector test (one cylinder)",
+   "name_ar": "اختبار البخاخ (أسطوانة واحدة)",
+   "category": "actuator",
+   "ecu": "engine",
+   "session": "extended",
+   "description": "The control unit clicks the injector of the chosen cylinder for a few seconds - listen at the injector or use a stethoscope.",
+   "description_ar": "تشغّل الوحدة بخاخ الأسطوانة المختارة لبضع ثوانٍ - استمع عند البخاخ أو استخدم سماعة ميكانيكي.",
+   "preconditions": [
+    {"text": "Ignition on, engine OFF", "text_ar": "الإشعال يعمل والمحرك متوقف", "check": {"did": "1001", "op": "==", "value": 0}},
+    {"text": "Fuel system intact, no smell of fuel", "text_ar": "نظام الوقود سليم ولا توجد رائحة بنزين"}
+   ],
+   "rid": "0304",
+   "input": {"fields": [{"name": "Cylinder", "name_ar": "الأسطوانة", "type": "int", "bytes": 1, "min": 1, "max": 4, "default": 1}]},
+   "poll": {"interval_s": 0.5, "timeout_s": 20, "status_byte": 0, "progress_byte": 1, "running": ["01"], "done": ["02"], "failed": ["03", "04"]}
+  },
+  {
+   "id": "battery_registration",
+   "name": "Battery registration",
+   "name_ar": "تسجيل البطارية الجديدة",
+   "category": "battery",
+   "ecu": "engine",
+   "session": "extended",
+   "description": "Tells the energy management the capacity and type of the new battery so it charges it correctly.",
+   "description_ar": "يخبر نظام إدارة الطاقة بسعة ونوع البطارية الجديدة حتى يشحنها بشكل صحيح.",
+   "preconditions": [
+    {"text": "Engine OFF, new battery fitted", "text_ar": "المحرك متوقف والبطارية الجديدة مركّبة", "check": {"did": "1001", "op": "==", "value": 0}}
+   ],
+   "rid": "0305",
+   "input": {"fields": [
+    {"name": "Capacity", "name_ar": "السعة", "type": "int", "bytes": 1, "min": 40, "max": 120, "unit": "Ah", "default": 70},
+    {"name": "Type", "name_ar": "النوع", "type": "enum", "bytes": 1, "default": "01",
+     "options": [{"label": "Flooded (standard)", "label_ar": "سائلة (عادية)", "value": "01"},
+                 {"label": "EFB", "label_ar": "EFB", "value": "02"},
+                 {"label": "AGM", "label_ar": "AGM", "value": "03"}]}
+   ]}
+  },
+  {
+   "id": "brake_pads_open",
+   "name": "Brake pad service mode - open (retract EPB)",
+   "name_ar": "وضع صيانة تيل الفرامل - فتح (سحب فرامل اليد الكهربائية)",
+   "category": "brakes",
+   "safety": "brakes",
+   "ecu": "abs",
+   "session": "extended",
+   "preconditions": [
+    {"text": "Vehicle stationary on level ground, wheels chocked", "text_ar": "السيارة واقفة على أرض مستوية والعجلات مثبتة بمصدات",
+     "check": {"ecu": "engine", "did": "1007", "op": "==", "value": 0}},
+    {"text": "Ignition on, gear in P / neutral", "text_ar": "الإشعال يعمل وناقل الحركة على P أو N"}
+   ],
+   "rid": "0501",
+   "start_params": "",
+   "poll": {"interval_s": 0.5, "timeout_s": 30, "status_byte": 0, "progress_byte": 1, "running": ["01"], "done": ["02"], "failed": ["03", "04"]},
+   "instructions": [{"at": 100, "text": "The rear calipers are open: replace the pads, then run 'close'.", "text_ar": "الكاليبرات الخلفية مفتوحة: غيّر التيل ثم شغّل \"إغلاق\"."}]
+  },
+  {
+   "id": "brake_pads_close",
+   "name": "Brake pad service mode - close (apply EPB)",
+   "name_ar": "وضع صيانة تيل الفرامل - إغلاق (تفعيل فرامل اليد الكهربائية)",
+   "category": "brakes",
+   "safety": "brakes",
+   "ecu": "abs",
+   "session": "extended",
+   "preconditions": [
+    {"text": "New pads fitted, calipers assembled", "text_ar": "التيل الجديد مركّب والكاليبرات مجمّعة"},
+    {"text": "Vehicle stationary", "text_ar": "السيارة واقفة", "check": {"ecu": "engine", "did": "1007", "op": "==", "value": 0}}
+   ],
+   "rid": "0502",
+   "start_params": "",
+   "poll": {"interval_s": 0.5, "timeout_s": 30, "status_byte": 0, "progress_byte": 1, "running": ["01"], "done": ["02"], "failed": ["03", "04"]},
+   "instructions": [{"at": 100, "text": "Press the brake pedal several times before driving.", "text_ar": "اضغط دواسة الفرامل عدة مرات قبل القيادة."}]
+  },
+  {
+   "id": "sas_calibration",
+   "name": "Steering angle sensor calibration",
+   "name_ar": "معايرة حساس زاوية المقود",
+   "category": "steering",
+   "safety": "steering",
+   "ecu": "abs",
+   "session": "extended",
+   "preconditions": [
+    {"text": "Engine running", "text_ar": "المحرك يعمل", "check": {"ecu": "engine", "did": "1001", "op": ">", "value": 400}},
+    {"text": "Vehicle stationary", "text_ar": "السيارة واقفة", "check": {"ecu": "engine", "did": "1007", "op": "==", "value": 0}},
+    {"text": "Wheels pointing straight ahead, steering wheel centred", "text_ar": "العجلات مستقيمة والمقود في المنتصف"}
+   ],
+   "rid": "0503",
+   "start_params": "",
+   "poll": {"interval_s": 0.5, "timeout_s": 20, "status_byte": 0, "progress_byte": 1, "running": ["01"], "done": ["02"], "failed": ["03", "04"]}
+  },
+  {
+   "id": "service_reset",
+   "name": "Oil service interval reset",
+   "name_ar": "تصفير مؤشر صيانة الزيت",
+   "category": "service",
+   "ecu": "cluster",
+   "session": "extended",
+   "description": "Resets the service indicator (distance, days, oil life) after an oil service.",
+   "description_ar": "يصفّر مؤشر الصيانة (المسافة والأيام وعمر الزيت) بعد تغيير الزيت.",
+   "preconditions": [{"text": "The oil and filter were changed", "text_ar": "تم تغيير الزيت والفلتر"}],
+   "rid": "0401",
+   "start_params": ""
+  }
+ ],
+ "io_controls": [
+  {
+   "id": "fan_test", "name": "Radiator fan test", "name_ar": "اختبار مروحة الردياتير",
+   "category": "actuator", "safety": "overheating", "ecu": "engine", "session": "extended", "did": "4001",
+   "states": [{"label": "Off", "label_ar": "إيقاف", "value": "00"}, {"label": "50 %", "label_ar": "50 ٪", "value": "32"},
+              {"label": "100 %", "label_ar": "100 ٪", "value": "64"}],
+   "max_duration_s": 10,
+   "preconditions": [{"text": "Keep hands, tools and clothes away from the fan", "text_ar": "أبعد يديك والأدوات والملابس عن المروحة"}]
+  },
+  {
+   "id": "pump_test", "name": "Electric coolant pump test", "name_ar": "اختبار مضخة التبريد الكهربائية",
+   "category": "actuator", "ecu": "engine", "session": "extended", "did": "4002",
+   "states": [{"label": "Off", "label_ar": "إيقاف", "value": "00"}, {"label": "Full", "label_ar": "كامل", "value": "64"}],
+   "max_duration_s": 10,
+   "preconditions": [{"text": "Coolant filled", "text_ar": "سائل التبريد ممتلئ"}]
+  },
+  {
+   "id": "injector_cutoff_1", "name": "Injector 1 cut-off (cylinder balance)", "name_ar": "فصل البخاخ 1 (اتزان الأسطوانات)",
+   "category": "actuator", "ecu": "engine", "session": "extended", "did": "4010",
+   "states": [{"label": "Cut off", "label_ar": "مفصول", "value": "01"}],
+   "max_duration_s": 10,
+   "preconditions": [{"text": "Engine running at idle; the idle gets rougher if the cylinder works", "text_ar": "المحرك يعمل على الوضع الهادئ؛ يزيد الاهتزاز إذا كانت الأسطوانة سليمة",
+                      "check": {"did": "1001", "op": ">", "value": 400}}]
+  },
+  {
+   "id": "abs_pump_test", "name": "ABS pump motor test", "name_ar": "اختبار موتور مضخة ABS",
+   "category": "actuator", "safety": "brakes", "ecu": "abs", "session": "extended", "did": "4501",
+   "states": [{"label": "On", "label_ar": "تشغيل", "value": "01"}],
+   "max_duration_s": 3,
+   "preconditions": [{"text": "Engine OFF, vehicle stationary", "text_ar": "المحرك متوقف والسيارة واقفة",
+                      "check": {"ecu": "engine", "did": "1001", "op": "==", "value": 0}}]
+  },
+  {
+   "id": "blower_test", "name": "Blower motor test", "name_ar": "اختبار موتور مروحة التكييف الداخلية",
+   "category": "actuator", "ecu": "climate", "session": "extended", "did": "4101",
+   "states": [{"label": "Off", "label_ar": "إيقاف", "value": "00"}, {"label": "50 %", "label_ar": "50 ٪", "value": "32"},
+              {"label": "100 %", "label_ar": "100 ٪", "value": "64"}],
+   "max_duration_s": 10,
+   "preconditions": []
+  },
+  {
+   "id": "ac_clutch_test", "name": "A/C compressor clutch test", "name_ar": "اختبار كلتش كمبروسر التكييف",
+   "category": "actuator", "ecu": "climate", "session": "extended", "did": "4102",
+   "states": [{"label": "Engaged", "label_ar": "معشّق", "value": "01"}],
+   "max_duration_s": 10,
+   "preconditions": [{"text": "Engine running", "text_ar": "المحرك يعمل"}]
+  }
+ ],
+ "adaptations": [
+  {
+   "id": "climate_setpoint",
+   "name": "Default temperature set point",
+   "name_ar": "درجة الحرارة الافتراضية للتكييف",
+   "category": "coding",
+   "ecu": "climate",
+   "session": "extended",
+   "did": "3002",
+   "input": {"fields": [{"name": "Set point", "name_ar": "الدرجة", "type": "enum", "bytes": 1, "default": "2C",
+                         "options": [{"label": "20 °C", "label_ar": "20 °م", "value": "28"},
+                                     {"label": "22 °C", "label_ar": "22 °م", "value": "2C"},
+                                     {"label": "24 °C", "label_ar": "24 °م", "value": "30"}]}]},
+   "read_back": "compare",
+   "preconditions": []
+  }
+ ]
+}

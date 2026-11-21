@@ -99,12 +99,16 @@ def handle_obd(ecu, req: bytes, can: bool):
     elif mode == 0x02:
         if len(req) < 3:
             return []
-        pid, frame = req[1], req[2]
-        ff = car.freeze_frame if frame == 0 else None
-        if pid % 0x20 == 0:
-            out.append(bytes([0x42, pid, frame]) + support_bitmap(FREEZE_PIDS if ff else [], pid))
-        elif ff and pid in ff:
-            out.append(bytes([0x42, pid, frame]) + ff[pid])
+        pairs = req[1:7]                             # up to 3 (PID, frame) pairs per request (CAN)
+        for k in range(0, len(pairs) - 1, 2):
+            pid, frame = pairs[k], pairs[k + 1]
+            ff = car.freeze_frame if frame == 0 else None
+            if pid % 0x20 == 0:
+                out.append(bytes([0x42, pid, frame]) + support_bitmap(FREEZE_PIDS if ff else [], pid))
+            elif ff and pid in ff:
+                out.append(bytes([0x42, pid, frame]) + ff[pid])
+        if len(out) > 1 and can:                     # several PIDs in one request: one combined answer
+            out = [b"\x42" + b"".join(o[1:] for o in out)]
     elif mode in (0x03, 0x07, 0x0A):
         if mode == 0x03:
             codes = [d.sae for d in ecu.dtcs if d.emission and d.status & 0x08]

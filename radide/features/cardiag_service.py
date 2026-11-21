@@ -79,6 +79,7 @@ class ServicePanel(QWidget):
         self._plan = None
         self._last = ("service", "")
         self.inputs: list = []
+        self._link = None              # the workbench's DiagLink when "Car Diagnostics connection" is chosen
         self._build()
         self._load_plugin_setting()
         self.connect_demo()
@@ -371,11 +372,25 @@ class ServicePanel(QWidget):
             return False
         from ..cardiag.service.transport import ServiceClient
         self.car = None
+        self._link = link
         self.client = ServiceClient(link, audit=self._audit)
         self.demo_box.setVisible(False)
         self.reload_packs()
+        if self._link_is_sim():
+            try:
+                from ..cardiag.sim.car import VIN as SIM_VIN
+                self.set_vehicle(SIM_VIN)
+            except Exception:  # noqa: BLE001
+                pass
         self.log_line(tr("Using the Car Diagnostics connection."))
         return True
+
+    def _link_is_sim(self) -> bool:
+        """The service client talks to the workbench's Demo car simulator (not to a real vehicle)."""
+        from ..cardiag.service.definitions import is_virtual_car_link
+        if self.car is not None or self.client is None:
+            return False
+        return is_virtual_car_link(getattr(self, "_link", None))
 
     def _conn_changed(self, _i) -> None:
         if self.conn.currentData() == "demo":
@@ -413,6 +428,8 @@ class ServicePanel(QWidget):
         self._packs = []
         if demo:
             self._packs.append(D.demo_pack())
+        elif self._link_is_sim():
+            self._packs.append(D.workbench_pack())
         for pack, path, _probs in D.user_packs():
             if pack is not None:
                 self._packs.append(pack)
@@ -593,9 +610,9 @@ class ServicePanel(QWidget):
             self.io_time.setValue(min(10, int(e.get("max_duration_s", 30))))
             self.io_time.setSuffix(" s")
             self.params_form.addRow(tr("Duration:"), self.io_time)
-        elif kind == "adaptations":
+        elif kind in ("adaptations", "routines"):
             flds = fields_of(e)
-            if not flds:
+            if not flds and kind == "adaptations":
                 self.params_form.addRow(QLabel(tr("Writes the fixed value {}").replace("{}", str(e.get("value", "")))))
             for f in flds:
                 if f.get("type") == "enum":
@@ -697,6 +714,10 @@ class ServicePanel(QWidget):
             self.log_line(("✔ " if res.ok else "✘ ") + str(res.status))
         if job == "fault" and res.ok:
             QTimer.singleShot(0, self.read_faults)
+            wb = self.wb
+            if wb is not None and self._link is not None and getattr(wb, "link", None) is self._link:
+                # the scan tool shows the same car: refresh its Faults tab too
+                QTimer.singleShot(0, wb.scan_all_units if getattr(wb, "unit_entries", None) else wb.read_codes)
         if res.ok and self.profile is not None:
             kind, ident = getattr(self, "_last", ("service", ""))
             self.profile.add_history(kind, f"{ident}: {res.status.en}", f"{ident}: {res.status.get('ar')}",
@@ -717,10 +738,21 @@ class ServicePanel(QWidget):
             return
         if e is None:
             return
-        if self.pack.get("demo") and self.car is None:
+        demo = self.pack.get("demo")
+        if (demo == "workbench" and not self._link_is_sim()) or (demo and demo != "workbench" and self.car is None):
             QMessageBox.warning(self, tr("Service Functions"),
                                 tr("The Demo car pack only works with the Demo car simulator."))
             return
+        params = None
+        if kind == "routines" and (e.get("input") or {}).get("fields"):
+            from ..cardiag.service.adaptation import encode_input
+            from ..cardiag.service.transport import ServiceError
+            vals = [w.currentData() if isinstance(w, QComboBox) else w.text() for w in self.inputs]
+            try:
+                params = encode_input(e, vals)
+            except ServiceError as err:
+                QMessageBox.warning(self, tr("Service Functions"), err.text.get(_lang()))
+                return
         if not self._ensure_notice():
             return
         confirmed = self._confirmed()
@@ -730,7 +762,7 @@ class ServicePanel(QWidget):
             from ..cardiag.service.runner import RoutineRunner
             r = RoutineRunner(self.client, self.pack, plugin=self.plugin, emit=self._emit)
             self.job = r
-            self._start(lambda: r.run(e, confirmed), e["id"])
+            self._start(lambda: r.run(e, confirmed, params=params), e["id"])
         elif kind == "io_controls":
             from ..cardiag.service.iocontrol import ActuatorTest
             t = ActuatorTest(self.client, self.pack, plugin=self.plugin, emit=self._emit)
@@ -1030,6 +1062,24 @@ class CarDiagService:
         panel = ServicePanel(self.win, workbench=wb)
         tabs.addTab(panel, tr("Service"))
         wb.service_panel = panel
+
+        def follow(on: bool) -> None:
+            """The workbench connected through an adapter / the ELM327 Demo car: use that connection here too."""
+            busy = panel.worker is not None and panel.worker.is_alive()
+            if busy:
+                return
+            if on and getattr(wb, "link", None) is not None:
+                if panel.conn.currentData() != "link" or panel._link is not wb.link:
+                    panel.conn.setCurrentIndex(panel.conn.findData("link"))
+                    if panel.conn.currentData() == "link" and panel._link is not wb.link:
+                        panel.connect_link()
+            elif not on and panel.conn.currentData() == "link":
+                panel._link = None
+                panel.connect_demo()
+        try:
+            wb.connected.connect(follow)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _menus(self) -> None:
         tools = next((a.menu() for a in self.win.menuBar().actions()

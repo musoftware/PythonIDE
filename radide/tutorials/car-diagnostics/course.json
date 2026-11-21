@@ -1,0 +1,19 @@
+{
+  "id": "car-diagnostics",
+  "title_ar": "تشخيص أعطال السيارات: OBD-II واللمبات ووظائف الخدمة",
+  "title_en": "Car Diagnostics: OBD-II, Warning Lights and Service Functions",
+  "language": "car-diagnostics",
+  "level": "beginner",
+  "description_ar": "دورة عربية لصاحب السيارة والميكانيكي عن أداة تشخيص السيارات في RAD IDE: كيف تعمل كمبيوترات السيارة ومقبس OBD-II ومحوّلات ELM327، والاتصال بالسيارة أو بالسيارة التجريبية، وفهم لمبات التحذير المنوّرة في التابلوه، وقراءة أكواد الأعطال وشرحها وأسبابها، والبيانات الحية ولقطة التجميد، واختبارات الجاهزية، ووظائف الخدمة مثل دورة تنفيس التبريد واختبار مروحة الردياتير، ومسح عطل معيّن بعد الإصلاح بالطريقة الصحيحة، ثم مشروع تشخيص كامل بتقرير. كل الأمثلة تعمل على محاكي السيارة المدمج دون أي جهاز، والدورة لا تتناول مانع التشغيل (الإيموبيلايزر) أو عداد المسافات أو تعطيل أنظمة الانبعاثات.",
+  "lessons": [
+    {"id": "01-car-computers-obd", "file": "01-car-computers-obd.md", "title_ar": "كيف تعمل كمبيوترات السيارة و OBD-II والمحوّلات", "minutes": 35},
+    {"id": "02-connect-demo-car", "file": "02-connect-demo-car.md", "title_ar": "الاتصال بالسيارة والسيارة التجريبية", "minutes": 35},
+    {"id": "03-warning-lights", "file": "03-warning-lights.md", "title_ar": "لمبات التحذير في التابلوه: ماذا تعني وماذا تفعل", "minutes": 40},
+    {"id": "04-fault-codes", "file": "04-fault-codes.md", "title_ar": "قراءة أكواد الأعطال وفهمها", "minutes": 45},
+    {"id": "05-live-data-freeze", "file": "05-live-data-freeze.md", "title_ar": "البيانات الحية ولقطة التجميد", "minutes": 45},
+    {"id": "06-readiness", "file": "06-readiness.md", "title_ar": "اختبارات الجاهزية (Readiness) ودورة القيادة", "minutes": 35},
+    {"id": "07-service-functions", "file": "07-service-functions.md", "title_ar": "وظائف الخدمة: دورة التبريد واختبار المروحة", "minutes": 45},
+    {"id": "08-clearing-faults", "file": "08-clearing-faults.md", "title_ar": "مسح الأعطال بالطريقة الصحيحة", "minutes": 40},
+    {"id": "09-full-diagnosis", "file": "09-full-diagnosis.md", "title_ar": "مشروع: تشخيص كامل لسيارة بتقرير", "minutes": 60}
+  ]
+}

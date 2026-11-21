@@ -288,7 +288,8 @@ class RoutineRunner(ServiceBase):
                 for name, v in values:
                     self.emit("result", name + f": {v}")
                 self._instructions(r, 100, shown)
-                fin = bi("Completed: ", "اكتمل: ") + text
+                same = str(getattr(text, "en", text)).strip().rstrip(".").lower() in ("completed", "complete", "done")
+                fin = bi("Completed.", "اكتمل.") if same else bi("Completed: ", "اكتمل: ") + text
                 self.emit("status", fin, progress=100)
                 return Result(True, fin, 100, values, raw=resp)
             if status in failed:

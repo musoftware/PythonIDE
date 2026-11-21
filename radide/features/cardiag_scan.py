@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import threading
 import time
+import weakref
 from datetime import datetime
 from pathlib import Path
 
@@ -32,7 +33,8 @@ ADAPTERS = [("demo", "Demo car (no hardware)"),
             ("demo_elm", "Demo car through the ELM327 simulator (shared with the service functions)"),
             ("elm_serial", "ELM327 / STN - USB or Bluetooth (COM port)"),
             ("elm_wifi", "ELM327 Wi-Fi (192.168.0.10:35000)"), ("elm_ble", "ELM327 Bluetooth LE"),
-            ("j2534", "J2534 PassThru device")]
+            ("j2534", "J2534 PassThru device"),
+            ("shared", "Connection from Tools > Car Connection")]
 PROTOCOLS = [("0", "Automatic"), ("6", "ISO 15765-4 CAN (11 bit, 500 kbaud)"),
              ("7", "ISO 15765-4 CAN (29 bit, 500 kbaud)"), ("8", "ISO 15765-4 CAN (11 bit, 250 kbaud)"),
              ("9", "ISO 15765-4 CAN (29 bit, 250 kbaud)"), ("5", "ISO 14230-4 KWP (fast init)"),
@@ -234,7 +236,7 @@ class ClearCodesDialog(QDialog):
         ar = _ar()
         html = [f"<h4>{_esc(tr('These codes will be cleared'))}</h4>"]
         clearable = [e for e in entries if e.kinds & {"stored", "pending"}]
-        permanent = [e for e in entries if e.kinds == {"permanent"}]
+        permanent = [e for e in entries if "permanent" in e.kinds]
         safety = []
         if clearable:
             html.append("<ul>")
@@ -295,6 +297,7 @@ class CarDiagWorkbench(QWidget):
         self.link = None
         self.vehicle = None                     # the demo vehicle when connected to the Demo car
         self.entries = []                       # last DTC read (DtcEntry)
+        self.unit_entries = []                  # faults of the other control units (UDS, Scan All Control Units)
         self.freeze = {}
         self.vinfo = None
         self.ecu_names: dict[str, str] = {}
@@ -309,7 +312,11 @@ class CarDiagWorkbench(QWidget):
         self._logger = None
         self._playback = None
         self._log_lines = 0
+        self._shared = False                    # using the Tools > Car Connection link (not ours to close)
+        self._closing_link = False
         self._build()
+        _WORKBENCHES.add(self)
+        _watch_shared_link()
         self._set_connected(False)
         for hook in list(TAB_HOOKS):
             try:
@@ -403,7 +410,10 @@ class CarDiagWorkbench(QWidget):
 
     def tab_index(self, title: str) -> int:
         for i in range(self.tabs.count()):
-            if self.tabs.widget(i).objectName() == f"CarDiagTab_{title}" or self.tabs.tabText(i) in (title, tr(title)):
+            if self.tabs.widget(i).objectName() == f"CarDiagTab_{title}" or self.tabs.tabText(i) == title:
+                return i
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == tr(title):
                 return i
         return -1
 
@@ -420,8 +430,19 @@ class CarDiagWorkbench(QWidget):
         self.b_clear.clicked.connect(lambda: self.clear_codes())
         self.b_ff = QPushButton(tr("Show Freeze Frame"))
         self.b_ff.clicked.connect(self._goto_freeze)
+        self.b_scan_all = QPushButton(tr("Scan All Control Units"))
+        self.b_scan_all.setObjectName("CarDiagScanAll")
+        self.b_scan_all.setToolTip(tr("Also read the faults of the ABS, airbag, instrument cluster, climate and other "
+                                      "units (UDS), not only the engine (OBD-II)"))
+        self.b_scan_all.clicked.connect(self.scan_all_units)
+        self.b_report = QPushButton(tr("Save Report..."))
+        self.b_report.setObjectName("CarDiagSaveReport")
+        self.b_report.setToolTip(tr("Save a diagnosis report (HTML): vehicle, faults with explanations, freeze frame, "
+                                    "readiness and live values"))
+        self.b_report.clicked.connect(lambda: self.save_report())
         self.fault_summary = QLabel(tr("Connect to a car and read the codes."))
-        v.addLayout(_hbox(self.b_read, self.b_clear, self.b_ff, 12, self.fault_summary))
+        v.addLayout(_hbox(self.b_read, self.b_scan_all, self.b_clear, self.b_ff, self.b_report, 12,
+                          self.fault_summary))
         sp = QSplitter(Qt.Orientation.Horizontal)
         self.dtc_tree = QTreeWidget()
         self.dtc_tree.setObjectName("CarDiagDtcTree")
@@ -720,7 +741,7 @@ class CarDiagWorkbench(QWidget):
         self.port.setEnabled(k in ("elm_serial", "elm_wifi", "elm_ble", "j2534"))
         self.b_demo.setEnabled(True)
         self.b_ports.setEnabled(k in ("elm_serial", "elm_ble", "j2534"))
-        self.protocol.setEnabled(k not in ("demo", "demo_elm"))
+        self.protocol.setEnabled(k not in ("demo", "demo_elm", "shared"))
         if k == "elm_wifi" and not self.port.currentText():
             self.port.setEditText("192.168.0.10:35000")
         if k in ("elm_serial", "j2534", "elm_ble") and self.port.count() == 0:
@@ -758,6 +779,9 @@ class CarDiagWorkbench(QWidget):
         if k == "demo":
             self.connect_demo()
             return
+        if k == "shared":
+            self.use_shared_link()
+            return
         port = self.port.currentData() or self.port.currentText().split(":")[0].strip() if k == "elm_serial" else             (self.port.currentData() or self.port.currentText().strip())
         proto = self.protocol.currentData()
         self.status.setText(tr("Connecting..."))
@@ -788,6 +812,46 @@ class CarDiagWorkbench(QWidget):
             self.bridge.done.emit(done, r, e)
         threading.Thread(target=thread, daemon=True, name="cardiag-connect").start()
 
+    def use_shared_link(self, link=None, ask: bool = True) -> bool:
+        """Use the connection opened with Tools > Car Connection > Connect to Car... (link slice); opens that
+        dialog first when nothing is connected yet."""
+        try:
+            from ..cardiag.link import current_link
+        except Exception:  # noqa: BLE001
+            return False
+        link = link or current_link()
+        if link is None and ask:
+            feat = getattr(self.win, "cardiag_link", None)
+            if feat is not None:
+                feat.connect_dialog()
+                link = current_link()
+        if link is None:
+            self.status.setText(tr("No car connection yet (Tools > Car Connection > Connect to Car...)"))
+            return False
+        if self.client is not None and self.link is link:
+            self._shared = True
+            return True
+        if self.client is not None:
+            self.disconnect()
+        from ..cardiag.obd.transport import LinkTransport
+        i = self.adapter.findData("shared")
+        if i >= 0:
+            self.adapter.setCurrentIndex(i)
+        self._attach(LinkTransport(link), link=link)
+        self._shared = True
+        return True
+
+    def _shared_link_changed(self, link) -> None:
+        """Tools > Car Connection connected / disconnected: follow it when this workbench uses that link."""
+        if self._closing_link:
+            return
+        if link is None:
+            closed = self.link is not None and getattr(self.link, "is_open", True) is False
+            if self.client is not None and (self._shared or closed):
+                self.disconnect()
+        elif self.client is None and self.adapter.currentData() == "shared":
+            self.use_shared_link(link, ask=False)
+
     def connect_demo(self, vehicle=None):
         """Connect to the built-in demo car (radide/cardiag/obd/vehicle.py)."""
         from ..cardiag.obd.transport import DemoTransport
@@ -813,13 +877,19 @@ class CarDiagWorkbench(QWidget):
     def disconnect(self) -> None:
         self.set_live(False)
         self.b_live.setChecked(False)
-        if self.link is not None:
+        shared, self._shared = getattr(self, "_shared", False), False
+        if self.link is not None and not shared:
+            self._closing_link = True
             try:
                 from ..cardiag.link import current_link, set_current_link
                 if current_link() is self.link:
                     set_current_link(None)
             except Exception:  # noqa: BLE001
                 pass
+            finally:
+                self._closing_link = False
+        if shared:                       # the shared connection stays open for the other car tools
+            self.transport = None
         if self.transport is not None:
             try:
                 self.transport.close()
@@ -833,10 +903,11 @@ class CarDiagWorkbench(QWidget):
     def _set_connected(self, on: bool) -> None:
         self.b_connect.setText(tr("Disconnect") if on else tr("Connect"))
         for b in (self.b_read, self.b_clear, self.b_live, self.b_ff_read, self.b_ready, self.b_tests, self.b_info,
-                  self.b_rec):
+                  self.b_rec, self.b_scan_all, self.b_report):
             b.setEnabled(on)
         self.adapter.setEnabled(not on)
         if not on:
+            self.unit_entries = []
             self.h_vin.setText("VIN: -")
             self.h_ecus.setText("")
             self.h_dtc.setText("")
@@ -898,7 +969,7 @@ class CarDiagWorkbench(QWidget):
         def done(entries, e):
             if e is not None:
                 return
-            self.entries = entries or []
+            self.entries = self._merge_units(entries or [])
             self._fill_dtcs()
             self.refresh_header()
         self.run(c.read_all_dtcs, done, "Reading trouble codes...")
@@ -914,9 +985,9 @@ class CarDiagWorkbench(QWidget):
             f = it.font(0)
             f.setBold(True)
             it.setFont(0, f)
-            if D.safety_relevant(e.code):
+            if D.safety_relevant(e.code[:5]):
                 it.setForeground(0, QColor("#d64545"))
-                it.setToolTip(0, tr(D.safety_relevant(e.code)))
+                it.setToolTip(0, tr(D.safety_relevant(e.code[:5])))
             elif "pending" in e.kinds and "stored" not in e.kinds:
                 it.setForeground(0, QColor("#c98a00"))
             self.dtc_tree.addTopLevelItem(it)
@@ -945,7 +1016,7 @@ class CarDiagWorkbench(QWidget):
         h.append(f"<p><b>{_esc(tr('System:'))}</b> {_esc(tr(D.SYSTEMS.get(code[0], '')))}<br>"
                  f"<b>{_esc(tr('Group:'))}</b> {_esc(info['group'])}<br>"
                  f"<b>{_esc(tr('Control unit:'))}</b> {_esc(self._ecu(ecu))}</p>")
-        why = D.safety_relevant(code)
+        why = D.safety_relevant(code[:5])
         if why:
             h.append(f"<p style='color:#d64545'><b>{_esc(tr('Safety-relevant:'))}</b> {_esc(tr(why))}. "
                      f"{_esc(tr('Have it checked before driving on; do not clear it just to turn the lamp off.'))}</p>")
@@ -979,18 +1050,168 @@ class CarDiagWorkbench(QWidget):
         if s.startswith("freeze:"):
             self._goto_freeze(s.split(":", 1)[1])
 
+    # ------------------------------------------------------------------ all control units (UDS)
+    def _merge_units(self, obd: list) -> list:
+        """OBD-II entries + the faults of the other control units from the last Scan All Control Units."""
+        seen = {(e.ecu, e.code[:5]) for e in obd}
+        return list(obd) + [e for e in self.unit_entries if (e.ecu, e.code[:5]) not in seen]
+
+    def scan_all_units(self) -> None:
+        """Find every control unit on the bus and read its faults with UDS ReadDTCInformation (0x19 02), besides
+        the OBD-II engine codes: ABS, airbag, cluster, climate... Needs a link (adapter or the ELM327 Demo car)."""
+        if self.client is None:
+            return
+        link = self.link
+        if link is None or not getattr(link, "is_can", False):
+            self._msg("information", "Car Diagnostics",
+                      tr("Scanning all control units needs a CAN connection through an adapter (or the Demo car "
+                         "through the ELM327 simulator). The built-in OBD-only Demo car has the engine codes only."))
+            return
+        self.set_live(False)
+        self.b_live.setChecked(False)
+        c = self.client
+        ar = _ar()
+
+        def work():
+            from ..cardiag.link import discovery
+            from ..cardiag.link.uds import UdsClient
+            from ..cardiag.obd.client import DtcEntry
+            obd = c.read_all_dtcs()
+            units, names = [], {}
+            for ecu in discovery.discover(link, identify=False):
+                rx = f"{ecu.rx:03X}" if ecu.rx < 0x800 else f"{ecu.rx:08X}"
+                name = (ecu.name_ar if ar and ecu.name_ar else ecu.name) or ""
+                if name:
+                    names[rx] = name
+                try:
+                    dtcs = UdsClient(link, ecu.tx, ecu.rx, timeout=1.0).read_dtcs(0xFF)
+                except Exception:  # noqa: BLE001 - a unit that does not answer 0x19 (UdsError, timeout) is skipped
+                    continue
+                for d in dtcs:
+                    kinds = {"uds"}
+                    if d.confirmed:
+                        kinds.add("stored")
+                    if d.pending:
+                        kinds.add("pending")
+                    if not kinds - {"uds"}:
+                        continue                  # only history / test-not-completed bits: not a current fault
+                    units.append(DtcEntry(d.text if d.ftb else d.sae, rx, kinds))
+            return obd, units, names
+
+        def done(r, e):
+            if e is not None or not r:
+                return
+            obd, units, names = r
+            self.ecu_names.update({k: v for k, v in names.items() if k not in self.ecu_names})
+            obd_ecus = {x.ecu for x in obd}
+            obd_codes = {(x.ecu, x.code[:5]) for x in obd}
+            self.unit_entries = [u for u in units if (u.ecu, u.code[:5]) not in obd_codes
+                                 and not (u.ecu in obd_ecus and u.code[0] == "P")]
+            self.entries = self._merge_units(obd)
+            self._fill_dtcs()
+            self.log_line(f"# {tr('Scan All Control Units')}: {len(names)} / {len(self.unit_entries)}")
+        self.run(work, done, "Scanning all control units...")
+
+    # ------------------------------------------------------------------ report
+    @staticmethod
+    def _table_html(table) -> str:
+        cols = table.columnCount()
+        head = "".join(f"<th>{_esc(table.horizontalHeaderItem(c).text() if table.horizontalHeaderItem(c) else '')}</th>"
+                       for c in range(cols))
+        rows = []
+        for r in range(table.rowCount()):
+            cells = [table.item(r, c).text() if table.item(r, c) else "" for c in range(cols)]
+            rows.append("<tr>" + "".join(f"<td>{_esc(x)}</td>" for x in cells) + "</tr>")
+        return f"<table><tr>{head}</tr>{''.join(rows)}</table>"
+
+    def report_html(self) -> str:
+        """The diagnosis report: vehicle, faults with explanations and causes, freeze frames, readiness, live
+        values (what the workbench has read so far), in the UI language."""
+        from ..cardiag.obd import dtc as D
+        ar = _ar()
+        h = [f"<h1>{_esc(tr('Car Diagnosis Report'))}</h1>",
+             "<table>",
+             f"<tr><th>{_esc(tr('Date'))}</th><td>{datetime.now():%Y-%m-%d %H:%M}</td></tr>",
+             f"<tr><th>VIN</th><td>{_esc(self.h_vin.text().replace('VIN:', '').strip())}</td></tr>",
+             f"<tr><th>{_esc(tr('Protocol'))}</th><td>{_esc(self.h_proto.text() or '-')}</td></tr>",
+             f"<tr><th>{_esc(tr('Check-engine lamp'))}</th><td>{_esc(self.h_mil.text())}</td></tr>",
+             f"<tr><th>{_esc(tr('Battery'))}</th><td>{_esc(self.h_volt.text().split(':')[-1].strip() or '-')}</td></tr>",
+             "</table>"]
+        h.append(f"<h2>{_esc(tr('Faults'))}</h2>")
+        if not self.entries:
+            h.append(f"<p>{_esc(tr('No trouble codes stored - the engine computers report no faults.'))}</p>")
+        else:
+            h.append(f"<table><tr><th>{_esc(tr('Code'))}</th><th>{_esc(tr('Status'))}</th>"
+                     f"<th>{_esc(tr('Control unit'))}</th><th>{_esc(tr('Description'))}</th></tr>")
+            for e in self.entries:
+                info = kb_info(e.code)
+                st = ", ".join(tr(D.KIND_TITLES[k]) for k in ("stored", "pending", "permanent") if k in e.kinds)
+                h.append(f"<tr><td><b>{_esc(e.code)}</b></td><td>{_esc(st)}</td><td>{_esc(self._ecu(e.ecu))}</td>"
+                         f"<td>{_esc(info['title'] or info['group'])}</td></tr>")
+            h.append("</table>")
+            for e in self.entries:
+                info = kb_info(e.code)
+                h.append(f"<h3>{_esc(e.code)} - {_esc(info['title'] or info['group'])}</h3>")
+                why = D.safety_relevant(e.code[:5])
+                if why:
+                    h.append(f"<p class='warn'>⚠ {_esc(tr('Safety-relevant:'))} {_esc(tr(why))}</p>")
+                if info["explain"]:
+                    h.append(f"<p>{_esc(info['explain'])}</p>")
+                elif info["manufacturer"]:
+                    h.append(f"<p>{_esc(tr('This is a manufacturer-specific code: its meaning depends on the make. Import the manufacturer definitions (CSV / JSON) to see a description.'))}</p>")
+                if info["causes"]:
+                    h.append(f"<p><b>{_esc(tr('Possible causes'))}:</b></p><ul>"
+                             + "".join(f"<li>{_esc(x)}</li>" for x in info["causes"][:5]) + "</ul>")
+                if info["checks"]:
+                    h.append(f"<p><b>{_esc(tr('What to check'))}:</b></p><ol>"
+                             + "".join(f"<li>{_esc(x)}</li>" for x in info["checks"][:5]) + "</ol>")
+        if self.freeze:
+            h.append(f"<h2>{_esc(tr('Freeze Frame'))}</h2>")
+            keep = self.ff_ecu.currentIndex()
+            for i in range(self.ff_ecu.count()):
+                self.ff_ecu.setCurrentIndex(i)
+                self._show_freeze()
+                h.append(f"<p><b>{_esc(self.ff_head.text())}</b></p>" + self._table_html(self.ff_table))
+            self.ff_ecu.setCurrentIndex(keep)
+            self._show_freeze()
+        if self.ready_table.rowCount():
+            h.append(f"<h2>{_esc(tr('Readiness'))}</h2><p>{_esc(self.ready_summary.text())}</p>"
+                     + self._table_html(self.ready_table))
+        if self.live_table.rowCount() and any(self.live_table.item(r, 1) and self.live_table.item(r, 1).text() not in ("", "-")
+                                              for r in range(self.live_table.rowCount())):
+            h.append(f"<h2>{_esc(tr('Live Data'))}</h2>" + self._table_html(self.live_table))
+        h.append(f"<p class='note'>{_esc(tr('Made with RAD IDE Car Diagnostics. Clearing a code does not repair the fault; repair the cause first.'))}</p>")
+        css = ("body{font-family:Segoe UI,Tahoma,Arial,sans-serif;margin:24px;color:#222}"
+               "table{border-collapse:collapse;margin:6px 0 14px}th,td{border:1px solid #bbb;padding:4px 8px;"
+               "text-align:start}th{background:#eef2f6}.warn{color:#b3261e;font-weight:bold}.note{color:#666}"
+               "h1{color:#1f4e79}h2{color:#1f4e79;border-bottom:2px solid #1f4e79}")
+        d = ' dir="rtl" lang="ar"' if ar else ' lang="en"'
+        return (f"<!doctype html><html{d}><head><meta charset=\"utf-8\"><title>{_esc(tr('Car Diagnosis Report'))}"
+                f"</title><style>{css}</style></head><body>{''.join(h)}</body></html>")
+
+    def save_report(self, path: str | None = None):
+        if not path:
+            start = str(Path.home() / f"car-report-{datetime.now():%Y%m%d-%H%M%S}.html")
+            path, _ = QFileDialog.getSaveFileName(self, tr("Save Report..."), start, "HTML (*.html);;All files (*)")
+            if not path:
+                return None
+        Path(path).write_text(self.report_html(), encoding="utf-8")
+        self.log_line(f"# {tr('Report saved:')} {path}")
+        return path
+
     def clear_codes(self, confirmed: bool | None = None) -> None:
         """Mode 04 after a confirmation (confirmed=True skips the dialog - tests / scripts)."""
         if self.client is None:
             return
         if confirmed is None:
-            dlg = ClearCodesDialog(self.entries, self, self.ecu_names)
+            obd = [e for e in self.entries if "uds" not in e.kinds]     # mode 04 clears the OBD (engine) codes only
+            dlg = ClearCodesDialog(obd, self, self.ecu_names)
             self.last_clear_dialog = dlg
             confirmed = dlg.exec() == QDialog.DialogCode.Accepted
         if not confirmed:
             return
         c = self.client
-        cleared_codes = [e.code for e in self.entries if e.kinds & {"stored", "pending"}]
+        cleared_codes = [e.code for e in self.entries if e.kinds & {"stored", "pending"} and "uds" not in e.kinds]
 
         def done(r, e):
             if e is not None:
@@ -1629,6 +1850,30 @@ class CarDiagWorkbench(QWidget):
         self.stop_recording()
         if self.client is not None:
             self.disconnect()
+
+
+_WORKBENCHES: "weakref.WeakSet[CarDiagWorkbench]" = weakref.WeakSet()
+_WATCHING = False
+
+
+def _watch_shared_link() -> None:
+    """One listener on the link slice's shared connection for every open workbench."""
+    global _WATCHING
+    if _WATCHING:
+        return
+    try:
+        from ..cardiag.link.manager import on_link_changed
+    except Exception:  # noqa: BLE001
+        return
+
+    def changed(link):
+        for wb in list(_WORKBENCHES):
+            try:
+                wb._shared_link_changed(link)
+            except RuntimeError:                 # widget already deleted
+                _WORKBENCHES.discard(wb)
+    on_link_changed(changed)
+    _WATCHING = True
 
 
 def _err_text(err) -> str:

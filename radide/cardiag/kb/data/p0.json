@@ -2940,6 +2940,14 @@
 "64a42a8f":[
 "No power feed to the shift solenoid (fuse, relay or wire)",
 "لا توجد تغذية كهربائية لـسولينويد التبديل (فيوز أو ريلاي أو سلك)"
+],
+"e37d095d":[
+"alternator sticking or mechanically worn",
+"الدينامو: تعلّق أو تآكل ميكانيكي"
+],
+"055fc468":[
+"Watch the live reading of the alternator and check that it makes sense for the conditions.",
+"راقب القراءة الحية لـالدينامو وتأكد أنها منطقية بالنسبة لحالة السيارة."
 ]
 },
 "codes":{
@@ -28328,6 +28336,7 @@
 "severity":"amber",
 "drive":"caution",
 "related":[
+"P065B",
 "P0622",
 "P0625",
 "P0626"
@@ -29797,6 +29806,51 @@
 "multiple-codes"
 ],
 "pids":[],
+"safety":false,
+"emissions":false,
+"source":"generic"
+},
+"P065B":{
+"title":[
+"Generator Control Circuit Range/Performance",
+"دائرة التحكم في الدينامو - الدائرة - خارج المدى/أداء"
+],
+"explain":[
+"The engine computer controls the generator (alternator) control circuit. The engine computer controls how hard the alternator charges. The part works electrically, but the result (position, pressure, speed or timing) does not follow the command.",
+"كمبيوتر المحرك يتحكم في دائرة التحكم في الدينامو. كمبيوتر المحرك يتحكم في مقدار شحن الدينامو. القطعة تعمل كهربائيًا لكن النتيجة (الوضع أو الضغط أو السرعة أو التوقيت) لا تتبع الأمر."
+],
+"causes":[
+"a4860104",
+"768a93bd",
+"e37d095d",
+"39b773e0",
+"df81ecf2",
+"79c1deab"
+],
+"checks":[
+"13d546a8",
+"055fc468",
+"695c03c5",
+"47b06024",
+"3c4cc633"
+],
+"severity":"amber",
+"drive":"caution",
+"related":[
+"P0620",
+"P0622",
+"P0625",
+"P0626"
+],
+"system":"charging",
+"monitor":"components",
+"tags":[
+"battery",
+"battery-light"
+],
+"pids":[
+66
+],
 "safety":false,
 "emissions":false,
 "source":"generic"
