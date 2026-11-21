@@ -283,6 +283,9 @@ def fit_window(w: QWidget, wrap: bool = True) -> None:
         y = min(max(c.y() - height // 2, area.top()), area.bottom() + 1 - height)
         w.setGeometry(x, y, width, height)  # (sets WA_Moved: Qt keeps this position)
         return
+    scr = screen_for(w)
+    if not big and scr is not None and scr.availableGeometry().contains(g):
+        return                              # placed by the program and inside the screen: untouched
     x = min(max(g.x(), area.left()), area.right() + 1 - width)
     y = min(max(g.y(), area.top()), area.bottom() + 1 - height)
     if (x, y, width, height) != (g.x(), g.y(), g.width(), g.height()):
@@ -354,6 +357,35 @@ def apply_small_screen_layout(mw: QMainWindow) -> None:
         mw.resizeDocks([out], [max(90, min(150, int(av.height() * 0.17)))], Qt.Orientation.Vertical)
 
 
+def keep_on_screen(w: QWidget) -> None:
+    """After the window is placed (a dialog centres itself in its own showEvent, before the window
+    system tells Qt how big the frame is): move it by the few pixels its frame may stick out."""
+    if not w.isVisible() or not w.isWindow() or w.windowState() & (
+            Qt.WindowState.WindowMaximized | Qt.WindowState.WindowFullScreen | Qt.WindowState.WindowMinimized):
+        return
+    scr = screen_for(w)
+    if scr is None:
+        return
+    av, fg = scr.availableGeometry(), w.frameGeometry()
+    if av.contains(fg) or fg.width() > av.width() or fg.height() > av.height():
+        return
+    x = min(max(fg.x(), av.left()), av.right() + 1 - fg.width())
+    y = min(max(fg.y(), av.top()), av.bottom() + 1 - fg.height())
+    w.move(x, y)                                   # move() places the frame's top-left corner
+
+
+def _recheck_later(w: QWidget) -> None:
+    from PyQt6 import sip
+
+    def run():
+        if not sip.isdeleted(w):
+            try:
+                keep_on_screen(w)
+            except RuntimeError:
+                pass
+    QTimer.singleShot(0, run)
+
+
 # ----------------------------------------------------------------------------- event filter
 class _ScreenFit(QObject):
     def eventFilter(self, obj, ev):
@@ -363,6 +395,8 @@ class _ScreenFit(QObject):
                 if isinstance(obj, QWidget):
                     if obj.isWindow():
                         fit_window(obj)
+                        if not isinstance(obj, QMenu) and obj.windowType() not in _SKIP_TYPES:
+                            _recheck_later(obj)
                     elif isinstance(obj, QDockWidget):
                         fit_dock(obj)
                     elif isinstance(obj, QTabBar):

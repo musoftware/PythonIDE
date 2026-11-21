@@ -144,11 +144,12 @@ def draw_static(buf: CellBuffer, c: TControl) -> None:
     elif t == "Separator":
         double = (c.get("style") or "single") == "double"
         line = 0xCD if double else 0xC4
+        ends = {x: (buf.get(x, c.y)[0] if buf.inside(x, c.y) else 0) for x in (c.x, c.x + c.w - 1)}
         buf.fill(c.x, c.y, c.w, 1, line, a)
         if c.get("joined") and c.w >= 2:
-            # join with the border below the ends: single / double sides
+            # join with the border under the ends: single / double sides
             for x, d in ((c.x, "r"), (c.x + c.w - 1, "l")):
-                ch = buf.get(x, c.y)[0] if buf.inside(x, c.y) else 0
+                ch = ends[x]
                 side_double = ch in (0xBA, 0xC9, 0xBB, 0xC8, 0xBC, 0xCC, 0xB9, 0xC7, 0xB6)
                 if d == "r":
                     code = (0xCC if side_double else 0xC6) if double else (0xC7 if side_double else 0xC3)

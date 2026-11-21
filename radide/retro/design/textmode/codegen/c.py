@@ -376,6 +376,7 @@ static void tui_menu(int m)
     while (!done) {
         tui_redraw();
         tui_draw_menu(m, it);
+        if (tui_dump_flag == 2 && !kbhit()) { tui_dump(); tui_run = 0; return; }
         do { k = tui_get_event(&cl); } while (!k && !cl);
         done = 0;
         if (cl) {
@@ -516,6 +517,7 @@ void tui_msgbox(const char *title, const char *text)
     tui_put(x + (w - 6) / 2, y + 4, 0, 0, "  OK  ", 0, 0, 0, 6, 0x2F, 0x2F);
     tui_int(0x10, 0x0100, 0, 0x2000, 0, 0);
     tui_mouse_show(1);
+    if (tui_dump_flag == 2 && !kbhit()) { tui_dump(); tui_run = 0; return; }
     do { k = tui_get_event(&cl); } while (!cl && k != 13 && k != 27 && k != 32);
     tui_redraw();
 }
@@ -588,7 +590,8 @@ static void tui_init(int argc, char **argv)
     union REGS r;
     int i;
     for (i = 1; i < argc; i++)
-        if (argv[i][0] == '/' && (argv[i][1] == 'D' || argv[i][1] == 'd')) tui_dump_flag = 1;
+        if (argv[i][0] == '/' && (argv[i][1] == 'D' || argv[i][1] == 'd'))
+            tui_dump_flag = (strlen(argv[i]) >= 6 && (argv[i][5] == 'K' || argv[i][5] == 'k')) ? 2 : 1;
     tui_int(0x10, 0x0003, 0, 0, 0, 0);
 @ROWSMODE@
     tui_int(0x10, 0x0300, 0, 0, 0, &r);
@@ -603,8 +606,9 @@ static void tui_main(void)
     int k, cl;
 @SPLASH@
     tui_show_screen(1);
-    if (tui_dump_flag) { tui_dump(); tui_run = 0; }
+    if (tui_dump_flag == 1) { tui_dump(); tui_run = 0; }
     while (tui_run) {
+        if (tui_dump_flag == 2 && !kbhit()) { tui_dump(); tui_run = 0; break; }
         k = tui_get_event(&cl);
         if (k) tui_handle_key(k);
         if (cl) tui_click(tui_mx, tui_my);
@@ -623,7 +627,10 @@ SPLASH = r"""    tui_blit(TSP[0]);
         } else tui_norm(getch());
     }"""
 
-ROWSMODE = {25: "", 43: "    tui_int(0x10, 0x1112, 0, 0, 0, 0);", 50: "    tui_int(0x10, 0x1112, 0, 0, 0, 0);"}
+ROWSMODE = {25: "",
+            43: "    tui_int(0x10, 0x1201, 0x30, 0, 0, 0);   /* VGA: 350 scan lines -> 43 rows with the 8x8 font */\n"
+                "    tui_int(0x10, 0x0003, 0, 0, 0, 0);\n    tui_int(0x10, 0x1112, 0, 0, 0, 0);",
+            50: "    tui_int(0x10, 0x1112, 0, 0, 0, 0);"}
 
 
 def generate(screens, old_text: str = "", app: App | None = None) -> tuple[str, list[str]]:

@@ -12,7 +12,7 @@ programs from the official source with the MinGW-w64 gcc it already uses for C:
 Everything is portable (no admin, no installer, no PATH change). The programs are used as external tools.
 
     python -m radide.agc.toolchain status
-    python -m radide.agc.toolchain install        # download + build (what Tools > Apollo AGC > Virtual AGC does)
+    python -m radide.agc.toolchain install        # download + build (what Tools > Retro > Apollo AGC > Virtual AGC does)
 """
 from __future__ import annotations
 

@@ -1,8 +1,9 @@
 ; RADKEYS.COM - put keys into the BIOS keyboard buffer (INT 16h AH=05h), so that the next program reads them.
 ; Written for RAD IDE (original code). Build: jwasm -bin -Fo=RADKEYS.COM RADKEYS.ASM
 ;
-; Usage: RADKEYS keys      (at most 15 keys fit in the BIOS buffer; spaces between keys are ignored)
-;   |  Enter      `  Esc      _  Space      ^U ^D ^L ^R  arrow keys      any other character: itself
+; Usage: RADKEYS keys      (at most 15 keys fit in the BIOS buffer; spaces between keys are ignored;
+;                          | < > cannot be used: COMMAND.COM treats them as pipe / redirection)
+;   ~  Enter      `  Esc      _  Space      ^U ^D ^L ^R  arrow keys      any other character: itself
         .model tiny
         .8086
         .code
@@ -18,7 +19,7 @@ next:   cmp si, di
         je next
         cmp al, 9
         je next
-        cmp al, '|'
+        cmp al, '~'
         jne n1
         mov cx, 1C0Dh               ; Enter (scan 1Ch, ASCII 0Dh)
         jmp push_key

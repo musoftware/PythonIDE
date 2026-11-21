@@ -165,7 +165,7 @@ class StartPage(QWidget):
         lay.addWidget(title)
         sub = QLabel("Visual RAD environment for scripting languages - design forms, write code, run and debug.")
         sub.setProperty("radRole", "muted")
-        sub.setWordWrap(True)
+        self._sub = sub
         lay.addWidget(sub)
         cols = QHBoxLayout()
         cols.setSpacing(18)
@@ -198,9 +198,12 @@ class StartPage(QWidget):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        want = QBoxLayout.Direction.TopToBottom if self.width() < 760 else QBoxLayout.Direction.LeftToRight
+        narrow = self.width() < 760         # small screens: one column, the subtitle wraps
+        want = QBoxLayout.Direction.TopToBottom if narrow else QBoxLayout.Direction.LeftToRight
         if self._cols.direction() != want:
             self._cols.setDirection(want)
+        if self._sub.wordWrap() != narrow:
+            self._sub.setWordWrap(narrow)
 
     def _box(self, title: str, column, index: int | None = None):
         box = QGroupBox(title)

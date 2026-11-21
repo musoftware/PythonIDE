@@ -143,6 +143,8 @@ def run_cli(argv: list[str]) -> int:
         m.keys(a.keys)
         m.run_seconds(a.after)
     print("DSKY:", m.dsky.summary())
+    for note in m.cpu.alarm_log[:10]:
+        print("Alarm:", note)
     return 0
 
 

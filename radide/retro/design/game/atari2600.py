@@ -93,13 +93,13 @@ def new_design(name: str = "Screen1", tv: str = "NTSC") -> Design:
         for x in range(20):
             edge = y < 8 or y >= h - 8 or x == 0
             pf.data[y * 20 + x] = 1 if edge else 0
-        bk.data[y] = 0x60 if y < h * 2 // 3 else 0x63    # dark blue sky, then a lighter band
-        pfc.data[y] = 0x1A if y >= h - 8 else 0x22       # orange ground, green frame
+        bk.data[y] = (0x84 if y < h * 2 // 3 else 0xC4) >> 1     # blue sky, then green land (COLUxx >> 1)
+        pfc.data[y] = (0x26 if y >= h - 8 else 0xC8) >> 1        # brown ground, green frame
     d.layers = [bk, pf, pfc, col]
     d.objects = [
-        {"name": "Player0", "kind": "player0", "x": 40, "y": h // 2, "sprite": "Hero", "color": 0x0E,
+        {"name": "Player0", "kind": "player0", "x": 40, "y": h // 2, "sprite": "Hero", "color": 0x1E >> 1,
          "nusiz": 0, "reflect": False, "enabled": True},
-        {"name": "Player1", "kind": "player1", "x": 110, "y": h // 2 - 20, "sprite": "Ship", "color": 0x23,
+        {"name": "Player1", "kind": "player1", "x": 110, "y": h // 2 - 20, "sprite": "Ship", "color": 0x46 >> 1,
          "nusiz": 0, "reflect": False, "enabled": True},
         {"name": "Missile0", "kind": "missile0", "x": 60, "y": h // 2 + 2, "height": 2, "size": 1, "enabled": False},
         {"name": "Missile1", "kind": "missile1", "x": 100, "y": h // 2 - 16, "height": 2, "size": 1,

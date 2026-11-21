@@ -1,0 +1,14 @@
+{
+  "name": "C64HelloC",
+  "language": "retro-c64",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.c"
+  ],
+  "retro": {
+    "system": "c64",
+    "lang": "c",
+    "main": "main.c"
+  }
+}

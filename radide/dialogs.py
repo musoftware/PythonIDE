@@ -34,6 +34,9 @@ LANGUAGE_GROUPS = [
                "python-ursina", "godot3d"]),                                     # 3D games (round 7, games3d/)
     ("Retro Games", ["retro-atari2600", "retro-nes", "retro-gameboy", "retro-c64", "retro-zx"]),  # docs/RETRO.md
     ("Retro", ["retro-dos", "retro-romhack"]),                                  # old games / DOS programs (docs/RETRO.md)
+    ("DOS", ["dos-qbasic", "dos-pascal", "dos-c", "dos-asm", "dos-batch",      # DOS development (radide/retro/dos)
+             "dos-tuiforms"]),                                               # text-mode forms (retro/design/textmode)
+    ("Space & Science", ["agc-yul", "fortran-legacy"]),     # Apollo AGC + Fortran 66/77 (docs/RETRO.md)
 ]
 BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-qt": ("Qt", "#41CD52"),
          "ring-qt": ("Rg", "#2C3E50"), "ring-app": ("Rg", "#34495E"), "csharp-bridge": ("C#", "#178600"), "powershell-bridge": ("PS", "#012456"),
@@ -52,7 +55,11 @@ BADGE = {"vb-basic": ("VB", "#5C2D91"), "python-tk": ("Py", "#3572A5"), "python-
          "retro-gameboy": ("GB", "#5B6E2D"), "retro-c64": ("C64", "#4B3FA5"), "retro-zx": ("ZX", "#1F1F1F"),
          "retro-dos": ("DOS", "#0000AA"), "retro-romhack": ("ROM", "#7A1F5C"),
          "aspnet-web": ("ASP", "#512BD4"), "spring-web": ("Sp", "#6DB33F"), "rails-web": ("RoR", "#CC0000"),
-         "nestjs-web": ("Ns", "#E0234E")}
+         "nestjs-web": ("Ns", "#E0234E"),
+         "dos-qbasic": ("QB", "#0000A8"), "dos-pascal": ("TP", "#00A8A8"), "dos-c": ("TC", "#A80000"),
+         "dos-asm": ("A16", "#A85400"), "dos-batch": ("BAT", "#545454")}
+BADGE.update({"agc-yul": ("AGC", "#1F3A5F"), "fortran-legacy": ("F77", "#6B4E16")})     # docs/RETRO.md
+BADGE.update({"dos-tuiforms": ("TUI", "#0000AA")})                                   # docs/RETRO.md
 TEMPLATE_ICONS = {"windows": "SP_ComputerIcon", "dialog": "SP_MessageBoxInformation",
                   "data": "SP_FileDialogDetailedView", "console": "rad:console",
                   "library": "SP_DriveHDIcon"}

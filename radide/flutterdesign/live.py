@@ -853,6 +853,14 @@ class PreviewPane(QWidget):
     rectsChanged, issuesChanged) and calls ``pane.live.set_screen / push_patch / select``.
     """
 
+    def changeEvent(self, ev):  # noqa: N802 - Qt API
+        """The IDE language changed: the device names (combo items, not translated by radide.i18n) follow."""
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.LanguageChange and hasattr(self, "cbo_device"):
+            for i, (name, w, h, _pf) in enumerate(DEVICES[:self.cbo_device.count()]):
+                self.cbo_device.setItemText(i, f"{_tr_name(name)}  {w}x{h}")
+        super().changeEvent(ev)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("flutterPreviewPane")

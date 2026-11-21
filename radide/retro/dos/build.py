@@ -149,7 +149,8 @@ class Builder:
         except OSError:
             pass
         run = dosbox.DosRun(mounts=[("C", self.folder)] + mounts, commands=commands, path=path, env=env or {},
-                            cycles="max", memsize=32, sound=False, core="dynamic")
+                            cycles="max", memsize=32, sound=False, core="dynamic",
+                            extra={"dos": {"lfn": "true"}})        # long file names for the DJGPP-based fbc
         self.log("DOSBox-X (no window): " + " && ".join(commands))
         rc, timed_out = dosbox.run_headless(run, self.build_dir, timeout, name="build.conf", log=self.log)
         if timed_out:
@@ -216,7 +217,7 @@ class Builder:
         ppc = toolchain.fpc_compiler()
         unit_out = self.build_dir / "units"
         unit_out.mkdir(parents=True, exist_ok=True)
-        args = [ppc, "-Tmsdos", f"-Wm{model.capitalize()}", "-XX", "-Mtp", "-vewnhi", f"-Fu{units}\\*",
+        args = [ppc, "-Tmsdos", f"-Wm{model.capitalize()}", "-XX", "-Mtp", "-vewn", f"-Fu{units}\\*",
                 f"-Fu{self.folder}", f"-Fi{self.folder}", f"-FD{Path(ppc).parent}", f"-FU{unit_out}",
                 f"-o{out}", "-Xm"]
         if com:

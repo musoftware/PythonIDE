@@ -1,0 +1,26 @@
+; gb.inc - Game Boy hardware registers (written for RAD IDE)
+DEF rP1   EQU $FF00   ; joypad
+DEF rDIV  EQU $FF04
+DEF rIF   EQU $FF0F
+DEF rNR52 EQU $FF26   ; sound on/off
+DEF rLCDC EQU $FF40   ; LCD control
+DEF rSTAT EQU $FF41
+DEF rSCY  EQU $FF42
+DEF rSCX  EQU $FF43
+DEF rLY   EQU $FF44   ; current scanline (144-153 = vertical blank)
+DEF rDMA  EQU $FF46
+DEF rBGP  EQU $FF47   ; background palette
+DEF rOBP0 EQU $FF48   ; sprite palette 0
+DEF rOBP1 EQU $FF49
+DEF rWY   EQU $FF4A
+DEF rWX   EQU $FF4B
+DEF rIE   EQU $FFFF
+
+DEF _VRAM     EQU $8000
+DEF _SCRN0    EQU $9800
+DEF _OAMRAM   EQU $FE00
+
+DEF LCDC_ON      EQU %10000000
+DEF LCDC_BG8000  EQU %00010000
+DEF LCDC_OBJ_ON  EQU %00000010
+DEF LCDC_BG_ON   EQU %00000001

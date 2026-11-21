@@ -1,0 +1,21 @@
+{
+  "name": "Disasm2600Smiley",
+  "language": "retro-atari2600",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ],
+  "retro": {
+    "system": "atari2600",
+    "lang": "asm",
+    "main": "main.asm",
+    "output": "Disasm2600Smiley.bin",
+    "original": "rom/Smiley2600.bin",
+    "disassembly": {
+      "source": "Smiley2600.bin",
+      "sha1": "c0193e90dff1347188b16d1a072ea1d525c59ba3",
+      "system": "atari2600"
+    }
+  }
+}

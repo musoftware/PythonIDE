@@ -233,7 +233,8 @@ class DeviceBar(QWidget):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(6)
-        lay.addWidget(QLabel("Device:"))
+        self.device_label = QLabel(_tr("Device:"))        # (texts inside the designer are not translated by
+        lay.addWidget(self.device_label)                  #  radide.i18n: tr() here and in relabel())
         self.combo = QComboBox()
         for d in DEVICES.values():
             self.combo.addItem(display_name(d), d.id)       # (combo items are not translated by radide.i18n)
@@ -250,7 +251,7 @@ class DeviceBar(QWidget):
             b.clicked.connect(lambda _=False, o=o: chrome.set_orientation(o))
             lay.addWidget(b)
             self.buttons[o] = b
-        self.posture_label = QLabel("Posture:")
+        self.posture_label = QLabel(_tr("Posture:"))
         self.posture_label.setToolTip("How the foldable is held (form property Posture)")
         lay.addWidget(self.posture_label)
         self.posture_buttons = {}
@@ -282,6 +283,8 @@ class DeviceBar(QWidget):
         super().changeEvent(ev)
 
     def relabel(self) -> None:
+        self.device_label.setText(_tr("Device:"))
+        self.posture_label.setText(_tr("Posture:"))
         for i in range(self.combo.count()):
             self.combo.setItemText(i, display_name(self.combo.itemData(i)))
 

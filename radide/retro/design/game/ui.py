@@ -576,6 +576,8 @@ class GameDesigner(QWidget):
         if self.doc.system == "nes":
             tb.addAction("Palettes...", self.edit_nes_palettes)
         tb.addAction("Edit Tile / Sprite...", self.edit_current_graphic)
+        if self.doc.system in ("nes", "gb"):
+            tb.addAction("Import Tiles...", lambda: self.import_tiles())
         tb.addAction("Export PNG...", lambda: self.export_png())
         tb.addSeparator()
         tb.addAction("Generate Code", lambda: self.generate())
@@ -601,6 +603,8 @@ class GameDesigner(QWidget):
         psc.setWidget(self.picker)
         psc.setWidgetResizable(False)
         ll.addWidget(psc, 1)
+        left.setMinimumWidth(200)
+        left.setMaximumWidth(330)
         split.addWidget(left)
 
         self.canvas = Canvas(self)
@@ -635,7 +639,9 @@ class GameDesigner(QWidget):
         rl.addWidget(QLabel("Properties"))
         self.props = PropertyGrid(self)
         rl.addWidget(self.props, 2)
+        right.setMaximumWidth(380)
         split.addWidget(right)
+        split.setStretchFactor(1, 1)
         split.setSizes([260, 900, 300])
         lay.addWidget(split, 1)
         self.status = QLabel("")
@@ -711,6 +717,7 @@ class GameDesigner(QWidget):
         names = [lay.name for lay in self.doc.layers] + [OBJECTS]
         for n in names:
             it = QListWidgetItem(n)
+            it.setData(ROLE, n)
             it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             vis = self.objects_visible() if n == OBJECTS else self.doc.layer(n).visible
             it.setCheckState(Qt.CheckState.Checked if vis else Qt.CheckState.Unchecked)
@@ -722,7 +729,7 @@ class GameDesigner(QWidget):
 
     def _select_layer_name(self, name: str) -> None:
         for i in range(self.layer_list.count()):
-            if self.layer_list.item(i).text() == name:
+            if self.layer_list.item(i).data(ROLE) == name:
                 self.layer_list.setCurrentRow(i)
                 return
 
@@ -730,7 +737,7 @@ class GameDesigner(QWidget):
         it = self.layer_list.item(row)
         if it is None:
             return
-        self.cur_layer = it.text()
+        self.cur_layer = it.data(ROLE) or it.text()
         if self.cur_layer == OBJECTS and self.tool not in ("select",):
             self.set_tool("select")
         elif self.cur_layer != OBJECTS and self.tool == "select":
@@ -740,10 +747,11 @@ class GameDesigner(QWidget):
 
     def _layer_toggled(self, it: QListWidgetItem) -> None:
         on = it.checkState() == Qt.CheckState.Checked
-        if it.text() == OBJECTS:
+        name = it.data(ROLE) or it.text()
+        if name == OBJECTS:
             self.doc.settings["_objects_visible"] = on
         else:
-            lay = self.doc.layer(it.text())
+            lay = self.doc.layer(name)
             if lay is not None:
                 lay.visible = on
         self.render()
@@ -1168,6 +1176,36 @@ class GameDesigner(QWidget):
             self.values[lay.name] = len(d.tiles) - 1
         self.refresh_all()
         self.edit_tiles(len(d.tiles) - 1, 1, 1)
+
+    def import_tiles(self, path=None, first: int = 0) -> int:
+        """Load tiles made in the retro tile editor (or any CHR data): NES .chr / .nes (CHR ROM), Game Boy
+        .2bpp / .gb. Replaces tiles from *first* on; returns the number of tiles read."""
+        from .compat import chr_offset, decode_tile
+        d = self.doc
+        if d.system not in ("nes", "gb"):
+            return 0
+        if path is None:
+            filt = "NES tiles (*.chr *.nes)" if d.system == "nes" else "Game Boy tiles (*.2bpp *.chr *.gb)"
+            f, _ = QFileDialog.getOpenFileName(self, "Import Tiles", str(self.path.parent if self.path else ""),
+                                               filt + ";;All files (*)")
+            if not f:
+                return 0
+            path = f
+        data = Path(path).read_bytes()
+        off = chr_offset(data) if d.system == "nes" else 0
+        n = max(0, min(512 if d.system == "nes" else 256, (len(data) - off) // 16) - first)
+        if n <= 0:
+            return 0
+        self._begin()
+        fmt = "nes" if d.system == "nes" else "gb"
+        for i in range(n):
+            while len(d.tiles) <= first + i:
+                d.tiles.append(bytearray(64))
+            d.tiles[first + i] = decode_tile(fmt, data[off + i * 16:off + i * 16 + 16])
+        self._commit("Import tiles")
+        self.refresh_all()
+        self.log(f"[game designer] imported {n} tiles from {Path(path).name}")
+        return n
 
     def edit_nes_palettes(self) -> None:
         dlg = NESPaletteDialog(self, (self.doc.palette + NES.DEFAULT_PALETTES)[:8], NES.master_palette())

@@ -1,0 +1,17 @@
+{
+  "name": "GameBoySmiley",
+  "language": "retro-gameboy",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm",
+    "gb.inc"
+  ],
+  "retro": {
+    "system": "gameboy",
+    "lang": "asm",
+    "main": "main.asm",
+    "fix": true,
+    "title": "GAMEBOYSMILEY"
+  }
+}

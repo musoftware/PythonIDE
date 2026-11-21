@@ -655,3 +655,155 @@ that pass:
 * **Program Input bar** also for loose-folder console programs (Ctrl+F5 and F5), docked as a full-width row
   under the Output tabs instead of a narrow column beside them.
 * Arabic: the Help > Help Files (CHM) entry of every course (`"{} (Arabic, CHM)"`) and the Assembly course title.
+
+## CPU view (OllyDbg style) and the live assembly editor
+
+**Debug > Windows > CPU (OllyDbg Style)** (Alt+C) is one dock with four synchronised panes. It works for every gdb
+session (assembly, C, C++, Rust, Fortran: `radide/nativedbg.py`) and for RAD IDE's 8086 emulator
+(`radide/emu8086`). It comes up by itself at the first stop of a native assembly program (Debug > "CPU View at
+First Stop" turns that off); for the emulator it is one click away (the emulator has its own dock).
+
+| Pane | What it shows / does |
+|---|---|
+| Disassembly | arrows column (every jmp / jcc / loop inside the listing; the arrow of the current conditional jump is red when it will be taken, grey and dashed when not), address + label, bytes, instruction (targets by name), comment (the user's comment, else the source line `main.asm:25  add rax, [rbx]`, else the referenced string). Current instruction highlighted, breakpoints in red. Info line under it: "Jump is taken / NOT taken" with the reason (`JNE: not equal / not zero (ZF=0). Now ZF=1.`; bilingual tooltip), the destination and the address of the memory operand. |
+| Registers | General page (changed values red, a comment such as `<.next>` / `<msg>`), the flag bits as buttons (click toggles the flag in the program; tooltip explains each flag in English and Arabic), FPU and SSE pages (read only while shown). Double-click / context menu: Modify, Increment, Decrement, Zero, Follow in Dump / Disassembler / Stack. |
+| Dump | 16 rows of hex + ASCII from any address; double-click a byte to edit it; changed bytes red; PgUp / PgDn; Ctrl+G; Edit Bytes. |
+| Stack | from the stack pointer (SP row marked, BP marked), with `Return to show (main.asm:31)` for return addresses (the bytes before the value decode as a CALL) and `ASCII "..."` / `UNICODE "..."` for pointers to strings. Double-click follows the value in the dump. |
+
+Keys while the CPU view has the focus (they do not steal the IDE's keys elsewhere): **F2** breakpoint, **F4** run
+to cursor, **F7** step into, **F8** step over, **Ctrl+F9** execute till return (8086: stops *on* the RET like
+OllyDbg; native: gdb's finish, back in the caller), **F9** run, **Ctrl+G** go to address / expression (number,
+label, register, `rsp+8`, `[rbp-8]`, `CS:IP` for 8086), **Space** assemble (NASM syntax for native programs,
+gdb's `QWORD PTR` / `[rip+0x..]` forms accepted; the 8086 assembler for the emulator; shorter code is padded with
+NOPs, longer code asks first), **Ctrl+E** binary edit, **;** comment, **:** label, **Enter** follow, **-** back,
+**\*** current instruction. Context menu: Follow, Follow in Dump, Search for > Command / Constant / All
+Referenced Strings, Go to Source Line.
+
+Comments and labels are kept per project in `<project>/.radide/cpu_notes.json` (next to the program without a
+project), keyed by the program name and the *static* address (run-time address minus the ASLR slide of
+`AsmDapSession`), so they survive the next debugging session.
+
+**The assembly editor** (every Monaco editor of an assembly file, any dialect):
+
+* jump arrows in the gutter for jmp / jcc / loop / call whose target label is in the same file (also while not
+  debugging; NASM local labels resolve to their parent);
+* caret on a register: every read (blue) and write (orange) of that register (al / ax / eax / rax are one
+  register) in the same procedure is marked, also in the overview ruler; `xor eax, eax` counts as a write;
+* while debugging: inline values after each executed line (`; rax=0x3  rbx=0x7FF7...  CF=0 ZF=0 ...` - the
+  registers of the line and the flags the instruction writes / tests), the current-line arrow, the arrow of the
+  current conditional jump coloured taken / not taken, and a hover on any register with its live value (hex,
+  unsigned, signed, characters, and "changed by the last step (was ...)").
+
+Modules: `radide/asm_intel/cpuview/` - `analysis.py` (pure: source jumps, register reads / writes, procedure ranges,
+inline values, jcc evaluation, capstone decoding with re-synchronisation, effective addresses, return-address and
+string detection, one-line assemblers), `backend.py` (`NativeBackend` over the nativedbg helpers - gdb's
+disassemble decides the boundaries and symbols, capstone analyses each instruction; `EmuBackend` over
+`Emu8086Session` / `Machine`), `notes.py`, `texts.py` (English / Arabic), `panes.py` (the Qt view),
+`editor_live.py` (the script injected into the Monaco page + `LiveSession`); IDE glue:
+`radide/features/asm_cpu_view.py` (dock, menu, stop / resume / finish hooks, editor ready hook). Nothing in
+nativedbg.py, native_debug.py or radide/emu8086 was changed.
+
+Tests: `samples/Tests/Assembly/SmartCpuView/test_cpu_analysis.py` (40 pure checks) and `test_cpu_view.py` (55 checks
+in the IDE: NasmLoop under gdb and Emu8086Loop under the emulator, Arabic + dark screenshots; `QA_REAL=1` also
+captures the editor with its arrows and inline values).
+
+## Smart checks: Check by running, Explain this line, What-if (`radide/asm_sim`)
+
+Code: `radide/asm_sim/` (no Qt) and `radide/features/asm_smart_sim.py` (the IDE side). The program runs in a
+sandbox - only its own sections, a 1 MB stack, a 4 MB heap and stub slots exist; nothing touches the real system -
+and every runtime mistake becomes a finding with a rule id `sim.*`, the line, and English + Arabic texts: a short
+message, **what happened** (inside the CPU, for a beginner), **how to fix** (a concrete change) and a reference
+(the asm_intel instruction entry / Intel SDM, or a topic page: Windows x64 convention, NASM sections ...).
+
+### Engines
+
+| Source | Engine |
+|---|---|
+| NASM, Windows x64 / x86, Linux x86-64 / i386 | NASM writes an object file (`-f win64 / win32 / elf64 / elf32`) with a listing; `objload.py` reads the COFF / ELF sections, symbols (also local labels) and relocations, links it in memory (other project modules that define a `global` the file declares `extern` are linked too, `__imp_` symbols get pointer slots) and maps addresses to lines and data labels (with sizes). `x86run.py` runs it in **Unicorn** (pip `unicorn`, official PyPI; `capstone` decodes) |
+| 16-bit DOS (`abi_of` = dos16 / `emu8086.detect`) | RAD IDE's 8086 emulator (`radide/emu8086`), stepped by `emu16.py` with the same rule ids |
+| MASM / FASM / GNU as | `status = "unsupported"` with a bilingual note (use F5 and the CPU view) |
+
+Without `unicorn` the 32 / 64-bit checks answer `status = "unavailable"`; the window shows **Install Unicorn**
+(`check.install_unicorn()`: `pip install unicorn capstone` from https://pypi.org/simple into the IDE's Python).
+Library calls are imitated by `stubs.py` (printf / puts / scanf / gets / fgets / getchar / sprintf, string and
+memory functions, malloc / calloc / free, rand / time, exit, ExitProcess, GetStdHandle / WriteConsoleA /
+ReadConsoleA / WriteFile / ReadFile, MessageBoxA / W (logged, returns IDOK), GetComputerNameA, Sleep,
+GetTickCount ...; Linux `syscall` / `int 80h` write / read / exit). Pointer arguments are checked; output is
+collected; input comes from the window's Input box; every call is logged with its line; unknown functions
+return 0 (`sim.unknown_extern`, info). 32-bit stdcall stubs end with `ret n` (`_Name@n` or the Win32 table).
+Limits: 500 000 instructions / 12 s from the IDE (8086: 300 000).
+
+### Rules
+
+| Rule | Detected when |
+|---|---|
+| `sim.stack_imbalance` | at `ret` the stack pointer is not where it was right after the `call` (pushes / pops counted, cdecl caller without `add esp, n`) |
+| `sim.bad_return` | the stack pointer is right but the return address there was overwritten (line of the last write) |
+| `sim.callee_saved` | at `ret` a register the ABI gives to the caller changed (Win64 RBX RBP RDI RSI R12-R15, System V RBX RBP R12-R15, 32-bit EBX ESI EDI EBP; `main` included) |
+| `sim.misaligned_call` / `sim.no_shadow_space` | 64-bit call of a library function with RSP not 16-aligned / (Win64) the 32-byte home area overlapping the caller's return address |
+| `sim.null_deref` / `sim.mem_violation` | access below 64 KB / to unmapped memory, with the faulting instruction and the registers inside `[ ]` |
+| `sim.write_readonly` / `sim.exec_data` / `sim.ran_off_end` / `sim.bad_jump` / `sim.bad_opcode` | write to `.text` / `.rdata`, running into data, past the last instruction, to nowhere, invalid bytes |
+| `sim.stack_overflow` | the stack grew past 1 MB (recursion without a base case) |
+| `sim.div_zero` / `sim.div_overflow` | `#DE`, explained with the divisor and EDX:EAX (missing `xor edx, edx` / `cdq`) |
+| `sim.buffer_overflow` | a write outside the data label the instruction points into: from its relocation, or from the register loaded with `lea` / `mov reg, label` (copied by `mov`, kept by `add` / `inc` ...); names the variable that gets damaged |
+| `sim.uninit_read` | a stack byte below the entry stack pointer read before anything was written there (`[rbp-8]`) |
+| `sim.infinite_loop` | the step limit: the hottest backward jump, its condition and whether the compared registers changed |
+| `sim.bad_pointer_arg` | a library function got an invalid pointer (`mov rcx, [msg]` instead of `lea rcx, [msg]`) |
+| `sim.waiting_input` / `sim.unknown_extern` | info only |
+
+### API
+
+```python
+from radide.asm_sim.check import check, explain_line, prepare
+res = check(text, path, stdin="5\n")                  # whole program (main / _main / start / project entry)
+res = check(text, path, proc_line=42, init_regs={"rcx": 3})   # the procedure that contains line 42
+res = check(text, path, lines=(10, 20))               # only the selected lines
+res.findings[i].to_dict(lang) / .issue_dict(lang) / .markdown(lang)   # rule, line, severity, texts, ref
+info = explain_line(text, path, 37, iteration=-1)     # re-runs and records line 37 (all its executions)
+from radide.asm_sim.explain import explain_step, condition_text, flag_table
+explain_step("add eax, ebx", before_regs, after_regs, writes, reads, next_ins="jle done")   # also for debugger state
+from radide.asm_sim.whatif import whatif
+whatif("add eax, ebx\njc over\nover:", "eax=0xFFFFFFFF ebx=1 CF=0 [0x2000]=1,2", bits=32)
+```
+
+`explain_step` gives `what_en / what_ar` (the instruction in words with its operands), `changes` (registers and
+memory before -> after, hex + decimal + signed), `flags` (every flag the instruction sets with its reason: "CF=1
+because 5 < 7 as unsigned numbers: borrow") and `jump` (taken / not taken, in terms of the compared values:
+"'jle .done' will NOT be taken ... 12 <= 10 is false"). The CPU view (or anything that has a debugger state) can
+call it with the registers before / after a step.
+
+**Diagnostics contract with the analyzer (radide/asm_lint).** `Finding.issue_dict(lang)` has the shape of
+`asm_lint.model.Issue.to_dict` (0-based `line`, `col`, `endLine`, `endCol`, `severity`, `message`, `message_en/ar`,
+`why`, `fix`, `markdown`, `url`, `mnem`, `source = "sim"`, `fixes = []`). After a run the IDE calls
+`radide.asm_lint.publish_external(editor, "sim", issues)` when the analyzer defines it (it should merge them with
+its own issues and show them in its hover / Problems UI); until then the findings are set as Monaco markers
+with the owner `rad-asm-sim` (never replacing the analyzer's `rad` markers), plus Error List rows `sim.*` (kept by
+a `win.diag_providers` entry while the checked text is unchanged).
+
+### In the IDE (`radide/features/asm_smart_sim.py`)
+
+* **Debug > Assembly Checks**: Check by Running (**Ctrl+Shift+F5**), Check This Procedure, Check Selection,
+  Explain This Line (**Ctrl+Shift+F1**), What-If Console, Assembly Checks Window; the first three and Explain are
+  also in the assembly editor's context menu. Shortcuts are only set when no other action uses them.
+* The **Assembly Checks** dock: Input (program input, `\n` between lines) and Registers (start values of a
+  procedure check: `rcx=10 rdx=3`); tabs **Findings** (severity / line / problem; the details pane shows the UI
+  language first and the other language below, with the reference link; double-click goes to the line), **Program
+  Output** (what the program printed + the call log), **Explain** (execution # of the line: 0 = the last one; the
+  explanation in both languages + the flags table), **What-If** (16 / 32 / 64-bit, start values for registers /
+  flags / memory, each step explained, a CF ZF SF OF PF AF DF table with their meanings). Runs happen in a worker
+  thread; links open only when `RADIDE_NO_BROWSER` is not set.
+
+### Tests (`samples/Tests/Assembly/SmartSim`)
+
+* `buggy/*.asm` - 16 programs with one mistake each (`; EXPECT: sim.rule` on the line where it must be reported):
+  stack imbalance, cdecl without clean-up, null pointer, value instead of address, divide by zero / overflow,
+  buffer overflow, endless loop, misaligned call without shadow space, uninitialised local, callee-saved register,
+  no `ret`, and four 8086 programs. `correct/*.asm` - four clean programs (Win64 procedures, 32-bit cdecl,
+  Linux syscalls, 8086 procedure).
+* `tests/test_sim.py` - headless, 82 checks: every expectation at the right line, complete bilingual texts, no
+  findings for the correct programs and the IDE's own samples, procedure / selection / module-without-main /
+  unsupported dialect, explain_line (x64 iterations, the jump prediction, 8086), 14 What-if explanations.
+* `tests/test_ide_sim.py` - the real IDE (qh.py, QSettings "RADIDE-TEST"): menu + shortcuts, Check by Running from
+  the menu action, Findings / details / Monaco markers (owner `rad-asm-sim`) / Error List / diag provider, Explain
+  This Line (execution 2 of 10), What-If + flags table, context menu, buffer overflow + Program Output, an 8086
+  file, the Arabic UI (findings, details right-to-left, explanation); screenshots `asm_sim_*.png`.

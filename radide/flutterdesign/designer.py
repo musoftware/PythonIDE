@@ -653,6 +653,14 @@ class FlutterDesigner(QWidget):
     openCode = pyqtSignal(object, int)      # Path, 1-based line - the IDE opens the user's Dart file there
     message = pyqtSignal(str)
 
+    def changeEvent(self, ev):  # noqa: N802 - Qt API
+        """The IDE language changed: the device names (combo items, not translated by radide.i18n) follow."""
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.LanguageChange and hasattr(self, "cbo_device"):
+            for i, d in enumerate(DEVICES[:self.cbo_device.count()]):
+                self.cbo_device.setItemText(i, f"{_device_label(d[0])}  {d[1]}x{d[2]}")
+        super().changeEvent(ev)
+
     def __init__(self, path=None, screen: M.Screen | None = None, project_folder=None, live: bool | None = None,
                  parent=None):
         super().__init__(parent)
@@ -879,8 +887,9 @@ class FlutterDesigner(QWidget):
         if mode == "size" and not self.this_size():
             self.edit_size = VF.sizes(self.screen)[0]["id"]
             self._show_size(self.edit_size)
-        self.status("Edits change only " + VF.label(VF.size(self.screen, self.edit_size) or {"id": "?"})
-                    if self.this_size() else "Edits change every size")
+        self.status(_device_label("Edits change only {}").format(
+            _device_label(VF.label(VF.size(self.screen, self.edit_size) or {"id": "?"})))
+            if self.this_size() else _device_label("Edits change every size"))
         self._settings_changed()
         self.inspector.inspect(self.selected, force=True)
 

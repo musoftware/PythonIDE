@@ -1,6 +1,7 @@
 """Tiny DOS helper programs RAD IDE puts next to a run (no Qt in here).
 
-    RADKEYS.COM  stuff keys into the BIOS keyboard buffer (``RADKEYS 1|q``: "1", Enter, "q")
+    RADKEYS.COM  stuff keys into the BIOS keyboard buffer (``RADKEYS 1~q``: "1", Enter, "q";
+                 ` = Esc, _ = Space, ^U ^D ^L ^R = arrows; | < > cannot be used on a DOS command line)
     RADSCR.COM   save the screen: text -> C:\\_SCREEN.TXT, mode 13h -> C:\\_SCR13.RAW (pixels + palette)
     RADCAP.COM   resident: saves the last mode 13h frame when the program switches back to text mode
 
@@ -19,15 +20,15 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parent / "helpers_src"
 
 _COM = {
-    "RADKEYS.COM": "eNrb18jQJdfAYPS/18L6e3H4GhuFku82nCWfbWpKWXfyyry2t0kAMqQZX5vZxAMZCpavdW3iSlWBarXXqNzfyeBhE1oivZ"
-                   "MhwMalRGQng7eNTwnvTgZfm6ASttfru04Yvd3Celbs9dIdDD5nFQHOpyor",
-    "RADSCR.COM": "eNrb4cDQd0BtgSfDIiYmtYVeDItZmNQWtDBwHShl2iDx78AiZqYGOyYm4ZJyEMVewg+imMuYXy5j2MWw4zXzLoYNat1mfg"
-                  "x9h/azsXbJMTN187Ewdb9X62JpPsbUwer+6Kv13xK+Ltf/NgolLEBDmf1fvzvOysvVfJzp3+nSS93nG1+ysW6xCTQ+uesp"
-                  "41nFyCL/7htbHHaxsZ5V3GJ3VvG1w67jzEYH3u06ybyfjWknA/MbkJm/ttgA1X8Bqi9S6L4ht4NhQd8N40s7GX5tcTirKL"
-                  "/FAahuFxsTxIQdDD5nFZ2tYuKDnYNcXf30QiJCGKBcQ2O9IMdwBhAAAIW4Y64=",
-    "RADCAP.COM": "eNp7OZmZAQScrWLig52DDI31ghzDGRr+MJRK6zXYsTMylAoHyO1wYOi7scCTQd5GOKKU+QUrg95/PWZGvWNs7IyMAcGBQe"
-                  "FyfPK7jjMbHXi36yTz/mmMOxmY33Swuj/6tcXG+OQuDsazikUK3TfkdjAs6LthfGknw68tDmcV5bc4ANXtmgaU3WIH5MZH"
-                  "RUZHgM1kOMwwCkbBCAY7BEzPKnbKMTP2sLEy7hBQ3SUGzCW7lrJsZLn8ageD4VlFAGtDP4s=",
+    "RADKEYS.COM": "eNrb18jQJdfAYPS/18L6e3H4GhuFku82nCWfbepKWXfyyry2t0kAMqQZX5vZxAMZCpavdW3iSlWBarXXqNzfyeBhE1oivZMh"
+                   "wMalRGQng7eNTwnvTgZfm6ASttfru04Yvd3Celbs9dIdDD5nFQHPSyot",
+    "RADSCR.COM": "eNrb4cDQd0BtgSfDIiYmtYVeDItZmNQWtDBwHShl2iDx78AiZqYGOyYm4ZJyEMVewg+imMuYXy5j2MWw4zXzLoYNat1mfgx9"
+                  "h/azsXbJMTN187Ewdb9X62JpPsbUwer+6Kv13xK+Ltf/NgolLEBDmf1fvzvOysvVfJzp3+nSS93nG1+ysW6xCTQ+uesp41nF"
+                  "yCL/7htbHHaxsZ5V3GJ3VvG1w67jzEYH3u06ybyfjWknA/MbkJm/ttgA1X8Bqi9S6L4ht4NhQd8N40s7GX5tcTirKL/FAahu"
+                  "FxsTxIQdDD5nFZ2tYuKDnYNcXf30QiJCGKBcQ2O9IMdwBhAAAIW4Y64=",
+    "RADCAP.COM": "eNp7OYOZAQScrWLig52DDI31ghzDGRr+MJSw2jL5l0rrNdixMzKUCgfI7XBg6LuxwJNB3kY4opT5BSuD3n89Zka9Y2zsjIwB"
+                  "wYFB4XJ88ruOMxsdeLfrJPP+2Yw7GZjfdLC6P/q1xcb45C4OxrOKRQrdN+R2MCzou2F8aSfDry0OZxXltzgA1e2aDZTdYgfk"
+                  "xkdFRkeAzWQ4zDAKRsEIBjsETM8qdsoxM/awsTLuEFDdJQbMJbtWsWxkufxqB4PhWUUAewtApg==",
 }
 
 

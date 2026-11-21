@@ -117,7 +117,7 @@ if QObject is not object:
 
 
 # ============================================================================ debugger console
-STOP_RX = re.compile(r"\x1a\x1a(?P<file>[^:\n]+):(?P<line>\d+):\d+:beg:0x(?P<addr>[0-9a-fA-F]+)")
+STOP_RX = re.compile(r"\x1a\x1a(?P<file>[^\n]*?):(?P<line>\d+):\d+:beg:0x(?P<addr>[0-9a-fA-F]+)")   # C:\... paths too
 REG_RX = re.compile(r"^(?P<name>[A-Z0-9]+)\s+0x(?P<hex>[0-9a-fA-F]+)\s+(?P<dec>-?\d+)", re.M)
 PROMPT = "(agc) "
 

@@ -208,6 +208,7 @@
     document.body.classList.toggle('rad-size-only', !!label);
     const tag = document.getElementById('rad-size-label');
     tag.textContent = label || '';
+    tag.dir = 'auto';              // an Arabic label reads right to left ("...: Tablet" keeps its colon)
     tag.style.display = label ? 'block' : 'none';
     const fw = editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
     const host = fw && fw.parentElement;

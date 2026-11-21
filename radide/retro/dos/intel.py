@@ -40,7 +40,7 @@ def _num(tok: str) -> int | None:
     return None
 
 
-_INT_CALL = re.compile(r"(?i)\b(?:int|intr|int86x?|interrupt(?:x)?)\s*\(?\s*([0-9][0-9a-f]*h|0x[0-9a-f]+|\$[0-9a-f]+|"
+_INT_CALL = re.compile(r"(?i)\b(?:int86x?|intr|interruptx?|int)\b\s*\(?\s*([0-9][0-9a-f]*h|0x[0-9a-f]+|\$[0-9a-f]+|"
                        r"&h[0-9a-f]+|\d+)")
 _SET_AH = [re.compile(r"(?i)\bmov\s+ah\s*,\s*([0-9][0-9a-f]*h|0x[0-9a-f]+|\d+)"),
            re.compile(r"(?i)\b\w+\.ah\s*:?=\s*(\$[0-9a-f]+|\d+)"),

@@ -7,7 +7,7 @@
 * The editor shows rulers at columns 5 / 6 / 72, the continuation column and the label field coloured and the
   sequence numbers (73-80) greyed; hover explains the column and legacy statements.
 * Project "fortran": {"preset": "legacy" | "f66" | "dec" | "strict", "flags": "..."} picks the gfortran options.
-* Tools > Legacy Fortran: Card Deck View (the line as an IBM 029 punched card), Convert to Free Form (diff
+* Tools > Retro > Legacy Fortran: Card Deck View (the line as an IBM 029 punched card), Convert to Free Form (diff
   preview), Explain Legacy Constructs.
 """
 from __future__ import annotations

@@ -11,6 +11,7 @@ RadFx_aRun = []
 RadFx_aObj = []
 RadFx_oTimer = NULL
 RadFx_lReduced = 0
+RadFx_lFinal = 0
 
 func RadFx_Init oParent, lRespect
     if isNull(RadFx_oTimer)
@@ -280,8 +281,10 @@ func RadFx_Apply nSB, t, aStarts
     lGeo = 0
     for i = 1 to len(sb[3])
         tr = sb[3][i]
-        v = RadFx_TrackAt(nW, tr, t, aStarts[i][2], aStarts)
         c = lower(tr[1])
+        # two animations on one property: the one that started first keeps it until it ends
+        if not RadFx_lFinal and c != "text" and RadFx_Owner(nSB, tr[1]) > 0 loop ok
+        v = RadFx_TrackAt(nW, tr, t, aStarts[i][2], aStarts)
         if c = "text"
             n = len(aStarts[i][3])
             RadFx_aW[nW][13] = aStarts[i][3]
@@ -316,10 +319,45 @@ func RadFx_Starts nSB
         if c = "text"
             add(aOut, [tr[1], 1, RadFx_aW[sb[2]][13]])
         else
-            add(aOut, [tr[1], RadFx_Get(sb[2], tr[1]), ""])
+            o = RadFx_Owner(nSB, tr[1])
+            if o > 0
+                add(aOut, [tr[1], RadFx_RestOf(o, tr[1]), ""])
+            else
+                add(aOut, [tr[1], RadFx_Get(sb[2], tr[1]), ""])
+            ok
         ok
     next
     return aOut
+
+# a running storyboard that started before nSB and animates cProp of the same widget (0 = none)
+func RadFx_Owner nSB, cProp
+    nW = RadFx_aSB[nSB][2]
+    nNow = RadFx_Ms()
+    for r in RadFx_aRun
+        if r[1] = nSB return 0 ok
+        sb = RadFx_aSB[r[1]]
+        if sb[2] = nW and RadFx_Time(r, nNow) != -1
+            for tr in sb[3]
+                if lower(tr[1]) = lower(cProp) return r[1] ok
+            next
+        ok
+    next
+    return 0
+
+# where running storyboard nSB leaves cProp when it ends
+func RadFx_RestOf nSB, cProp
+    i = RadFx_Find(nSB)
+    sb = RadFx_aSB[nSB]
+    aSt = RadFx_aRun[i][6]
+    t = sb[9]
+    if sb[6] t = 0 ok
+    for j = 1 to len(sb[3])
+        if lower(sb[3][j][1]) = lower(cProp)
+            if sb[5] return aSt[j][2] ok
+            return RadFx_TrackAt(sb[2], sb[3][j], t, aSt[j][2], aSt)
+        ok
+    next
+    return RadFx_Get(sb[2], cProp)
 
 # ------------------------------------------------------------------ playing
 func RadFx_Find nSB
@@ -354,7 +392,9 @@ func RadFx_End nSB, aStarts, lHide
     sb = RadFx_aSB[nSB]
     t = sb[9]
     if sb[6] t = 0 ok
+    RadFx_lFinal = 1
     RadFx_Apply(nSB, t, aStarts)
+    RadFx_lFinal = 0
     RadFx_aSB[nSB][12] = aStarts
     RadFx_aW[sb[2]][16] = 0
     if lHide RadFx_Set(sb[2], "Visible", 0) ok
@@ -572,8 +612,9 @@ func RadPane_Place aPane
     r = aPane[5]
     aH = str2list(substr(trim(sysget("RADIDE_HINGE")), ",", nl))
     if aPane[7] and len(aH) = 4
-        hx = number(aH[1]) - QWidget_x(pBox)
-        hy = number(aH[2]) - QWidget_y(pBox)
+        aO = RadPane_Origin(pBox)
+        hx = number(aH[1]) - aO[1]
+        hy = number(aH[2]) - aO[2]
         hw = number(aH[3])
         hh = number(aH[4])
         if hw <= hh and hx > 0 and hx + hw < w and (cMode = "auto" or cMode = "horizontal")
@@ -609,6 +650,20 @@ func RadPane_Place aPane
         RadPane_Put(aPane[2], 0, 0, a, h)
         RadPane_Put(aPane[3], a, 0, w - a, h)
     ok
+
+# position of widget p in its window (RADIDE_HINGE is in window coordinates; the pane may be nested)
+func RadPane_Origin p
+    x = 0
+    y = 0
+    n = 0
+    while not isNull(p) and n < 40
+        if QWidget_isWindow(p) exit ok
+        x += QWidget_x(p)
+        y += QWidget_y(p)
+        p = QWidget_parentWidget(p)
+        n++
+    end
+    return [x, y]
 
 func RadPane_Put p, x, y, w, h
     if isNull(p) return ok

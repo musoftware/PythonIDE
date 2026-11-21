@@ -20,15 +20,22 @@ import shutil
 import subprocess
 import sys
 import textwrap
-import time
 import traceback
 
 os.environ.setdefault("QA_NAME", "motion_e2e" + ("_" + os.environ["QA_LANG"] if os.environ.get("QA_LANG") else ""))
 HERE = os.path.dirname(os.path.abspath(__file__))
+if os.environ.get("QA_REAL") != "1":    # a 1920 x 1080 offscreen screen (the default one is 800 x 600)
+    try:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen:configfile=" + os.path.relpath(
+            os.path.join(HERE, "offscreen_1920.json")).replace("\\", "/"))
+    except ValueError:                  # another drive than the working directory
+        pass
 sys.path.insert(0, os.path.join(HERE, "..", "Integration"))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "Motion", "Targets"))
 import qh  # noqa: E402
 from qh import app, check, pump, shot, wait  # noqa: E402
+if os.environ.get("QT_QPA_PLATFORM", "").startswith("offscreen:") or qh.REAL:
+    os.environ["QT_QPA_PLATFORM"] = "offscreen"     # programs started from here: no window on the user's screen
 from pathlib import Path  # noqa: E402
 
 from PyQt6.QtCore import Qt, QTimer  # noqa: E402
@@ -138,6 +145,18 @@ def child_json(code, cwd, env=None, timeout=120):
     return {"_error": out[-1500:]}
 
 
+def ide_run(secs):
+    """Ctrl+F5 in the IDE (child inherits QT_QPA_PLATFORM=offscreen), let it run *secs*, stop; Output text."""
+    w.output.clear()
+    w.run_project(debug=False)
+    wait(lambda: w.session is not None, 60)
+    pump(secs)
+    out = w.output.toPlainText()
+    w.stop_project()
+    wait(lambda: w.session is None, 20)
+    return out
+
+
 def phase(fn):
     def wrapper():
         print(f"===== phase {fn.__name__}", flush=True)
@@ -237,6 +256,16 @@ def classic_flow(pid, template, key, mobile=False, size_keys=None, fold=False):
     panel.stop_preview()
     pump(0.1)
     check(f"{key}: preview leaves the model unchanged", form.find(bname).props["Left"] == left0)
+    panel.preview_all()                 # slideIn + pulse on load at the same time: ends where it was designed
+    panel.timer.stop()
+    panel.show_frame(250)
+    mid = view.design_props(form.find(bname)).get("Left")
+    panel.show_frame(panel._pv.length + 50)
+    end = view.design_props(form.find(bname)).get("Left")
+    panel.stop_preview()
+    pump(0.1)
+    check(f"{key}: Preview all: slideIn still visible mid-way ({mid}) and ends at the designed Left ({end})",
+          mid != left0 and end == left0, (mid, end, left0))
     doc.select(form.find(lname))
     pump(0.1)
     panel.add("fadeIn")
@@ -248,6 +277,11 @@ def classic_flow(pid, template, key, mobile=False, size_keys=None, fold=False):
     check(f"{key}: Add Size {size_keys} -> editing this size only", made is not None and vp.this_size
           and bar2.banner.mode == "this", (made, vp.this_size, bar2.banner.mode))
     vid = made["id"] if made else None
+    if LANG == "ar":
+        from radide.i18n import shown
+        labs = [shown(bar2.lbl_edit), shown(bar2.lbl_size)] + ([shown(view.phone.bar.device_label),
+                                                                 shown(view.phone.bar.posture_label)] if mobile else [])
+        check(f"{key}: Arabic labels in the sizes / device bars", all(lab and not lab.isascii() for lab in labs), labs)
     doc.select(form.find(bname))
     pump(0.3)
     w.properties._set("Text", "Small")
@@ -274,7 +308,7 @@ def classic_flow(pid, template, key, mobile=False, size_keys=None, fold=False):
     w._designer_menu(fname, m2, form.find(bname))
     labels = [a.text().replace("&", "") for a in m2.actions()]
     check(f"{key}: designer menu has Add Animation + Layout Size",
-          tr("Add Animation") in labels and tr("Layout Size") in labels, labels)
+          all({x, tr(x)} & set(labels) for x in ("Add Animation", "Layout Size")), labels)
     sp = w.sizes_panel
     w.dock_sizes.show()
     sp.bind(view)
@@ -352,6 +386,9 @@ def qt():
     check("qt: designer has the motion + sizes runtime", "_RadFx(" in code and "_RadVariants(" in code)
     from radide.features.animations_panel import preview_target
     check("qt: Animations preview target is 'qt'", preview_target(w, view.doc.form) == "qt")
+    out = ide_run(5)
+    check("qt: Ctrl+F5 in the IDE starts the program without errors", "Traceback" not in out and "Error" not in out,
+          out[-800:])
     r = child_json(f"""
         import sys, time, json, os
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -460,11 +497,13 @@ def ring():
     folder, fname, view, b, lab, vid = classic_flow("ring-qt", "windows", "ring")
     txt = gen_file(folder, fname, "ring-qt").read_text(encoding="utf-8")
     check("ring: designer loads _radfx.ring and has size rows", 'load "_radfx.ring"' in txt and "_VSizes" in txt)
-    check("ring: _radfx.ring written", (folder / "_radfx.ring").is_file())
     from target_tools import ring_exe, ring_run
     if not ring_exe():
         check("ring: ring.exe not found (run skipped)", True)
         return
+    out = ide_run(6)
+    check("ring: Ctrl+F5 in the IDE runs the form (offscreen) and writes _radfx.ring", (folder / "_radfx.ring").is_file()
+          and "Error" not in out, out[-800:])
     test = f'''load "{fname}.ring"
 oApp = NULL
 nStep = 0
@@ -544,32 +583,50 @@ def flutter():
 def kivy():
     folder, fname, view, b, lab, vid = mobile_common("kivy", "kivy_app", "kivy", ["landscape"])
     check("kivy: radkivyfx.py written", (folder / "radkivyfx.py").is_file(), sorted(p.name for p in folder.iterdir()))
-    from target_tools import has_kivy, kivy_run
-    if not has_kivy():
+    import importlib.util
+    if importlib.util.find_spec("kivy") is None:
         check("kivy: not installed (run skipped)", True)
         return
+    fx = next(a["id"] for a in view.doc.form.extra["animations"] if a["preset"] == "slideIn")
+    out = WORK / "kivy_result.json"
     code = f"""
 import json
 from kivy.clock import Clock
 from kivy.core.window import Window
 R = {{}}
 def a(dt):
-    R['tx_mid'] = getattr(scr.{b}, '_rad_look', None) and scr.{b}._rad_look.tx
-    Clock.schedule_once(b_, 1.5)
+    R['tx_load_end'] = scr.{b}._rad_look.tx
+    scr.BeginAnimation('{fx}')
+    Clock.schedule_once(b_, 0.12)
 def b_(dt):
-    R['tx_end'] = scr.{b}._rad_look.tx
-    Window.size = (900, 420)
-    Clock.schedule_once(c, 0.6)
+    R['tx_mid'] = scr.{b}._rad_look.tx
+    Clock.schedule_once(c, 1.2)
 def c(dt):
+    R['tx_end'] = scr.{b}._rad_look.tx
+    R['text_portrait'] = scr.{b}.text
+    Window.size = (900, 420)
+    Clock.schedule_once(d_, 0.8)
+def d_(dt):
     R['sizes'] = list(scr.radsizes)
     R['text'] = scr.{b}.text
-    open(r'$OUT', 'w').write(json.dumps(R))
-Clock.schedule_once(a, 0.15)
+    open(r'{out}', 'w').write(json.dumps(R))
+Clock.schedule_once(a, 1.5)          # the load animations have ended (also on a busy machine)
 """
-    r = kivy_run(folder, code, secs=6) or {}
-    check("kivy run: slideIn offset goes back to 0", r.get("tx_end") == 0 and r.get("tx_mid") not in (None, 0), r)
-    check("kivy run: landscape window -> Landscape size + text", vid in (r.get("sizes") or []) and
-          r.get("text") == "Small", r)
+    if out.exists():
+        out.unlink()
+    rc, txt = run([sys.executable, "main.py"], cwd=folder, timeout=120,
+                  env={"RADKIVY_AUTOSTOP": "8", "KIVY_NO_ARGS": "1", "KIVY_NO_CONSOLELOG": "1",
+                       "RADKIVY_EXEC": code, "RADIDE_REDUCED_MOTION": "0",
+                       # the Kivy window off the visible desktop (Kivy reads KCFG_<section>_<key>)
+                       "KCFG_GRAPHICS_POSITION": "custom", "KCFG_GRAPHICS_LEFT": "-3000", "KCFG_GRAPHICS_TOP": "50"})
+    try:
+        r = json.loads(out.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        r = {"_error": txt[-1500:]}
+    check("kivy run: slideIn replays (offset mid-way, 0 at the end)", r.get("tx_load_end") == 0 and
+          r.get("tx_mid") not in (None, 0) and r.get("tx_end") == 0, r)
+    check("kivy run: portrait = base text, landscape window -> Landscape size + text",
+          r.get("text_portrait") != "Small" and vid in (r.get("sizes") or []) and r.get("text") == "Small", r)
 
 
 @phase
@@ -614,6 +671,10 @@ def web():
     pump(1.0)
     fr = dv.run_js("document.body.classList.contains('rad-size-only') && !!document.querySelector('.rad-hinge')")
     check("web: foldable device -> orange This size only frame + hinge", fr is True, fr)
+    lab = dv.run_js("[document.getElementById('rad-size-label').dir, document.getElementById('rad-size-label')"
+                    ".textContent]")
+    check("web: the size label has dir=auto (an Arabic label reads right to left)", isinstance(lab, list)
+          and lab[0] == "auto" and tr("This size only") in lab[1], lab)
     shot(dv, sname("web_design_fold"))
     dv.set_device("desktop")
     pump(0.5)
@@ -662,65 +723,77 @@ def fd():
     prj = new_project("flutter", "flutter_designer", "QaMoFd")
     folder = Path(prj.folder)
     mgr = w.flutter_designer
-    d = mgr.create_screen(folder, "blank", "Home", "/home") if True else None
-    pump(1.0)
-    check("fd: Add New Screen opens the Flutter designer", d is not None)
+    d = mgr.open_screen(folder / "screens" / "Home.fscreen.json")
+    pump(1.5)
+    check("fd: the Home screen opens in the Flutter designer", d is not None)
     if d is None:
         return
     w.tabs.setCurrentWidget(d)
     scr = d.screen
-    root_id = scr.root["id"] if isinstance(getattr(scr, "root", None), dict) else None
-    # drop a Text and an ElevatedButton from the palette model
-    from radide.flutterdesign import model as M
-    col = next((n for n, *_ in scr.walk() if n["type"] in ("Column", "Center", "ListView")), None)
-    parent = (col or scr.find(root_id) or {}).get("id") if (col or root_id) else None
-    t = d.add_widget("Text", parent) if hasattr(d, "add_widget") else None
-    if t is None:
-        t = M.make_node("Text") if hasattr(M, "make_node") else None
-    check("fd: a Text widget added", t is not None)
-    tid = t["id"] if isinstance(t, dict) else t
+    t = d.insert_widget("Text", props={"data": "Hello"})
+    pump(0.3)
+    tid = t if isinstance(t, str) else (t or {}).get("id") if isinstance(t, dict) else d.selected
+    check("fd: a Text inserted from the palette", tid is not None and scr.find(tid) is not None, t)
     d.select(tid)
     pump(0.3)
-    # animation: inspector Animation editor through the model API used by the inspector
-    node = scr.find(tid)
-    ex = d.inspector.anim_extra
-    if hasattr(d, "set_anim"):
-        d.set_anim(tid, {"type": "fadeIn", "durationMs": 600})
-    else:
-        node["anim"] = {"type": "fadeIn", "duration": 600}
-        d.changed() if hasattr(d, "changed") else None
+    d.set_anim(tid, {"type": "fadeIn", "durationMs": 600})
     pump(0.3)
-    check("fd: animation stored on the Text", (scr.find(tid).get("anim") or {}).get("type") == "fadeIn",
-          scr.find(tid).get("anim"))
-    # a size, This size only
+    check("fd: animation set on the Text", (d.screen.find(tid).get("anim") or {}).get("type") == "fadeIn",
+          d.screen.find(tid).get("anim"))
+    # Sizes > Add sizes > Foldable (the size bar menu)
+    sb = d.size_bar
+    sb._fill_menu()
+    addm = next(a.menu() for a in sb.menu.actions() if a.menu() is not None)
+    act = next(a for a in addm.actions() if a.text() == "Foldable")
+    act.trigger()
+    pump(0.3)
+    scr = d.screen
+    ids = [s["id"] for s in VF.sizes(scr)]
+    check("fd: Sizes > Add sizes > Foldable adds folded / tabletop / dual", {"folded", "tabletop", "dual"} <= set(ids),
+          ids)
+    d.set_edit_mode("size")
+    d.set_edit_size("folded")
+    pump(0.4)
+    check("fd: This size only on Folded shows the cover screen", d.hinge_rect() is None and d.device_size()[0] < 400,
+          d.device_size())
+    d.select(tid)
+    d.set_prop(tid, "data", "Folded!")
+    pump(0.3)
+    n = d.screen.find(tid)
+    check("fd: This size only edit stored as an override", VF.overrides(n, "folded").get("data") == "Folded!"
+          and n["props"].get("data") == "Hello", n)
+    lab = d.inspector.labels.get("data")
+    check("fd: inspector marker on the overridden property", lab is not None and lab.text().startswith(VF.MARK_HERE),
+          lab.text() if lab else None)
+    shot(d, sname("fd_this_size_folded"))
+    d.set_edit_mode("all")
     d.cbo_device.setCurrentIndex(DEVICE_IDS.index("galaxy_z_fold6"))
     pump(0.3)
-    if not VF.sizes(scr) and hasattr(d, "add_size"):
-        d.add_size("folded")
-    sizes = [s["id"] for s in VF.sizes(scr)]
-    check("fd: the screen has layout sizes", bool(sizes), sizes)
-    if sizes:
-        d.set_edit_mode("size")
-        d.set_edit_size(sizes[0])
-        pump(0.3)
-        d.set_prop(tid, "data", "Folded!")
-        n = scr.find(tid)
-        check("fd: This size only edit stored as an override", VF.overrides(n, sizes[0]).get("data") == "Folded!",
-              n)
-        lab = d.inspector.labels.get("data")
-        check("fd: inspector marker on the overridden property", lab is not None and lab.text().startswith(
-            VF.MARK_HERE), lab.text() if lab else None)
-        d.set_edit_mode("all")
     for posture in ("Flat", "HalfOpened", "Folded"):
         d.set_posture(posture)
         pump(0.3)
-        shot(d, sname(f"fd_{posture}"))
-    check("fd: Folded posture = cover screen", d.hinge_rect() is None)
-    d.save() if hasattr(d, "save") else w.save_all()
+        shot(d.canvas, sname(f"fd_{posture}"))
+        check(f"fd: {posture} -> active sizes {d.active_sizes()}",
+              {"Flat": lambda a: "folded" not in a, "HalfOpened": lambda a: "tabletop" in a,
+               "Folded": lambda a: "folded" in a}[posture](d.active_sizes()), d.active_sizes())
+    d.set_posture("Flat")
+    ok = d.save()
     pump(1.0)
-    gen = list((folder / "lib").rglob("home*.dart"))
-    txt = "\n".join(p.read_text(encoding="utf-8") for p in gen)
-    check("fd: generated screen has the size + animation", "RadVariant" in txt or "radlayout" in txt, [p.name for p in gen])
+    check("fd: Save", ok)
+    gen = [p for p in (folder / "lib").rglob("*.dart") if "home" in p.name.lower()]
+    txt = chr(10).join(p.read_text(encoding="utf-8") for p in gen)
+    check("fd: generated Home screen picks the folded text per size + the animation",
+          "Folded!" in txt and "RadVariant" in txt and ("RadFx(" in txt and "RadFxType.fadeIn" in txt or "radmotion" in
+                                                       txt.lower() or "Animat" in txt), [p.name for p in gen])
+    check("fd: radlayout.dart copied", (folder / "lib" / "radlayout.dart").is_file())
+    from target_tools import flutter_exe
+    fl = flutter_exe()
+    if fl:
+        rc, out = run([fl, "pub", "get", "--offline"], cwd=folder, timeout=300)
+        if rc:
+            rc, out = run([fl, "pub", "get"], cwd=folder, timeout=600)
+        rc, out = run([fl, "analyze", "--no-fatal-infos", "--no-fatal-warnings"], cwd=folder, timeout=600)
+        check("fd: flutter analyze of the designer project", rc == 0, out[-1500:])
 
 
 for name in PHASES:

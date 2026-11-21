@@ -1,0 +1,14 @@
+{
+  "name": "NesHelloC",
+  "language": "retro-nes",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.c"
+  ],
+  "retro": {
+    "system": "nes",
+    "lang": "c",
+    "main": "main.c"
+  }
+}

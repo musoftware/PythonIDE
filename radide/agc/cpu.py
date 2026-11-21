@@ -84,16 +84,40 @@ def is_neg(w: int) -> bool:
     return bool(w & 0o40000)
 
 
+NEWJOB = 0o67                         # the Night Watchman watches this erasable address
+NW_HALF = 54613                       # 0.64 s in memory cycles
+RUPT_WINDOW = 13653                   # 160 ms
+TC_WINDOW = 427                       # 5 ms
+ALARM_TEXT = {
+    "NIGHT WATCHMAN": "NEWJOB (address 67) was not touched for 0.64 s",
+    "RUPT LOCK": "the program stayed inside an interrupt for 140 ms",
+    "NO RUPT": "no interrupt happened for 140 ms",
+    "TC TRAP": "only TC / TCF instructions ran for 5 ms (a jump to itself?)",
+    "NO TC": "no TC / TCF instruction ran for 5 ms",
+}
+
+
 class AgcCpu:
     def __init__(self, rope=None):
         self.rope = rope if rope is not None else [[0] * 0o2000 for _ in range(36)]
         self.on_channel = None                 # callable(channel, value) after an output-channel write
+        self.alarms = True                     # hardware alarms restart the AGC like the real one (and yaAGC)
+        self.alarm_log: list[str] = []
+        self.restarts = 0
         self.reset()
 
     # ------------------------------------------------------------------ state
     def reset(self) -> None:
         self.erasable = [[0] * 0o400 for _ in range(8)]
         self.channels = {0o30: 0o77777, 0o31: 0o77777, 0o32: 0o77777, 0o33: 0o77777}
+        self.mct = 0                           # memory cycles executed
+        self._tick = 0
+        self.instructions = 0
+        self.halted = False
+        self.gojam()
+
+    def gojam(self) -> None:
+        """GOJAM (power on / hardware restart): Z = 4000, interrupts inhibited; erasable memory is kept."""
         self.erasable[0][Z] = 0o4000
         self.extend = False                    # next instruction is an extracode
         self.index = 0                         # INDEX value added to the next instruction
@@ -102,12 +126,60 @@ class AgcCpu:
         self.in_rupt = False
         self.pending: set[int] = set()
         self.pending_word: int | None = None   # RESUME: the next instruction word (BRUPT)
-        self.mct = 0                           # memory cycles executed
-        self._tick = 0
-        self.instructions = 0
-        self.halted = False
         self.last_z = 0o4000
         self.last_word = 0
+        self._nw_cyc = 0
+        self._nw_armed = False
+        self._nw_phase = False
+        self._rupt_cyc = 0
+        self._saw_in_rupt = self._saw_out_rupt = False
+        self._tc_cyc = 0
+        self._saw_tc = self._saw_other = False
+        self._executed_tc = False
+
+    def _alarm(self, name: str) -> None:
+        self.alarm_log.append(f"{name} alarm: {ALARM_TEXT.get(name, '')} - the AGC restarted (GOJAM)")
+        self.restarts += 1
+        self.gojam()
+        self.channels[0o163] = self.channels.get(0o163, 0) | 0o200      # RESTART lamp
+        if self.on_channel is not None:
+            try:
+                self.on_channel(0o163, self.channels[0o163])
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _check_alarms(self, cycles: int) -> None:
+        if self.in_rupt:
+            self._saw_in_rupt = True
+        else:
+            self._saw_out_rupt = True
+        if self._executed_tc:
+            self._saw_tc = True
+        else:
+            self._saw_other = True
+        self._tc_cyc += cycles
+        if self._tc_cyc >= TC_WINDOW:
+            self._tc_cyc = 0
+            bad = "NO TC" if not self._saw_tc else ("TC TRAP" if not self._saw_other else "")
+            self._saw_tc = self._saw_other = False
+            if bad:
+                return self._alarm(bad)
+        self._rupt_cyc += cycles
+        if self._rupt_cyc >= RUPT_WINDOW:
+            self._rupt_cyc = 0
+            bad = "NO RUPT" if not self._saw_in_rupt else ("RUPT LOCK" if not self._saw_out_rupt else "")
+            self._saw_in_rupt = self._saw_out_rupt = False
+            if bad:
+                return self._alarm(bad)
+        self._nw_cyc += cycles
+        if self._nw_cyc >= NW_HALF:             # arms every 1.28 s, looks 0.64 s later (like yaAGC)
+            self._nw_cyc = 0
+            self._nw_phase = not self._nw_phase
+            if self._nw_phase:
+                self._nw_armed = True
+            elif self._nw_armed:
+                self._nw_armed = False
+                return self._alarm("NIGHT WATCHMAN")
 
     # registers
     @property
@@ -151,6 +223,8 @@ class AgcCpu:
             if a == ZERO:
                 return 0
             return self.erasable[0][a] & (0xFFFF if a in (A, Q) else 0o77777)
+        if a == NEWJOB:
+            self._nw_armed = False
         kind, bank, off = self.location(a)
         if kind == "E":
             return self.erasable[bank][off] & 0o77777
@@ -169,6 +243,8 @@ class AgcCpu:
         a = addr & 0o7777
         if a >= 0o2000:
             return                              # fixed memory is read-only
+        if a == NEWJOB:
+            self._nw_armed = False
         if a in (A, Q):
             self.erasable[0][a] = value & 0xFFFF
             return
@@ -262,9 +338,12 @@ class AgcCpu:
             word = add15(word, self.index)
             self.index_pending = False
         self.last_word = word
+        self._executed_tc = False
         cycles = self._execute(word)
         self.instructions += 1
         self._advance(cycles)
+        if self.alarms:
+            self._check_alarms(cycles)
         self._service_interrupts()
 
     def _advance(self, cycles: int) -> None:
@@ -327,6 +406,7 @@ class AgcCpu:
                     self.pending_word = self.read(k12) & 0o77777   # word is read before Q changes, so
                 r[Q] = self.Z                  # RETURN (TC Q) runs "TC <return address>"
                 self.Z = k12                   # TC K
+                self._executed_tc = True
                 return 1
             if op == 1:
                 if qc == 0:                    # CCS K
@@ -347,6 +427,7 @@ class AgcCpu:
                         r[A] = v - 1
                     return 2
                 self.Z = k12                   # TCF K
+                self._executed_tc = True
                 return 1
             if op == 2:
                 if qc == 0:                    # DAS K (encoded K+1)

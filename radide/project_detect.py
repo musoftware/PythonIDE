@@ -908,8 +908,15 @@ def _asm(folder: Path) -> list:
     return [c]
 
 
+def _nasa(folder: Path) -> list:
+    """Apollo AGC programs (.agc, radide/agc/detect.py) and fixed-form Fortran 66/77 (radide/retro/legacy_fortran.py)."""
+    from .agc.detect import detect_agc
+    from .retro.legacy_fortran import detect_fixed_form
+    return detect_agc(folder, Candidate, walk) + detect_fixed_form(folder, Candidate, walk)
+
+
 DETECTORS = [_dotnet, _vb6, _pascal, _rust, _go, _java, _godot, _dart, _ruby, _php, _python, _node, _cmake_make,
-             _vscode, _ring, _asm, _jupyter, _static]
+             _vscode, _ring, _nasa, _asm, _jupyter, _static]
 
 
 # =============================================================================== loose files

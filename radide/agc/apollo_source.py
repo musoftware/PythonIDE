@@ -1,4 +1,4 @@
-"""Download the Apollo flight software source on request (Tools > Apollo AGC > Open Apollo Source...).
+"""Download the Apollo flight software source on request (Tools > Retro > Apollo AGC > Open Apollo Source...).
 
 The AGC programs were written by the MIT Instrumentation Laboratory under NASA contract; they are believed to
 be in the public domain (US government work). The transcriptions from the original printed listings are by the
@@ -33,7 +33,7 @@ NASA. As a work produced for the US government it is believed to be in the publi
 from the scanned original listings is the work of the Virtual AGC project (Ron Burkey and volunteers,
 https://www.ibiblio.org/apollo); please credit them when you share it.
 
-Build it in RAD IDE with yaYUL (Tools > Apollo AGC > Virtual AGC Toolchain...). The flight program uses
+Build it in RAD IDE with yaYUL (Tools > Retro > Apollo AGC > Virtual AGC Toolchain...). The flight program uses
 interpretive code, which RAD IDE's built-in assembler does not handle. Run it in yaAGC with RAD IDE's DSKY
 panel (Project > Properties: "agc": {{"run": "yaagc"}}).
 """

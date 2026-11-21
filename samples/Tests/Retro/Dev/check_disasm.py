@@ -277,6 +277,17 @@ def test_roundtrips():
         check("2600: undocumented opcode not followed by default (slo is data)", "slo" not in src.split("Reset")[1][:200]
               or ".byte $07,$80" in src)
         check("2600: vectors written as .word labels", ".word Reset" in src and ".word IRQ" in src)
+    if r:                                   # hints.json: code the tracer did not reach + a label + a comment
+        import json
+        from radide.retro.dev.fromrom import redisassemble
+        h = json.loads((r.folder / "hints.json").read_text(encoding="utf-8"))
+        h.update({"code": ["F014"], "labels": {"F100": "SineTable"}, "comments": {"F030": "wait for the timer"}})
+        (r.folder / "hints.json").write_text(json.dumps(h), encoding="utf-8")
+        r2 = redisassemble(r.folder, log=lambda _t: None)
+        src = (r2.folder / r2.main).read_text(encoding="utf-8")
+        check("2600 hints: code hint traced, label and comment used, still byte-identical",
+              "lda SineTable,x" in src and "; wait for the timer" in src and (r2.identical or {}).get("same") and
+              (r2.folder / (r2.main + ".bak")).is_file(), src[:1500])
     r = roundtrip("a2600_4k_undoc", rom_2600_4k(), ".bin", "dasm", undocumented=True)
     if r:
         src = (r.folder / r.main).read_text(encoding="utf-8")

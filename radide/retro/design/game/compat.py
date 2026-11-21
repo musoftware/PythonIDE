@@ -61,6 +61,36 @@ def encode_tile(fmt: str, pixels) -> bytes:
     return bytes(out)
 
 
+def decode_tile(fmt: str, data: bytes) -> bytearray:
+    """16 bytes of NES CHR ("nes") or Game Boy 2bpp ("gb") -> 64 colour values (inverse of encode_tile)."""
+    data = bytes(data[:16]).ljust(16, b"\0")
+    try:
+        from ...gfx.codecs import get_format
+        return bytearray(get_format(fmt).decode(data))
+    except Exception:  # noqa: BLE001
+        pass
+    out = bytearray(64)
+    for y in range(8):
+        lo, hi = (data[y], data[y + 8]) if fmt == "nes" else (data[2 * y], data[2 * y + 1])
+        for i in range(8):
+            out[y * 8 + i] = ((lo >> (7 - i)) & 1) | (((hi >> (7 - i)) & 1) << 1)
+    return out
+
+
+def chr_offset(data: bytes) -> int:
+    """Where the CHR data starts: after the iNES header + PRG banks for a .nes file, else 0."""
+    if data[:4] == b"NES\x1a":
+        try:
+            from ...gfx.tilesheet import ines_chr_offset
+            off = ines_chr_offset(data)
+            if off is not None:
+                return off
+        except Exception:  # noqa: BLE001
+            pass
+        return 16 + data[4] * 16384
+    return 0
+
+
 def half_to_bytes(bits) -> tuple[int, int, int]:
     """20 Atari 2600 playfield bits (left to right) -> (PF0, PF1, PF2)."""
     try:

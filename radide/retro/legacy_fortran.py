@@ -165,6 +165,9 @@ def analyze(text: str) -> list[tuple[int, str, str, str]]:
         if (up.startswith("FORMAT") or re.match(r"^\s*\d*\s*FORMAT", up) or "DATA" in up[:5]) and \
                 HOLLERITH.search(s):
             out.append((first, "hollerith") + NOTES["hollerith"])
+        if re.match(r"^\s*END\s*$", s, re.I) or re.match(
+                r"^\s*(\w+\s+)?(SUBROUTINE|FUNCTION|PROGRAM|BLOCK\s*DATA)\b", s, re.I):
+            do_ends = {}                       # labels are local to each program unit
         m = DO_LABEL.match(s)
         if m:
             lab = m.group(1)
@@ -210,6 +213,14 @@ def hollerith_to_quotes(stmt: str) -> str:
     return "".join(out)
 
 
+def _open_hollerith(stmt: str) -> bool:
+    """True when a Hollerith constant at the end of *stmt* continues on the next card."""
+    for m in HOLLERITH.finditer(stmt):
+        if m.end() + int(m.group(1)) > len(stmt):
+            return True
+    return False
+
+
 def _fix_blanks(stmt: str) -> str:
     """Blanks were insignificant in fixed form: make the commonest glued forms legal free form."""
     s = re.sub(r"^(\s*)DO(\d+)", r"\1DO \2", stmt, flags=re.I)
@@ -226,14 +237,18 @@ def to_free_form(text: str, hollerith: bool = True, keep_sequence: bool = False,
     for raw in lines:
         f = fields(raw)
         if f["comment"] or (not f["stmt"].strip() and not f["label"] and not f["cont"]):
-            body = raw.rstrip()
+            body = raw.rstrip("\r\n")
+            seq = body[72:80].strip()
+            body = body[:72].rstrip()
             if body and COMMENT_RX.match(body):
-                pending_comments.append("!" + body[1:])
+                pending_comments.append("!" + body[1:] + (("  ! " + seq) if keep_sequence and seq else ""))
             else:
                 pending_comments.append("")
             continue
         if f["cont"] and stmts:
-            stmts[-1][1] += f["stmt"].rstrip()
+            prev = stmts[-1][1]
+            in_quote = (prev.count("'") % 2 == 1) or _open_hollerith(prev)
+            stmts[-1][1] = prev + (f["stmt"].rstrip() if in_quote else " " + f["stmt"].strip())
             stmts[-1][4].extend(pending_comments)
             pending_comments = []
             continue
@@ -634,6 +649,44 @@ def conversion_dialog(parent, path: Path, text: str):
     box.rejected.connect(dlg.reject)
     dlg.resize(980, 640)
     return dlg
+
+
+def looks_fixed_form(text: str) -> bool:
+    """Comment cards in column 1 or statements starting in column 7, and no free-form-only syntax."""
+    lines = [ln for ln in text.splitlines()[:400] if ln.strip()]
+    if not lines:
+        return False
+    fixed = sum(1 for ln in lines if COMMENT_RX.match(ln) or re.match(r"^( {6}|\t)\S", ln) or
+                re.match(r"^ {0,4}\d+ +\S", ln) or re.match(r"^ {5}\S", ln))
+    free_only = sum(1 for ln in lines if re.match(r"^\S", ln) and not COMMENT_RX.match(ln)
+                    and not re.match(r"^\d", ln))
+    return fixed >= max(3, int(len(lines) * 0.7)) and free_only == 0
+
+
+def detect_fixed_form(folder: Path, Candidate, walk) -> list:
+    """File > Open Folder (radide/project_detect.py): fixed-form Fortran 66/77 sources -> fortran-legacy."""
+    files = [f for f in walk(folder, 2, 1500) if f.lower().endswith(FIXED_EXT) and "/" not in f]
+    if not files:
+        return []
+    fixed, main = [], ""
+    for f in sorted(files)[:200]:
+        try:
+            text = (Path(folder) / f).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if looks_fixed_form(text):
+            fixed.append(f)
+            if not main and re.search(r"^\s{6,}PROGRAM\s+\w+", text, re.I | re.M):
+                main = f
+    if not fixed:
+        return []
+    main = main or fixed[0]
+    c = Candidate("fortran-fixed", f"Fortran 66/77 program (fixed form, {len(fixed)} file"
+                                   f"{'s' if len(fixed) != 1 else ''}, {main})", "fortran-legacy", "app", folder, 0.8,
+                  fixed[:3], startup=Path(main).stem, modules=fixed)
+    c.extra["fortran"] = {"preset": "legacy", "flags": ""}
+    c.notes.append("Built with gfortran -std=legacy -ffixed-form (Tools > Retro > Legacy Fortran > Compiler Preset).")
+    return [c]
 
 
 def main(argv: list[str]) -> int:

@@ -35,6 +35,7 @@ class RomImage:
     extras: dict = field(default_factory=dict)    # file name -> bytes written next to the source (chr.bin ...)
     compare: tuple[int, int] | None = None        # (start, length) of the original that a rebuild must equal
     name: str = ""
+    file_name: str = ""
 
     @property
     def title(self) -> str:
@@ -79,6 +80,7 @@ def load(path, system: str | None = None, base: int | None = None, entry: int | 
     else:
         img = fn(data)
     img.name = p.stem
+    img.file_name = p.name
     img.info.setdefault("File size", f"{len(data)} bytes")
     img.info.setdefault("SHA-1", img.sha1)
     if img.compare is None:

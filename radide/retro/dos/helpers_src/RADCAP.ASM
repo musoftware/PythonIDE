@@ -1,4 +1,4 @@
-; RADCAP.COM - resident helper: when a program leaves video mode 13h (INT 10h AH=00h while the current mode is
+; RADCAP.COM - resident helper: when a program leaves video mode 13h (INT 10h AH=00h or AX=4F02h while the mode is
 ; 13h), the last 320x200 frame and its palette are written to C:\_SCR13.RAW first (64000 + 768 bytes).
 ; RAD IDE loads it before a captured run so that a graphics demo can be checked after it returned to text mode.
 ; Written for RAD IDE (original code). Build: jwasm -bin -Fo=RADCAP.COM RADCAP.ASM
@@ -12,8 +12,11 @@ old10   dd 0
 busy    db 0
 fname   db 'C:\_SCR13.RAW', 0
 
-new10:  cmp ah, 0
+new10:  cmp ah, 0                    ; BIOS set mode
+        je is_set
+        cmp ax, 4F02h               ; VESA set mode (FreeBASIC's graphics library uses it)
         jne chain
+is_set:
         cmp cs:busy, 0
         jne chain
         push ax

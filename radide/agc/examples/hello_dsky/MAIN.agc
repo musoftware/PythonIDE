@@ -81,6 +81,7 @@ START           CA      ZERO            # clear the variables
                 TS      SECS
                 TS      MINS
                 TS      HOURS
+                TS      CENTI
                 TS      TICKED
                 TS      KEYIN
                 TS      MODE
@@ -105,27 +106,30 @@ CLRLOOP         TS      TMP
                 TS      NOUN
                 TC      SHOWVN
                 TC      SHOWCLK
-                CAF     T3LOAD          # first T3RUPT in one second
+                CAF     T3LOAD          # first T3RUPT in a centisecond
                 TS      TIME3
                 RELINT                  # interrupts on
 
 # ------------------------------------------------------------------ main loop
-MAIN            CA      KEYIN           # a key waiting?
+# The hardware watches the software: NEWJOB must be touched (NIGHT WATCHMAN), a TC / TCF must run at least
+# every 5 ms (TC TRAP) and interrupts must keep coming (RUPT LOCK) - otherwise the AGC restarts.
+MAIN            CA      NEWJOB          # "I am alive" for the Night Watchman
+                CA      KEYIN           # a key waiting?
                 EXTEND
                 BZF     NOKEY
                 TC      DOKEY
 NOKEY           CA      TICKED          # a second passed?
                 EXTEND
-                BZF     MAIN
+                BZF     IDLE
                 CA      ZERO
                 TS      TICKED
                 TC      TICK
                 CA      LAMPT           # lamp test shows 8s: do not overwrite them
                 EXTEND
                 BZF     +2
-                TCF     MAIN
+                TCF     IDLE
                 TC      SHOWCLK
-                TCF     MAIN
+IDLE            TCF     MAIN
 
 # ------------------------------------------------------------------ the clock
 TICK            INCR    SECS            # SECS = SECS + 1, carry into MINS and HOURS

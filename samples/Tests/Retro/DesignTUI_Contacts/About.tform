@@ -1,0 +1,92 @@
+{
+ "format": "radide-tform",
+ "version": 1,
+ "screen": {
+  "name": "About",
+  "cols": 80,
+  "rows": 25,
+  "back_char": 177,
+  "back_fore": 1,
+  "back_color": 0,
+  "background": "",
+  "esc_quits": true,
+  "splash": "",
+  "splash_seconds": 0,
+  "ice_colors": false
+ },
+ "controls": [
+  {
+   "type": "Window",
+   "name": "winAbout",
+   "x": 15,
+   "y": 6,
+   "w": 50,
+   "h": 11,
+   "fore": 15,
+   "back": 1,
+   "text": " About Contacts ",
+   "border": "double",
+   "shadow": true,
+   "title_align": "center"
+  },
+  {
+   "type": "Label",
+   "name": "lblAbout1",
+   "x": 18,
+   "y": 8,
+   "w": 44,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Contacts 1.0",
+   "align": "center",
+   "hot": 14
+  },
+  {
+   "type": "Label",
+   "name": "lblAbout2",
+   "x": 18,
+   "y": 10,
+   "w": 44,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Drawn in RAD IDE's Text-Mode Designer,",
+   "align": "center",
+   "hot": 14
+  },
+  {
+   "type": "Label",
+   "name": "lblAbout3",
+   "x": 18,
+   "y": 11,
+   "w": 44,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "built with FreeBASIC, running in DOS.",
+   "align": "center",
+   "hot": 14
+  },
+  {
+   "type": "Button",
+   "name": "btnBack",
+   "x": 35,
+   "y": 14,
+   "w": 10,
+   "h": 1,
+   "fore": 0,
+   "back": 2,
+   "text": "&OK",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 2,
+   "shadow": true,
+   "cancel": true,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 0
+  }
+ ]
+}

@@ -280,6 +280,8 @@ def parse_text(data: bytes, cols: int = 80) -> CellBuffer:
         except UnicodeDecodeError:
             text = None
     lines = (text.splitlines() if text is not None else data.split(b"\n"))
+    if lines and not lines[-1].strip():
+        lines = lines[:-1]
     b = CellBuffer(cols, max(1, len(lines)))
     for y, line in enumerate(lines):
         if isinstance(line, bytes):

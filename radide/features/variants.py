@@ -122,7 +122,8 @@ class VariantPreview(QObject):
         if not self.active:
             return tr("Base design")
         ctx = vm.context(self.form, self.vid)
-        return f"{tr(vm.label(self.form, self.vid))} {ctx['width']} x {ctx['height']}"
+        # LRM: "800 x 1000" stays left-to-right after an Arabic size name (else it shows "1000 x 800")
+        return f"{tr(vm.label(self.form, self.vid))} \u200e{ctx['width']} x {ctx['height']}"
 
     # ------------------------------------------------------------ effective values
     def invalidate(self) -> None:
@@ -629,7 +630,7 @@ class VariantBar(QWidget):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(6, 2, 6, 2)
         lay.setSpacing(4)
-        self.lbl_edit = QLabel("Edit:")
+        self.lbl_edit = QLabel(tr("Edit:"))             # inside the designer: not translated by radide.i18n
         lay.addWidget(self.lbl_edit)
         self.btn_all = self._tool("All sizes", "Edit every size at once (the normal way): a change here changes "
                                                "the design on every window size.", checkable=True)
@@ -643,7 +644,7 @@ class VariantBar(QWidget):
         lay.addWidget(self.btn_all)
         lay.addWidget(self.btn_this)
         lay.addSpacing(8)
-        self.lbl_size = QLabel("Size:")
+        self.lbl_size = QLabel(tr("Size:"))             # inside the designer: not translated by radide.i18n
         lay.addWidget(self.lbl_size)
         self.combo = QComboBox()
         self.combo.setObjectName("variantSize")
@@ -709,6 +710,8 @@ class VariantBar(QWidget):
     def changeEvent(self, e):
         super().changeEvent(e)
         if e.type() == QEvent.Type.LanguageChange:        # Tools > Options > Language: texts built with tr()
+            self.lbl_edit.setText(tr("Edit:"))
+            self.lbl_size.setText(tr("Size:"))
             QTimer.singleShot(0, self.sync)
 
     def _place(self) -> None:
@@ -782,7 +785,7 @@ class VariantBar(QWidget):
         for s in sizes:
             ctx = vm.context(f, s)
             mark = " ◆" if vm.has_overrides(f, s["id"]) else ""
-            self.combo.addItem(f"{tr(vm.label(s))}  {ctx['width']} x {ctx['height']}{mark}", s["id"])
+            self.combo.addItem(f"{tr(vm.label(s))}  \u200e{ctx['width']} x {ctx['height']}{mark}", s["id"])
             self.combo.setItemData(self.combo.count() - 1, f"{tr('When')}: {vm.when_text(s.get('when'))}",
                                    Qt.ItemDataRole.ToolTipRole)
         i = self.combo.findData(vp.vid if active else "")

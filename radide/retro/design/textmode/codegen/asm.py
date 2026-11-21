@@ -1741,6 +1741,15 @@ mn_loop:
     mov cx, mn_it
     call tui_draw_menu
 mn_wait:
+    cmp word ptr tui_dump, 2
+    jne mn_wait0
+    mov ah, 01h
+    int 16h
+    jnz mn_wait0
+    call tui_do_dump
+    mov word ptr tui_run, 0
+    jmp mn_ret
+mn_wait0:
     call tui_get_event
     or ax, ax
     jz mn_wait1
@@ -2072,6 +2081,15 @@ mb_txt:
     mov ax, 1
     call tui_mouse_show
 mb_wait:
+    cmp word ptr tui_dump, 2
+    jne mb_wait0
+    mov ah, 01h
+    int 16h
+    jnz mb_wait0
+    call tui_do_dump
+    mov word ptr tui_run, 0
+    jmp mb_out
+mb_wait0:
     call tui_get_event
     or cx, cx
     jnz mb_done
@@ -2083,6 +2101,7 @@ mb_wait:
     jne mb_wait
 mb_done:
     call tui_redraw
+mb_out:
     pop di
     pop si
     pop dx
@@ -2283,13 +2302,22 @@ tui_main proc
 @SPLASH@
     mov ax, 1
     call tui_show_screen
-    cmp word ptr tui_dump, 0
-    je ml_1
+    cmp word ptr tui_dump, 1
+    jne ml_1
     call tui_do_dump
     mov word ptr tui_run, 0
 ml_1:
     cmp word ptr tui_run, 0
     je ml_end
+    cmp word ptr tui_dump, 2
+    jne ml_ev
+    mov ah, 01h
+    int 16h
+    jnz ml_ev
+    call tui_do_dump
+    mov word ptr tui_run, 0
+    jmp ml_end
+ml_ev:
     call tui_get_event
     or ax, ax
     jz ml_2
@@ -2358,6 +2386,11 @@ cl_1:
     cmp al, 'd'
     jne cl_2
     mov word ptr tui_dump, 1
+    mov al, [si+5]
+    or al, 20h
+    cmp al, 'k'
+    jne cl_2
+    mov word ptr tui_dump, 2
 cl_2:
     inc si
     dec cx
@@ -2391,11 +2424,12 @@ EXIT = r"""    call tui_main
     mov ax, 4C00h
     int 21h"""
 
-ROWSMODE = {25: "", 43: "    mov ax, 1112h\n    mov bl, 0\n    int 10h",
+ROWSMODE = {25: "", 43: "    mov ax, 1201h\n    mov bl, 30h\n    int 10h\n    mov ax, 0003h\n    int 10h\n"
+                       "    mov ax, 1112h\n    mov bl, 0\n    int 10h",
             50: "    mov ax, 1112h\n    mov bl, 0\n    int 10h"}
 
 
-def generate(screens, old_text: str = "", app: App | None = None, relax_jumps: bool = True) -> tuple[str, list[str]]:
+def generate(screens, old_text: str = "", app: App | None = None, relax_jumps: bool = False) -> tuple[str, list[str]]:
     """(source of main.asm, warnings)."""
     app = app or build_app(screens)
     rg = Regions(old_text, CM)
@@ -2550,7 +2584,7 @@ def relax(text: str, max_rounds: int = 30) -> str:
     """Rewrite the conditional jumps that are out of range (8086 jumps are short) as
     ``j<not cc> skip / jmp target / skip:`` - assembling with RAD IDE's 8086 assembler to find them."""
     try:
-        from ....emu8086.assembler import assemble
+        from .....emu8086.assembler import assemble
     except ImportError:
         return text
     n = 0

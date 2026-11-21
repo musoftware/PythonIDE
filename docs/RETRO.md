@@ -326,3 +326,416 @@ Not done yet: SMD de-interleaving and SMS / Game Gear checksum repair, an x86 / 
 disassembler in the inspector (6502 only; the retro-dev slice owns the full disassemblers), structure templates
 the user can write (only the built-in header templates), Open Folder detection of a folder of ROMs, a tutorial
 course.
+
+## Retro development (slice "dev": `radide/retro/cpu`, `radide/retro/dev`, `radide/languages/retro_*.py`, `radide/features/retro_dev.py`)
+
+Write new games for old machines, or turn a ROM you own into a project you can edit and rebuild.
+
+### Project types (New Project > Retro Games)
+
+| Language plugin | Templates | Toolchain (downloaded on the first build) | Output | Runs in |
+|---|---|---|---|---|
+| `retro-atari2600` Atari 2600 (DASM) | Atari 2600 Game: NTSC kernel (VSYNC / VBLANK with TIM64T / 192 lines / overscan), joystick-moved sprite, RESP0 + HMOVE positioning | DASM 2.20.18 (GitHub, GPL-2.0) | 4K `.bin` | Stella |
+| `retro-nes` NES (cc65 / ca65) | NES Game (ca65 assembly, own `nes.cfg`, OAM DMA, controller), NES Game (cc65 C, conio + joystick driver) | cc65 Windows snapshot (official, zlib) | `.nes` (NROM) | Mesen 2 / FCEUX |
+| `retro-gameboy` Game Boy (RGBDS) | Game Boy Game: header, VRAM tiles, OAM sprite, D-pad | RGBDS 1.0.4 (GitHub, MIT) + rgbfix | `.gb` | mGBA / Mesen |
+| `retro-c64` Commodore 64 (cc65 / ACME) | ca65 assembly (BASIC SYS line, KERNAL, raster loop, joystick 2), cc65 C, ACME (only when `acme` is in PATH) | cc65 | `.prg` | VICE |
+| `retro-zx` ZX Spectrum (sjasmplus) | Z80 at 32768: ROM CLS / rst $10, HALT loop, border, keyboard | sjasmplus 1.24.0 (GitHub, BSD-3) | `.tap` (BASIC loader + CODE, `tapfile.py`) | Fuse / ZEsarUX / `RADIDE_ZX_EMULATOR` / file association |
+
+GBDK-2020 (C for the Game Boy) is not offered yet.
+
+* Toolchains: `radide/retro/dev/toolchain.py` downloads from the official release pages only, into
+  `%LOCALAPPDATA%\RADIDE\tools\<tool>` (portable, no admin, no PATH change); the archive SHA-256 is checked against
+  the value GitHub publishes (DASM, RGBDS, sjasmplus) and recorded in `RADIDE-SOURCE.json`. cc65 publishes only a
+  rolling Windows snapshot, so its SHA-256 is measured and recorded, not pinned (the zip CRCs are verified).
+  Tools > Retro > Retro Development > Retro Toolchains... shows the status and downloads with one click.
+* Build: `python -m radide.retro.dev.build <folder>` (`build.py`), driven by `project.radproj` `"retro"`:
+  `system`, `lang` (asm / c / acme), `main`, `cfg` (ld65 config), `output`, `fix` / `title` (rgbfix), `org` /
+  `entry` (ZX .tap), and for disassemblies `original` / `compare` / `compare_what`. Messages go to
+  `_build/diagnostics.json`; `errors.py` understands DASM, ca65 / ld65 / cc65, RGBDS (`error: ...` + `at f(n)`),
+  sjasmplus and ACME, so the Error List shows file + line (double-click opens it). Listings, symbol files,
+  `labels.txt` (ld65 `-Ln`) and the ca65 `.dbg` file are written to `_build/` for the emulators / debuggers.
+* Run (F5 / Ctrl+F5): `python -m radide.retro.dev.run <folder>` builds, then calls the emulator slice's API
+  `radide.retro.emu.run_rom(path, system=...)` (our system ids map to `a2600`, `nes`, `gb`, `c64`) and waits for
+  the emulator, so Stop ends both. `run.run_rom(path, system_id)` is the same call for other code. When no
+  emulator is installed, the Output window says to use Tools > Retro > Emulators....
+
+### Disassemblers (`radide/retro/cpu`, no Qt)
+
+* `m6502.py` (all 256 opcodes, NMOS undocumented ones flagged), `sm83.py` (Game Boy), `z80.py` (CB / ED / DD / FD /
+  DDCB / FDCB, undocumented IXH / IXL, SLL, ED duplicates, DDCB register copies, OUT (C),0 ...). Each entry has the
+  addressing mode, size, cycles (T-states for SM83 / Z80) and the flags it changes; the descriptions (English +
+  Arabic) are our own.
+* `hwregs.py`: TIA / RIOT (read and write names differ at the same address), NES PPU / APU / controllers, Game Boy
+  I/O + MBC registers, VIC-II / SID / CIA / KERNAL routines, ZX Spectrum ROM routines and system variables, ZX ports
+  (hover only), with descriptions written for RAD IDE.
+* `disasm.py`: recursive tracing from the reset / NMI / IRQ vectors (2600 / NES / C64), the entry point and
+  interrupt vectors (Game Boy), the BASIC `SYS` / `RANDOMIZE USR` address (C64 / ZX) and the user's hints;
+  everything not reached stays data. Labels (`Lxxxx`, `Bn_` per bank, `Reset` / `NMI` / `IRQ` / `Start` ...),
+  hardware names as equates, 2600 zero-page RAM as `ram_XX`. Output for DASM, ca65, RGBDS and sjasmplus is written
+  so the assembler picks the *same encoding*: absolute operands below $100 are forced (`lda.w` / `lda a:`),
+  `ld a,[$FF44]` stays `ld` (not `ldh`), undocumented opcodes / prefix-only bytes / odd encodings become `.byte` /
+  `db` with the mnemonic in a comment, labels are only placed where a line starts (a jump into the middle of an
+  instruction keeps its hex address and is reported as a conflict), 2600 mirror addresses stay as written.
+* `romfmt.py`: 2600 2K / 4K / F8 / F6 / F4, iNES 1 / NES 2.0 (header, trainer, PRG banks with the last one fixed at
+  $C000, CHR ROM -> `chr.bin`), Game Boy (ROM0 + ROMX banks, header / checksums shown), C64 `.prg`, ZX `.tap`
+  (CODE blocks + the BASIC loader's USR address) or raw code with a load address.
+
+### Disassemble ROM into Project (Tools > Retro > Retro Development)
+
+Choose a ROM / program file you own, the system (or let the IDE detect it), an optional load address / entry
+point (raw ZX code), "follow undocumented 6502 opcodes" and a folder. `fromrom.create_project` writes the source
+(`main.asm` / `main.s`, plus a generated ld65 config for ca65), the data files, a copy of the original in `rom/`
+and `hints.json`, builds it and compares the result with the original: the dialog shows **byte-identical** (green)
+or the first difference (red). F5 / Rebuild Check repeat the comparison after every edit.
+`hints.json` (`code` addresses the tracer missed, `data` ranges, `labels`, `comments`, `undocumented`) is applied by
+Re-disassemble with Hints (the old source is kept as `.bak`). Console: `python -m radide.retro.dev.fromrom <rom>
+<folder> [system] [base hex]`. Multi-bank NES ROMs: only the fixed last bank is traced automatically (the other
+banks need code hints); a multi-block ZX tape is compared as the concatenation of its CODE blocks.
+
+### Editor (`radide/retro/dev/intel.py`)
+
+Monarch grammars `rad-retro-dasm` / `-ca65` / `-rgbds` / `-sjasmplus` (mnemonics, registers, directives, hardware
+names, `$hex` / `%bin` numbers, column-0 labels for DASM / sjasmplus, ca65 `@local` and `:+` labels);
+completions (mnemonics with cycles, directives, registers, the system's hardware registers, labels / equates /
+macros of every source in the project); hover (addressing-mode table with opcode / bytes / cycles and the flags,
+hardware register text, a number in hex / decimal / binary + the register at that address, ZX ports, label
+definitions); signature help (addressing modes); go to definition (across files, `.local` labels); find all
+references; outline. `radide/features/retro_dev.py` puts a guard first in `MonacoEditor.plugin_overlays` so the
+x86 assembly overlay never replaces a retro plugin.
+
+### Tests (`samples/Tests/Retro/Dev`) and samples (`samples/Tests/Retro/Dev/Projects`)
+
+* `check_disasm.py` (137 checks, no Qt): decoders vs hand-assembled bytes, error parsers, TAP writer, round trips of
+  synthetic homebrew ROMs (2600 4K / 2K / F8, NES, C64, Game Boy, ZX with and without undocumented code) through
+  the real assemblers -> byte-identical, hints.
+* `check_templates.py` (52 checks, no Qt): every template builds without warnings, output format, a mistake -> an
+  Error List row at the right file / line, the built ROM -> disassembled project -> byte-identical; editor support.
+* `test_ide.py` (13 checks, IDE): New Project group, editor plugin, menus, Rebuild Check, Error List, Disassemble
+  dialog end to end, toolchains dialog, Arabic strings.
+* Samples: Atari2600Smiley, NesSprite, NesHelloC, GameBoySmiley, C64Ball, C64HelloC, ZxBlock and Disasm2600Smiley
+  (a disassembly of our own 2600 ROM). Everything is original homebrew (CC0).
+
+Not done yet: GBDK-2020 C template, ACME download (PATH only), automatic tracing of switchable NES / Game Boy
+banks (hints needed), SNES / Genesis / 7800 / Atari 8-bit / MSX / SMS project types (the Z80 / 6502 disassemblers
+already decode their code), source-level debugging inside the IDE (the emulator slice's Retro Debugger and the
+emulators' own debuggers load the `.sym` / `.dbg` / `labels.txt` files), Open Folder detection of DASM / ca65 /
+RGBDS source folders, a tutorial course (`radide/tutorials/retro-games/`).
+
+## DOS program development (slice "dosdev": `radide/retro/dos`, `radide/languages/dos_*.py`, `radide/features/dos_ide.py`)
+
+New QBasic, Pascal, C, assembly and batch programs for MS-DOS, built into **real DOS executables** with free
+compilers and run in DOSBox-X (found / downloaded through `radide.retro.emu.manager`).
+
+### Project types (New Project > DOS)
+
+| plugin | free compiler (downloaded on the first build) | your own copy (Tools > Retro > DOS Programming > DOS Toolchains) |
+|---|---|---|
+| `dos-qbasic` QBasic / QuickBASIC | FreeBASIC 1.10.1 **DOS build**, `fbc -lang qb`, run inside DOSBox-X without a window (CWSDPMI copied next to the EXE) | QBASIC.EXE / QB.EXE: "Run in My QBasic" (`/RUN`); BC.EXE + LINK.EXE as compiler |
+| `dos-pascal` Turbo Pascal-style | Free Pascal 3.2.2 i8086-msdos cross compiler on Windows (`-Tmsdos -Wm<model> -Mtp -XX`, Crt / Dos / Graph) | TPC.EXE inside DOSBox-X |
+| `dos-c` Turbo C-style | Open Watcom v2 `wcl -bt=dos -m<s/m/c/l>`; RAD IDE's `include/` adds `tcconio.h` (clrscr, gotoxy, textcolor, cprintf in colour ...), `tcgraph.h` / `graphics.h` (BGI subset in 640x480x16, no .BGI drivers) | TCC.EXE inside DOSBox-X; DJGPP `i586-pc-msdosdjgpp-gcc` (32-bit, not downloaded: no official Windows-hosted build) |
+| `dos-asm` DOS Assembly (16-bit MASM) | JWasm 2.21 `-mz` (MZ .EXE) or `-bin` (.COM); listing + symbol map in `_build` | - |
+| `dos-batch` DOS Batch (.BAT) | none (the build checks GOTO / CALL targets) | - |
+
+Templates (all original): hello, text-mode menu, mode 13h graphics, PC speaker music, mouse (INT 33h) for every
+compiled language, plus line-numbered BASIC, a tiny .COM, BGI graphics (C), CHOICE menu and a launcher (batch).
+Sources are written CRLF / CP437; box characters come from `CHR$()` / `#201` / `0xC9` so files stay ASCII.
+
+Toolchains (`toolchain.py`, no Qt): official URLs, SHA-256 pinned (GitHub digests for Open Watcom and JWasm,
+FreeBASIC's published SHA-1 checked too), unpacked into `%LOCALAPPDATA%\RADIDE\tools\<key>` with
+`RADIDE-SOURCE.json`; the Free Pascal Inno Setup package is unpacked with innoextract (never run). Microsoft and
+Borland tools are never downloaded. User paths: `%LOCALAPPDATA%\RADIDE\retro\dos\config.json` (`RADIDE_DOS_CONFIG`
+overrides it).
+
+### Build, Error List, Run, Debug
+
+* `python -m radide.retro.dos.build <folder>` (also Build Solution through `plugin.build_command`) writes
+  `_build/diags.json` (`{"ok", "exe", "tool", "map", "diags": [{severity, message, file, line, col, tool}]}`); the
+  Error List shows the rows (`dos_ide.diag_provider`), with file:line for FreeBASIC, Free Pascal, Open Watcom /
+  wlink, JWasm, Turbo Pascal, Turbo C, QuickBASIC BC and DJGPP gcc (`errors.py`) and compatibility notes
+  (`compat.py`).
+* F5 / Ctrl+F5 run `python -m radide.retro.dos.run <folder>`: build when stale, write `_build/run.conf` (project
+  folder = C:, Z:\BIN on the PATH, cycles preset `xt / 286 / 386 / 486 / pentium / auto / max`, machine, memory,
+  keep window, program arguments) and start DOSBox-X, tied to the runner with the emu slice's job object so Stop
+  closes it. F5 adds `--debug`: DOSBox-X's built-in debugger starts the program with `DEBUGBOX` (stops at the first
+  instruction) and the build's symbol map is printed (`BP seg:off`). DOS Assembly projects step in RAD IDE's own
+  8086 emulator instead when it understands the code (DOS Project Settings > Debugger: auto / emu8086 / dosbox).
+* `--qbasic` runs the source in your own QBASIC.EXE / QB.EXE; `--capture [--keys K] [--timeout N]` runs headless.
+
+### Captured runs (tests and "Run with Captured Output")
+
+`dosbox.capture_text()` starts DOSBox-X with `-silent` and three tiny original helpers (`helpers_src/*.ASM`,
+embedded bytes checked against a JWasm build by the tests): `RADKEYS.COM` stuffs keys into the BIOS buffer
+(`~` Enter, `` ` `` Esc, `_` Space, `^U ^D ^L ^R` arrows), the program's output is redirected to `_OUT.TXT`,
+`RADSCR.COM` saves the text screen (`_SCREEN.TXT`, Crt / conio write to video memory) and the resident
+`RADCAP.COM` saves the last mode 13h frame (`_SCR13.RAW`, pixels + palette) when the program switches back to
+text mode. Tools > Retro > DOS Programming > Show Last DOS Screen displays both.
+
+### Old sources and Open Folder
+
+`dos_ide.detect_dos_sources` is registered in `project_detect.DETECTORS`: folders of old `.BAS` (QBasic, with or
+without line numbers; VB6 modules excluded), `.PAS` (Turbo Pascal; Delphi units excluded), `.C` (conio / dos.h /
+graphics.h / far), `.ASM` (16-bit MASM / TASM) and `.BAT` files become a DOS project (sources untouched). The build
+warns about what the free compilers cannot do: BGI `.BGI` / `.CHR` drivers (replaced by the BGI subset), Turbo
+Pascal units with only a `.TPU`, `Overlay`, `inline($..)`, QBasic `PLAY` / `SOUND` / `CALL INTERRUPT` /
+`ON TIMER`, Turbo C `asm` blocks and pseudo-registers, TASM IDEAL mode.
+
+### Editor (`intel.py`, `reference.py`)
+
+Hover / completion / signature help: INT 21h, 10h, 16h, 33h, 1Ah with every function's registers in and out
+(English + Arabic), resolved from the register set just above the call in all four languages; QBasic statements,
+Crt / Dos / Graph routines, conio / dos.h / i86.h / tcgraph functions, batch commands, 8086 instructions (from the
+emu8086 plugin); outline and F12 (SUB / FUNCTION / labels / line numbers, procedures, C functions, asm labels /
+PROCs, batch labels). Tools > Retro > DOS Programming > DOS Interrupt Reference... browses the tables.
+
+### Tests (`samples/Tests/Retro/DOSDev`) and samples (`samples/Tests/Retro/DOSOldSources`)
+
+`run_all.py`: toolchains (download / SHA-256 / helpers), IntelliSense and parsers, all 26 templates built and run
+in DOSBox-X, the old-style samples detected / built / run, and the IDE test (qh.py).
+
+Not done yet: FreeBASIC graphics programs are not frame-captured (its DOS graphics library does not switch modes
+through the real-mode INT 10h vector RADCAP hooks; their text output is captured), the DOSBox-X debugger does not
+load the symbol map itself (it is printed / opened in the IDE), DJGPP is used only when installed by the user,
+QuickBASIC / Turbo Pascal / Turbo C paths were tested with configuration only (no proprietary copies available),
+mode 12h (BGI) frames are not captured, and there is no DOS tutorial course yet (`radide/tutorials/dos-programming/`).
+
+## Retro game designers (slice "gamedesign": `radide/retro/design/game`, `radide/features/retro_design.py`)
+
+Draw a screen or level, and RAD IDE writes the data and the program for the system's toolchain (the VB idea:
+draw it, generate code, run it). Tools > Retro > Game Designers > New Atari 2600 Screen / New NES Screen or
+Level / New Game Boy Map / New DOS Mode 13h Screen, New Design for This Project (picks the designer from the open
+retro or DOS project), Open Game Design... With a project open the design is saved in `<project>/Designs/` and
+**every save regenerates** the code in `Designs/gen/<name>/`.
+
+| system | file | layers | generated |
+|---|---|---|---|
+| Atari 2600 | `.a26scr` | Background colour + Playfield colour (one per scan line), Playfield (20 bits per line, mirror / repeat), Collision | DASM one-line kernel: 8 full-height tables (COLUBK, COLUPF, PF0-2, GRP0, GRP1, ENAM0/ENAM1/ENABL bits), players with NUSIZ / REFP, missiles, ball; NTSC 192 / PAL 228 lines; `<n>_collision.asm` |
+| NES | `.nesscr` | Nametable (screens x 32 by 30), Attributes (palette per 16x16 metatile), Collision | ca65 data (palettes, columns, attribute columns, sprites, collision) + NROM loader (`nrom.cfg`): first 64 columns, then column + attribute streaming while the D-pad (or auto) scrolls a level of up to 8 screens; sprites at world x - camera x; `<n>.chr` |
+| Game Boy | `.gbmap` | Background (32x32), Window (shown at WX/WY), Collision | `<n>.2bpp`, `_bg.tilemap`, `_win.tilemap`, `_data.inc` (OAM, BGP/OBP, SCX/SCY, WX/WY, LCDC, collision) + `<n>.asm` (RGBDS; `rgbfix -v`) |
+| DOS mode 13h | `.m13scr` | Background (320x200 bitmap), Tiles (20x13 of 16x16, 255 = none), Collision | 8.3 files: `.PAL` (6-bit DAC), `.BG`, `.RLE`, `.SPR`, `.MAP`, `.COL`; programs `<N>.BAS` (QBasic / QuickBASIC dialect, FreeBASIC `-lang qb`), `<N>.C` (OpenWatcom `-ml`), `<N>.ASM` (NASM .COM with everything embedded) |
+
+Common editor (`ui.GameDesigner`): tools Select / Pencil / Eraser / Fill / Rectangle / Pick (S P E F R K, right
+button erases), Layers list (visibility + current layer, "Objects"), the colour / tile / palette picker of the
+current layer (double-click edits the tile, sprite or colour), grid, zoom 1-8x (2600 pixels drawn 2:1), undo /
+redo (whole-document snapshots), object list + Properties grid (object properties, or the screen settings:
+TV system, mirror, score mode, priority, ball size / screens, scroll mode, speed / SCX, SCY, window, BGP, OBP0/1 /
+transparent tile colour, build target), pixel editor for tiles and sprites (2600 players: height), NES palette
+dialog (64-colour master palette), Import Tiles (`.chr` / `.nes` CHR ROM / `.2bpp`, read with the gfx slice's
+codecs), Export PNG, Generate Code, Build && Run (a thread; then `radide.retro.emu.run_rom`: Stella, Mesen,
+mGBA, DOSBox-X). Collision cells are drawn as a coloured overlay (1 solid, 2 hazard, 3 special, 4 trigger).
+
+**Kernel timing (2600).** Every value comes from a table one byte into a 256-byte page (`TABLE-1,y` never
+crosses a page) and the loop sits in one page. Stores land at cycles 3 COLUBK, 6 COLUPF, 13 PF0, 20 PF1, 27 PF2,
+34 GRP0, 41 GRP1, 48/53/58 ENAM0/ENAM1/ENABL, WSYNC at 74. An object lying completely left of the pixel where its
+register is written is generated one line early (and preloaded on the last VBLANK line); one that straddles it
+gets a warning. VBLANK and overscan use TIM64T with the expiry padded to the middle of a line, so the frame is
+exactly 262 / 312 lines whatever the positioning routine costs.
+
+**Checks after every build (no emulator needed)** - `build.check`: the 2600 ROM runs in `sim6502.Atari2600Probe`
+(cycle-counting 6502 + TIA write log + RIOT timer: lines per frame, every kernel line's PF / colour / GRP values,
+PF writes before the beam); the NES ROM runs in `sim6502.NESProbe` (name / attribute tables, palettes after the
+loader); the Game Boy data must be in the ROM at the `.sym` addresses with a valid header checksum; the .COM runs
+in RAD IDE's 8086 emulator and video memory must equal the design. `build.dosbox_shot(exe)` runs a BASIC / C
+.EXE with `/SHOT` in DOSBox-X (headless) and returns SCREEN.RAW.
+
+### API
+
+```python
+from radide.retro.design.game import new_design, load, generate, build, gen_dir, SYSTEMS, EXTS
+d = new_design("nes", "Level1", screens=3)         # a2600 (tv=) | nes (screens=) | gb | dos13h
+d.layer("Nametable").set(5, 20, 4); d.save("Level1.nesscr")
+info = generate(d, gen_dir("Level1.nesscr"))       # {"main", "files", "warnings", "rom", "system"}
+res = build(d, "out", log=print, download=False)   # {"ok", "rom", "log", "warnings", "checks", "missing"}
+from radide.retro.design.game.build import run, dosbox_shot
+from radide.retro.design.game.ui import GameDesigner   # GameDesigner(design, path, log=win.log)
+win.retro_designs.new_design("gb", folder=..., ask=False); win.retro_designs.open_design(path)
+```
+
+Reused from the other slices (through `compat.py`, with small fallbacks): `radide.retro.gfx` palettes, tile
+codecs, playfield bit order, iNES CHR offset; `radide.retro.dev.toolchain` (DASM, ca65 / ld65, RGBDS);
+`radide.asm.toolchain` (NASM); `radide.retro.dos.build.Builder` (FreeBASIC DOS inside DOSBox-X, OpenWatcom)
+and `radide.retro.dos.dosbox`; `radide.retro.emu.run_rom`; `radide.retro.menu.section`; `radide.retro.filebus`;
+`radide.emu8086` (mode 13h palette, .COM loader, machine). `RADIDE_RETRO_TOOLPATH` adds tool folders (tests).
+
+### Tests (`samples/Tests/Retro/DesignGames`) and samples (`samples/Tests/Retro/DesignSamples`)
+
+* `test_gamedesign_core.py` - 104 checks: playfield encoding, reflect / repeat, kernel tables, early objects,
+  CTRLPF; NES attribute packing / unpacking, CHR planes, palettes, flipped metasprites; GB OAM / 2bpp; mode 13h
+  palette, RLE, sprite file, clipping, composition; model round trip / snapshots / flood; codecs; real builds
+  with DASM (NTSC, PAL, extreme x positions), ca65 + ld65 (3-screen level + scrolling and column streaming in
+  the probe), RGBDS, NASM, FreeBASIC and OpenWatcom (both run in DOSBox-X and draw the design pixel for pixel);
+  the ROMs / programs start in Stella, Mesen, mGBA and DOSBox-X (`--no-emu` skips). Missing tools are skipped.
+* `test_gamedesign_ui.py` (qh.py) - 85 checks: menu, one designer per system, pencil / undo / redo, rectangle and
+  fill on the collision layer, object drag, rename / add / delete, Export PNG, zoom, File > Save, TV / screens
+  changes, mirrored playfield painting, Import Tiles, Save All, File > Open, Build && Run with checks, Arabic.
+* `DesignSamples/` - `Castle.a26scr`, `Meadow.nesscr`, `Town.gbmap`, `Cave.m13scr` (original art, CC0, written by
+  `make_samples.py`); all four build and pass their checks.
+
+Not done yet: asymmetric 2600 playfields and per-line player colours (the one-line kernel has 2 cycles left),
+2600 joystick movement, NES vertical scrolling / mappers beyond NROM, Game Boy Color palettes, scrolling maps
+larger than 32x32 on the Game Boy, mode 13h multi-screen scrolling, a link to the gfx slice's editors for
+editing tiles in place (the designer has its own pixel editor and imports `.chr` / `.2bpp`).
+
+## Old NASA programs: Apollo AGC and legacy Fortran (slice "nasa": `radide/agc`, `radide/languages/agc_yul.py`, `radide/retro/legacy_fortran.py`, `radide/languages/retro_fortran_legacy.py`, `radide/features/retro_nasa.py`)
+
+New Project > **Space & Science**: **Apollo AGC Program (yaYUL)** and **Fortran 66/77 (fixed form, gfortran -std=legacy)**.
+File > Open Folder recognises both (`radide/agc/detect.py`, `legacy_fortran.detect_fixed_form`, hooked into
+`project_detect.DETECTORS` as `_nasa`): a folder of `.agc` files with `MAIN.agc` becomes an AGC project (a flight program
+with 20+ `$` includes gets `"agc": {"assembler": "yayul", "run": "yaagc"}`), fixed-form `.f/.for/.f77` sources a
+`fortran-legacy` project.
+
+### Apollo Guidance Computer
+
+| Part | File | What it does |
+|---|---|---|
+| Reference data | `agc/isa.py` | Block II basic instructions, extracodes, implied-address forms (encodings + English/Arabic descriptions), pseudo-ops, ~120 interpretive opcodes, special registers, I/O channels, interrupt vectors, DSKY key and digit codes, verbs / nouns / programs (Colossus/Comanche meanings) |
+| Built-in assembler | `agc/assembler.py` | original "mini-YUL" for the yaYUL syntax: labels in column 1, `#` comments, `$FILE.agc` includes, yaYUL's number rule (0-7 only = octal, 8/9 or `D` = decimal), `+n` relative operands, `SETLOC BANK BLOCK EBANK= ERASE EQUALS = OCT DEC 2DEC CADR FCADR ECADR GENADR ADRES REMADR BBCON 2CADR MM VN`, double-precision `+1` encoding (DAS DXCH DCA DCS), `NOOP` = `TCF +1` in fixed memory, EXTEND tracking (extended `INDEX`). Interpretive code is reported ("needs yaYUL"). Output: 36 x 1024-word rope, symbols, source line <-> address maps, listing, `to_bin()` in yaYUL's `.bin` order (banks 2, 3, 0, 1, 4..., words << 1, big-endian), `load_bin()`. Errors in English and Arabic. **Verified: the HelloDSKY rope is word-for-word identical to yaYUL's** (yaYUL also appends its bank "bugger" check words, which the built-in assembler does not). |
+| Emulator | `agc/cpu.py`, `agc/machine.py` | original Block II CPU: 15-bit ones' complement words, 16-bit A / Q with overflow, all basic instructions and extracodes (MP / DV / MSU approximated), `TC A/L/Q` running the register as an instruction (RETURN), INDEX (also across EXTEND), banks (EB / FB / BB / superbank), edit registers CYR SR CYL EDOP, channels (L / Q as channels 1 / 2), TIME1-TIME5 with T3/T4/T5RUPT, KEYRUPT1, RESUME via ZRUPT/BRUPT, GOJAM. The **hardware alarms** restart the AGC like the real one and yaAGC: NIGHT WATCHMAN (NEWJOB, address 67, not touched within 0.64 s), RUPT LOCK / NO RUPT (140 ms), TC TRAP / NO TC (5 ms) - project `"agc": {"alarms": false}` turns them off. Not modelled: IMU, radars, parity, T6, downlink, counter cells of the flight hardware. `python -m radide.agc MAIN.agc --keys V35E` runs headless and prints the DSKY. |
+| DSKY | `agc/dsky_model.py`, `agc/ui.py` | relay words of channel 10 (12 words: PROG / VERB / NOUN / R1-R3 digits and signs, lamp word 12), lamps of channel 11 and Virtual AGC's channel 163; an original painted DSKY widget (status/caution lamps, green 7-segment EL display, 19 keys + PRO, keyboard shortcuts 0-9 V N Enter C R P K + -) |
+| Debugging | `agc/session.py` | F5 = `AgcSession`: the "Apollo AGC" dock (DSKY, Registers, Erasable Memory E0-E7, Channels, Variables), breakpoints on source lines in any `.agc` file, F11 / F10 (over TC) / Shift+F11, Locals = A L Q Z EB FB BB + the program's erasable variables, Call Stack (current label + Q), Watch / Immediate (symbols, registers, octal addresses), Pause / Step / Reset (GOJAM) on the dock; real-time execution (85 000 memory cycles per second) in 30 ms slices |
+| Editor | `agc/intel.py` | Monarch grammar `rad-agc` (labels, opcodes, pseudo-ops, interpretive opcodes, registers, `##` annotations, `$` includes), IntelliSense with descriptions, hover (instructions, pseudo-ops, registers, I/O channels after READ/WRITE, `V16N36` / `P63` in comments), F12 and Find All References across every `.agc` file of the folder (`SymbolIndex`, mtime cache), outline by `## Page n` / log section, folding by page |
+| Virtual AGC | `agc/toolchain.py` | Virtual AGC publishes no Windows binaries on GitHub, so Tools > Retro > Apollo AGC > Virtual AGC Toolchain... downloads the official `yaYUL/`, `yaAGC/` and `Tools/checkdec.c` of github.com/virtualagc/virtualagc at a pinned commit (`fdf0f05d`, 2026-10-24), checks every file against the git blob SHA-1 the GitHub API reports, records SHA-256 in `manifest.json` and builds `yaYUL.exe` / `yaAGC.exe` with the MinGW gcc into `%LOCALAPPDATA%\RADIDE\tools\virtualagc\bin` (portable, no admin). GPL v2 tools used as external programs. `python -m radide.agc.toolchain install / status`. |
+| yaAGC link | `agc/yaagc.py` | the 4-byte socket protocol (channel + value, u-bit mask packets), `YaAgcLink` (QTcpSocket, retries until yaAGC listens on port 19697), key / PRO packets, parsers for the debugger console (`--fullname` stop annotations, `info registers`) |
+| yaYUL / yaAGC session | `agc/session.py` `YaAgcSession` | project `"agc": {"assembler": "yayul"}` or `{"run": "yaagc"}` (or `"auto"` when the program has interpretive code): yaYUL builds (stderr `FILE:LINE: Fatal Error` -> Error List), yaAGC runs the rope (`--nodebug`, or debug mode with `break FILE:LINE` / `step` / `next` / `cont` / `info registers`) and the same DSKY dock connects to its socket |
+| Apollo source | `agc/apollo_source.py` | Tools > Retro > Apollo AGC > Open Apollo Source...: Comanche055 (Apollo 11 CM) or Luminary099 (LM) from the virtualagc repository (mirror: chrislgarry/Apollo-11), on request, into a folder the user picks, blob-SHA checked, with `README_RADIDE.txt` (public-domain note, credit to Virtual AGC) and a `project.radproj` (yaYUL + yaAGC) |
+| IDE glue | `features/retro_nasa.py` | Tools > Retro > Apollo AGC (Open Apollo Source, Virtual AGC Toolchain, Build with yaYUL, DSKY Panel, DSKY Verbs/Nouns/Programs, Assembly Listing); `win.diag_providers`: the built-in assembler checks the project on every save (Error List; only a hint for interpretive programs) |
+
+Project settings (`project.radproj`): `"agc": {"assembler": "auto" | "builtin" | "yayul", "run": "emulator" | "yaagc", "port": 19697, "alarms": true, "stop_at_entry": false, "yayul_args": ""}`.
+
+Writing programs that also run on real hardware / yaAGC: interrupt vectors at 4000 (4 words each: GOJAM, T6, T5, T3, T4, KEYRUPT1, KEYRUPT2, UPRUPT, DOWNRUPT, RADAR, HANDRUPT), save A/L with `DXCH ARUPT` and restore before `RESUME`, touch `NEWJOB` in the idle loop, keep an interrupt coming every < 140 ms (the samples reload TIME3 with 37777 for a T3RUPT every centisecond) and end idle loops with `TCF`.
+
+### Legacy Fortran (FORTRAN IV / 66 / 77)
+
+* `fortran-legacy` owns `.f` (the modern plugin keeps `.f90`); console programs: F5 = `python -m radide.retro.legacy_fortran run <folder>` (build into `_build/`, then run with stdin / stdout in the IDE). Project `"fortran": {"preset": ..., "flags": ...}`, presets: `legacy` (`-std=legacy -ffixed-form -ffixed-line-length-72`), `f66` (+ `-fno-automatic -finit-local-zero`, the static-variable semantics old programs rely on), `dec` (`-fdec`), `strict` (`-std=f95 -Wall -pedantic`, lists deleted / obsolescent features). Tools > Retro > Legacy Fortran > Compiler Preset...
+* Editor: Monarch grammar `rad-fortran-fixed` (C / * / D comment cards by column 1, labels, Hollerith starts, dotted operators), Monaco rulers at columns 5 / 6 / 72, continuation column and label field coloured, columns 73-80 greyed (`editor_js`, a `MonacoEditor.ready_hooks` hook for every fixed-form file), hover = what the column means + an explanation of the legacy statement on that line, outline PROGRAM / SUBROUTINE / FUNCTION.
+* `analyze()` (Tools > Retro > Legacy Fortran > Explain Legacy Constructs): arithmetic IF, computed / assigned GO TO, Hollerith, PAUSE, EQUIVALENCE, COMMON, ENTRY, shared DO terminals (per program unit), implicit typing - with English / Arabic notes.
+* `to_free_form()` (Convert to Free Form..., diff preview + Save As .f90): `!` comments, continuations joined (strings and Hollerith kept intact), labels kept, sequence numbers dropped (or kept as comments), Hollerith -> quoted strings, `DO10` / `GOTO` blank fixes, long lines wrapped with `&`. **Verified: the converted OrbitTable compiles as free form and prints the same table.**
+* Card Deck View: the current line drawn as an IBM 029 punched card (interpreted text, 12 rows, field shading 1-5 / 6 / 7-72 / 73-80, card N of M, statement number, sequence); `punch_rows`, `card_text` for text output.
+* gfortran diagnostics (caret and one-line formats) -> Error List on save (`fortran_diagnostics`, `-fsyntax-only` with the project preset).
+
+### Samples and tests
+
+| Folder | What |
+|---|---|
+| `samples/Tests/Retro/AGC/HelloDSKY` | original AGC program (public domain / CC0): V16 N36 clock, V35E lamp test, OPR ERR / RSET, PUTNUM / FLUSH display buffer, KEYRUPT keyboard; same as the "Hello DSKY" template (`radide/agc/examples/hello_dsky`) |
+| `samples/Tests/Retro/LegacyFortran/OrbitTable` | original Fortran 66 style program (CC0): circular orbits, Kepler's equation by Newton's method, arithmetic IF, computed GO TO, Hollerith FORMATs, sequence numbers in 73-80; `expected_output.txt` |
+| `samples/Tests/Retro/AGC/test_agc_core.py` | 39 headless checks: built-in assembler + emulator + DSKY (keys, lamp test, OPR ERR, alarms, breakpoint), protocol / parsers, editor support; with Virtual AGC installed: yaYUL 0 errors and word-for-word equal rope, yaAGC + DSKY socket (clock, V35E, V16N36E); `--apollo DIR` / `--download`: Comanche055 assembles with yaYUL (0 errors) and answers V35E in yaAGC |
+| `samples/Tests/Retro/LegacyFortran/test_legacy_fortran.py` | 27 checks: build + exact output with the presets, free-form conversion compiles and prints the same, analysis, fields, punch codes, plugin |
+| `samples/Tests/Retro/AGC/test_ide_nasa.py` | IDE (qh harness, 35 checks): menus, templates, F5 with the DSKY dock, keys on the widget, breakpoint + Locals + F10, Error List; with Virtual AGC: the yaYUL / yaAGC session (DSKY over the socket, V35E from the widget) and yaAGC debugging (breakpoint, registers, next); Ctrl+F5 on OrbitTable, card deck and conversion windows |
+
+Licences: the Apollo flight software is believed to be public domain (US government work); RAD IDE downloads it only on
+request and writes a note crediting the Virtual AGC transcription. Virtual AGC (yaYUL, yaAGC) is GPL v2 or later, built
+from the official source and used as external programs. The samples and RAD IDE's assembler, emulator and DSKY are
+original code.
+
+## DOS text-mode designer (slice "tuidesign": `radide/retro/design/textmode`, `radide/features/dos_designer.py`, `radide/languages/dos_tuiforms.py`)
+
+A Visual Basic-style designer for DOS text-mode applications: draw the screens, RAD IDE writes the program and a small
+original run-time in QBasic / FreeBASIC, Pascal, C or 16-bit assembly, builds it with the dosdev slice's free
+compilers and runs it in DOSBox-X.
+
+**New Project > DOS > DOS Text-Mode Forms App** (templates: QBasic / FreeBASIC, Pascal (Crt), C (OpenWatcom / Turbo
+C), 16-bit Assembly (.COM), QuickBASIC 4.5, QBasic 1.1). The project it creates is a normal dosdev project
+(`language` dos-qbasic / dos-pascal / dos-c / dos-asm, `"dos"` block), so Build, Run (F5), Project > DOS Settings
+and the editor's DOS IntelliSense work unchanged; it adds `*.tform` screens and a `"tui"` block:
+
+```json
+"tui": {"target": "freebasic | quickbasic | qbasic | pascal | c | asm", "startup": "Main"}
+```
+
+Every save of a screen regenerates `MAIN.BAS` / `MAIN.PAS` / `MAIN.C` / `MAIN.ASM` (the first screen is the startup
+screen). The user's code lives in `>>> USER CODE <key>` / `<<< END USER CODE` regions (`declarations`, `startup`,
+`general`, one per handler) and is kept; the code of a handler whose control or event was removed is kept commented
+out in the `orphaned` region. Unsaved edits of the open MAIN file are written first, then the editor reloads.
+
+### Designer (`designer.py`, `canvas.py`, `glyphs.py`)
+
+* Toolbox: Pointer, Window / Frame (border none / single / double / mixed / block, title left / centre / right,
+  shadow), Label (alignment), Button (hotkey, focus colours, shadow, Cancel = Esc), TextBox (MaxLength, password),
+  CheckBox, Option (groups), ListBox (items, border, selection colours), MenuBar (VB-style Menu Editor: captions with
+  `&` hotkeys, names, shortcut texts, separators), StatusBar (`~highlighted~` text), ProgressBar (block characters),
+  Separator (joins window borders: `╟─╢`, `╠═╣` ...).
+* Canvas 80x25 / 80x43 / 80x50 cells, CP437 glyphs drawn pixel-exact for box drawing, blocks and shades
+  (letters from Consolas / Lucida Console / Courier New), 16 foreground / 8 background colours + blink (iCE colours for
+  art). Drag to draw / move / resize (snapped to cells), rubber-band and Shift / Ctrl multi-select, arrows move,
+  Shift+arrows resize, moving a Window / Frame moves the controls inside it, Bring to Front / Send to Back, grid,
+  zoom, undo / redo (200 steps), copy / paste, PNG export, menu drop-down preview (click a title of the menu bar).
+* Properties window: object box, every property with a fitting editor (colour combos, choices, items / menus /
+  character / art-file dialogs) and the events list (double-click = code). Screen properties: size, desktop fill
+  character and colours, BackgroundArt (.ans / .bin / .txt), SplashArt + SplashSeconds, EscQuits.
+* Events: Button Click / KeyPress, TextBox Change / KeyPress, CheckBox / Option Click / KeyPress, ListBox Click /
+  Change / KeyPress, menu item Click, screen Load / KeyPress. Double-click a control, an event or an open menu's item
+  -> the MAIN file opens at the handler.
+* **Test Run (F5 in the designer)**: the run-time simulator (`sim.py`) runs the screens in a window (keys, mouse,
+  menus, message boxes) without DOS.
+
+### Generated programs (`codegen/*.py`, `render.py`, `sim.py`)
+
+`render.py` is the reference: the generated run-times draw exactly the same cells. Two layers: the **static layer**
+(desktop, windows, frames, separators, menu bar, list box borders, button shadows) is stored as run-length data
+(count, character, attribute; a run never crosses a line) and copied to the screen; the **live controls** are drawn
+from tables (type, position, attributes, text, hotkey mask, value, tab order, group, events ...) with their run-time
+state. One program holds all screens (same size). Event loop: Tab / Shift+Tab / arrows move the focus (arrows move
+in a list box), Enter / Space activate, typing edits a text box, Alt+letter (and the letter outside a text box)
+triggers hotkeys and opens menus, F10 opens the menu bar, Esc = the Cancel button or quits, left click focuses /
+activates / selects list items / opens menus. Menus and message boxes are modal loops.
+
+| target | drawing | keys | mouse | build |
+|---|---|---|---|---|
+| FreeBASIC (`-lang qb`) | LOCATE / COLOR / PRINT (the bottom-right cell without scrolling) | INKEY$ | `__GETMOUSE` | dosdev Builder (FreeBASIC DOS in DOSBox-X) |
+| QuickBASIC 4.5 | same, `DEF SEG` / POKE for the last cell | INKEY$ | INT 33h via CALL INTERRUPT (`QB /L QB.QLB`) | user's BC.EXE |
+| QBasic 1.1 | same | INKEY$ | none (no COMMAND$ either) | user's QBASIC.EXE / FreeBASIC |
+| Pascal | Crt (TextAttr, GotoXY, Write); last cell / dump via `Mem[$B800:...]` (go32v2: `dosmemput`) | KeyPressed / ReadKey | FPC Mouse unit, TP: INT 33h via Dos.Intr | Free Pascal i8086-msdos (`-Mtp`), user's TPC |
+| C (C89) | far pointer to B800:0000 (DJGPP: `_farpokew`) | kbhit / getch | INT 33h via int86 | OpenWatcom wcl `-bt=dos`, user's TCC, DJGPP |
+| 16-bit asm (MASM / TASM / JWasm syntax, `.model tiny`, `org 100h`) | stosw to B800h | INT 16h | INT 33h | JWasm `-bin`, or RAD IDE's own 8086 assembler (no toolchain) |
+
+Run-time API in handlers: `TuiSetText` / `TuiGetText$`, `TuiSetValue` / `TuiGetValue`, `TuiSetVisible`,
+`TuiSetEnabled`, `TuiAddItem` / `TuiClearList` / `TuiGetItem$`, `TuiShowScreen`, `TuiMsgBox`, `TuiQuit`, `TuiKey`
+(KeyPress: set 0 to cancel). Pascal uses the same names, C `tui_set_text` ..., asm `tui_set_text` with registers
+(BX = control, SI = string, AX = value). Control and screen names are constants (`CONST btnOK = 3`, `#define`,
+`equ`). Names: letters and digits only (QBasic has no `_`), so BASIC handlers are `btnOKClick`.
+
+Test hooks every generated program has: `PROG /DUMP` writes the screen (B800 dump, `SCREEN.BIN`) right after start-up
+and exits; `PROG /DUMPKEYS` first processes the keys waiting in the BIOS buffer (also inside menus and message boxes).
+`project.keys_com(keys)` builds a key-stuffer .COM with RAD IDE's 8086 assembler (Tab, F10, Alt+letter ... which the
+dosdev RADKEYS.COM does not cover).
+
+### ANSI / ASCII art editor (`ansieditor.py`, `ansi.py`)
+
+Pencil, Line (character or single / double box lines that join existing box drawing), Box (filled or not), Fill,
+Text (F1..F8: block characters), Select (copy / cut / paste as a floating block / delete), Eyedropper (also right
+click), character palette, colour bar (left = fore, right = back), blink, iCE colours, undo / redo. Files: `.ANS`
+(SGR colours, cursor movement, clear; deferred wrap; SAUCE title / author / group / width / iCE flags / comments
+read and written), `.BIN` (raw cells, SAUCE binary text width), `.TXT` / `.ASC` / `.NFO` (CP437 or UTF-8), PNG
+export. **Use as Splash Screen** puts the art in front of the startup screen (seconds or until a key). ANSI cannot
+carry the characters ESC, CR, LF, TAB, BS, NUL and SUB: they are saved as spaces (use `.BIN` for exact copies).
+
+### Python API (no Qt in model / render / ansi / codegen / sim / project)
+
+```python
+from radide.retro.design.textmode.model import TScreen, new_screen, load_project_screens
+from radide.retro.design.textmode.render import render            # TScreen -> CellBuffer (what DOS shows)
+from radide.retro.design.textmode import project as tp
+tp.create(folder, "Demo", "pascal")        # new forms project (sample screen + sample code)
+tp.generate(folder)                        # .tform -> MAIN.* (regions kept)
+ok, exe = tp.build(folder)                 # generate + build (dosdev Builder / built-in assembler)
+buf = tp.capture(folder, exe.name, keys=[9, 13])   # run headless in DOSBox-X, the screen as a CellBuffer
+from radide.retro.design.textmode.sim import Sim   # the run-time in Python (Test Run, tests)
+```
+
+CLI: `python -m radide.retro.design.textmode.project generate|build|run|capture <folder>`.
+
+Course: `radide/tutorials/dos-programming/` (Arabic, 3 lessons: the designer, events and code, ANSI art + B800).
+Other DOS lessons can be added to the same course.json.
+
+### Tests (`samples/Tests/Retro/DesignTextMode`, sample `samples/Tests/Retro/DesignTUI_Contacts`)
+
+`test_core.py` (48 checks, no toolchain: model, renderer, ANSI / BIN / TXT / SAUCE, regions in four languages, the asm
+program in the 8086 emulator = simulator after 13 key sequences), `test_dosbox.py` (39: the sample and all four
+targets built with FreeBASIC DOS / Free Pascal i8086 / OpenWatcom / JWasm, run in DOSBox-X, screens equal to the
+designer and the simulator after keys, menus, message boxes, a second screen, 80x43 / 80x50 in C and asm; splash
+in the emulator; skips offline),
+`test_ui.py` (34, qh.py). Not done: the dropdown menus and message boxes have no shadow at run time (the static
+windows do), list boxes have no scroll bar, there are no 40-column screens, a Pascal 80x43 program shows 50 lines on VGA
+(Crt's Font8x8; the bottom 7 stay empty), Turbo Pascal / Turbo C / QuickBASIC / QBasic outputs are checked only by
+reading (no proprietary copies), DJGPP is untested (not downloadable), and the asm target has no `TuiAddItem` /
+`TuiClearList` (fixed item lists).

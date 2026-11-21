@@ -1,0 +1,16 @@
+{
+  "name": "C64Ball",
+  "language": "retro-c64",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.s",
+    "c64.cfg"
+  ],
+  "retro": {
+    "system": "c64",
+    "lang": "asm",
+    "main": "main.s",
+    "cfg": "c64.cfg"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Contacts",
+  "language": "dos-qbasic",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.BAS",
+    "Main.tform",
+    "About.tform",
+    "Splash.ans"
+  ],
+  "dos": {
+    "kind": "qbasic",
+    "main": "MAIN.BAS",
+    "exe": "CONTACTS",
+    "output": "exe",
+    "compiler": "freebasic"
+  },
+  "tui": {
+    "target": "freebasic",
+    "startup": "Main"
+  }
+}

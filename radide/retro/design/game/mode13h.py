@@ -91,9 +91,10 @@ def new_design(name: str = "Screen1") -> Design:
     d.tiles = [_tile16(TILE_ROWS[k]) for k in ("brick", "grass", "stone", "water")]
     d.sprites = {"Hero": _img(HERO, COLORS), "Slime": _img(SLIME, COLORS)}
     bg = Layer("Background", "bitmap", W, H, 1, 1)
-    for y in range(H):                                  # sky gradient using the grey / blue ramp
-        v = 32 + min(15, y // 9)                       # colours 32+ are the default palette's hue ring
-        bg.data[y * W:(y + 1) * W] = bytes([v]) * W
+    for i in range(16):                                 # colours 200-215: a sky ramp (dark to light blue)
+        d.palette[200 + i] = [4 + i * 2, 12 + i * 3, 30 + i * 2]
+    for y in range(H):
+        bg.data[y * W:(y + 1) * W] = bytes([200 + min(15, y // 11)]) * W
     tiles = Layer("Tiles", "tiles", W // 16, (H + 15) // 16, 16, 16, fill=NO_TILE)
     col = Layer("Collision", "collision", W // 16, (H + 15) // 16, 16, 16)
     for x in range(tiles.w):
@@ -373,6 +374,7 @@ def generate_c(d: Design) -> str:
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include <conio.h>
 #include <dos.h>
 #include <i86.h>

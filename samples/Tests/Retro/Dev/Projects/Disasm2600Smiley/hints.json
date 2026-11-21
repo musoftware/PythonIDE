@@ -1,0 +1,8 @@
+{
+ "_help": "Hints for 'Re-disassemble with hints': code = addresses where code starts that the tracer did not reach (jump tables, code called through pointers); data = [first, last] address ranges that are data although the tracer took them for code; labels = names for addresses; comments = a comment line above an address; undocumented = follow the 6502 undocumented opcodes. Addresses in hex.",
+ "code": [],
+ "data": [],
+ "labels": {},
+ "comments": {},
+ "undocumented": false
+}

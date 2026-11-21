@@ -12,22 +12,32 @@ the main window is created:
   was saved on a big monitor and restored on a small one;
 - a dialog whose content cannot shrink that far gets its content in a scroll area (the OK /
   Cancel row stays visible below it); a wizard gets scrollable pages;
+- right after a window is placed, a frame that sticks out by a few pixels is moved back on-screen
+  (a dialog that already fits is otherwise left exactly where Qt centres it);
 - the main window opens maximized when 1280x800 does not fit;
-- on a small screen the docked tool windows may be made as low as ~4 text lines, and on a screen
-  lower than 700 px the Solution Explorer group joins the Properties tab group on first run.
+- on a small screen the docked tool windows may be made as low as ~4 text lines, their tab bars
+  show whole titles with scroll arrows, and on a screen lower than 700 px the Solution Explorer
+  group joins the Properties tab group on first run (no saved layout);
+- the Start Page puts its two columns under each other when it is narrower than 760 px.
 
 Screens that are big enough are not touched. `RADIDE_NO_SCREENFIT=1` turns all of it off (used
 for the "before" runs).
 
 ## Run
 
-```
+```bat
 python samples/Tests/QA/SmallScreens/run_audit.py            # every configuration, every command
 python samples/Tests/QA/SmallScreens/run_audit.py --quick    # main window only (~30 s)
 python samples/Tests/QA/SmallScreens/run_audit.py --shots --only 1280x720-en,1366x768-ar
 ```
 
+The audit never starts another program: every process start (subprocess, os.system, QProcess) is
+refused, `RADIDE_NO_BROWSER=1` is set, and commands that open help files (CHM / hh.exe), Visual
+Studio, Explorer, browsers, terminals, emulators or servers are skipped. Keep `--parallel 1` (the
+default): each run is a whole IDE.
+
 Options: `--out DIR` (default `%TEMP%\radide-smallscreens`), `--parallel N`, `--theme Dark`,
+`--match TEXT,...` (walk only the menu commands whose path contains one of these),
 `--shots` (widget.grab() screenshots of the main window and of large dialogs, never full-screen
 captures).
 

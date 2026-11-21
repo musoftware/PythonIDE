@@ -27,7 +27,7 @@ from .cp437 import BORDER_STYLES, attr
 
 FORMAT = "radide-tform"
 VERSION = 1
-SIZES = [(80, 25), (80, 43), (80, 50), (40, 25)]
+SIZES = [(80, 25), (80, 43), (80, 50)]
 
 # ------------------------------------------------------------------ control types
 STATIC_TYPES = ("Window", "Frame", "Separator", "MenuBar")
@@ -431,7 +431,7 @@ def new_screen(name: str = "Screen1", cols: int = 80, rows: int = 25, sample: bo
         ww, wh = 44, 11
         wx, wy = (cols - ww) // 2, max(2, (rows - wh) // 2)
         s.add("Window", wx, wy, ww, wh, text=" " + name + " ")
-        s.add("Label", wx + 3, wy + 2, 30, text="Welcome to your DOS application!")
+        s.add("Label", wx + 3, wy + 2, 36, text="Welcome to your DOS application!")
         s.add("Button", wx + 8, wy + wh - 3, 10, text="&OK")
         s.add("Button", wx + 25, wy + wh - 3, 12, text="&Cancel", cancel=True)
     return s
@@ -442,8 +442,9 @@ def load_project_screens(folder) -> list[TScreen]:
     folder = Path(folder)
     screens = [TScreen.load(p) for p in sorted(folder.glob("*.tform"))]
     try:
-        startup = json.loads((folder / "project.radproj").read_text(encoding="utf-8")).get("tui_startup", "")
-    except (OSError, ValueError):
+        data = json.loads((folder / "project.radproj").read_text(encoding="utf-8"))
+        startup = (data.get("tui") or {}).get("startup", "") or data.get("tui_startup", "")
+    except (OSError, ValueError, AttributeError):
         startup = ""
     if startup:
         screens.sort(key=lambda s: 0 if s.path and s.path.stem.lower() == str(startup).lower() else 1)

@@ -61,6 +61,7 @@ RUNTIME = r"""
 procedure TuiFire(i, ev: Integer); forward;
 procedure TuiFireMenu(k: Integer); forward;
 procedure TuiFireScreen(s, ev: Integer); forward;
+procedure TuiDump; forward;
 
 {$IFNDEF FPC}
 procedure TuiInt10(ax, cx, dx: Word);
@@ -524,6 +525,7 @@ begin
   begin
     TuiRedraw;
     TuiDrawMenu(m, it);
+    if (TuiDumpFlag = 2) and not KeyPressed then begin TuiDump; TuiRun := 0; Exit; end;
     repeat k := TuiGetEvent(cl) until (k <> 0) or (cl <> 0);
     if cl <> 0 then
     begin
@@ -710,6 +712,7 @@ begin
   TuiOut(x + (w - 6) div 2, y + 4, '  OK  ', $2F);
   TuiCursorOn(0);
   TuiMouseShow(1);
+  if (TuiDumpFlag = 2) and not KeyPressed then begin TuiDump; TuiRun := 0; Exit; end;
   repeat k := TuiGetEvent(cl) until (cl <> 0) or (k = 13) or (k = 27) or (k = 32);
   TuiRedraw;
 end;
@@ -811,7 +814,11 @@ begin
   for i := 1 to ParamCount do
   begin
     p := ParamStr(i);
-    if (Length(p) >= 2) and (p[1] = '/') and (UpCase(p[2]) = 'D') then TuiDumpFlag := 1;
+    if (Length(p) >= 2) and (p[1] = '/') and (UpCase(p[2]) = 'D') then
+    begin
+      TuiDumpFlag := 1;
+      if (Length(p) >= 6) and (UpCase(p[6]) = 'K') then TuiDumpFlag := 2;
+    end;
   end;
 @MODE@
   TextAttr := 7;
@@ -828,12 +835,19 @@ var k, cl: Integer;
 begin
 @SPLASH@
   TuiShowScreen(1);
-  if TuiDumpFlag <> 0 then begin TuiDump; TuiRun := 0; end;
+  if TuiDumpFlag = 1 then begin TuiDump; TuiRun := 0; end;
   while TuiRun <> 0 do
   begin
-    k := TuiGetEvent(cl);
-    if k <> 0 then TuiHandleKey(k);
-    if cl <> 0 then TuiClick(TuiMx, TuiMy);
+    if (TuiDumpFlag = 2) and not KeyPressed then
+    begin
+      TuiDump; TuiRun := 0;
+    end
+    else
+    begin
+      k := TuiGetEvent(cl);
+      if k <> 0 then TuiHandleKey(k);
+      if cl <> 0 then TuiClick(TuiMx, TuiMy);
+    end;
   end;
   TuiMouseShow(0);
 {$IFDEF FPC}
@@ -879,10 +893,15 @@ def generate(screens, old_text: str = "", app: App | None = None, program: str =
     w("         | tpc main.pas (Turbo Pascal 7) }")
     w(f"program {program};")
     w("")
-    w("uses Crt")
-    w("{$IFDEF FPC}, Mouse{$ENDIF}")
-    w("{$IFDEF GO32V2}, Go32{$ENDIF}")
-    w("{$IFNDEF FPC}, Dos{$ENDIF};")
+    w("{$IFDEF GO32V2}")
+    w("uses Crt, Mouse, Go32;")
+    w("{$ELSE}")
+    w("{$IFDEF FPC}")
+    w("uses Crt, Mouse;")
+    w("{$ELSE}")
+    w("uses Crt, Dos;")
+    w("{$ENDIF}")
+    w("{$ENDIF}")
     w("")
     nc, nm, ni = max(1, len(app.ctls)), max(1, len(app.menus)), max(1, len(app.items))
     w("const")

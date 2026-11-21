@@ -174,7 +174,7 @@ class AgcSession(QObject):
             for d in prog.errors[:50]:
                 self.output.emit(f"{Path(d.file).name}({d.line}): error: {d.text(self.lang)}\n")
             if any(d.code == "interp" for d in prog.errors):
-                self.output.emit("\nThis program uses interpretive code: build it with yaYUL (Tools > Apollo AGC > "
+                self.output.emit("\nThis program uses interpretive code: build it with yaYUL (Tools > Retro > Apollo AGC > "
                                  "Virtual AGC Toolchain..., then Project > Properties / \"agc\": "
                                  "{\"assembler\": \"yayul\"}).\n")
             self.output.emit(f"\n*** {len(prog.errors)} assembly error(s) - see the Error List\n")
@@ -184,6 +184,7 @@ class AgcSession(QObject):
                          f"{len({b for b, _o in prog.used})} fixed bank(s). Running in RAD IDE's AGC emulator "
                          f"({'debug' if self.debug else 'run'}). Click the DSKY and type: V N 0-9 Enter.\n")
         self.machine = AgcMachine(prog)
+        self.machine.cpu.alarms = str(self.settings.get("alarms", True)).lower() not in ("0", "false", "no", "off")
         self.machine.listeners.append(self._on_channel)
         self._apply_breakpoints()
         self.panel = ensure_panel(self.win)
@@ -376,6 +377,7 @@ class AgcSession(QObject):
                 break
             if n & 1023 == 0 and time.perf_counter() > deadline:
                 break
+        self._emit_alarms()
         if reason is not None:
             self._goal = None
             self._pause(reason)
@@ -384,6 +386,18 @@ class AgcSession(QObject):
             self._dirty = False
             self._refresh(False)
         self._timer.start(int(self.SLICE * 1000 * 0.5))
+
+    def _emit_alarms(self) -> None:
+        log = self.machine.cpu.alarm_log
+        if not log:
+            return
+        for note in log[:5]:
+            self.output.emit(f"[AGC] {note}\n")
+        if self.machine.cpu.restarts == len(log) and self.machine.cpu.restarts <= 5:
+            self.output.emit("[AGC] Real AGC hardware does this too (and so does yaAGC): touch NEWJOB in the idle "
+                             "loop, keep an interrupt coming at least every 140 ms and run a TC / TCF every 5 ms. "
+                             "Project \"agc\": {\"alarms\": false} turns the checks off in RAD IDE's emulator.\n")
+        log.clear()
 
     def _refresh(self, heavy: bool) -> None:
         if self.panel is not None:
@@ -518,7 +532,7 @@ class YaAgcSession(QObject):
     def start(self) -> None:
         argv = toolchain.yayul_command(self.startup_file, str(self.settings.get("yayul_args", "")))
         if not argv:
-            self.failed.emit("yaYUL is not installed: Tools > Apollo AGC > Virtual AGC Toolchain...")
+            self.failed.emit("yaYUL is not installed: Tools > Retro > Apollo AGC > Virtual AGC Toolchain...")
             self.finished.emit(1)
             return
         self._alive = True
@@ -546,7 +560,7 @@ class YaAgcSession(QObject):
                          f"{self.port} ...\n")
         argv = toolchain.yaagc_command(rope.name, self.port, self.debug, self.startup_file + ".symtab")
         if not argv:
-            self.failed.emit("yaAGC is not installed: Tools > Apollo AGC > Virtual AGC Toolchain...")
+            self.failed.emit("yaAGC is not installed: Tools > Retro > Apollo AGC > Virtual AGC Toolchain...")
             self._done(1)
             return
         p = QProcess(self)
@@ -558,9 +572,15 @@ class YaAgcSession(QObject):
         p.start(argv[0], argv[1:])
         self._connect_dsky()
         if self.debug:
-            for f, line in sorted(self._bps):
-                self.send(f"break {f.upper() if f.upper() == f else f}:{line}")
+            self._send_breakpoints()
             self.send("cont")
+
+    def _real_name(self, lower: str) -> str:
+        return next((p.name for p in self.folder.glob("*.agc") if p.name.lower() == lower), lower)
+
+    def _send_breakpoints(self) -> None:
+        for f, line in sorted(self._bps):
+            self.send(f"break {self._real_name(f)}:{line}")
 
     def _connect_dsky(self) -> None:
         from .dsky_model import DskyModel
@@ -594,17 +614,26 @@ class YaAgcSession(QObject):
         self._buf = (self._buf + text)[-20000:]
         shown = text.replace("\x1a\x1a", "@")
         self.output.emit(shown)
+        stop = parse_stop(text)
+        if stop is not None and self.debug:
+            self.paused = True
+            self._pending_stop = stop
+            self.send("info registers")          # the stop is reported once the registers arrive
+            QTimer.singleShot(1000, self._emit_stop)
         regs = parse_registers(text)
         if regs:
             self._regs.update(regs)
-        stop = parse_stop(text)
-        if stop is not None and self.debug:
-            f, line, addr = stop
-            self.paused = True
-            self._buf = ""
-            variables = [(k, "register", f"{v:06o}") for k, v in self._regs.items()]
-            self.stopped.emit(_stop_info(f, line, "breakpoint", variables, [("AGC", f, line)]))
-            self.send("info registers")
+            self._emit_stop()
+
+    def _emit_stop(self) -> None:
+        pending = getattr(self, "_pending_stop", None)
+        if pending is None:
+            return
+        self._pending_stop = None
+        f, line, addr = pending
+        variables = [(k, "register", f"{v:06o} = {v}") for k, v in self._regs.items()]
+        variables.append(("address", "yaAGC", f"{addr:05o}"))
+        self.stopped.emit(_stop_info(f, line, "breakpoint", variables, [("AGC", f, line)]))
 
     def send(self, cmd: str) -> None:
         if self._agc is not None and self._agc.state() == QProcess.ProcessState.Running:
@@ -647,8 +676,14 @@ class YaAgcSession(QObject):
         pass
 
     def set_breakpoint(self, filename: str, line: int, on: bool, cond: str = "") -> None:
-        if self.debug:
-            self.send(f"break {Path(filename).name}:{line}" if on else f"clear {Path(filename).name}:{line}")
+        key = (Path(filename).name.lower(), int(line))
+        if on:
+            self._bps.add(key)
+        else:
+            self._bps.discard(key)
+        if self.debug:                           # yaAGC has no "clear": delete all, then set the rest again
+            self.send("delete")
+            self._send_breakpoints()
 
     def set_break_on_exception(self, on: bool) -> None:
         pass
@@ -683,7 +718,7 @@ def make_session(win, folder: Path, startup: str, debug: bool, breakpoints, sett
         if have:
             return YaAgcSession(win, folder, startup, debug, breakpoints, settings)
         try:
-            win.log("*** Virtual AGC (yaYUL / yaAGC) is not installed: Tools > Apollo AGC > Virtual AGC "
+            win.log("*** Virtual AGC (yaYUL / yaAGC) is not installed: Tools > Retro > Apollo AGC > Virtual AGC "
                     "Toolchain... - trying RAD IDE's built-in assembler and emulator instead.")
         except Exception:  # noqa: BLE001
             pass

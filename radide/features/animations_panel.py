@@ -438,8 +438,37 @@ class FxPreview:
         self.segments = sorted(segments, key=lambda s: s[0])
         self.length = max([s + sb_span(sb) for s, sb in self.segments] or [0])
         self._starts: list[dict] = []
-        for i, (s, _sb) in enumerate(self.segments):
-            self._starts.append(self._values(s, upto=i))
+        for i, (s, sb) in enumerate(self.segments):
+            st = self._values(s, upto=i)
+            for t, p, _k in _tracks(sb):        # a property another animation is moving starts where that one ends
+                j = self._owner(i, t, p, s)
+                if j is not None:
+                    st[(t, p)] = self._rest(j, t, p)
+            self._starts.append(st)
+
+    def _owner(self, i: int, t: str, p: str, ms: float) -> int | None:
+        """An earlier segment still playing (t, p) at *ms*: it keeps the property until it ends, like the
+        generated runtimes (_Storyboard / _radfx.ring)."""
+        for j in range(min(i, len(self.segments))):
+            s, sb = self.segments[j]
+            if s <= ms < s + sb_span(sb) and any((tt, pp) == (t, p) for tt, pp, _k in _tracks(sb)):
+                return j
+        return None
+
+    def _rest(self, j: int, t: str, p: str):
+        """Where segment *j* leaves (t, p) when it ends."""
+        from .states import DESIGN
+        from .timeline import _rgb
+        s, sb = self.segments[j]
+        starts = self._starts[j] if j < len(self._starts) else {}
+        for tt, pp, keys in _tracks(sb):
+            if (tt, pp) == (t, p):
+                ks, start = self.keys_of(t, p, keys, starts)
+                try:
+                    return DESIGN["_rad_value_at"](p, ks, _local_ms(sb, sb_span(sb)), start, _rgb)
+                except Exception:  # noqa: BLE001
+                    return start
+        return self._base(t, p)
 
     def _base(self, target: str, prop: str):
         if not target:
@@ -476,6 +505,8 @@ class FxPreview:
             starts = self._starts[i] if i < len(self._starts) else {}
             local = _local_ms(sb, ms - s)
             for t, p, keys in _tracks(sb):
+                if self._owner(i, t, p, ms) is not None:
+                    continue
                 ks, start = self.keys_of(t, p, keys, starts)
                 try:
                     vals[(t, p)] = DESIGN["_rad_value_at"](p, ks, local, start, _rgb)

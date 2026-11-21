@@ -382,6 +382,17 @@ class TutorialsPanel(QWidget):
             pass
         self.fill_tree()
 
+    def resizeEvent(self, e):  # noqa: N802 - Qt override
+        """A narrow panel (small screen / squeezed dock): the remembered list width must not hide the lesson."""
+        super().resizeEvent(e)
+        sizes = self.split.sizes()
+        total = sum(sizes)
+        if len(sizes) == 2 and self.split.widget(0).isVisible() and total >= 360 and sizes[1] < total * 0.45:
+            lw = max(150, int(total * 0.4))
+            self.split.blockSignals(True)           # not a user move: the remembered width stays
+            self.split.setSizes([lw, total - lw])
+            self.split.blockSignals(False)
+
     def showEvent(self, e):  # noqa: N802 - Qt override: the UI language may have changed meanwhile
         super().showEvent(e)
         if getattr(self, "_tree_lang", None) != _lang():

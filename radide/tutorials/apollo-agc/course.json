@@ -1,0 +1,16 @@
+{
+  "id": "apollo-agc",
+  "title_ar": "برامج ناسا القديمة: حاسوب أبولو AGC وفورتران الكلاسيكية",
+  "title_en": "Old NASA Programs: the Apollo Guidance Computer and Classic Fortran",
+  "language": "agc-yul",
+  "level": "intermediate",
+  "description_ar": "دورة عربية عن برمجة الحاسوب الذي أوصل الإنسان إلى القمر: حاسوب التوجيه في أبولو (AGC) ولوحة DSKY والأفعال والأسماء، ولغة تجميع AGC بصيغة yaYUL، والذاكرة المتغيرة والثابتة والبنوك، والمقاطعات وإنذارات العتاد، والتشغيل والتصحيح في محاكي RAD IDE، ثم تنزيل برنامج رحلة أبولو 11 الحقيقي (Comanche055) وبناؤه بـ yaYUL وتشغيله في yaAGC، وأخيرًا فورتران 66/77 بالصيغة الثابتة والبطاقات المثقبة وتحويلها إلى فورتران الحديثة.",
+  "lessons": [
+    {"id": "01-intro", "file": "01-intro.md", "title_ar": "الحاسوب الذي أوصلنا إلى القمر", "minutes": 25},
+    {"id": "02-dsky", "file": "02-dsky.md", "title_ar": "لوحة DSKY: الأفعال والأسماء", "minutes": 30},
+    {"id": "03-first-program", "file": "03-first-program.md", "title_ar": "لغة تجميع AGC: أول برنامج والذاكرة والمسجلات", "minutes": 45},
+    {"id": "04-interrupts-alarms", "file": "04-interrupts-alarms.md", "title_ar": "المقاطعات وإنذارات العتاد وتصحيح الأخطاء", "minutes": 40},
+    {"id": "05-apollo-11", "file": "05-apollo-11.md", "title_ar": "برنامج أبولو 11 الحقيقي: Comanche055 و yaYUL و yaAGC", "minutes": 40},
+    {"id": "06-legacy-fortran", "file": "06-legacy-fortran.md", "title_ar": "فورتران 66/77 والبطاقات المثقبة", "minutes": 45}
+  ]
+}

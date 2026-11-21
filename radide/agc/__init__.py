@@ -10,4 +10,6 @@
 * yaagc.py        - the yaAGC socket protocol (DSKY packets) and the yaAGC debugger driver
 * apollo_source.py- download the public-domain Comanche055 / Luminary099 source on request
 * ui.py / session.py - the DSKY panel, registers / erasable memory windows and the F5 session
+* detect.py       - File > Open Folder recognition of AGC programs
+* examples/       - the original "Hello DSKY" program (New Project template, CC0)
 """

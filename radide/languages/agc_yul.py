@@ -1,13 +1,13 @@
 """Apollo AGC Program - assembly language of the Apollo Guidance Computer in the yaYUL syntax of Virtual AGC.
 
 * New Project > Retro > Apollo AGC Program: "Hello DSKY" (clock on V16 N36 + a tiny keyboard handler) or an
-  empty program with the interrupt vectors. Tools > Apollo AGC > Open Apollo Source... downloads the
+  empty program with the interrupt vectors. Tools > Retro > Apollo AGC > Open Apollo Source... downloads the
   public-domain Comanche055 (Apollo 11 command module) / Luminary099 (lunar module) source on request.
 * F5 assembles MAIN.agc with RAD IDE's built-in assembler (basic instructions + extracodes; errors go to the
   Error List) and runs it in RAD IDE's AGC emulator with the DSKY panel, breakpoints, F10 / F11 stepping,
   registers A / L / Q / Z and the erasable memory window (radide/agc/session.py). Programs with interpretive
   code (the flight programs) build with yaYUL and run in yaAGC + the same DSKY panel once Virtual AGC is
-  installed (Tools > Apollo AGC > Virtual AGC Toolchain..., radide/agc/toolchain.py).
+  installed (Tools > Retro > Apollo AGC > Virtual AGC Toolchain..., radide/agc/toolchain.py).
 * Highlighting, IntelliSense with descriptions, hover (instructions, pseudo-ops, interpretive opcodes,
   registers, channels, V/N/P numbers in comments), F12 across the files of the program, outline by log section
   (radide/agc/intel.py).
@@ -37,15 +37,24 @@ EMPTY_MAIN = """# MAIN.agc - {name}: an Apollo Guidance Computer program (yaYUL 
 # LABEL in column 1, then OPCODE and OPERAND; "#" starts a comment. Numbers are octal unless they
 # contain 8 / 9 or end with D.
 
+# Like the real hardware, RAD IDE's emulator restarts the AGC when the software stops "breathing":
+#   NIGHT WATCHMAN - NEWJOB (address 67) not touched for 0.64 s
+#   RUPT LOCK      - no interrupt for 140 ms (here T3RUPT comes every centisecond)
+#   TC TRAP        - no TC / TCF for 5 ms, or nothing else but TC / TCF
+# (Project "agc": {{"alarms": false}} turns these checks off in the emulator.)
+
 A               EQUALS  0
 L               EQUALS  1
 Q               EQUALS  2
 Z               EQUALS  5
 ZERO            EQUALS  7
 ARUPT           EQUALS  10
+TIME3           EQUALS  26
+NEWJOB          EQUALS  67
 
-                SETLOC  61              # erasable variables
-COUNT           ERASE
+                SETLOC  100             # erasable variables
+COUNT           ERASE                   # counted by the main loop
+TICKS           ERASE                   # counted by T3RUPT (centiseconds)
 
                 SETLOC  4000            # fixed-fixed memory: interrupt vectors (4 words each)
                 INHINT                  # 4000 GOJAM: power on
@@ -60,8 +69,8 @@ COUNT           ERASE
                 NOOP
                 NOOP
                 NOOP
-                RESUME                  # 4014 T3RUPT
-                NOOP
+                DXCH    ARUPT           # 4014 T3RUPT: save A and L
+                TCF     T3HAND
                 NOOP
                 NOOP
                 RESUME                  # 4020 T4RUPT
@@ -75,13 +84,21 @@ COUNT           ERASE
 
 START           CA      ZERO
                 TS      COUNT
+                TS      TICKS
+                CAF     T3LOAD          # first T3RUPT in a centisecond
+                TS      TIME3
                 RELINT
-LOOP            INCR    COUNT           # watch COUNT in the Erasable Memory window (F10 to step)
-                CA      COUNT
-                AD      ONE
+LOOP            CA      NEWJOB          # keep the Night Watchman happy
+                INCR    COUNT           # watch COUNT and TICKS in the Erasable Memory window (F10 to step)
                 TCF     LOOP
 
-ONE             DEC     1
+T3HAND          CAF     T3LOAD          # TIME3 overflows again in a centisecond
+                TS      TIME3
+                INCR    TICKS
+                DXCH    ARUPT           # restore A and L
+                RESUME
+
+T3LOAD          OCT     37777
 """
 
 
@@ -105,7 +122,7 @@ class AgcPlugin(LanguagePlugin):
     has_forms = False
     project_name_base = "Apollo"
     install_hint = ("Nothing to install for the built-in assembler and emulator. Flight programs (interpretive "
-                    "code) need Virtual AGC: Tools > Apollo AGC > Virtual AGC Toolchain...")
+                    "code) need Virtual AGC: Tools > Retro > Apollo AGC > Virtual AGC Toolchain...")
 
     @property
     def keywords(self):                     # type: ignore[override]

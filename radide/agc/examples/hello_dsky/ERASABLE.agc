@@ -13,9 +13,13 @@ LRUPT           EQUALS  11
 QRUPT           EQUALS  12
 TIME1           EQUALS  25
 TIME3           EQUALS  26              # T3RUPT when it overflows
+NEWJOB          EQUALS  67              # the Night Watchman alarm restarts the AGC unless a program
+                                        # touches this address at least every 0.64 s (the Executive's
+                                        # idle loop does; so does our main loop)
 
-                SETLOC  61              # first free erasable word after the counters
+                SETLOC  100             # our variables (bank E0, after the counters and NEWJOB)
 
+CENTI           ERASE                   # centiseconds counted by T3RUPT (0-99)
 SECS            ERASE                   # the clock
 MINS            ERASE
 HOURS           ERASE

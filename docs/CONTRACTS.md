@@ -590,8 +590,9 @@ any language may use: `MonacoEditor.plugin_overlays`, `plugin.monaco_language(pa
   in window coords) else Ratio; Flutter = `RadTwoPane` (DisplayFeatureSubScreen, Ratio fallback); targets
   without display features use the Ratio / single rule. The hinge is always converted to the TwoPane's own
   coordinates first (it need not fill the window): Flutter `RadTwoPane.localHinge(hinge, fold, origin, w, h)`
-  with the origin measured after layout (`localToGlobal`, one extra frame), Kivy `to_window`, the designer
-  `frame.two_pane_split`; a hinge that does not cross the box from side to side -> rule 2 / 3.
+  with the origin measured after layout (`localToGlobal`, one extra frame), Kivy `to_window`, Ring
+  `RadPane_Origin` (position in the window, also for a nested pane), the designer `frame.two_pane_split`; a
+  hinge that does not cross the box from side to side -> rule 2 / 3.
 - **Folded posture at runtime (Flutter)**: Flutter reports no "folded" display feature (Android reports a fold
   only on the inner screen). `RadVariant.compute` says `folded` when no fold / hinge is reported and either a
   fold was seen before in this run (`RadVariant.foldableSeen`: the app moved to the cover screen) or the window
@@ -637,6 +638,12 @@ Plan: docs/plans/MOTION_VARIANTS_FOLDABLES.md (contracts 1.1-1.4, 1.7; slice A).
 - **Fallbacks** (no transform: rotate = wobble, flip / pulse / scale / zoom = Width / Height around the centre +
   FontSize; no child alpha (tk, winforms): fade = colour blend into `$parent`, then Visible) are returned by
   `expand()` as `fallbacks` - show them in the Error List, never silently.
+- **Two animations on one property at the same time** (e.g. Slide In + Pulse On load on one button: both move
+  Left in the fallbacks): the one that started first keeps the property until it ends, a later one starts from
+  where the first one ends (and Stop does not put back a property another animation still plays). Same rule in
+  `_Storyboard` (python-tk / python-qt / vbrun / bridges), `_radfx.ring` (`RadFx_Owner` / `RadFx_RestOf`), the
+  WinForms `RadFxEngine` (`Owner` / `RestOf`) and the design-time preview (`FxPreview._owner / _rest`);
+  transform targets (Flutter, Kivy, RN) use separate channels. Test: `samples/Tests/QA/MotionE2E/check_runtime_fixes.py`.
 - **expand** `radide/motion/expand.py` `expand(form, target) -> FxPlan` (contract 1.3) with additive keys:
   storyboards also carry `target, delayMs, restore (ends where it started), preset`; triggers carry `target`.
   `storyboard_dict(sb)` = .form storyboard shape (for `BlendPreview.timeline`). `sb_name(fx) = "_fx_" + fx`.
@@ -756,3 +763,4 @@ kivy / expo).
   refreshed automatically (the hex editor, tile editor, tile map ...).
 - Retro menus go under Tools > Retro via `radide.retro.menu.retro_menu(win)` / `section(win, title)`.
 - Emulators (slice emu): `radide.retro.emu.run_rom(path, system=None, debug=False, symbols=None)` -> `RetroProcess` (`alive() / stop() / reload(rom) / monitor() / gdb()`), `detect_system(path)`, `manager.find(id) / ensure(id, download=True)`; errors are `launch.EmuError`. Rebuilt ROMs announced with `file_changed` are hot-reloaded in VICE. Details: docs/RETRO.md "Emulators".
+- Apollo AGC / legacy Fortran (slice nasa): project keys `"agc": {"assembler": "auto|builtin|yayul", "run": "emulator|yaagc", "port", "alarms"}` and `"fortran": {"preset": "legacy|f66|dec|strict", "flags"}`; `radide.agc.machine.AgcMachine` (headless CPU + DSKY), `radide.agc.yaagc` (socket packets, `YaAgcLink`), `radide.agc.toolchain.find("yayul"|"yaagc")`, `radide.retro.legacy_fortran` (fields, `to_free_form`, `analyze`, `punch_rows`). Menus: Tools > Retro > Apollo AGC / Legacy Fortran. Details: docs/RETRO.md "Old NASA programs".

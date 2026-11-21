@@ -165,6 +165,7 @@ END SUB
 
 SUB TuiFace (i)
 IF ZI(i) = 0 OR ZT(i) = 9 THEN EXIT SUB
+TuiMouseShow 0
 t = ZT(i)
 a = ZA(i): h = ZB(i)
 IF ZN(i) = 0 THEN
@@ -222,6 +223,7 @@ CASE 7
 CASE 8
   TuiPut x, y, TX$(i), HM$(i), w, a, h
 END SELECT
+TuiMouseShow 1
 END SUB
 
 SUB TuiCursor
@@ -466,6 +468,7 @@ NEXT c
 END FUNCTION
 
 SUB TuiDrawMenu (m, it)
+TuiMouseShow 0
 b = SB(MSC(m))
 TuiPut MTX(m), ZY(b), MTS$(m), MTM$(m), LEN(MTS$(m)), ZL(b), ZG(b)
 x = MDX(m): y = MDY(m): w = MDW(m)
@@ -480,6 +483,7 @@ FOR k = 0 TO MIC(m) - 1
     TuiPut x + 1, y + 1 + k, IL$(j), IM$(j), w - 2, ZA(b), ZB(b)
   END IF
 NEXT k
+TuiMouseShow 1
 END SUB
 
 SUB TuiMenu (m0)
@@ -488,12 +492,11 @@ it = TuiStep(m, -1, 1)
 fire = 0
 DO
   TuiRedraw
-  TuiMouseShow 0
   TuiDrawMenu m, it
-  TuiMouseShow 1
   cl = 0
   DO
     k = TuiReadKey
+    IF k = 0 AND INSTR(TuiCmd$, "/DUMPK") > 0 THEN TuiDump: TuiRun = 0: EXIT SUB
     TuiPollMouse
     IF TuiMb AND 1 THEN
       IF TuiMp = 0 THEN TuiMp = 1: cl = 1
@@ -569,21 +572,20 @@ IF SPL THEN
   END IF
 END IF
 TuiShowScreen 1
-IF INSTR(TuiCmd$, "/DUMP") THEN TuiDump: TuiRun = 0
+dk = INSTR(TuiCmd$, "/DUMPK")
+IF dk = 0 AND INSTR(TuiCmd$, "/DUMP") > 0 THEN TuiDump: TuiRun = 0
 DO WHILE TuiRun
   k = TuiReadKey
-  IF k THEN
-    TuiMouseShow 0
+  IF k = 0 AND dk > 0 THEN
+    TuiDump: TuiRun = 0
+  ELSEIF k THEN
     TuiHandleKey k
-    TuiMouseShow 1
   END IF
   TuiPollMouse
   IF TuiMb AND 1 THEN
     IF TuiMp = 0 THEN
       TuiMp = 1
-      TuiMouseShow 0
       TuiClick TuiMx, TuiMy
-      TuiMouseShow 1
     END IF
   ELSE
     TuiMp = 0
@@ -628,6 +630,7 @@ LOCATE , , 0
 TuiMouseShow 1
 DO
   k = TuiReadKey
+  IF k = 0 AND INSTR(TuiCmd$, "/DUMPK") > 0 THEN TuiDump: TuiRun = 0: EXIT SUB
   TuiPollMouse
   IF TuiMb AND 1 THEN
     IF TuiMp = 0 THEN TuiMp = 1: k = 13
@@ -640,7 +643,7 @@ END SUB
 
 SUB TuiSetText (i, s$)
 TX$(i) = s$: HM$(i) = ""
-IF ZS(i) = TuiCur THEN TuiMouseShow 0: TuiFace i: TuiCursor: TuiMouseShow 1
+IF ZS(i) = TuiCur THEN TuiFace i: TuiCursor
 END SUB
 
 FUNCTION TuiGetText$ (i)
@@ -682,12 +685,12 @@ IF Z2(i) >= Z3(i) THEN EXIT SUB
 IT$(Z1(i) + Z2(i)) = s$
 Z2(i) = Z2(i) + 1
 IF ZV(i) < 0 THEN ZV(i) = 0
-IF ZS(i) = TuiCur THEN TuiMouseShow 0: TuiFace i: TuiMouseShow 1
+IF ZS(i) = TuiCur THEN TuiFace i
 END SUB
 
 SUB TuiClearList (i)
 Z2(i) = 0: ZV(i) = -1: ZP(i) = 0
-IF ZS(i) = TuiCur THEN TuiMouseShow 0: TuiFace i: TuiMouseShow 1
+IF ZS(i) = TuiCur THEN TuiFace i
 END SUB
 
 FUNCTION TuiGetItem$ (i, k)
@@ -699,6 +702,14 @@ TuiRun = 0
 END SUB
 
 SUB TuiMouseShow (v)
+IF TuiMouse = 0 THEN EXIT SUB
+IF v THEN
+  TuiHc = TuiHc - 1
+  IF TuiHc <> 0 THEN EXIT SUB
+ELSE
+  TuiHc = TuiHc + 1
+  IF TuiHc <> 1 THEN EXIT SUB
+END IF
 @MOUSESHOW@
 END SUB
 
@@ -749,15 +760,15 @@ DECLARE SUB TuiFireScreen (s, ev)"""
 
 MOUSE = {
     "freebasic": {
-        "init": "IF __GETMOUSE(TuiMx&, TuiMy&, TuiMw&, TuiMb&) = 0 THEN TuiMouse = 1\n__SETMOUSE , , 1",
-        "show": "IF TuiMouse THEN __SETMOUSE , , v",
+        "init": "IF __GETMOUSE(GMx&, GMy&, GMw&, GMb&) = 0 THEN TuiMouse = 1\n__SETMOUSE , , 1",
+        "show": "__SETMOUSE , , v",
         "poll": ("TuiMb = 0\nIF TuiMouse = 0 THEN EXIT SUB\n"
-                 "IF __GETMOUSE(TuiMx&, TuiMy&, TuiMw&, TuiMb&) = 0 THEN\n"
-                 "  TuiMx = TuiMx&: TuiMy = TuiMy&: TuiMb = TuiMb& AND 7\nEND IF"),
+                 "IF __GETMOUSE(GMx&, GMy&, GMw&, GMb&) = 0 THEN\n"
+                 "  TuiMx = GMx&: TuiMy = GMy&: TuiMb = GMb& AND 7\nEND IF"),
     },
     "quickbasic": {
         "init": "TuiReg.ax = 0\nCALL INTERRUPT(&H33, TuiReg, TuiReg)\nIF TuiReg.ax = -1 THEN TuiMouse = 1\nTuiMouseShow 1",
-        "show": ("IF TuiMouse = 0 THEN EXIT SUB\nIF v THEN TuiReg.ax = 1 ELSE TuiReg.ax = 2\n"
+        "show": ("IF v THEN TuiReg.ax = 1 ELSE TuiReg.ax = 2\n"
                  "CALL INTERRUPT(&H33, TuiReg, TuiReg)"),
         "poll": ("TuiMb = 0\nIF TuiMouse = 0 THEN EXIT SUB\nTuiReg.ax = 3\nCALL INTERRUPT(&H33, TuiReg, TuiReg)\n"
                  "TuiMb = TuiReg.bx AND 7: TuiMx = TuiReg.cx \\ 8: TuiMy = TuiReg.dx \\ 8"),
@@ -765,13 +776,10 @@ MOUSE = {
     "qbasic": {"init": "TuiMouse = 0", "show": "' QBasic 1.1 cannot reach the mouse driver",
                "poll": "TuiMb = 0"},
 }
-CORNER = {
-    # FreeBASIC (DOS and Windows consoles) does not scroll when the last cell is printed with ';'
-    "freebasic": "LOCATE TuiRows, TuiCols\nPRINT CHR$(c);",
-    "quickbasic": ("DEF SEG = &HB800\no = ((TuiRows - 1) * TuiCols + TuiCols - 1) * 2\nPOKE o, c\nPOKE o + 1, a\n"
-                   "DEF SEG"),
-}
-CORNER["qbasic"] = CORNER["quickbasic"]
+# The bottom-right cell: PRINT with ';' leaves the cursor there without scrolling (QBasic behaviour, which
+# FreeBASIC copies - checked cell by cell in DOSBox-X). The same code builds with FreeBASIC, so QBasic 1.1
+# sources stay buildable without the user's QBASIC.EXE.
+CORNER = {d: "LOCATE TuiRows, TuiCols\nPRINT CHR$(c);" for d in DIALECTS}
 
 
 def generate(screens, old_text: str = "", dialect: str = "freebasic", app: App | None = None) -> tuple[str, list[str]]:
@@ -811,12 +819,12 @@ def generate(screens, old_text: str = "", dialect: str = "freebasic", app: App |
       f"MIC({nm}), MTS$({nm}), MTM$({nm})")
     w(f"DIM SHARED IL$({ni}), IM$({ni}), ISP({ni}), IKY({ni})")
     w(f"DIM SHARED SE({ns}), SK({ns}), SV({ns}), SB({ns}), SM({ns}), SL({ns})")
-    w("DIM SHARED TuiCur, TuiFoc, TuiRun, TuiKey, TuiMouse, TuiMb, TuiMx, TuiMy, TuiMp, TuiRows, TuiCols, SPL, SPS")
+    w("DIM SHARED TuiCur, TuiFoc, TuiRun, TuiKey, TuiMouse, TuiHc, TuiMb, TuiMx, TuiMy, TuiMp, TuiRows, TuiCols, SPL, SPS")
     w("DIM SHARED TuiCmd$")
     if dialect == "quickbasic":
         w("DIM SHARED TuiReg AS RegType")
     if dialect == "freebasic":
-        w("DIM SHARED TuiMx&, TuiMy&, TuiMw&, TuiMb&")
+        w("DIM SHARED GMx&, GMy&, GMw&, GMb&")
     w("")
     w(rg.region("declarations", "' your shared variables (DIM SHARED ...) and CONSTs"))
     w("")

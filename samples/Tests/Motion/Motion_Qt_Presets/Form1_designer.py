@@ -216,10 +216,26 @@ class _Storyboard:
         self.Completed = []                 # callables run when the storyboard ends (chains)
         self._gen, self._saved, self._t0, self._paused, self._rev, self._last = 0, {}, 0.0, None, False, {}
 
+    def _owner(self, t, p):
+        """Another storyboard still playing on (t, p) (it keeps the property until it ends), else None."""
+        o = getattr(self._io, "_rad_own", {}).get((t, p))
+        return o if o is not None and o is not self and o.IsPlaying else None
+
+    def _rest(self, t, p):
+        """Where this storyboard leaves (t, p) when it ends."""
+        keys = next((k for tt, pp, k in self.Tracks if (tt, pp) == (t, p)), None)
+        if keys is None or self.RepeatForever:
+            return self._saved.get((t, p))
+        return _rad_value_at(p, keys, 0 if self.AutoReverse else self.Duration, self._saved.get((t, p)),
+                             lambda c: self._io.rgb(t, p, c))
+
     def _remember(self):
         if self._saved:
             return
-        self._saved = {(t, p): self._io.get(t, p) for t, p, _k in self._raw}
+        self._saved = {}
+        for t, p, _k in self._raw:          # a property another animation is moving starts where that one ends
+            o = self._owner(t, p)
+            self._saved[(t, p)] = o._rest(t, p) if o is not None else self._io.get(t, p)
         self._last = {}
         if not any(_rad_has_relative(keys) for _t, _p, keys in self._raw):
             self.Tracks = self._raw
@@ -240,7 +256,11 @@ class _Storyboard:
 
     def _apply(self, ms):
         self.Position = ms
+        own = self._io.__dict__.setdefault("_rad_own", {})
         for t, p, keys in self.Tracks:
+            if self._owner(t, p) is not None:
+                continue                    # two animations on one property: the first one keeps it until it ends
+            own[(t, p)] = self
             v = _rad_value_at(p, keys, ms, self._saved.get((t, p)),
                               lambda c, t=t, p=p: self._io.rgb(t, p, c))
             if self._last.get((t, p), self) == v and p == "Visible":
@@ -315,6 +335,8 @@ class _Storyboard:
         self._gen += 1
         self.IsPlaying, self._paused, self.Position, self._rev = False, None, 0, False
         for (t, p), v in self._saved.items():
+            if self._owner(t, p) is not None:
+                continue
             self._io.set(t, p, v)
             if p in ("Left", "Top", "Width", "Height"):
                 self._io.release(t, p)          # Anchor / Dock take the control back

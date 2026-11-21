@@ -1,0 +1,139 @@
+{
+ "format": "radide-game-design",
+ "version": 1,
+ "system": "a2600",
+ "name": "Castle",
+ "settings": {
+  "tv": "NTSC",
+  "reflect": true,
+  "score": false,
+  "priority": false,
+  "ball_size": "1"
+ },
+ "palette": [],
+ "tile_w": 8,
+ "tile_h": 8,
+ "tiles": [],
+ "sprites": {
+  "Hero": {
+   "w": 8,
+   "h": 8,
+   "pixels": "eNpjYGBgZGQAAyjNyAhmMIL4IAgWZ0SSh/IgbAADIwAX"
+  },
+  "Ship": {
+   "w": 8,
+   "h": 8,
+   "pixels": "eNo1iYEJAAAIwrb/n64Mp4gooByaYqAue8T8Hl0MBMIAJQ=="
+  },
+  "Knight": {
+   "w": 8,
+   "h": 10,
+   "pixels": "eNpjYGBkZGQAAUYGKA3iMzLAMCMUwMXR1INl4KoZAAXCACM="
+  },
+  "Dragon": {
+   "w": 8,
+   "h": 9,
+   "pixels": "eNpjZAABRiCAUGAmjAPnQzlAYTATooeBEaIVhBgABpAAKw=="
+  }
+ },
+ "layers": [
+  {
+   "name": "Background colour",
+   "kind": "linecolor",
+   "w": 1,
+   "h": 192,
+   "cw": 160,
+   "ch": 1,
+   "visible": true,
+   "locked": false,
+   "fill": 0,
+   "data": "eNpTUEAGiihACQUoowAVFKCKAtRQgLq6E5UBAxIAAMXvIlU="
+  },
+  {
+   "name": "Playfield",
+   "kind": "playfield",
+   "w": 20,
+   "h": 192,
+   "cw": 4,
+   "ch": 1,
+   "visible": true,
+   "locked": false,
+   "fill": 0,
+   "data": "eNrtzTEKACAQA8Hs/z8teI22h4XibhOYJomZmVkr0K6yUHPGYJ6wXmnay1ZpmrYbnzUAaDEDsQ=="
+  },
+  {
+   "name": "Playfield colour",
+   "kind": "linecolor",
+   "w": 1,
+   "h": 192,
+   "cw": 160,
+   "ch": 1,
+   "visible": true,
+   "locked": false,
+   "fill": 0,
+   "data": "eNpjYRl6IBkJAAA/QQd1"
+  },
+  {
+   "name": "Collision",
+   "kind": "collision",
+   "w": 40,
+   "h": 192,
+   "cw": 4,
+   "ch": 1,
+   "visible": true,
+   "locked": false,
+   "fill": 0,
+   "data": "eNrtz7EKwCAQRMHb///pgIIRTJFKIZnXWOwUZ5UkSZIkbSt5t3PcL12lP6uY5mMuaYdm/c4YwnEcx51xvQc3LRzHcRx3L9GnuwBbUwdh"
+  }
+ ],
+ "objects": [
+  {
+   "name": "Player0",
+   "kind": "player0",
+   "x": 76,
+   "y": 170,
+   "sprite": "Knight",
+   "color": 7,
+   "nusiz": 0,
+   "reflect": false,
+   "enabled": true
+  },
+  {
+   "name": "Player1",
+   "kind": "player1",
+   "x": 118,
+   "y": 40,
+   "sprite": "Dragon",
+   "color": 99,
+   "nusiz": 5,
+   "reflect": false,
+   "enabled": true
+  },
+  {
+   "name": "Missile0",
+   "kind": "missile0",
+   "x": 60,
+   "y": 98,
+   "height": 2,
+   "size": 1,
+   "enabled": false
+  },
+  {
+   "name": "Missile1",
+   "kind": "missile1",
+   "x": 100,
+   "y": 80,
+   "height": 2,
+   "size": 1,
+   "enabled": false
+  },
+  {
+   "name": "Ball",
+   "kind": "ball",
+   "x": 128,
+   "y": 52,
+   "height": 2,
+   "enabled": true
+  }
+ ]
+}

@@ -16,7 +16,7 @@ NEG9            DEC     -9
 NEG59           DEC     -59
 V16             DEC     16
 N36             DEC     36
-T3LOAD          OCT     37634           # 37777 - 99 + 1: TIME3 overflows after 100 centiseconds
+T3LOAD          OCT     37777           # TIME3 overflows (T3RUPT) at the next centisecond
 LOW5            OCT     37
 KVERB           OCT     21              # DSKY key codes
 KRSET           OCT     22

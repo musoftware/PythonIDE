@@ -60,20 +60,21 @@ class Result:
         return "\n".join(lines)
 
 
-def _header(img: romfmt.RomImage, sysd, main: str) -> str:
-    info = "\n".join(f";   {k}: {v}" for k, v in img.info.items() if not k.startswith("_"))
+def _header(img: romfmt.RomImage, sysd, source_name: str) -> str:
+    info = "\n".join(f";   {k}: {v}" for k, v in img.info.items() if not k.startswith("_") and k != "SHA-1")
     return (f"; {img.name} - disassembled by RAD IDE ({sysd.title}, {sysd.dialect})\n"
-            f"; Source file: {img.name} (a copy is in rom/), SHA-1 {img.sha1}\n{info}\n"
-            f"; Building this file gives back the original bytes (Build > Rebuild check in the Output window).\n"
-            f"; Not reached by the tracer = data (.byte). Add hints in hints.json and use Tools > Retro >\n"
-            f"; Re-disassemble with hints, or simply edit the code: it is ordinary {sysd.dialect} source.\n")
+            f"; Source file: {source_name} (a copy is in rom/), SHA-1 {img.sha1}\n{info}\n"
+            f"; Building this file gives back the original bytes: F5 / Build prints the rebuild check, and\n"
+            f"; Tools > Retro > Retro Development > Rebuild Check compares again. Code the tracer did not reach\n"
+            f"; stays data (.byte): add hints in hints.json and use Re-disassemble with Hints (same menu), or\n"
+            f"; simply edit the code - it is ordinary {sysd.dialect} source.\n")
 
 
 def render_source(img: romfmt.RomImage, dis: disasm.Disassembly, sysd) -> tuple[str, dict[str, str]]:
     """(main source, {extra text file: content}) for the system's assembler."""
     d = sysd.dialect
     eq = dis.render_equates(d)
-    out = [_header(img, sysd, "")]
+    out = [_header(img, sysd, img.file_name or img.name)]
     extra: dict[str, str] = {}
     if img.system == "atari2600":
         out.append("        processor 6502\n")

@@ -27,7 +27,7 @@ ERASABLE_BANKS = 8
 
 MESSAGES: dict[str, tuple[str, str]] = {
     "unknown_op": ("Unknown operator '{0}'", "عملية غير معروفة '{0}'"),
-    "interp": ("Interpretive instruction '{0}' needs yaYUL (Tools > Apollo AGC > Virtual AGC Toolchain); the "
+    "interp": ("Interpretive instruction '{0}' needs yaYUL (Tools > Retro > Apollo AGC > Virtual AGC Toolchain); the "
                "built-in assembler handles basic instructions and extracodes",
                "التعليمة التفسيرية '{0}' تحتاج yaYUL؛ المجمِّع المدمج يدعم التعليمات الأساسية والموسَّعة فقط"),
     "undefined": ("Undefined symbol '{0}'", "رمز غير معرَّف '{0}'"),

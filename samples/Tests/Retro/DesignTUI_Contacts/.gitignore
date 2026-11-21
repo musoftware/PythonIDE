@@ -1,0 +1,7 @@
+_build/
+*.EXE
+*.COM
+*.OBJ
+*.o
+CWSDPMI.EXE
+SCREEN.BIN

@@ -1,0 +1,13 @@
+{
+  "id": "dos-programming",
+  "title_ar": "برمجة DOS: تصميم شاشات وضع النص وتوليد البرامج",
+  "title_en": "DOS Programming: Designing Text-Mode Screens and Generating Programs",
+  "language": "dos-tuiforms",
+  "level": "beginner",
+  "description_ar": "دورة عربية عن برامج DOS بأسلوب Visual Basic: ترسم الشاشة بالفأرة في مصمم وضع النص (نوافذ وأزرار ومربعات نص وقوائم وشريط حالة)، فتولّد RAD IDE البرنامج بلغة QBasic/FreeBASIC أو باسكال أو C أو تجميع 16 بت، ثم تبنيه بمترجم مجاني وتشغّله في DOSBox-X. وتتعلم كتابة كود الأحداث، وذاكرة الفيديو B800 وحروف CP437، ورسم فن ANSI واستخدامه شاشةً افتتاحية.",
+  "lessons": [
+    {"id": "01-text-mode-designer", "file": "01-text-mode-designer.md", "title_ar": "مصمم وضع النص: ارسم شاشة DOS", "minutes": 30},
+    {"id": "02-events-and-code", "file": "02-events-and-code.md", "title_ar": "الأحداث والكود: من الشاشة إلى برنامج يعمل", "minutes": 40},
+    {"id": "03-ansi-art-and-splash", "file": "03-ansi-art-and-splash.md", "title_ar": "فن ANSI والشاشة الافتتاحية وما يجري تحت الغطاء", "minutes": 35}
+  ]
+}

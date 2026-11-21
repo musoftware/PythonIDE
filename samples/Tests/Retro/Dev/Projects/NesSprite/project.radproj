@@ -1,0 +1,17 @@
+{
+  "name": "NesSprite",
+  "language": "retro-nes",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.s",
+    "nes.inc",
+    "nes.cfg"
+  ],
+  "retro": {
+    "system": "nes",
+    "lang": "asm",
+    "main": "main.s",
+    "cfg": "nes.cfg"
+  }
+}

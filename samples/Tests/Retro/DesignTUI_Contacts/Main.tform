@@ -1,0 +1,311 @@
+{
+ "format": "radide-tform",
+ "version": 1,
+ "screen": {
+  "name": "Main",
+  "cols": 80,
+  "rows": 25,
+  "back_char": 177,
+  "back_fore": 1,
+  "back_color": 0,
+  "background": "",
+  "esc_quits": true,
+  "splash": "Splash.ans",
+  "splash_seconds": 3,
+  "ice_colors": false
+ },
+ "controls": [
+  {
+   "type": "MenuBar",
+   "name": "mnuBar",
+   "x": 0,
+   "y": 0,
+   "w": 80,
+   "h": 1,
+   "fore": 0,
+   "back": 7,
+   "hot": 4,
+   "sel_fore": 15,
+   "sel_back": 0,
+   "menus": [
+    {
+     "text": "&File",
+     "items": [
+      {
+       "text": "&New contact",
+       "name": "mnuNew",
+       "shortcut": "F2"
+      },
+      {
+       "text": "-"
+      },
+      {
+       "text": "E&xit",
+       "name": "mnuExit",
+       "shortcut": "Alt+X"
+      }
+     ]
+    },
+    {
+     "text": "&Help",
+     "items": [
+      {
+       "text": "&About...",
+       "name": "mnuAbout",
+       "shortcut": "F1"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "Window",
+   "name": "winMain",
+   "x": 3,
+   "y": 2,
+   "w": 74,
+   "h": 19,
+   "fore": 15,
+   "back": 1,
+   "text": " Contacts ",
+   "border": "double",
+   "shadow": true,
+   "title_align": "center"
+  },
+  {
+   "type": "Label",
+   "name": "lblName",
+   "x": 6,
+   "y": 4,
+   "w": 7,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Name:",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "TextBox",
+   "name": "txtName",
+   "x": 14,
+   "y": 4,
+   "w": 24,
+   "h": 1,
+   "fore": 15,
+   "back": 0,
+   "text": "",
+   "max_length": 30,
+   "password": false,
+   "focus_fore": 14,
+   "focus_back": 0,
+   "tab_index": 0
+  },
+  {
+   "type": "Label",
+   "name": "lblPhone",
+   "x": 6,
+   "y": 6,
+   "w": 7,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Phone:",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "TextBox",
+   "name": "txtPhone",
+   "x": 14,
+   "y": 6,
+   "w": 16,
+   "h": 1,
+   "fore": 15,
+   "back": 0,
+   "text": "",
+   "max_length": 16,
+   "password": false,
+   "focus_fore": 14,
+   "focus_back": 0,
+   "tab_index": 1
+  },
+  {
+   "type": "CheckBox",
+   "name": "chkFav",
+   "x": 6,
+   "y": 8,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Favourite",
+   "value": false,
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 2
+  },
+  {
+   "type": "Frame",
+   "name": "fraGroup",
+   "x": 6,
+   "y": 10,
+   "w": 26,
+   "h": 5,
+   "fore": 15,
+   "back": 1,
+   "text": " Group ",
+   "border": "single",
+   "shadow": false,
+   "title_align": "left"
+  },
+  {
+   "type": "Option",
+   "name": "optFamily",
+   "x": 8,
+   "y": 11,
+   "w": 14,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Fami&ly",
+   "value": false,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 3
+  },
+  {
+   "type": "Option",
+   "name": "optWork",
+   "x": 8,
+   "y": 12,
+   "w": 14,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Work",
+   "value": false,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 4
+  },
+  {
+   "type": "Option",
+   "name": "optOther",
+   "x": 8,
+   "y": 13,
+   "w": 14,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "O&ther",
+   "value": true,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 5
+  },
+  {
+   "type": "ListBox",
+   "name": "lstContacts",
+   "x": 41,
+   "y": 4,
+   "w": 33,
+   "h": 11,
+   "fore": 0,
+   "back": 3,
+   "items": [],
+   "list_index": 0,
+   "border": "single",
+   "sel_fore": 15,
+   "sel_back": 1,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 6
+  },
+  {
+   "type": "Button",
+   "name": "btnAdd",
+   "x": 41,
+   "y": 16,
+   "w": 10,
+   "h": 1,
+   "fore": 0,
+   "back": 2,
+   "text": "&Add",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 2,
+   "shadow": true,
+   "cancel": false,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 7
+  },
+  {
+   "type": "Button",
+   "name": "btnClear",
+   "x": 55,
+   "y": 16,
+   "w": 10,
+   "h": 1,
+   "fore": 0,
+   "back": 2,
+   "text": "C&lear",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 2,
+   "shadow": true,
+   "cancel": false,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 8
+  },
+  {
+   "type": "ProgressBar",
+   "name": "prgCount",
+   "x": 6,
+   "y": 16,
+   "w": 26,
+   "h": 1,
+   "fore": 10,
+   "back": 0,
+   "value": 0,
+   "max": 10
+  },
+  {
+   "type": "Label",
+   "name": "lblInfo",
+   "x": 6,
+   "y": 18,
+   "w": 66,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Type a name and press Alt+A (Tab moves, F10 opens the menu).",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "StatusBar",
+   "name": "stsMain",
+   "x": 0,
+   "y": 24,
+   "w": 80,
+   "h": 1,
+   "fore": 0,
+   "back": 7,
+   "text": " ~Alt+A~ Add  ~Alt+L~ Clear  ~F10~ Menu  ~Esc~ Quit",
+   "hot": 4
+  }
+ ]
+}

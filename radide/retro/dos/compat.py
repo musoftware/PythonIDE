@@ -93,9 +93,10 @@ def scan_c(text: str) -> list[CompatNote]:
         out.append(CompatNote("Warning", "graphics.h (Borland BGI): RAD IDE's BGI subset (tcgraph.h, 640x480x16 "
                               "through the BIOS) is used instead - .BGI / .CHR drivers are not loaded; arcs, pie "
                               "slices, fonts and images are not supported.", _line_of(text, m.start())))
-    m = re.search(r"initgraph\s*\([^)]*\"([^\"]+)\"", text)
+    m = re.search(r'initgraph\s*\([^)"]*"([^"\r\n]*)"', text)
     if m and m.group(1).strip():
-        out.append(CompatNote("Message", f"initgraph path \"{m.group(1)}\" is ignored (no .BGI driver is needed).",
+        path = m.group(1).replace("\\\\", "\\")
+        out.append(CompatNote("Message", f"initgraph path \"{path}\" is ignored (no .BGI driver is needed).",
                               _line_of(text, m.start())))
     if needs_tcconio(text):
         out.append(CompatNote("Message", "Turbo C conio functions (clrscr, gotoxy, textcolor, ...) come from RAD "
