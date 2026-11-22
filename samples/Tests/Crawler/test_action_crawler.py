@@ -54,7 +54,7 @@ BAD = ("exception", "hang", "crash", "modal-left", "unresponsive")
 
 # (regex on "path > text", reason) - matched case-insensitively against the full label
 SKIP_RULES = [
-    (r"(^|> )(e?xit|quit)( |$)|exit ide|close ide|restart (the )?ide|restart rad|^.*> restart$",
+    (r"(^|> )(e?xit|quit)$|exit ide|close ide|restart (the )?ide|restart rad|^.*> restart$",
      "quits / restarts the IDE"),
     (r"new window", "starts a second IDE process"),
     (r"uninstall", "uninstalls software"),

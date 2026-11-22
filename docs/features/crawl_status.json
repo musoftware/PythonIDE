@@ -1,0 +1,6526 @@
+{
+"menubar|File|New Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|New Project (.NET, Visual Studio 2022)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|New Window": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "starts a second IDE process"
+},
+"menubar|File|Open in Design View": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|App Gallery": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Open Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Add|New Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Add|Existing Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Open File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Connect to SSH Host": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote > Recent SSH Hosts|(no saved hosts)": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Open WSL Folder": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Open Folder in Dev Container": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Remote Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Remote Terminal": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Run on Remote": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Build on Remote": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Run Remote Command": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Stop Remote Command": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Reload Remote File": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open Remote|Disconnect": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Open Folder": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Close Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Save Form1.form [Design]": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Save All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open in Hex Editor|File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Open in Hex Editor|Current File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Image|Icon (.ico)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Image|Cursor (.cur)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Image|Image (.png / .bmp)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Notebook|Blank Notebook (.ipynb)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Notebook|Data Science Starter (pandas + matplotlib)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Notebook|Open Notebook": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > New Notebook|Import Python Script as Notebook": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|New Solution from Existing Folders": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  python-tk  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\python-tk-vs\\projects\\python-tk": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|Clear List": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Migrate Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Import|Python GUI Program (Tkinter / Qt)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Import|Visual Basic 6 Project (.vbp / .frm)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File > Import|Program (.exe / .dll)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Exit": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "quits / restarts the IDE"
+},
+"menubar|Edit|Undo": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Redo": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Cut": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Copy": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Paste": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Delete": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Select All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Find": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Replace": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Find Next": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Find Previous": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Find in Files": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Go to Line": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Go to Definition": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Edit with AI": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Suggest Inline Completion": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Explain": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Fix": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Refactor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Add Comments": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Generate Docs": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Generate Tests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > AI|Inline Completions": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Insert Snippet": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Format Document": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Format on Save": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > Refactor|Rename": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > Refactor|Quick Actions and Refactorings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > Refactor|Extract Method": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > Refactor|Extract Variable": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > Refactor|Find All References": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Language Mode": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Open as PHP": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit|Emmet: Expand Abbreviation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > IntelliSense|Remove and Sort Usings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Edit > IntelliSense|Sort Usings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Command Palette": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Quick Open (Go to File)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Tab Order": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Visual Studio": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|VS Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Agent": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Next Layout": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Toggle Side Bar": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Toggle Panel": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Zen Mode": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Layout|Reset Current Layout": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Object Browser": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Designer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Toolbox": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Solution Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Properties": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Output": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Locals": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Call Stack": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Immediate": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Error List": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Find Results": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Agent Manager": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|New Agent Task": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|AI Chat": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|AI Web Chats": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|AI Web Chats (dock)": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Animations": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Problems Explained": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Data Sources": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Databases": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Data": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|Zoom In  (Ctrl+Wheel)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|Zoom Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|100%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|50%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|75%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|150%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|200%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|300%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Zoom|400%": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Document Outline": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|8086 Emulator": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Framework Tools": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Git Changes": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Notebook Variables": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Package Manager Console": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Find All References Window": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Remote Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Retro Debugger": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|States": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Terminal": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Objects and Timeline": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Sizes": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Extension Output": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Extensions (VS Code)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Design": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Preview": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Requests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|CodeIgniter Panel (Spark, Routes)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Laravel Panel (Artisan, Routes, Tinker)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Django / Flask / FastAPI Panel": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View|Rails Panel (Console, Routes, Models)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|View > Extension Views|Claude Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Git Changes": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Commit All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Fetch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Pull": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Pull (rebase)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Push": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "git push / sync changes a remote repository"
+},
+"menubar|Git|Force Push (with lease)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "git push / sync changes a remote repository"
+},
+"menubar|Git|Sync (pull, then push)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "git push / sync changes a remote repository"
+},
+"menubar|Git|New Branch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Manage Branches": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Merge into current branch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Rebase current branch onto": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Resolve Conflicts": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Continue merge / rebase": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Abort merge / rebase": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Stash All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Stashes": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Tags": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|View History (graph)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Blame current file": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Toggle inline blame in the editor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Compare current file with commit": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Amend last commit": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Undo last commit (keep changes)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git > GitHub|Pull Requests and Issues": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "git push / sync changes a remote repository"
+},
+"menubar|Git > GitHub|Create Pull Request": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "git push / sync changes a remote repository"
+},
+"menubar|Git > GitHub|Sign in (gh auth login)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "signs in to an online service"
+},
+"menubar|Git > GitHub|Download GitHub CLI": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Git|Edit .gitignore": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Remotes": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Git|Git Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Add Windows Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Add User Control": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|User Control Properties and Events": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Add Module": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Add New Screen (Flutter designer)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project|Add Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Set as StartUp Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Import Flutter Screen from Dart": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project|Flutter Assets": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project|Flutter Fonts (Google Fonts)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project|Flutter App Theme": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project|Add Report": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Add Existing Item": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Open Project Folder": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Project Properties": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Check for Errors": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Build EXE": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Generate Form with AI": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|DOS Project Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Set Original": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|View Original (read-only)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Edit Working Copy": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Checksums": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Verify Checksums": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Versions": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Compare with Original": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Build ECU Project": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Open Build Output": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Export Modification Report": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Export Patch (IPS / BPS)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Import Patch": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Build Settings": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Checksum Toolkit (any file)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Open Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Find Maps (workbench)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Verify Checksums (workbench)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Compare with Original (workbench)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Analyze (workbench)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project > ECU Project|Build in Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|Project|Add 3D Scene": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Resources": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|Manage Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project|DOS Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Set Source ROM": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Patch Manager": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|View Source ROM (read-only)": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Edit Working Copy": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Capture Edits as Patch": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Add Patch": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Build Patched ROM": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > ROM Hacking|Open Build Output": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Set Original": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Analyze": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Verify Original": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Make Working Copy": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Open Notes": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Firmware Analysis|Open Labels": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Install Package": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Project > Python Commands|Freeze to requirements.txt": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|List Installed Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Create .venv": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Run Tests (pytest)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Run Tests (unittest)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Project > Python Commands > Format and Lint|Format Project (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands > Format and Lint|Format Project (black)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands > Format and Lint|Lint Project (ruff check)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands > Format and Lint|Fix Lint Problems (ruff check --fix)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Build EXE / Installer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Stop Running Command": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|Install Package": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Python|Freeze to requirements.txt": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|List Installed Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|Create .venv": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Python|Run Tests (pytest)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|Run Tests (unittest)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Python > Format and Lint|Format Project (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python > Format and Lint|Format Project (black)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python > Format and Lint|Lint Project (ruff check)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python > Format and Lint|Fix Lint Problems (ruff check --fix)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|Build EXE / Installer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Python|Stop Running Command": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Lefts": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Centers": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Rights": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Tops": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Middles": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|Bottoms": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Align|to Grid": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Make Same Size|Width": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Make Same Size|Size to Grid": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Make Same Size|Height": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Make Same Size|Both": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Horizontal Spacing|Make Equal": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Horizontal Spacing|Increase": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Horizontal Spacing|Decrease": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Horizontal Spacing|Remove": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Vertical Spacing|Make Equal": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Vertical Spacing|Increase": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Vertical Spacing|Decrease": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Vertical Spacing|Remove": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Center in Form|Horizontally": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Center in Form|Vertically": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Order|Bring to Front": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format > Order|Send to Back": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format|Lock Controls": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Format|Localization Strings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Build Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Build Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Refresh References": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Rebuild Solution": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Clean Solution": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Configuration Manager": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Publish Selection": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Build Native Exe": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Publish / Create Installer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build|Open Publish Folder": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Android APK": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Android App Bundle (Google Play)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"menubar|Build > Mobile App|Windows EXE": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Web site": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Android APK (debug, faster)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Cancel Build": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Build > Mobile App|Create Foldable Emulator": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Run Site in Preview": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"menubar|Site|Open in Browser": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"menubar|Site|Restart Web Server": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Stop Web Server": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|New File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|New Folder": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Preview": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Requests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Site Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|App Gallery": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|CodeIgniter Panel (Spark, Routes)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Databases": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Open Database in Adminer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Generate Dockerfile / Compose / Dev Container": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Docker Panel": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Build Image": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Compose Up": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Compose Down": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Docker|Lint Dockerfile": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Deploy to Cloud / Git / SSH": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"menubar|Site|Laravel Panel (Artisan, Routes, Tinker)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Django / Flask / FastAPI Panel": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Rails Panel (Console, Routes, Models)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|New Front-end App (React, Vue, Svelte, Angular)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Build Production (npm run build)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Site|REST Client": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Publish": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Publish Preview (dry run)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|SEO Report": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Lighthouse Report": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|Reports": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site|SuperPreview": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Open in Installed Browser|Chrome": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Open in Installed Browser|Edge": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Open in Installed Browser|Firefox": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Site > Open in Installed Browser|Default browser": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Start Debugging / Continue": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Start Without Debugging": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Stop Debugging": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"menubar|Debug|Step Into": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Step Over": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Step Out": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Step Into Instruction": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Step Over Instruction": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Go To Disassembly": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Toggle Breakpoint": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|Check by Running": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|Check This Procedure": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|Check Selection": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|Explain This Line": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|What-If Console": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Assembly Checks|Assembly Checks Window": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Breakpoint Condition": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Run to Cursor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Break on Exceptions": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Watch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|8086: Stop at First Instruction": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Debug Expo Web Page (js-debug)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Debug with Extension Debugger": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|CPU (OllyDbg Style)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|CPU View at First Stop": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Breakpoint Settings (Condition, Hit Count, Log)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Attach to Process": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Break All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug|Install Delve (Go Debugger)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Debug > Windows|Locals": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Watch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Call Stack": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Threads": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Immediate": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Registers": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Memory 1": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Disassembly": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Windows|Stack": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Mobile|Hot Reload": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Mobile|Hot Restart": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Mobile|Always Use the Dart Debugger for F5": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Debug > Mobile|Refresh devices": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Data|Show Data Sources": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Data|Add New Data Source": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Data|Preview Data": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Data|Refresh Data Sources": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Test Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Run All Tests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Run Failed Tests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Debug Selected Test": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Run All Tests with Coverage": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Run Tests in Current File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Show Code Coverage Colouring": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Clear Coverage Results": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Test|Refresh Tests": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Run Code Analysis|On Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Run Code Analysis|On Current Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Code Cleanup|Run Code Cleanup on Document": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Code Cleanup|Run Code Cleanup on Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Code Cleanup|Run Code Cleanup on Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze > Code Cleanup|Configure Code Cleanup": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze|Configure Code Analysis (.editorconfig)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze|Remove and Sort Usings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze|Go To Decompiled Definition": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze|Decompile Assembly": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Analyze|Show Generated Files (Source Generators)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Interpreter Path": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Ask AI about the Selection": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|AI Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Assembly Toolchains": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Component Packages|Manage Component Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Component Packages|Install Component Package (.radcomp)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Tools > Component Packages|Choose Toolbox Items": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Component Packages|Hot Reload (package development)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Component Packages|Reload Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Databases": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|New SQLite Database": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Add Connection": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|New Query": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Open in Adminer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Start local MariaDB/MySQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Start local PostgreSQL": {
+"result": "hang",
+"where": "python-tk/vs",
+"error": "still running in a nested event loop after 25s"
+},
+"menubar|Tools > Databases > Local Servers|Start local MariaDB/MySQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Stop local MariaDB/MySQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Copy MariaDB/MySQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Start local PostgreSQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Stop local PostgreSQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Copy PostgreSQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases > Local Servers|Server Status": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Databases|Database Diagram": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|New Text-Mode Screen": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|New ANSI Art": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|Open Screen or Art": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|Generate Code": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|Build & Run in DOSBox-X": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|Test Run (simulator)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|View Code": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Text-Mode (DOS)|Use Current Art as Splash Screen": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Build DOS Program": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Run in DOSBox-X": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Run in DOSBox-X Debugger": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Run in My QBasic": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Run with Captured Output": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Show Last DOS Screen": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|Open Symbol Map": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|DOS Project Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|DOS Toolchains": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > DOS Programming|DOS Interrupt Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|New Atari 2600 Screen": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|New NES Screen / Level": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|New Game Boy Map": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|New DOS Mode 13h Screen": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|New Design for This Project": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Game Designers|Open Game Design": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Retro Development|Disassemble ROM into Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Retro Development|Re-disassemble with Hints": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Retro Development|Rebuild Check (compare with the original)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Retro Development|Import Labels into Hints": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Retro Development|Retro Toolchains": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro|Emulators": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro|Run ROM in Emulator": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro|Debug ROM in Emulator": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro|Reload ROM in Emulator": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|Tile Editor (Open ROM / Binary)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|New Tile Sheet (8 KB CHR)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|View Current File as Tiles": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|Atari 2600 Playfield Editor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|Tile Map Editor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|Text Table Editor (.tbl)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|New Text Table": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Graphics & Text|Script Dump / Insert": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|Open Apollo Source": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|Virtual AGC Toolchain": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|Build with yaYUL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|DSKY Panel": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|DSKY Verbs, Nouns and Programs": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Apollo AGC|Assembly Listing": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Legacy Fortran|Card Deck View": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Legacy Fortran|Convert to Free Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Legacy Fortran|Explain Legacy Constructs": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > Legacy Fortran|Compiler Preset": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|Open in Hex Editor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|Compare Files": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|Create Patch (IPS / BPS / UPS)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|Apply Patch": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|Fix Header Checksum of a File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Retro > ROM Workbench|ROM Info": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Compare (Diff)|Compare Files": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Compare (Diff)|Compare Current File with Saved": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Compare (Diff)|Compare Current File with Git HEAD": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Compare (Diff)|Compare Current File with Clipboard": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Compare (Diff)|Compare Current File with": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Macros|Record Temporary Macro / Stop": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Macros|Run Temporary Macro": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Macros|Save Temporary Macro": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Macros|Macro Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Code Snippets Manager": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Keymap|Visual Studio": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Keymap|VS Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Keymap|Vim": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Keymap|Emacs (basic)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Extensions": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|VS Code Extensions (Open VSX)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Install Extension from VSIX": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Tools > Firmware & ECU > Calibration Maps|Open Binary in Map Editor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU > Calibration Maps|Find Maps in a Binary": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU > Calibration Maps|Compare Two Binaries (Maps)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU > Calibration Maps|Open Binary with an A2L": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU > Calibration Maps|Open rusEFI / Speeduino Tune (msq + ini)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Analyze Firmware File": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Firmware Converter (HEX / S-record / ELF / split / merge)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Create Synthetic Test Firmware": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Open Firmware in Workbench": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Open EEPROM Dump (read-only)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|New ECU Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|New ECU Project (Demo Firmware)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Compare Firmware Files": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Firmware & ECU|Getting Started": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|New Icon": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|New Image": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|Open Image": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|Set as Form Icon": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|Set as Application Icon": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Image Editor|Add to Project Resources": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Language Servers and Debuggers": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > NuGet Package Manager|Package Manager Console": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > NuGet Package Manager|Manage NuGet Packages for Solution": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > NuGet Package Manager|Package Manager Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Accessibility Check": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Install (composer install)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Tools > Composer|Update (composer update)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Tools > Composer|Require Package": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Remove Package": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Dump Autoload (composer dump-autoload)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Validate composer.json": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Show Outdated Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Composer|Open composer.json": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|PHP Versions": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Rust Settings": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Options": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Language|English": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Language|العربية": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|REST Client": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Install Web Language Servers (HTML/CSS/JSON/PHP/JS/TS)": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Tools|Car Fault Guide": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Car Connection|Connect to Car": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Car Connection|Disconnect": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Car Connection|Bus Monitor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Car Connection|Demo Car (Simulator)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Car Connection|Find Control Units": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Car Diagnostics": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Car Service Functions": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Generate Dockerfile / Compose / Dev Container": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Docker Panel": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Build Image": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Compose Up": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Compose Down": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools > Docker|Lint Dockerfile": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Tools|Deploy to Cloud / Git / SSH": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"menubar|Tools|PE / MFC Resource Workbench": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share|Start Collaboration Session": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "signs in to an online service"
+},
+"menubar|Share|Join Collaboration Session": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share|Copy Invite Link": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share|Guests Read-only": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share > Follow Participant|(no session)": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share|Save Shared File on Host": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Share|Live Share Window": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "signs in to an online service"
+},
+"menubar|Share|End Collaboration Session": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Window|Auto Hide": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Window|Auto Hide All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Window|Split Editor Right": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Window|Split Editor Down": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Window|Remove Split": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|RAD IDE Help": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Context Help": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Tutorials (Arabic lessons)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|BASIC course (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|C++ course (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|AI in RAD IDE (Arabic guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Old NASA Programs: the Apollo Guidance Computer and Classic Fortran (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Assembly from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn C from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Car Diagnostics: OBD-II, Warning Lights and Service Functions (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|CodeIgniter 4 in RAD IDE (Guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn C# from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Dart from Scratch (to Flutter) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Guide: Data and Reports (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Guide: Debugging and Testing (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Deploy and Publish in RAD IDE (Arabic guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|DOS Programming: QBasic, Pascal, C, Assembly and Visual Designers (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Extensions in RAD IDE (Arabic guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|ECU and Firmware Files: Analysis and Calibration Editing (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Flutter Mobile Apps in RAD IDE (guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Guide: The Form Designer (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Fortran Basics (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Making Games in RAD IDE (guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Guide: Git and Collaboration (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Go from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Guide: Workbench Basics (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Import and Migrate in RAD IDE (Arabic guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Java from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn JavaScript and TypeScript with Node.js (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Jupyter Notebooks and Data Science in RAD IDE (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Laravel in RAD IDE (Guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Lua from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Node.js and Front-end Guide for RAD IDE (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Perl from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Web Development with PHP from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn PowerShell from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Python from Scratch to Desktop Apps (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Retro Games: ROM Hacking and Programming the Atari 2600, NES and Game Boy (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Ring from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Ruby from Scratch, then Ruby on Rails (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Learn Rust from Scratch (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Solutions and References in RAD IDE (Arabic guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|Visual Studio Projects in RAD IDE (Guide) (Arabic, CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help > Help Files (CHM)|RAD IDE Manual (CHM)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Keyboard Shortcuts": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Ring Samples": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|VB6 Language Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Python Documentation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Tkinter Documentation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Qt for Python (PySide6) Documentation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Ring Documentation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|RingQt / Qt 5 Class Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|About": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Check for Updates": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Help|Install Another Version": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Help|Example Projects": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|Help|Check for Updates Automatically": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"menubar|Help|PE / MFC Workbench Guide": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar-corner|Menu bar corner|VS": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar-corner|Menu bar corner|Code": {
+"result": "unresponsive",
+"where": "python-tk/vs",
+"error": "UI thread blocked for 11.6s while the action ran"
+},
+"menubar-corner|Menu bar corner|Agent": {
+"result": "unresponsive",
+"where": "python-tk/vs",
+"error": "UI thread blocked for 10.4s while the action ran"
+},
+"toolbar|Toolbar Standard|New Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Open Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Save All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Undo": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Redo": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Start Debugging / Continue": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Stop Debugging": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Design": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Standard|Split": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Debug|Step Into": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Debug|Step Over": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Debug|Step Out": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Debug|Toggle Breakpoint": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Add New Data Source": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Configure Data Source": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Preview Data": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Refresh (re-read the columns and rows)": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Remove Data Source": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > New|New SQLite Database": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > New|Add Connection (SQLite / MySQL / PostgreSQL)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Refresh": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|New Query": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|New Table": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Open in Adminer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Start local MariaDB/MySQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Stop local MariaDB/MySQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Copy MariaDB/MySQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Start local PostgreSQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Stop local PostgreSQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Copy PostgreSQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar > Local Servers|Server Status": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Diagram": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Expo|Refresh devices": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Expo|Open in Browser": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Expo|Close the Emulator": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Mobile|Refresh devices": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Mobile|Hot Reload": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Mobile|Hot Restart": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Run Tests (pytest)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Stop Running Command": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Rust|Reload": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Rust|Clippy": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Rust|Test": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Run All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Run": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Run Failed": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Debug": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Coverage": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Stop": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Back": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Forward": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Reload (F5 in the page)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Rotate": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Open in Browser": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Clear": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Preferences|File Icon Theme...|workbench.action.selectIconTheme": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > AI|Agent Manager: Show|agents.show": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > AI|Agent Manager: New Task|agents.new": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > AI|Agent Manager: Stop All Tasks|agents.stop_all": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: Spark Commands|codeigniter.spark": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: Show Routes|codeigniter.routes": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: spark make:controller...|codeigniter.make:controller": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: spark make:model...|codeigniter.make:model": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: spark make:migration...|codeigniter.make:migration": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: spark migrate...|codeigniter.migrate": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > CodeIgniter|CodeIgniter: spark db:seed...|codeigniter.db:seed": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Go|Go to Line/Column...|workbench.gotoLine": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Flutter: Add New Screen (visual designer)...|flutter.newScreen": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Flutter: Import Screen from Dart...|flutter.importScreen": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Flutter: Project Assets...|flutter.assets": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Flutter: Add Google Font...|flutter.fonts": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Flutter: App Theme...|flutter.theme": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Laravel|Laravel: Run Artisan Command...|laravel.artisan": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Laravel|Laravel: Show Routes|laravel.routes": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Laravel|Laravel: Open Tinker|laravel.tinker": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Laravel|Laravel: make:model -mcr|laravel.make-model": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Laravel|Laravel: Generate IDE Helper Files|laravel.ide-helper": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Rails|Rails: Open Console|rails.console": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Rails|Rails: Show Routes|rails.routes": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Rails|Rails: Show Models|rails.models": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Rails|Rails: Edit Credentials|rails.credentials": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Project|Project: Add Report...|reports.add": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Open Extension URI...|vsx.openUri": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|New Extension Terminal from Profile...|vsx.newTerminalProfile": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Show Extension Output|vsx.showExtensionOutput": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Restart Extension Host|vsx.restartExtensionHost": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Debug|Debug with Extension Debugger|vsx.debugWithExtension": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Extensions: Show Extensions|vsx.show": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Extensions: Install from VSIX...|vsx.installVsix": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Extensions: Check for Extension Updates|vsx.checkUpdates": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Extensions|Extensions: Update All Extensions|vsx.updateAll": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Explorer|workbench.view.explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Search|workbench.view.search": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Source Control|workbench.view.scm": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Run and Debug|workbench.view.run": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Databases|workbench.view.databases": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show AI Chat|workbench.view.chat": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show Agents|workbench.view.agents": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > View|Show AI Web Chats|workbench.view.webchats": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Preferences|Color Theme: System|workbench.theme.System": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Preferences|Color Theme: Light|workbench.theme.Light": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Preferences|Color Theme: Blue|workbench.theme.Blue": {
+"result": "unresponsive",
+"where": "python-tk/vs",
+"error": "UI thread blocked for 17.1s while the action ran"
+},
+"palette|Command Palette > Preferences|Color Theme: Dark|workbench.theme.Dark": {
+"result": "unresponsive",
+"where": "python-tk/vs",
+"error": "UI thread blocked for 15.7s while the action ran"
+},
+"palette|Command Palette > Preferences|Color Theme: High Contrast|workbench.theme.High Contrast": {
+"result": "unresponsive",
+"where": "python-tk/vs",
+"error": "UI thread blocked for 14.0s while the action ran"
+},
+"palette|Command Palette > View|Focus Active Editor|workbench.focusEditor": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Build|Build: Publish / Create Installer...|build.publish": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Build|Build: Build Native Exe|build.native": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Install Package|projact.python.pip-install": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"palette|Command Palette > Python|Freeze to requirements.txt|projact.python.pip-freeze": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|List Installed Packages|projact.python.pip-list": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Create .venv|projact.python.venv-create": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Run Tests (pytest)|projact.python.pytest": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Run Tests (unittest)|projact.python.unittest": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Format and Lint: Format Project (ruff)|projact.python.ruff-format": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Format and Lint: Format Project (black)|projact.python.black": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Format and Lint: Lint Project (ruff check)|projact.python.ruff-check": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Format and Lint: Fix Lint Problems (ruff check --fix)|projact.python.ruff-fix": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Build EXE / Installer|projact.python.publish": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open in New Tab|claude-vscode.editor.open": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open|claude-vscode.editor.openLast": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open in Primary Editor|claude-vscode.primaryEditor.open": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open in New Window|claude-vscode.window.open": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "starts a second IDE process"
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open in Side Bar|claude-vscode.sidebar.open": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: New Conversation|claude-vscode.newConversation": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Reopen Closed Session|claude-vscode.reopenClosedSession": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Update extension|claude-vscode.update": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Focus input|claude-vscode.focus": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Focus last message|claude-vscode.focusLastMessage": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Blur input|claude-vscode.blur": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Logout|claude-vscode.logout": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open in Terminal|claude-vscode.terminal.open": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Accept Proposed Changes|claude-vscode.acceptProposedDiff": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Reject Proposed Changes|claude-vscode.rejectProposedDiff": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Accept Change at Cursor|claude-vscode.acceptProposedHunk": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Reject Change at Cursor|claude-vscode.rejectProposedHunk": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Accept this change|claude-vscode.acceptProposedHunkFromBar": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Reject this change|claude-vscode.rejectProposedHunkFromBar": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Insert @-Mention Reference|claude-vscode.insertAtMention": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Add to Chat|claude-vscode.addToChat": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Install Plugin|claude-vscode.installPlugin": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Accept Proposed Changes|claude-code.acceptProposedDiff": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Reject Proposed Changes|claude-code.rejectProposedDiff": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Insert At-Mentioned|claude-code.insertAtMentioned": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Show Logs|claude-vscode.showLogs": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Toggle Focus view|claude-vscode.toggleFocusView": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Open Walkthrough|claude-vscode.openWalkthrough": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Mark Session as Unread|claude-vscode.markSessionUnread": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Rename Session Tab|claude-vscode.renameSessionTab": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"palette|Command Palette > Claude Code for VS Code|Claude Code: Add Session Tab to Group|claude-vscode.addSessionTabToGroup": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Add|New Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Add|Existing Project": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|EvDemo": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Build Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Refresh References": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Start Debugging / Continue": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Start Without Debugging": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Save All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Open Folder in File Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution)|Properties": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Install Package": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (project)|Freeze to requirements.txt": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|List Installed Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Create .venv": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run Tests (pytest)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run Tests (unittest)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Format and Lint|Format Project (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Format and Lint|Format Project (black)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Format and Lint|Lint Project (ruff check)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Format and Lint|Fix Lint Problems (ruff check --fix)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Build EXE / Installer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Set as StartUp Project": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Build": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|Windows Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|Module": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|Existing Item": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Manage Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Remove from Solution": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Open Folder in File Explorer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Properties": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (references)|Add Reference": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (references)|Refresh References": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Install Package": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (resources)|Freeze to requirements.txt": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|List Installed Packages": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Create .venv": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Run Tests (pytest)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Run Tests (unittest)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Format and Lint|Format Project (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Format and Lint|Format Project (black)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Format and Lint|Lint Project (ruff check)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Format and Lint|Fix Lint Problems (ruff check --fix)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Build EXE / Installer": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|Open (Designer)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|View Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|View Generated Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|Set as Startup Form": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|Rename": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|Delete": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (design)|Add Windows Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Format This File (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Open (Designer)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|View Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|View Generated Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Set as Startup Form": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Rename": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Delete": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (code)|Add Windows Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|Open (Designer)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|View Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|View Generated Code": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|Set as Startup Form": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|Rename": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|Delete": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (generated)|Add Windows Form": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (module)|Format This File (ruff)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (module)|Open": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (module)|Delete": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (module) > Open With|Firmware & ECU Workbench": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Solution Explorer > (module) > Open With|Firmware & ECU Workbench (EEPROM, read-only)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Editor tab|Close": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Editor tab|Close All But This": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Editor tab|Close All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (form)|View Code": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|Load": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|Activated": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|Deactivate": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|Resize": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|FormClosing": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|FormClosed": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|Click": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|DoubleClick": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|MouseDown": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|MouseUp": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|MouseMove": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|MouseWheel": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|KeyDown": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|KeyUp": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Events|KeyPress": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Cut": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Copy": {
+"result": "disabled",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Paste": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Delete": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Lock Controls": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Add Windows Form": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Select All": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Properties": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Entrance|Fade In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Entrance|Slide In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Entrance|Zoom In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Exit|Fade Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Exit|Slide Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Exit|Zoom Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Move": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Bounce": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Shake": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Pulse": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Rotate": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Flip": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Attention|Zoom": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Color|Color": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Add Animation > Text|Typewriter": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form)|Localization Strings": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Layout Size|All sizes": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Layout Size|This size only": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Layout Size|Base design": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > Layout Size|Add Size": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > AI|Generate Event Handler for Form1": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > AI|Redesign This Form with AI": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (form) > AI|Generate New Form with AI": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|View Code": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|Click": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|DoubleClick": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseDown": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseUp": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseMove": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseEnter": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseLeave": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|MouseWheel": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|KeyDown": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|KeyUp": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|KeyPress": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|GotFocus": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Events|LostFocus": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Bring to Front": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Send to Back": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Cut": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Copy": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Paste": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Delete": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Lock Controls": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control)|Properties": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Entrance|Fade In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Entrance|Slide In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Entrance|Zoom In": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Exit|Fade Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Exit|Slide Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Exit|Zoom Out": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Move": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Bounce": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Shake": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Pulse": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Rotate": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Flip": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Attention|Zoom": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Color|Color": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Add Animation > Text|Typewriter": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Layout Size|All sizes": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Layout Size|This size only": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Layout Size|Base design": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > Layout Size|Add Size": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate Event Handler for Button1": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > AI|Redesign This Form with AI": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate New Form with AI": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"context|Databases (QTreeWidget)|New SQLite Database": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Add Connection": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Adminer (login page)": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Start local MariaDB/MySQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Stop local MariaDB/MySQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Copy MariaDB/MySQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Start local PostgreSQL": {
+"result": "disabled",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Stop local PostgreSQL": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Copy PostgreSQL Password": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget) > Local Servers|Server Status": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Refresh": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Toolbox (Toolbox)|Choose Items": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Toolbox (Toolbox)|Install Component Package": {
+"result": "skipped",
+"where": "python-tk/vs",
+"error": "downloads / installs software"
+},
+"context|Toolbox (Toolbox)|Expand All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Toolbox (Toolbox)|Collapse All": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"context|Toolbox (Toolbox)|Show All Items": {
+"result": "ok",
+"where": "python-tk/vs",
+"error": ""
+},
+"menubar|File|Save": {
+"result": "disabled",
+"where": "none/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|(no recent projects)": {
+"result": "disabled",
+"where": "none/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  python-tk  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\python-tk-vscode\\projects\\python-tk": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Explorer": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Search": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Source Control": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Run and Debug": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Testing": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Packages": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Extensions": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Databases": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|AI Chat": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Agents": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Remote Explorer": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Live Share": {
+"result": "skipped",
+"where": "python-tk/vscode",
+"error": "signs in to an online service"
+},
+"toolbar|Toolbar Activity Bar|AI Web Chats": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Tutorials": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Ring Samples": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Claude Code": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Manage": {
+"result": "ok",
+"where": "python-tk/vscode",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  python-tk  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\python-tk-agent\\projects\\python-tk": {
+"result": "ok",
+"where": "python-tk/agent",
+"error": ""
+},
+"toolbar|Toolbar Activity Bar|Editor": {
+"result": "ok",
+"where": "python-tk/agent",
+"error": ""
+},
+"menubar|File|Save frmGreeter.form [Design]": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  vb6  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\vb6-vs\\projects\\vb6": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Project > BASIC Commands|Run (F5)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Project > BASIC Commands|Build EXE (Publish)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Project > BASIC Commands|Add Form": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Project > BASIC Commands|Project Properties": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|Project > BASIC Commands|Stop Running Command": {
+"result": "disabled",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|BASIC|Run (F5)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|BASIC|Build EXE (Publish)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|BASIC|Add Form": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|BASIC|Project Properties": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|BASIC|Stop Running Command": {
+"result": "disabled",
+"where": "vb6/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Build EXE (Publish)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"palette|Command Palette > BASIC|Run (F5)|projact.basic.run": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"palette|Command Palette > BASIC|Build EXE (Publish)|projact.basic.build-exe": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"palette|Command Palette > BASIC|Add Form|projact.basic.add-form": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"palette|Command Palette > BASIC|Project Properties|projact.basic.properties": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|Greeter": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run (F5)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Build EXE (Publish)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Add Form": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Project Properties": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Run (F5)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Build EXE (Publish)": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Add Form": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Project Properties": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Designer > (form) > AI|Generate Event Handler for frmGreeter": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate Event Handler for lblYourName": {
+"result": "ok",
+"where": "vb6/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  csharp  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\csharp-vs\\projects\\csharp": {
+"result": "ok",
+"where": "csharp/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|HelloCSharp": {
+"result": "ok",
+"where": "csharp/vs",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate Event Handler for lblName": {
+"result": "ok",
+"where": "csharp/vs",
+"error": ""
+},
+"menubar|File|Save index.html": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  web  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\web-vs\\projects\\web": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|Boot Site": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|New File": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|New Folder": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Add|Existing Files": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Start Debugging / Continue": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|View in Preview": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Open in Browser": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Refresh": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Site Settings": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder) > Add|New File": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder) > Add|New Folder": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder) > Add|Existing Files": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|View in Preview": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|Open in Browser": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|Rename": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|Delete": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|Open Folder in File Explorer": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Open": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|View in Preview": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Open in Browser": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Copy URL": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Copy Full Path": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Rename": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Delete": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile)|Open Containing Folder": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile) > Open With|Firmware & ECU Workbench": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfile) > Open With|Firmware & ECU Workbench (EEPROM, read-only)": {
+"result": "ok",
+"where": "web/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  flask  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\flask-vs\\projects\\flask": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|View|Flask": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|Run Server": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|Routes": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|Flask Shell": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|Run flask Command": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|New Blueprint": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Flask Commands|Stop Running Command": {
+"result": "disabled",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Project > Python Commands|Install Requirements": {
+"result": "skipped",
+"where": "flask/vs",
+"error": "downloads / installs software"
+},
+"menubar|Flask|Run Server": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Flask|Routes": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Flask|Flask Shell": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Flask|Run flask Command": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Flask|New Blueprint": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Flask|Stop Running Command": {
+"result": "disabled",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|Python|Install Requirements": {
+"result": "skipped",
+"where": "flask/vs",
+"error": "downloads / installs software"
+},
+"menubar|Site|Flask": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Run Server": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Routes": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Flask|Run Server|projact.flask.run": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Flask|Routes|projact.flask.routes": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Flask|Flask Shell|projact.flask.shell": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Flask|Run flask Command|projact.flask.command": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Flask|New Blueprint|projact.flask.new-blueprint": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"palette|Command Palette > Python|Install Requirements|projact.python.pip-install-r": {
+"result": "skipped",
+"where": "flask/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|Flask_Todo": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run Server": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Routes": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Flask Shell": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run flask Command": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|New Blueprint": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|Install Requirements": {
+"result": "skipped",
+"where": "flask/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (project) > Python|Install Package": {
+"result": "skipped",
+"where": "flask/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (project) > Python|Freeze to requirements.txt": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|List Installed Packages": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|Create .venv": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|Run Tests (pytest)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|Run Tests (unittest)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python > Format and Lint|Format Project (ruff)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python > Format and Lint|Format Project (black)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python > Format and Lint|Lint Project (ruff check)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python > Format and Lint|Fix Lint Problems (ruff check --fix)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Python|Build EXE / Installer": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Solution Explorer > (webfolder)|New Blueprint": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Flask (QTreeWidget)|Open in Preview": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Flask (QTreeWidget)|Go to View": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Flask (QTreeWidget)|Copy Name": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|New Query": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|New Table": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Database Diagram": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Import CSV into New Table": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Export Database to SQL": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Open in Adminer": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Open in Adminer (new tab)": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Properties": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"context|Databases (QTreeWidget)|Remove Connection": {
+"result": "ok",
+"where": "flask/vs",
+"error": ""
+},
+"menubar|File|Save MainScreen.form [Design]": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  flutter  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\flutter-vs\\projects\\flutter": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Run (flutter run)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|New Screen (Form)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|New Widget": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Packages|pub get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Packages|pub upgrade": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Packages|pub outdated": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Packages|Add Package (pub add)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Build|Build APK (Android)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Build|Build App Bundle (Google Play)": {
+"result": "skipped",
+"where": "flutter/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"menubar|Project > Flutter Commands > Build|Build Windows": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands > Build|Build Web": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Analyze (flutter analyze)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Run Tests (flutter test)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Format Code (dart format)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Clean (flutter clean)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|List Devices": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Flutter Doctor": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Project > Flutter Commands|Stop Running Command": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Run (flutter run)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|New Screen (Form)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|New Widget": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Packages|pub get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Packages|pub upgrade": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Packages|pub outdated": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Packages|Add Package (pub add)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Build|Build APK (Android)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Build|Build App Bundle (Google Play)": {
+"result": "skipped",
+"where": "flutter/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"menubar|Flutter > Build|Build Windows": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter > Build|Build Web": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Analyze (flutter analyze)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Run Tests (flutter test)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Format Code (dart format)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Clean (flutter clean)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|List Devices": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Flutter Doctor": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|Flutter|Stop Running Command": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|pub get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Run (flutter run)|projact.flutter.run": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|New Screen (Form)|projact.flutter.new-screen": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|New Widget|projact.flutter.new-widget": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Packages: pub get|projact.flutter.pub-get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Packages: pub upgrade|projact.flutter.pub-upgrade": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Packages: pub outdated|projact.flutter.pub-outdated": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Packages: Add Package (pub add)|projact.flutter.pub-add": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Build: Build APK (Android)|projact.flutter.build-apk": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Build: Build App Bundle (Google Play)|projact.flutter.build-appbundle": {
+"result": "skipped",
+"where": "flutter/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"palette|Command Palette > Flutter|Build: Build Windows|projact.flutter.build-windows": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Build: Build Web|projact.flutter.build-web": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Analyze (flutter analyze)|projact.flutter.analyze": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Run Tests (flutter test)|projact.flutter.test": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Format Code (dart format)|projact.flutter.format": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Clean (flutter clean)|projact.flutter.clean": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|List Devices|projact.flutter.devices": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"palette|Command Palette > Flutter|Flutter Doctor|projact.flutter.doctor": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|IdeProj": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run (flutter run)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|New Screen (Form)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|New Widget": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Packages|pub get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Packages|pub upgrade": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Packages|pub outdated": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Packages|Add Package (pub add)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Build|Build APK (Android)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Build|Build App Bundle (Google Play)": {
+"result": "skipped",
+"where": "flutter/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"context|Solution Explorer > (project) > Build|Build Windows": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project) > Build|Build Web": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Analyze (flutter analyze)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run Tests (flutter test)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Format Code (dart format)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Clean (flutter clean)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|List Devices": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Flutter Doctor": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Run (flutter run)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|New Screen (Form)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|New Widget": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Packages|pub get": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Packages|pub upgrade": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Packages|pub outdated": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Packages|Add Package (pub add)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Build|Build APK (Android)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Build|Build App Bundle (Google Play)": {
+"result": "skipped",
+"where": "flutter/vs",
+"error": "publishes to the internet / cloud / FTP / a store"
+},
+"context|Solution Explorer > (resources) > Build|Build Windows": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources) > Build|Build Web": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Analyze (flutter analyze)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Run Tests (flutter test)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Format Code (dart format)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Clean (flutter clean)": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|List Devices": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Flutter Doctor": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Designer > (form) > AI|Generate Event Handler for MainScreen": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate Event Handler for AppBar1": {
+"result": "ok",
+"where": "flutter/vs",
+"error": ""
+},
+"menubar|File|Save main.s": {
+"result": "ok",
+"where": "retro/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  retro  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\retro-vs\\projects\\retro": {
+"result": "ok",
+"where": "retro/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|NesStarCatcher": {
+"result": "ok",
+"where": "retro/vs",
+"error": ""
+},
+"menubar|File|Save MAIN.BAS": {
+"result": "ok",
+"where": "dos/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  dos  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\dos-vs\\projects\\dos": {
+"result": "ok",
+"where": "dos/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|Contacts": {
+"result": "ok",
+"where": "dos/vs",
+"error": ""
+},
+"menubar|File|Save main.py": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  game  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\game-vs\\projects\\game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Project > pygame Commands|Run Game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Project > pygame Commands|Export to Godot": {
+"result": "unresponsive",
+"where": "game/vs",
+"error": "UI thread blocked for 10.1s while the action ran"
+},
+"menubar|Project > pygame Commands|Build EXE / Installer": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Project > pygame Commands|Build One-File EXE (PyInstaller)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Project > pygame Commands|Install pygame": {
+"result": "skipped",
+"where": "game/vs",
+"error": "downloads / installs software"
+},
+"menubar|Project > pygame Commands|Stop Running Command": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|pygame|Run Game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|pygame|Export to Godot": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|pygame|Build EXE / Installer": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|pygame|Build One-File EXE (PyInstaller)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|pygame|Install pygame": {
+"result": "skipped",
+"where": "game/vs",
+"error": "downloads / installs software"
+},
+"menubar|pygame|Stop Running Command": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|New Scene": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game > Open Scene|Level1.scene": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game > Open Scene|Level2.scene": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Play Scene (Ctrl+F5)": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Import Tileset": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Sprite Sheet and Animations": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Add Sprite from Image": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Import Sound": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Game Assets Window": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Check Scene": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"menubar|Game|Export to Godot": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Project Actions|Run Game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Play": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Select": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Paint": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Erase": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Rect": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Fill": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Sprite Sheet": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Tileset": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Undo (Ctrl+Z)": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Redo (Ctrl+Y)": {
+"result": "disabled",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Front": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Grid": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Snap": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Collision": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Fit": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > pygame|Run Game|projact.pygame.run": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > pygame|Export to Godot|projact.pygame.godot": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > pygame|Build EXE / Installer|projact.pygame.publish": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > pygame|Build One-File EXE (PyInstaller)|projact.pygame.pyinstaller": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"palette|Command Palette > pygame|Install pygame|projact.pygame.install-pkg": {
+"result": "skipped",
+"where": "game/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|Platformer": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Run Game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Export to Godot": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Build One-File EXE (PyInstaller)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Install pygame": {
+"result": "skipped",
+"where": "game/vs",
+"error": "downloads / installs software"
+},
+"context|Solution Explorer > (resources)|Run Game": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Export to Godot": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Build One-File EXE (PyInstaller)": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"context|Solution Explorer > (resources)|Install pygame": {
+"result": "skipped",
+"where": "game/vs",
+"error": "downloads / installs software"
+},
+"context|Game Assets (_AssetTree)|Import": {
+"result": "ok",
+"where": "game/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  asm  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\asm-vs\\projects\\asm": {
+"result": "ok",
+"where": "asm/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|CoreNasmForms": {
+"result": "ok",
+"where": "asm/vs",
+"error": ""
+},
+"context|Designer > (control) > AI|Generate Event Handler for lblMessage": {
+"result": "ok",
+"where": "asm/vs",
+"error": ""
+},
+"menubar|File|Save notes.md": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"menubar|File > Recent Projects and Solutions|1  firmware  -  C:\\Users\\Mahmo\\AppData\\Local\\Temp\\claude\\a04f521f5a700edd\\02e2bcf1-4b7c-48a3-a5b6-de40fd6242d9\\scratchpad\\crawl\\run3\\sandbox\\firmware-vs\\projects\\firmware": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Build": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Verify Checksums": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Compare": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Find Maps": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Analyze": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Map from Selection": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware|Save Version": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Correct Checksums": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Load Checksum Profile": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Find Checksums (from the original)": {
+"result": "unresponsive",
+"where": "firmware/vs",
+"error": "UI thread blocked for 12.8s while the action ran"
+},
+"toolbar|Toolbar Firmware > More|Import A2L": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Save Working Copy As (binary)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Open Original (read-only hex editor)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Open in Ghidra": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Calibration Map Editor (full)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Firmware > More|Detailed Firmware Analysis": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Go To": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Find": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Overwrite": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Bookmark": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"toolbar|Toolbar Toolbar|Next Bookmark": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (solution) > Set StartUp Project|CrawlEcu": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (project)|Open Firmware & ECU Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj)|Open Firmware & ECU Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_original)|Analyze Firmware": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_original) > Open With|Firmware & ECU Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_original) > Open With|Firmware & ECU Workbench (EEPROM, read-only)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_work)|Analyze Firmware": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_work) > Open With|Firmware & ECU Workbench": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|Solution Explorer > (ecuproj_work) > Open With|Firmware & ECU Workbench (EEPROM, read-only)": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Copy": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Paste": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Select All": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Go To Offset": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Toggle Bookmark": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"context|HexView (HexView)|Open in Map Editor": {
+"result": "ok",
+"where": "firmware/vs",
+"error": ""
+},
+"__dialog_classes__": {
+"result": "ok",
+"classes": [
+"AddItemDialog",
+"AddReferenceDialog",
+"AddReportDialog",
+"AppGalleryDialog",
+"ApplyPatchDialog",
+"AsmToolchainsDialog",
+"AssetManagerDialog",
+"AttachDialog",
+"BuildSettingsDialog",
+"ChecksumDialog",
+"ChooseItemsDialog",
+"ComponentManagerDialog",
+"ConnectDialog",
+"ConnectionDialog",
+"CreatePatchDialog",
+"CreateTableDialog",
+"DesignerView",
+"DisassembleDialog",
+"DockerGenerateDialog",
+"DosSettingsDialog",
+"DosToolchainsDialog",
+"EmulatorManager",
+"ExampleGallery",
+"ExeImportWizard",
+"ExtensionsDialog",
+"FindEcusDialog",
+"FindInFilesDialog",
+"FirmwareConverterDialog",
+"FontPickerDialog",
+"GenerateFormDialog",
+"GotoDialog",
+"HandlerDialog",
+"HelpViewer",
+"ImportCsvDialog",
+"InterruptReference",
+"JoinDialog",
+"LanguageServersDialog",
+"MacroExplorer",
+"MigrateWizard",
+"NewFileDialog",
+"NewFrontendDialog",
+"NewImageDialog",
+"NewProjectDialog",
+"NewProjectWizard",
+"NewScreenDialog",
+"NewSolutionFromFolders",
+"OptionsDialog",
+"PackagesDialog",
+"PhpVersionsDialog",
+"PublishDialog",
+"QDialog",
+"QFileDialog",
+"QInputDialog",
+"QMessageBox",
+"QWidget",
+"RetroToolchainsDialog",
+"RustSettingsDialog",
+"SSHDialog",
+"SnippetsDialog",
+"SpriteSheetDialog",
+"SuperPreview",
+"ThemeEditorDialog",
+"TilesetDialog",
+"VersionsDialog"
+]
+}
+}

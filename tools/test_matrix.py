@@ -149,30 +149,43 @@ def importance(e: dict, n_ctx: int) -> int:
     return w
 
 
-def load_crawl(path: Path | None) -> dict[str, str]:
+def load_crawl(paths) -> dict[str, dict]:
+    """Crawler status per entry key from one or more crawl_results.json (comma separated / a list). Within one
+    file the worst result wins, but "ok" anywhere beats disabled / skipped / stale; a LATER file (a targeted
+    re-run, e.g. --only after a fix) replaces the earlier status of the keys it contains."""
     status_file = DOCS / "crawl_status.json"
-    if path is not None and path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
-        st: dict[str, dict] = {}
-        rank = {"ok": 0, "disabled": 1, "skipped": 2, "stale": 3, "modal-left": 4, "unresponsive": 5, "exception": 6,
-                "hang": 7, "crash": 8}
-        for r in data["results"]:
-            k = r["key"]
-            cur = st.get(k)
-            # worst result wins, but "ok" anywhere beats "disabled" / "skipped"
-            if cur is None or rank.get(r["result"], 9) > rank.get(cur["result"], 9) and r["result"] not in (
-                    "disabled", "skipped", "stale") or (cur["result"] in ("disabled", "skipped", "stale")
-                                                         and r["result"] == "ok"):
-                st[k] = {"result": r["result"], "where": f"{r['context']}/{r['mode']}",
-                         "error": (r.get("error") or "")[:300]}
+    if isinstance(paths, (str, Path)):
+        paths = [Path(x) for x in str(paths).split(",") if x]
+    paths = [Path(p) for p in (paths or []) if Path(p).exists()]
+    if paths:
+        rank = {"ok": 0, "disabled": 1, "skipped": 2, "stale": 3, "slow": 3.5, "modal-left": 4, "unresponsive": 5,
+                "harness-error": 5.5, "exception": 6, "hang": 7, "crash": 8}
+        total: dict[str, dict] = {}
+        dialogs: set[str] = set()
+        for path in paths:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for r in data["results"]:
+                for d in r.get("dialogs") or []:
+                    dialogs.add(d.get("class", ""))
+            st: dict[str, dict] = {}
+            for r in data["results"]:
+                k = r["key"]
+                cur = st.get(k)
+                if cur is None or rank.get(r["result"], 9) > rank.get(cur["result"], 9) and r["result"] not in (
+                        "disabled", "skipped", "stale") or (cur["result"] in ("disabled", "skipped", "stale")
+                                                             and r["result"] == "ok"):
+                    st[k] = {"result": r["result"], "where": f"{r['context']}/{r['mode']}",
+                             "error": (r.get("error") or "")[:300]}
+            total.update(st)
+        total["__dialog_classes__"] = {"result": "ok", "classes": sorted(c for c in dialogs if c)}
         DOCS.mkdir(parents=True, exist_ok=True)
-        status_file.write_text(json.dumps(st, indent=0, ensure_ascii=False), encoding="utf-8")
+        status_file.write_text(json.dumps(total, indent=0, ensure_ascii=False), encoding="utf-8")
     if status_file.exists():
         return json.loads(status_file.read_text(encoding="utf-8"))
     return {}
 
 
-def build(crawl_path: Path | None, exclude: tuple[str, ...] = (), use_crawl: bool = True) -> dict:
+def build(crawl_path, exclude: tuple[str, ...] = (), use_crawl: bool = True) -> dict:
     inv = json.loads((DOCS / "inventory.json").read_text(encoding="utf-8"))
     cor = Corpus(exclude)
     crawl = load_crawl(crawl_path) if use_crawl else {}
@@ -201,12 +214,14 @@ def build(crawl_path: Path | None, exclude: tuple[str, ...] = (), use_crawl: boo
         rows.append({"type": "dock", "key": "dock|" + t, "area": "Docks / tool windows", "label": t,
                      "status": "covered" if files else "NOT covered", "tests": sorted(files)[:6],
                      "n_tests": len(files), "why": ["title"] if files else [], "crawl": "", "importance": 45})
+    seen_dialogs = set((crawl.get("__dialog_classes__") or {}).get("classes", []))
     for d in inv.get("dialogs", []):
         files = {f for f in cor.by_ident(d["class"])}
         if not files and d.get("title") and len(norm(d["title"])) >= 6:
             files = cor.by_string(d["title"])
+        st = "covered" if files else "crawler-only" if d["class"] in seen_dialogs else "NOT covered"
         rows.append({"type": "dialog", "key": f"dialog|{d['module']}.{d['class']}", "area": "Dialogs",
-                     "label": f"{d['class']} ({d['module']})", "status": "covered" if files else "NOT covered",
+                     "label": f"{d['class']} ({d['module']})", "status": st,
                      "tests": sorted(files)[:6], "n_tests": len(files), "why": ["class"] if files else [],
                      "crawl": "", "importance": 40})
     for t in inv.get("templates", []):
@@ -263,6 +278,10 @@ def write_md(m: dict, path: Path) -> None:
          "*covered* = a test refers to the item directly (its text, palette id, window attribute or a function the "
          "action calls); *crawler-only* = only `samples/Tests/Crawler/test_action_crawler.py` triggered it without "
          "an error; *NOT covered* = nothing.", "",
+         "Regenerate: `.venv/Scripts/python tools/feature_inventory.py` (inventory, ~20 min), "
+         "`.venv/Scripts/python samples/Tests/Crawler/test_action_crawler.py --builtin-editor` (crawler, hours; "
+         "`--quick` = one context), then `.venv/Scripts/python tools/test_matrix.py --crawl <out>/crawl_results.json` "
+         "(the last crawl's status is kept in crawl_status.json, so `tools/test_matrix.py` alone re-scans the tests).", "",
          "## Summary per area", "", "| Area | Items | Covered | Crawler-only | NOT covered |", "|---|---|---|---|---|"]
     for a, c in sorted(m["summary"].items(), key=lambda kv: -sum(kv[1].values())):
         L.append(f"| {a} | {sum(c.values())} | {c.get('covered', 0)} | {c.get('crawler-only', 0)} | "
@@ -292,7 +311,8 @@ def write_md(m: dict, path: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--crawl", default="", help="crawl_results.json of the action crawler")
+    ap.add_argument("--crawl", default="", help="crawl_results.json of the action crawler (several: comma separated, "
+                                                "later ones override the keys they contain)")
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--baseline", action="store_true",
                     help="only print the totals without samples/Tests/Coverage and without the crawler (no files written)")
@@ -301,7 +321,7 @@ def main() -> int:
         b = build(None, exclude=("Coverage/",), use_crawl=False)
         print("baseline (no Coverage tests, no crawler):", json.dumps(b["totals"]), f"({len(b['rows'])} items)")
         return 0
-    m = build(Path(a.crawl) if a.crawl else None)
+    m = build(a.crawl or None)
     (DOCS / "test_matrix.json").write_text(json.dumps(m, indent=0, ensure_ascii=False), encoding="utf-8")
     write_md(m, DOCS / "TEST_MATRIX.md")
     if not a.quiet:
