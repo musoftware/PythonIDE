@@ -40,13 +40,14 @@ VB: deleting / renaming a control also fixes the Handles clauses of Form1.vb (di
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..controls import CONTROL_TYPES, FORM_EVENTS, format_anchor, menu_names, split_items
-from ..importers.exe.dotnet import COLOR_NAMES, Parser, _lit, _match_brace
+from ..importers.exe.dotnet import COLOR_NAMES, Parser, _lit, _match_brace, brace_matches
 from ..languages.base import LanguagePlugin, RunSpec
 from ..model import FORM_STORES, Control, Form
 from . import winforms_rm as _rm
@@ -238,10 +239,14 @@ class CSharpDialect:
     def find_class(self, text: str, name_hint: str = ""):
         """(class name, body start (after '{'), body end (index of '}'), class header start)."""
         masked = mask_cs(text)
+        known: dict[int, int] = {}          # brace -> its match, from earlier scans (linear, not quadratic)
         for m in re.finditer(r"\bclass\s+(\w+)[^{;]*\{", masked):
             if name_hint and m.group(1) != name_hint and "partial" not in masked[max(0, m.start() - 40):m.start()]:
                 continue
-            end = _match_brace(text, m.end() - 1)
+            b = m.end() - 1
+            if b not in known:
+                known.update(brace_matches(text, b))
+            end = known.get(b, -1)
             if end > 0:
                 return m.group(1), m.end(), end, m.start()
         return None
@@ -333,12 +338,14 @@ class CSharpDialect:
         masked = mask_cs(text)
         rx = re.compile(r"(?m)^[ \t]*((?:(?:private|public|protected|internal|readonly|static|new)\s+)+)"
                         r"([\w.<>\[\]?,]+)\s+(\w+)\s*(?:=[^;]*)?;[ \t]*\r?\n?")
-        for m in rx.finditer(masked, b0, b1):
+        pos, depth = b0, 0                  # brace depth of masked[b0:m.start()], kept up to date (not re-counted
+        for m in rx.finditer(masked, b0, b1):   # from b0 for every field: quadratic on huge files)
+            depth += masked.count("{", pos, m.start()) - masked.count("}", pos, m.start())
+            pos = m.start()
             if ic_span and ic_span[0] <= m.start() <= ic_span[1]:
                 continue
             # only at class depth (not inside methods)
-            seg = masked[b0:m.start()]
-            if seg.count("{") - seg.count("}") != 0:
+            if depth != 0:
                 continue
             out[m.group(3)] = (m.group(2), m.start(), m.end())
         return out
@@ -775,7 +782,7 @@ def _font_of(v):
 
 
 def _int(x) -> int:
-    return int(round(x)) if isinstance(x, (int, float)) else 0
+    return int(round(x)) if isinstance(x, (int, float)) and math.isfinite(x) else 0
 
 
 def menu_offset(doc: DesignerDoc) -> int:

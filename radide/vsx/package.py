@@ -27,11 +27,13 @@ import os
 import re
 import shutil
 import stat
+import struct
 import sys
 import tempfile
 import threading
 import time
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -255,6 +257,19 @@ class Extension:
                 "dependency_of": list(self.dependency_of)}
 
 
+# a corrupted .vsix / zip member: these are what zipfile / zlib raise for broken archives
+_ZIP_ERRORS = (zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error, EOFError, NotImplementedError, RuntimeError,
+               OSError, ValueError, KeyError, RecursionError, struct.error)
+
+
+def _as_list(v) -> list:
+    return list(v) if isinstance(v, list) else []
+
+
+def _as_dict(v) -> dict:
+    return dict(v) if isinstance(v, dict) else {}
+
+
 def _ids(v) -> list:
     if not isinstance(v, list):
         return []
@@ -283,13 +298,13 @@ def manifest_from_json(pkg: dict, nls: dict | None = None, path: Path | None = N
     return Extension(
         publisher=publisher, name=name, version=version, path=Path(path) if path else None,
         display_name=str(loc.get("displayName") or ""), description=str(loc.get("description") or ""),
-        categories=list(loc.get("categories") or []), keywords=list(loc.get("keywords") or []),
-        engines=dict(loc.get("engines") or {}), main=str(loc.get("main") or ""),
+        categories=_as_list(loc.get("categories")), keywords=_as_list(loc.get("keywords")),
+        engines=_as_dict(loc.get("engines")), main=str(loc.get("main") or ""),
         browser=str(loc.get("browser") or ""),
-        activation_events=list(loc.get("activationEvents") or []), contributes=contributes,
+        activation_events=_as_list(loc.get("activationEvents")), contributes=contributes,
         extension_dependencies=_ids(loc.get("extensionDependencies")),
         extension_pack=_ids(loc.get("extensionPack")),
-        extension_kind=[kind] if isinstance(kind, str) else list(kind),
+        extension_kind=[kind] if isinstance(kind, str) else _as_list(kind),
         icon=str(loc.get("icon") or ""), license=str(loc.get("license") or ""),
         repository=str(repo or ""), homepage=str(loc.get("homepage") or ""),
         preview=bool(loc.get("preview")), package_json=loc, raw_package_json=pkg, nls=nls,
@@ -348,8 +363,10 @@ def read_vsix_manifest(vsix, lang: str | None = None) -> Extension:
             nls = {k: (v.get("message", "") if isinstance(v, dict) else v) for k, v in nls.items()}
     except zipfile.BadZipFile as e:
         raise VsixError(f"not a zip file: {e}") from e
-    except (ValueError, KeyError) as e:
+    except (ValueError, KeyError, RecursionError) as e:
         raise VsixError(f"bad package.json: {e}") from e
+    except _ZIP_ERRORS as e:                 # corrupted member data (bad deflate stream, unsupported method ...)
+        raise VsixError(f"corrupted vsix: {type(e).__name__}: {e}") from e
     return manifest_from_json(pkg, nls, None)
 
 
@@ -401,8 +418,13 @@ def safe_extract(vsix, dest) -> Path:
                         if written > i.file_size + 1024:
                             raise VsixError(f"member larger than declared: {i.filename!r}")
                         out.write(chunk)
-        except Exception:
+        except Exception as e:
             shutil.rmtree(dest, ignore_errors=True)
+            # (an OSError of the destination - disk full, access denied - stays what it is; EINVAL comes
+            # from zipfile seeking to an offset a corrupted header gave)
+            if isinstance(e, _ZIP_ERRORS) and not isinstance(e, VsixError) and \
+                    not (isinstance(e, OSError) and getattr(e, "errno", None) != 22):
+                raise VsixError(f"corrupted vsix: {type(e).__name__}: {e}") from e
             raise
     return dest
 
@@ -515,7 +537,7 @@ def _strip_bom(s: str) -> str:
 def _loads(b: bytes) -> dict:
     try:
         v = json.loads(_strip_bom(b.decode("utf-8", "replace")))
-    except ValueError:
+    except (ValueError, RecursionError):
         return {}
     return v if isinstance(v, dict) else {}
 
@@ -523,7 +545,7 @@ def _loads(b: bytes) -> dict:
 def _read_json(p: Path, default):
     try:
         return json.loads(_strip_bom(Path(p).read_text("utf-8", "replace")))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):      # RecursionError: JSON nested thousands deep
         return default
 
 

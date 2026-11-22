@@ -40,6 +40,13 @@ def instance_name() -> str:
         user = getpass.getuser()
     except Exception:  # noqa: BLE001
         user = "user"
+    try:     # a portable copy has its own settings: it must not hand files to an installed IDE (or another copy)
+        from . import paths
+        if paths.portable():
+            import hashlib
+            org += "-portable-" + hashlib.sha1(os.path.normcase(str(paths.install_dir())).encode()).hexdigest()[:8]
+    except Exception:  # noqa: BLE001
+        pass
     return re.sub(r"[^A-Za-z0-9_.-]", "_", f"radide-{org}-{user}")
 
 

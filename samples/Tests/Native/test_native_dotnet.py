@@ -167,13 +167,15 @@ def test_check_and_fallback(tmp: Path):
     folder = copy_project(HERE / "CSharp" / "NativeCs", tmp / "fb")
     form = Form.load(folder / "Form1.form")
     form.add("TreeView", 10, 250).props["Name"] = "tvTree"
-    form.extra["storyboards"] = [{"Name": "sb1"}]
+    form.extra["storyboards"] = [{"Name": "sb1"}]          # played by RadMotion: no reason any more
+    form.extra["bindings"] = [{"control": "lblOut"}]
     form.save(folder / "Form1.form")
     project = Project.load(folder)
     cfg = C.load(folder, folder.name)
     reasons = D.check(folder, project, cfg)
     check("check(): TreeView is a reason", any("TreeView" in r and "tvTree" in r for r in reasons), reasons)
-    check("check(): storyboards are a reason", any("storyboards" in r for r in reasons), reasons)
+    check("check(): data bindings are a reason, storyboards are not (RadMotion plays them)",
+          any("data bindings" in r for r in reasons) and not any("storyboards" in r for r in reasons), reasons)
     called = []
     saved = B.BUILDERS["bridge"]
     B.BUILDERS["bridge"] = lambda *a, **k: called.append(a) or B.BuildResult(folder, "x.exe", "bridge")

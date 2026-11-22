@@ -28,6 +28,13 @@ def looks_like(head: bytes) -> bool:
 
 
 def parse(data: bytes, use_physical: bool = True) -> MemoryMap:
+    try:
+        return _parse(data, use_physical)
+    except (struct.error, IndexError, OverflowError) as ex:     # tables pointing past the end of the file
+        raise ElfFormatError(f"corrupted ELF file ({ex})") from None
+
+
+def _parse(data: bytes, use_physical: bool) -> MemoryMap:
     if data[:4] != b"\x7fELF" or len(data) < 52:
         raise ElfFormatError("not an ELF file")
     cls, ei_data = data[4], data[5]

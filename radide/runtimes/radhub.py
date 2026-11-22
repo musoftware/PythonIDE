@@ -47,8 +47,14 @@ import time
 from collections import deque
 from pathlib import Path
 
-IDE_ROOT = Path(__file__).resolve().parent.parent.parent
 CLIENTS = Path(__file__).resolve().parent / "clients"
+try:     # what a REAL Python puts on PYTHONPATH: never _internal of a release build (python312.dll extension
+    from ..paths import python_root      # modules there break another Python version: paths.python_root)
+    IDE_ROOT = python_root()
+    PY_CLIENTS = IDE_ROOT / "radide" / "runtimes" / "clients"
+except Exception:  # noqa: BLE001 - loaded outside the package
+    IDE_ROOT = Path(__file__).resolve().parent.parent.parent
+    PY_CLIENTS = CLIENTS
 DEFAULT_TIMEOUT = 60.0
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -288,7 +294,7 @@ class RadHub:
     def child_env(self, worker: bool = False, base: dict | None = None) -> dict[str, str]:
         env = dict(base if base is not None else os.environ)
         env.update(self.env())
-        paths = [str(IDE_ROOT), str(CLIENTS / "python")]
+        paths = [str(IDE_ROOT), str(PY_CLIENTS / "python")]
         if env.get("PYTHONPATH"):
             paths += [p for p in env["PYTHONPATH"].split(os.pathsep) if p and p not in paths]
         env["PYTHONPATH"] = os.pathsep.join(paths)

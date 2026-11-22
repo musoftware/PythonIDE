@@ -1,0 +1,1456 @@
+{
+ "$comment": "Central, curated settings of the test scripts under samples/Tests (tools/run_tests.py discovers the scripts by itself; an entry here overrides the guess and folder tests.json defaults, a script's own entry in its folder tests.json overrides this). Keys: path, tier, args ({scratch}), timeout, needs, note, env, smoke, area, kind; an entry with an id is an extra variant. See docs/TESTING.md.",
+ "default_timeouts": {
+  "fast": 300,
+  "full": 1200,
+  "network": 1800,
+  "toolchain": 2400,
+  "gui-real": 1800,
+  "manual": 1800,
+  "project": 600,
+  "aggregate": 3600,
+  "covered": 1200
+ },
+ "tests": [
+  {
+   "path": "Assembly/AsmIntel/tests/test_asm_intel.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Assembly/AsmIntel/tests/test_core_templates.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Assembly/AsmIntel/tests/test_ide_asm.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Assembly/AsmLsp/test_asm_lsp.py",
+   "tier": "network",
+   "needs": [
+    "qt",
+    "github"
+   ],
+   "note": "downloads asm-lsp from its GitHub release"
+  },
+  {
+   "path": "Assembly/CoreTests/run_all.py",
+   "tier": "toolchain:mingw",
+   "timeout": 3600,
+   "needs": [
+    "mingw",
+    "nasm",
+    "fasm"
+   ],
+   "note": "runs the CoreTests family in order (later steps use the projects test_templates creates)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_class_library.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_errors.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_external_console.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_form_bridge.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_form_flavors.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_form_protocol.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_ide.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_linetables.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_runspec.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CoreTests/test_templates.py",
+   "tier": "covered",
+   "note": "run by Assembly/CoreTests/run_all.py (shares its projects)"
+  },
+  {
+   "path": "Assembly/CourseTests/test_course_forms.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "nasm",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_assembler.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_cpu.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_plugin.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_samples.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Assembly/Emu8086Tests/test_struc_cond_export.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Assembly/NativeDebug/test_native_debug.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "qt",
+    "nasm",
+    "mingw",
+    "gdb"
+   ]
+  },
+  {
+   "path": "Assembly/OpenFolder/test_ide_open.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "qt",
+    "nasm",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Assembly/OpenFolder/test_open_folder.py",
+   "tier": "full",
+   "needs": [
+    "nasm?"
+   ]
+  },
+  {
+   "path": "Assembly/QA/test_user_flow.py",
+   "tier": "toolchain:mingw",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "nasm",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Assembly/SmartCpuView/test_cpu_analysis.py",
+   "tier": "fast",
+   "needs": [
+    "capstone"
+   ]
+  },
+  {
+   "path": "Assembly/SmartCpuView/test_cpu_view.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "qt",
+    "nasm",
+    "mingw",
+    "gdb"
+   ]
+  },
+  {
+   "path": "Assembly/SmartLint/test_lint_corpus.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Assembly/SmartLint/test_lint_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Assembly/SmartSim/tests/test_ide_sim.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Assembly/SmartSim/tests/test_sim.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "nasm",
+    "unicorn",
+    "capstone"
+   ]
+  },
+  {
+   "path": "Assembly/SmartStudentQA/test_student.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "nasm",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Assembly/SmartStudentQA/test_student_ide.py",
+   "tier": "toolchain:mingw",
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "nasm",
+    "mingw"
+   ]
+  },
+  {
+   "id": "Assembly/SmartStudentQA/test_student_ide@real",
+   "path": "Assembly/SmartStudentQA/test_student_ide.py",
+   "tier": "gui-real",
+   "env": {
+    "QA_REAL": "1"
+   },
+   "timeout": 2400,
+   "needs": [
+    "desktop",
+    "nasm",
+    "mingw"
+   ],
+   "note": "real off-screen window: Monaco renders"
+  },
+  {
+   "path": "CarDiag/Kb/qa_help_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "CarDiag/Kb/test_kb_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "CarDiag/Link/qa_link_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "CarDiag/Link/test_link_core.py",
+   "tier": "fast",
+   "note": "localhost TCP only"
+  },
+  {
+   "path": "CarDiag/Obd/qa_scan_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "CarDiag/Obd/test_obd_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "CarDiag/QA/qa_cardiag_e2e.py",
+   "tier": "full",
+   "timeout": 1800,
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "CarDiag/Service/qa_service_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "CarDiag/Service/test_service_core.py",
+   "tier": "fast"
+  },
+  {
+   "path": "CarDiag/Service/test_service_workbench.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Collab/LiveShare/test_crdt_ot.py",
+   "tier": "fast",
+   "needs": [
+    "pycrdt"
+   ],
+   "smoke": true
+  },
+  {
+   "path": "Collab/LiveShare/test_live_share.py",
+   "tier": "full",
+   "args": [
+    "{scratch}"
+   ],
+   "needs": [
+    "qt",
+    "webengine"
+   ]
+  },
+  {
+   "id": "Collab/LiveShare/test_live_share@onscreen",
+   "path": "Collab/LiveShare/test_live_share.py",
+   "tier": "gui-real",
+   "args": [
+    "{scratch}",
+    "--onscreen"
+   ],
+   "needs": [
+    "desktop"
+   ]
+  },
+  {
+   "path": "Collab/LiveShare/test_plain_editor.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Collab/LiveShare/test_session.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ],
+   "note": "WebSockets on localhost"
+  },
+  {
+   "path": "Components/IDE_Gaps/check_ide_gaps.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Components/RatingBar_Flutter/check_ratingbar_flutter.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "qt",
+    "flutter"
+   ]
+  },
+  {
+   "path": "Components/RatingBar_VB6Frm/check_vb6_frm.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Designer/VSParity/test_vs_parity.py",
+   "tier": "fast",
+   "needs": [
+    "qt"
+   ],
+   "smoke": true
+  },
+  {
+   "path": "DotNet/EndToEnd/test_arabic_dark.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/EndToEnd/test_e2e_ui.py",
+   "tier": "toolchain:dotnet",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/EndToEnd/test_regression_ui.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/NuGetTests/test_nuget_backend.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "dotnet",
+    "nuget.org?"
+   ],
+   "note": "search uses a recorded fixture when offline"
+  },
+  {
+   "path": "DotNet/NuGetTests/test_nuget_ui.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/References/tests/test_refs_core.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/References/tests/test_refs_ui.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/SharedProjects/make_and_build.py",
+   "tier": "toolchain:dotnet",
+   "args": [
+    "{scratch}/shared"
+   ],
+   "needs": [
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/SharedProjects/ui_test.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/SolutionManagement/test_solution_core.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/SolutionManagement/test_solution_ui.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "DotNet/ToolsTests/test_tools_core.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "dotnet",
+    "nuget.org"
+   ]
+  },
+  {
+   "path": "DotNet/ToolsTests/ui_test.py",
+   "tier": "toolchain:dotnet",
+   "needs": [
+    "qt",
+    "dotnet"
+   ]
+  },
+  {
+   "path": "Examples/test_examples_compiled.py",
+   "tier": "toolchain:all",
+   "timeout": 3600,
+   "needs": [
+    "mingw",
+    "dotnet",
+    "java",
+    "go",
+    "rust",
+    "gfortran"
+   ]
+  },
+  {
+   "path": "Examples/test_examples_scripting.py",
+   "tier": "full",
+   "timeout": 3600,
+   "needs": [
+    "toolchains?"
+   ]
+  },
+  {
+   "path": "Firmware/Checksum/test_checksum_core.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Firmware/EcuProject/qa_ecu_project_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Firmware/EcuProject/test_ecu_project_core.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Firmware/Formats/test_formats_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Firmware/Formats/test_formats_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Firmware/Formats/test_ghidra.py",
+   "tier": "toolchain:ghidra",
+   "needs": [
+    "ghidra",
+    "java"
+   ],
+   "note": "SKIPs without Ghidra / a JDK"
+  },
+  {
+   "path": "Firmware/Formats/test_rusefi.py",
+   "tier": "network",
+   "needs": [
+    "github"
+   ],
+   "note": "downloads rusEFI firmware"
+  },
+  {
+   "path": "Firmware/Maps/qa_maps_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Firmware/Maps/test_maps_core.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Firmware/QA/qa_firmware_e2e.py",
+   "tier": "full",
+   "timeout": 1800,
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Firmware/Sleigh/test_sleigh_core.py",
+   "tier": "full",
+   "needs": [
+    "pypcode?"
+   ],
+   "note": "SKIPs without pypcode; first use compiles SLEIGH modules"
+  },
+  {
+   "path": "Firmware/Sleigh/test_sleigh_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt",
+    "pypcode?"
+   ]
+  },
+  {
+   "path": "Firmware/Workbench/test_workbench_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Firmware/Workbench/test_workbench_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/DataFormsScreens/check_roundtrip.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/DataFormsScreens/test_designer_data.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ],
+   "note": "Qt canvas only"
+  },
+  {
+   "path": "FlutterDesigner/DataFormsScreens/test_exact_coldstart.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "qt",
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/DataFormsScreens/test_live_data.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/LoginFromScratch/qa/qa_login.py",
+   "tier": "toolchain:flutter",
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "flutter"
+   ]
+  },
+  {
+   "id": "FlutterDesigner/LoginFromScratch/qa/qa_login@real",
+   "path": "FlutterDesigner/LoginFromScratch/qa/qa_login.py",
+   "tier": "gui-real",
+   "args": [
+    "--real"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "desktop",
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/MotionScreens/check_roundtrip.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/ResponsiveScreens/check_roundtrip.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/ResponsiveScreens/test_designer_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/ResponsiveScreens/test_live_foldable.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "FlutterDesigner/TemplateGallery/check_templates.py",
+   "tier": "fast",
+   "note": "offline checks; --analyze needs Flutter"
+  },
+  {
+   "path": "FlutterDesigner/WidgetTreeScreens/check_roundtrip.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "ForeignProjects/PythonPyprojectApp/tests",
+   "tier": "project",
+   "kind": "pytest"
+  },
+  {
+   "path": "Fuzz/test_designer_model.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ],
+   "timeout": 900,
+   "note": "model-based designer fuzzing (seeded); --steps N for deeper runs"
+  },
+  {
+   "path": "Fuzz/test_parsers.py",
+   "tier": "full",
+   "timeout": 1800,
+   "note": "120 seeded mutations per parser target (~2-3 min unloaded)"
+  },
+  {
+   "id": "Fuzz/test_parsers@long",
+   "path": "Fuzz/test_parsers.py",
+   "tier": "manual",
+   "args": [
+    "--long"
+   ],
+   "timeout": 14400,
+   "note": "3000 cases per target; run before a release"
+  },
+  {
+   "path": "I18n/ArabicUI/test_ui_language.py",
+   "tier": "fast",
+   "needs": [
+    "qt"
+   ],
+   "smoke": true
+  },
+  {
+   "path": "Installer/HelloSetup/tests/test_setup.py",
+   "tier": "toolchain:inno",
+   "needs": [
+    "inno-setup"
+   ],
+   "note": "installs and uninstalls into a temp folder"
+  },
+  {
+   "path": "Mobile/Flutter_Foldable/check_foldable.py",
+   "tier": "toolchain:flutter",
+   "needs": [
+    "flutter"
+   ]
+  },
+  {
+   "path": "Mobile/Foldables/check_devices.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Mobile/Foldables/test_hinge_live.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Mobile/Foldables/test_hinge_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Mobile/Kivy_Containers/check_kivy_containers.py",
+   "tier": "fast"
+  },
+  {
+   "path": "Motion/check_motion_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Motion/check_reduced_motion_windows.py",
+   "tier": "fast",
+   "needs": [
+    "tk"
+   ]
+  },
+  {
+   "path": "Motion/check_runtime.py",
+   "tier": "full",
+   "needs": [
+    "qt",
+    "tk"
+   ]
+  },
+  {
+   "path": "Motion/check_vb6.py",
+   "tier": "fast",
+   "needs": [
+    "tk"
+   ],
+   "smoke": true
+  },
+  {
+   "path": "Motion/Targets/check_targets.py",
+   "tier": "toolchain:flutter",
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "flutter",
+    "dotnet?",
+    "node?"
+   ]
+  },
+  {
+   "path": "Motion/test_animations_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Motion/test_motion_designer.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Motion/test_preview_targets_reorder.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Native/check_modern_designer.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Native/test_build_native_ui.py",
+   "tier": "full",
+   "args": [
+    "{scratch}"
+   ],
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Native/test_native_c.py",
+   "tier": "toolchain:mingw",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "mingw",
+    "gfortran"
+   ]
+  },
+  {
+   "path": "Native/test_native_dotnet.py",
+   "tier": "toolchain:dotnet",
+   "timeout": 2400,
+   "needs": [
+    "dotnet",
+    "desktop"
+   ]
+  },
+  {
+   "path": "Native/test_native_java.py",
+   "tier": "toolchain:java",
+   "timeout": 2400,
+   "needs": [
+    "jdk",
+    "desktop"
+   ]
+  },
+  {
+   "path": "Native/test_native_modern.py",
+   "tier": "toolchain:mingw",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Native/test_native_modern_dotnet.py",
+   "tier": "toolchain:dotnet",
+   "timeout": 2400,
+   "needs": [
+    "dotnet",
+    "desktop"
+   ]
+  },
+  {
+   "path": "Native/test_native_rust_go_lua.py",
+   "tier": "toolchain:rust-go",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 3600,
+   "needs": [
+    "rust",
+    "go",
+    "lua",
+    "mingw"
+   ]
+  },
+  {
+   "path": "Native/VB6/test_native_vb6.py",
+   "tier": "toolchain:freebasic",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "freebasic"
+   ]
+  },
+  {
+   "path": "Native/VB6/translator/test_translator.py",
+   "tier": "toolchain:freebasic",
+   "timeout": 2400,
+   "needs": [
+    "freebasic",
+    "mingw"
+   ]
+  },
+  {
+   "path": "OpenFolder/tools/test_open_detect.py",
+   "tier": "toolchain:all",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "dotnet",
+    "java",
+    "go",
+    "rust",
+    "node",
+    "flutter",
+    "lua"
+   ]
+  },
+  {
+   "path": "PE/MfcResources/qa_pe_workbench_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "PE/MfcResources/test_pe_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "QA/AllLanguages/test_all_languages.py",
+   "tier": "full",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "toolchains?"
+   ],
+   "note": "checks for languages without a toolchain report SKIP"
+  },
+  {
+   "path": "QA/FixAll/test_fixall.py",
+   "tier": "toolchain:mingw",
+   "timeout": 2400,
+   "needs": [
+    "mingw"
+   ],
+   "note": "regressions of the fix-all round: long paths (Rust / Flutter), bridge host + clients (Lua, Perl, Ruby, PowerShell, Dart, Fortran - each skipped when missing), Dart publish, LSP manifests, Qt / RingQt publish size; --slow adds deep-folder native Rust + Flutter publishes"
+  },
+  {
+   "path": "QA/Integration/smoke_startup.py",
+   "tier": "fast",
+   "needs": [
+    "qt",
+    "webengine"
+   ],
+   "note": "IDE starts with every feature module",
+   "smoke": true
+  },
+  {
+   "path": "QA/MotionE2E/check_runtime_fixes.py",
+   "tier": "full",
+   "needs": [
+    "dotnet?",
+    "go?"
+   ]
+  },
+  {
+   "path": "QA/MotionE2E/qa_motion_e2e.py",
+   "tier": "full",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "flutter?",
+    "node?"
+   ]
+  },
+  {
+   "path": "QA/MotionE2E/test_relabel.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Release/test_upgrade.py",
+   "tier": "manual",
+   "note": "needs <scratch> <new setup.exe> <new portable.zip> <old setup.exe> from a release build"
+  },
+  {
+   "path": "Retro/AGC/test_agc_core.py",
+   "tier": "fast",
+   "note": "Virtual AGC parts SKIP when not installed"
+  },
+  {
+   "path": "Retro/AGC/test_ide_nasa.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/DesignGames/test_gamedesign_core.py",
+   "tier": "toolchain:retro",
+   "args": [
+    "--no-emu"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "retro-toolchains"
+   ]
+  },
+  {
+   "path": "Retro/DesignGames/test_gamedesign_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/DesignTextMode/run_all.py",
+   "tier": "aggregate",
+   "note": "runs the DesignTextMode tests below"
+  },
+  {
+   "path": "Retro/DesignTextMode/test_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Retro/DesignTextMode/test_dosbox.py",
+   "tier": "toolchain:dos",
+   "args": [
+    "--no-download"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "dos-toolchains",
+    "dosbox-x"
+   ]
+  },
+  {
+   "path": "Retro/DesignTextMode/test_mouse.py",
+   "tier": "toolchain:dos",
+   "timeout": 2400,
+   "needs": [
+    "dos-toolchains",
+    "dosbox-x"
+   ]
+  },
+  {
+   "path": "Retro/DesignTextMode/test_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/Dev/check_disasm.py",
+   "tier": "fast",
+   "args": [
+    "--offline"
+   ],
+   "note": "round trips SKIP when a toolchain is missing",
+   "smoke": true
+  },
+  {
+   "path": "Retro/Dev/check_templates.py",
+   "tier": "toolchain:retro",
+   "timeout": 2400,
+   "needs": [
+    "retro-toolchains"
+   ]
+  },
+  {
+   "path": "Retro/Dev/test_ide.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/DOSDev/run_all.py",
+   "tier": "aggregate",
+   "note": "runs the DOSDev tests below in order"
+  },
+  {
+   "path": "Retro/DOSDev/test_dos_compat.py",
+   "tier": "toolchain:dos",
+   "needs": [
+    "dos-toolchains",
+    "dosbox-x"
+   ]
+  },
+  {
+   "path": "Retro/DOSDev/test_dos_ide.py",
+   "tier": "toolchain:dos",
+   "needs": [
+    "qt",
+    "dos-toolchains"
+   ]
+  },
+  {
+   "path": "Retro/DOSDev/test_dos_intel.py",
+   "tier": "full"
+  },
+  {
+   "path": "Retro/DOSDev/test_dos_templates.py",
+   "tier": "toolchain:dos",
+   "timeout": 2400,
+   "needs": [
+    "dos-toolchains",
+    "dosbox-x"
+   ]
+  },
+  {
+   "path": "Retro/DOSDev/test_dos_toolchains.py",
+   "tier": "network",
+   "needs": [
+    "downloads",
+    "dosbox-x"
+   ],
+   "note": "downloads the DOS compilers"
+  },
+  {
+   "path": "Retro/DOSQA/qa_dos_e2e.py",
+   "tier": "toolchain:dos",
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "dos-toolchains",
+    "dosbox-x"
+   ]
+  },
+  {
+   "path": "Retro/Emulators/test_emu.py",
+   "tier": "network",
+   "args": [
+    "--download"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "downloads",
+    "desktop"
+   ]
+  },
+  {
+   "path": "Retro/FollowUps/test_retro_followups.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/GameMod_DABG/test_gamemod_gaps_core.py",
+   "tier": "fast",
+   "note": "cc65 parts SKIP when not installed"
+  },
+  {
+   "path": "Retro/GameMod_DABG/test_gamemod_ide.py",
+   "tier": "network",
+   "args": [
+    "--no-emu"
+   ],
+   "timeout": 3600,
+   "needs": [
+    "qt",
+    "github",
+    "cc65"
+   ]
+  },
+  {
+   "path": "Retro/Gfx/test_gfx_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Retro/Gfx/test_gfx_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/LegacyFortran/test_legacy_fortran.py",
+   "tier": "toolchain:mingw",
+   "needs": [
+    "gfortran"
+   ]
+  },
+  {
+   "path": "Retro/RomTools/run_all.py",
+   "tier": "aggregate",
+   "note": "runs test_rom_core + test_hex_ui"
+  },
+  {
+   "path": "Retro/RomTools/test_hex_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Retro/RomTools/test_rom_core.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Robustness/Files/test_files_model.py",
+   "tier": "fast",
+   "note": "project file round trips, encodings, broken files, read-only",
+   "smoke": true
+  },
+  {
+   "path": "ShellIntegration/test_options_ui.py",
+   "tier": "full",
+   "args": [
+    "{scratch}"
+   ],
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "ShellIntegration/test_shell_registry.py",
+   "tier": "fast",
+   "args": [
+    "{scratch}"
+   ],
+   "note": "TEST registry root only (HKCU\\Software\\RADIDE-TEST...)"
+  },
+  {
+   "path": "ShellIntegration/test_single_instance.py",
+   "tier": "full",
+   "args": [
+    "{scratch}"
+   ],
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Testing/PyCalc_Pytest/tests",
+   "tier": "project",
+   "note": "demo suite: test_grade_pass FAILS on purpose (Test Explorer demo)",
+   "kind": "pytest"
+  },
+  {
+   "path": "Tutorials/Polish/check_polish.py",
+   "tier": "full",
+   "note": "compares with a git base commit: needs full history (fetch-depth: 0)"
+  },
+  {
+   "path": "Tutorials/Polish/test_tree_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Tutorials/VisualStudioProjects/check_course.py",
+   "tier": "toolchain:dotnet",
+   "timeout": 3600,
+   "needs": [
+    "dotnet"
+   ]
+  },
+  {
+   "path": "UI/AutoHide/test_autohide.py",
+   "tier": "fast",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Variants/check_runtime.py",
+   "tier": "full",
+   "needs": [
+    "qt",
+    "tk"
+   ],
+   "note": "takes NO scratch argument (argv[1] selects a child)"
+  },
+  {
+   "path": "Variants/check_variants_model.py",
+   "tier": "fast",
+   "smoke": true
+  },
+  {
+   "path": "Variants/Targets/check_targets.py",
+   "tier": "toolchain:flutter",
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "flutter",
+    "dotnet?",
+    "node?"
+   ]
+  },
+  {
+   "path": "Variants/test_variants_ui.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "VB6Business/test_vb6_business.py",
+   "tier": "full",
+   "timeout": 2400,
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_contrib.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "open-vsx.org"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_host.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "node",
+    "npm"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_market.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "open-vsx.org"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_qa.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "qt",
+    "node",
+    "open-vsx.org"
+   ]
+  },
+  {
+   "id": "VSX/test_vsx_qa@onscreen",
+   "path": "VSX/test_vsx_qa.py",
+   "tier": "gui-real",
+   "args": [
+    "{scratch}",
+    "--onscreen"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "desktop",
+    "node",
+    "open-vsx.org"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_reference.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "claude-code.vsix?"
+   ],
+   "note": "optional 2nd argument: path to the anthropic.claude-code .vsix (RADIDE_CLAUDE_VSIX)"
+  },
+  {
+   "path": "VSX/test_vsx_webview.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "claude-code.vsix?"
+   ]
+  },
+  {
+   "path": "VSX/test_vsx_workbench.py",
+   "tier": "network",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1800,
+   "needs": [
+    "qt",
+    "claude-code.vsix?"
+   ]
+  },
+  {
+   "path": "Web/FastAPI_Items/tests",
+   "tier": "project",
+   "note": "needs fastapi, sqlalchemy, httpx",
+   "kind": "pytest"
+  },
+  {
+   "path": "Web/Flask_Todo/tests",
+   "tier": "project",
+   "note": "needs flask",
+   "kind": "pytest"
+  }
+ ]
+}

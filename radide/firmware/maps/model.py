@@ -279,7 +279,8 @@ class MapPack:
                 self.maps[self.maps.index(old)] = m
                 return m
             base, i = m.name, 2
-            while self.get(f"{base}_{i}") is not None:
+            names = {x.name for x in self.maps}       # one set, not a list scan per candidate (thousands of
+            while f"{base}_{i}" in names:              # same-named maps in a corrupted A2L were cubic)
                 i += 1
             m.name = f"{base}_{i}"
         self.maps.append(m)

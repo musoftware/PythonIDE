@@ -1,0 +1,28 @@
+{
+  "versiorops": {
+    "Name":  "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Panel",
+      "props": {
+       "Top": 1e999,
+        "TextAlign": "Left",
+"DataMember": ""
+      }
+    },
+    {
+      "type": "ColorDialog",
+      "props": {
+        "Name": "dlgColor",
+        "Color": "#3B7DD8",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Timer",
+      "props": {
+      }
+    }
+  ]
+}

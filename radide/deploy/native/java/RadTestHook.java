@@ -2,6 +2,7 @@
 // release builds never contain it). Swing has no native child windows to drive with Win32 messages, so the
 // tests send commands on stdin and read "R <result>" lines on stdout:
 //   windows | get <obj> <prop> | click <obj> | type <obj> <text> | menu <item> | close <form>
+//   call <obj> <method> [a|b] | bounds <obj> | showing <obj> | color <obj> | hover <obj> 1|0 | resize <form> <w> <h>
 import java.awt.Frame;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
@@ -62,6 +63,70 @@ final class RadTestHook {
                 Object c = comp(p[1]);
                 if (!(c instanceof JTextComponent)) return "ERROR not a text box: " + p[1];
                 ((JTextComponent) c).setText(p.length > 2 ? p[2] : "");
+                return "ok";
+            }
+            case "call": {           // call <obj> <method>[ <arg>|<arg>...]
+                String[] q = p.length > 2 ? p[2].split(" ", 2) : new String[]{""};
+                String[] args = q.length > 1 ? q[1].split("\\|", -1) : new String[0];
+                return RadSwing.callMethod(p[1], q[0], args);
+            }
+            case "bounds": {         // x y w h of the laid-out component (in its container)
+                Object o = RadSwing.resolve(p[1]);
+                if (!(o instanceof RadSwing.Item) || ((RadSwing.Item) o).outer == null) return "ERROR no control " + p[1];
+                java.awt.Rectangle r = ((RadSwing.Item) o).outer.getBounds();
+                return r.x + " " + r.y + " " + r.width + " " + r.height;
+            }
+            case "showing": {
+                Object o = RadSwing.resolve(p[1]);
+                if (!(o instanceof RadSwing.Item) || ((RadSwing.Item) o).outer == null) return "ERROR no control " + p[1];
+                return ((RadSwing.Item) o).outer.isShowing() ? "True" : "False";
+            }
+            case "color": {          // the background colour as #rrggbb (a form: its client area)
+                Object o = RadSwing.resolve(p[1]);
+                java.awt.Component c = o instanceof RadSwing.FormBase ? ((RadSwing.FormBase) o).getContentPane()
+                        : o instanceof RadSwing.Item && ((RadSwing.Item) o).comp instanceof java.awt.Component
+                        ? (java.awt.Component) ((RadSwing.Item) o).comp : null;
+                if (c == null) return "ERROR no control " + p[1];
+                java.awt.Color col = c.getBackground();
+                return col == null ? "" : String.format("#%02x%02x%02x", col.getRed(), col.getGreen(), col.getBlue());
+            }
+            case "mouse": {          // mouse <obj> <x> <y>: a left click as AWT delivers it (pressed, released, clicked)
+                Object c = comp(p[1]);
+                if (!(c instanceof java.awt.Component)) return "ERROR no control " + p[1];
+                java.awt.Component k = (java.awt.Component) c;
+                String[] xy = p.length > 2 ? p[2].trim().split("\\s+") : new String[]{"2", "2"};
+                int x = Integer.parseInt(xy[0]), y = Integer.parseInt(xy.length > 1 ? xy[1] : xy[0]);
+                java.awt.EventQueue q = java.awt.Toolkit.getDefaultToolkit().getSystemEventQueue();
+                long t = System.currentTimeMillis();
+                int down = java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
+                q.postEvent(new java.awt.event.MouseEvent(k, java.awt.event.MouseEvent.MOUSE_ENTERED, t, 0, x, y, 0, false));
+                q.postEvent(new java.awt.event.MouseEvent(k, java.awt.event.MouseEvent.MOUSE_PRESSED, t, down, x, y, 1, false,
+                        java.awt.event.MouseEvent.BUTTON1));
+                q.postEvent(new java.awt.event.MouseEvent(k, java.awt.event.MouseEvent.MOUSE_RELEASED, t + 1, 0, x, y, 1, false,
+                        java.awt.event.MouseEvent.BUTTON1));
+                q.postEvent(new java.awt.event.MouseEvent(k, java.awt.event.MouseEvent.MOUSE_CLICKED, t + 1, 0, x, y, 1, false,
+                        java.awt.event.MouseEvent.BUTTON1));
+                return "ok";
+            }
+            case "hover": {          // hover <obj> 1|0: the mouse enters / leaves the control
+                Object c = comp(p[1]);
+                if (!(c instanceof java.awt.Component)) return "ERROR no control " + p[1];
+                java.awt.Component k = (java.awt.Component) c;
+                boolean in = p.length < 3 || !p[2].trim().equals("0");
+                k.dispatchEvent(new java.awt.event.MouseEvent(k, in ? java.awt.event.MouseEvent.MOUSE_ENTERED
+                        : java.awt.event.MouseEvent.MOUSE_EXITED, System.currentTimeMillis(), 0, 2, 2, 0, false));
+                return "ok";
+            }
+            case "resize": {         // resize <form> <clientW> <clientH>
+                Object f = RadSwing.resolve(p[1]);
+                if (!(f instanceof RadSwing.FormBase)) return "ERROR not a form";
+                RadSwing.FormBase fb = (RadSwing.FormBase) f;
+                String[] wh = p.length > 2 ? p[2].trim().split("\\s+") : new String[0];
+                if (wh.length < 2) return "ERROR resize <form> <w> <h>";
+                java.awt.Container cp = fb.getContentPane();
+                int dw = fb.getWidth() - cp.getWidth(), dh = fb.getHeight() - cp.getHeight();
+                fb.setSize(Integer.parseInt(wh[0]) + dw, Integer.parseInt(wh[1]) + dh);
+                fb.validate();
                 return "ok";
             }
             case "close": {

@@ -34,8 +34,8 @@ def state_root() -> Path:
     env = os.environ.get("RADIDE_FOREIGN_STATE")
     if env:
         return Path(env)
-    base = os.environ.get("APPDATA") or str(Path.home())
-    return Path(base) / "RADIDE" / "foreign"
+    from ..paths import roaming_dir          # <install>\settings for a portable build
+    return roaming_dir() / "foreign"
 
 
 def state_dir(native: Path) -> Path:

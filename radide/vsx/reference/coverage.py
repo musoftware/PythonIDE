@@ -126,6 +126,11 @@ def ide_commands() -> tuple[set, set]:
         return (old - noop) | {k for k, v in KB.VSCODE_TO_IDE.items() if v != "monaco"}, noop
 
     handled = set(IC.COMMANDS) | {k for k, v in KB.VSCODE_TO_IDE.items() if v != "monaco"}
+    try:                           # VS Code editor commands outside src/vs/editor that RAD IDE adds to Monaco
+        from radide.vsx import editor_commands as EC
+        handled |= set(EC.EDITOR_IDS)
+    except ImportError:
+        pass
     handled |= {"vscode.openFolder", "revealFileInOS", "workbench.action.focusFirstEditorGroup",
                 "workbench.action.focusActiveEditorGroup", "workbench.action.reloadWindow",
                 "workbench.action.output.toggleOutput", "workbench.panel.output.focus",

@@ -25,7 +25,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from .base import BinaryInfo, ImportResult, ai_translate as _base_ai_translate, find_tool, tools_dir
+from ..base import BinaryInfo, ImportResult, ai_translate as _base_ai_translate, find_tool, tools_dir
 
 ILSPY_VERSIONS = (None, "9.1.0.7988", "8.2.0.7535")   # newest first; 9.x runs on the .NET 8/9 SDKs
 
@@ -2750,6 +2750,54 @@ def _match_brace(src: str, start: int) -> int:
                 return i
         i += 1
     return -1
+
+
+def brace_matches(src: str, start: int) -> dict[int, int]:
+    """{index of '{': index of its '}' (-1 = never closed)} for every '{' that _match_brace(src, start) passes
+    over in code (it lexes exactly like _match_brace, so each entry equals _match_brace(src, that index)).
+    One linear scan instead of one scan per candidate: a file with thousands of unclosed "class X {"
+    lines would otherwise take quadratic time."""
+    out: dict[int, int] = {}
+    stack: list[int] = []
+    i, n = start, len(src)
+    while i < n:
+        c = src[i]
+        if c == "/" and src.startswith("//", i):
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        if c == "/" and src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if c == '"':
+            verbatim = i > 0 and src[i - 1] == "@" or i > 1 and src[i - 2:i] in ("$@", "@$")
+            j = i + 1
+            while j < n:
+                if src[j] == "\\" and not verbatim:
+                    j += 2
+                    continue
+                if src[j] == '"':
+                    if verbatim and src.startswith('""', j):
+                        j += 2
+                        continue
+                    break
+                j += 1
+            i = j + 1
+            continue
+        if c == "'":
+            j = i + 1
+            while j < n and src[j] != "'":
+                j += 2 if src[j] == "\\" else 1
+            i = j + 1
+            continue
+        if c == "{":
+            stack.append(i)
+            out[i] = -1
+        elif c == "}" and stack:
+            out[stack.pop()] = i
+        i += 1
+    return out
 
 
 METHOD_RE = re.compile(

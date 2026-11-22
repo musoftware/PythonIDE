@@ -11,20 +11,45 @@ $RADDBG_LIST = []
 $RADDBG_ERR = ""
 $RADDBG_INEVAL = false
 $RADDBG_TAG = "@@RADDBG@@"
+# breakpoints changed while the program runs: the IDE rewrites this file (Ring cannot read stdin without
+# blocking), the trace reads it again at most every 0.3 s
+$RADDBG_BPFILE = ""
+$RADDBG_BPTEXT = ""
+$RADDBG_BPTIME = 0
 
 RadDbg_Init()
 
 func RadDbg_Init
     cSpec = SysGet("RADDBG_BP")
     if cSpec != NULL and cSpec != ""
-        for cItem in str2list(substr(cSpec, ";", nl))
-            nPos = substr(cItem, "|")
-            if nPos > 0
-                $RADDBG_BP + [lower(trim(left(cItem, nPos - 1))), 0 + substr(cItem, nPos + 1)]
-            ok
-        next
+        RadDbg_ParseBP(cSpec)
+    ok
+    cFile = SysGet("RADDBG_BPFILE")
+    if cFile != NULL and cFile != ""
+        $RADDBG_BPFILE = cFile
     ok
     ringvm_settrace("RadDbg_Trace()")
+
+func RadDbg_ParseBP cSpec
+    # "file|line[|condition];..." (conditions / hit counts are checked by the IDE: radide/debugger.py)
+    $RADDBG_BP = []
+    for cItem in str2list(substr(cSpec, ";", nl))
+        nPos = substr(cItem, "|")
+        if nPos > 0
+            cRest = substr(cItem, nPos + 1)
+            nBar = substr(cRest, "|")
+            if nBar > 0 cRest = left(cRest, nBar - 1) ok
+            $RADDBG_BP + [lower(trim(left(cItem, nPos - 1))), 0 + trim(cRest)]
+        ok
+    next
+
+func RadDbg_ReloadBP
+    if not fexists($RADDBG_BPFILE) return ok
+    cText = read($RADDBG_BPFILE)
+    if cText != $RADDBG_BPTEXT
+        $RADDBG_BPTEXT = cText
+        RadDbg_ParseBP(trim(cText))
+    ok
 
 func RadDbg_Send cText
     see $RADDBG_TAG + cText + nl
@@ -52,6 +77,13 @@ func RadDbg_Trace
         $RADDBG_ERR = "error"
         ringvm_passerror()
         return
+    ok
+    if $RADDBG_BPFILE != ""
+        nNow = clock()
+        if nNow - $RADDBG_BPTIME > clockspersecond() / 3 or nNow < $RADDBG_BPTIME
+            $RADDBG_BPTIME = nNow
+            RadDbg_ReloadBP()
+        ok
     ok
     aData = ringvm_tracedata()
     cFile = aData[2]
@@ -202,7 +234,10 @@ func RadDbg_Break cFile, nLine, cReason, nDepth
             cSpec = substr(cCmd, 3)
             nPos = substr(cSpec, "|")
             if nPos > 0
-                aBP = [lower(left(cSpec, nPos - 1)), 0 + substr(cSpec, nPos + 1)]
+                cRest = substr(cSpec, nPos + 1)
+                nBar = substr(cRest, "|")
+                if nBar > 0 cRest = left(cRest, nBar - 1) ok
+                aBP = [lower(left(cSpec, nPos - 1)), 0 + trim(cRest)]
                 if left(cCmd, 1) = "b"
                     $RADDBG_BP + aBP
                 else

@@ -36,8 +36,13 @@ EVENTS = {
     "StatusBar": {"Click", "MouseDown", "MouseUp", "MouseMove"}, "TabControl": {"Click"},
     "DateTimePicker": {"Change", "Click", "GotFocus", "LostFocus", "KeyDown", "KeyUp", "KeyPress"},
 }
-FORM_EVENTS = {"Load", "Activate", "Deactivate", "Resize", "QueryUnload", "Unload", "Terminate", "Click",
-               "DblClick", "MouseDown", "MouseUp", "MouseMove", "KeyDown", "KeyUp", "KeyPress"}
+# Validate (VB6): controls that can take the focus
+for _t in ("Button", "TextBox", "CheckBox", "RadioButton", "ListBox", "ComboBox", "NumericUpDown", "TrackBar",
+           "DateTimePicker"):
+    EVENTS[_t] = EVENTS[_t] | {"Validate"}
+FORM_EVENTS = {"Initialize", "Load", "Activate", "Deactivate", "Resize", "QueryUnload", "Unload", "Terminate", "Click",
+               "DblClick", "MouseDown", "MouseUp", "MouseMove", "KeyDown", "KeyUp", "KeyPress",
+               "SizeVariantChanged"}           # layout variants (rt/vbrt_motion.bi)
 # all VB6 event names: a procedure Name_<one of these> on a control / the form is an event handler
 KNOWN_EVENTS = FORM_EVENTS | COMMON_EV | {"Change", "Timer", "MouseEnter", "MouseLeave", "MouseWheel", "Scroll",
                                           "NodeClick", "ItemClick", "SelChange", "AfterEdit", "Validate",
@@ -55,7 +60,9 @@ EVENT_ARGS = {
     "Timer": ("vbeTimer", ()), "Load": ("vbeLoad", ()), "Activate": ("vbeActivate", ()),
     "Deactivate": ("vbeDeactivate", ()), "Resize": ("vbeResize", ()),
     "QueryUnload": ("vbeQueryUnload", ("cancel", "unloadMode")), "Unload": ("vbeUnload", ("cancel",)),
-    "Terminate": ("vbeTerminate", ()),
+    "Terminate": ("vbeTerminate", ()), "Initialize": ("vbeInitialize", ()),
+    "Validate": ("vbeValidate", ("cancel",)),
+    "SizeVariantChanged": ("vbeSizeVariantChanged", ()),
 }
 FIELD_TAG = {"keyAscii": "i", "keyCode": "i", "shift": "i", "button": "i", "x": "f", "y": "f", "cancel": "i",
              "unloadMode": "i", "prevTab": "i", "index": "i"}
@@ -139,7 +146,10 @@ FORM_PROPS = {
 }
 FORM_IGNORED_SET = {"borderstyle", "mousepointer", "keypreview", "scalemode", "icon", "autoredraw",
                     "fontname", "fontsize", "fontbold"}
-FORM_NOOP_METHODS = {"cls", "print", "line", "circle", "pset", "zorder", "refresh", "animate"}
+FORM_NOOP_METHODS = {"cls", "print", "line", "circle", "pset", "zorder", "refresh"}
+# animations / visual states / layout variants from code (rt/vbrt_motion.bi); Animate (an ad hoc preset) needs the
+# preset builders at run time and stays a fallback reason (see radide/motion/native_plan.py)
+FORM_MOTION = {"beginanimation", "stopanimation", "gotostate", "applysizevariants", "currentsizes", "currentstate"}
 
 
 @dataclass
@@ -172,6 +182,27 @@ class FormInfo:
 
     def array_const(self, low: str) -> str:
         return f"CTL_{_ident(self.name)}_{_ident(self.array_raw.get(low, low))}__arr"
+
+    @property
+    def fx_lines(self) -> list[str]:
+        """The form's animation / visual state / layout variant records (radide/motion/native_plan.py)."""
+        if not hasattr(self, "_fx_lines"):
+            from ....motion import native_plan
+            try:
+                self._fx_lines = native_plan.lines(self.model, "py")
+            except Exception:  # noqa: BLE001 - broken motion data must never break a build
+                self._fx_lines = []
+        return self._fx_lines
+
+    @property
+    def fx_names(self) -> set:
+        """Lower-case storyboard / animation names (BeginAnimation, <name>_Completed)."""
+        out = set()
+        for ln in self.fx_lines:
+            f = ln.split("\t")
+            if f[0] == "X" and len(f) > 1:
+                out.add(f[1].replace("\\\\", "\\").lower())
+        return out
 
 
 def vb_color(c) -> str:
@@ -236,10 +267,11 @@ def collect(forms: list[tuple[str, Form]], reasons: list, start_id: int = 1) -> 
         nid += 1
         out.append(fi)
         fp = model.props
-        for key, what in (("animations", "animations"), ("storyboards", "storyboards (Expression Blend)"),
-                          ("states", "visual states"), ("bindings", "data bindings"), ("datasources", "data sources"),
-                          ("dbsources", "data sources"), ("motion", "motion presets"), ("physics", "physics"),
-                          ("particles", "particles"), ("variants", "layout variants"), ("wiring", "event wiring")):
+        # animations, storyboards, visual states, motion presets and layout variants: rt/vbrt_motion.bi plays them
+        # (motion_code below); what remains has no native runtime yet
+        for key, what in (("bindings", "data bindings"), ("datasources", "data sources"),
+                          ("dbsources", "data sources"), ("physics", "physics"),
+                          ("particles", "particles"), ("wiring", "event wiring")):
             if model.extra.get(key):
                 reasons.append(f"{fname}.form: {what} are not supported by the native build yet")
         if fp.get("FormBorderStyle", "Sizable") not in ("Sizable", "FixedSingle"):
@@ -451,7 +483,19 @@ def setup_code(fi: FormInfo, handlers: dict) -> list[str]:
                 out.append(f"    VBAccelAdd({fi.const}, {fb_str(txt.split(chr(9), 1)[1].strip())}, {ci.const})")
             continue
         out.append(line)
+    out += motion_code(fi, handlers)
     return out
+
+
+def motion_code(fi: FormInfo, handlers: dict) -> list[str]:
+    """VBFxRec lines (rt/vbrt_motion.bi) for the form's records + VBFxOnDone for <storyboard>_Completed."""
+    out = [f"    VBFxRec({fi.const}, {fb_str(ln)})" for ln in fi.fx_lines]
+    for name, wrapper in sorted((handlers.get(FX_DONE_KEY) or {}).items()):
+        out.append(f"    VBFxOnDone({fi.const}, {fb_str(name)}, @{wrapper})")
+    return out
+
+
+FX_DONE_KEY = "\x00fxdone"          # handlers[...] key of the <storyboard>_Completed wrappers (never a control name)
 
 
 def accelerators(fi: FormInfo) -> list[tuple[str, str]]:

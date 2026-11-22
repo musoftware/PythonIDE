@@ -36,11 +36,10 @@ from scenarios import SCENARIOS  # noqa: E402
 import winutil as W  # noqa: E402
 
 PROJECTS = ["HelloVB", "ControlsGallery", "MultiForm", "ArabicForm", "AnchorsDock", "VB_Form", "BASIC_Form",
-            "BASIC_Console", "Debug_VB_Expand"]
+            "BASIC_Console", "Debug_VB_Expand", "Variants_VB6"]
 UNSUPPORTED = {"LanguageFeatures": ROOT / "samples" / "Tests" / "VB6" / "LanguageFeatures",
                "BankClasses": ROOT / "samples" / "Tests" / "VB6" / "BankClasses",
-               "RatingBar_VB": ROOT / "samples" / "Tests" / "Components" / "RatingBar_VB",
-               "Variants_VB6": HERE / "Variants_VB6"}
+               "RatingBar_VB": ROOT / "samples" / "Tests" / "Components" / "RatingBar_VB"}
 SYSTEM_DLLS = {"kernel32.dll", "user32.dll", "gdi32.dll", "comctl32.dll", "comdlg32.dll", "shell32.dll",
                "advapi32.dll", "ole32.dll", "oleaut32.dll", "msvcrt.dll", "uxtheme.dll", "gdiplus.dll",
                "shlwapi.dll", "winmm.dll", "ntdll.dll"}
@@ -403,6 +402,52 @@ def resize_check(res, gen):
     ok(got == want, f"AnchorsDock: after Me.Width/Height += 100/50 the anchored controls are at {got} (designer rules {want})")
 
 
+def variants_check(res, gen):
+    """Variants_VB6: the layout variants (rt/vbrt_motion.bi) follow the client width of the running exe:
+    phone (< 600) title text + side panel / status hidden + txtSearch full width, base (>= 1024), tablet
+    (600 - 1023) Save text and place."""
+    import ctypes
+    from ctypes import wintypes as WT
+    n = Native(res.dist / res.exe, gen, "Form1")
+    u = W.u
+    u.GetWindowRect.argtypes = [WT.HWND, ctypes.POINTER(WT.RECT)]
+    u.GetClientRect.argtypes = [WT.HWND, ctypes.POINTER(WT.RECT)]
+    u.SetWindowPos.argtypes = [WT.HWND, WT.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, WT.UINT]
+
+    def k():
+        try:
+            return (u.GetDpiForWindow(n.top) or 96) / 96.0
+        except AttributeError:
+            return 1.0
+
+    def width(lw):
+        r, c = WT.RECT(), WT.RECT()
+        u.GetWindowRect(n.top, ctypes.byref(r))
+        u.GetClientRect(n.top, ctypes.byref(c))
+        u.SetWindowPos(n.top, None, 0, 0, int(round(lw * k())) + (r.right - r.left) - c.right, r.bottom - r.top, 0x16)
+        time.sleep(0.5)
+
+    def h(name):
+        return n.hwnd(name)[0]
+    try:
+        time.sleep(0.5)
+        start = (W.text(h("cmdSave")), W.text(h("lblTitle")))
+        width(500)
+        txt_w = W.rect(h("txtSearch"))[2] / k()
+        phone = (W.text(h("lblTitle")), bool(u.IsWindowVisible(h("pnlSide"))), bool(u.IsWindowVisible(h("lblStatus"))),
+                 round(txt_w))
+        width(1100)
+        base = (W.text(h("lblTitle")), bool(u.IsWindowVisible(h("pnlSide"))), W.text(h("cmdSave")))
+        width(800)
+        tablet = (W.text(h("cmdSave")), round(W.rect(h("cmdSave"))[2] / k()))
+    finally:
+        n.finish()
+    ok(start == ("Save changes", "Customers"), f"Variants_VB6: designed width 760 starts in the tablet size {start}")
+    ok(phone == ("Customers (phone)", False, False, 500 - 32), f"Variants_VB6: phone (500 px) {phone}")
+    ok(base == ("Customers", True, "Save"), f"Variants_VB6: base (1100 px) restores the designed values {base}")
+    ok(tablet == ("Save changes", 140), f"Variants_VB6: tablet (800 px) {tablet}")
+
+
 # ------------------------------------------------------------------ main
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -434,9 +479,12 @@ def main(argv=None) -> int:
             if proj.get("forms") and startup in proj["forms"]:
                 scenario(name, res, gen, startup)
                 native_events(name, res, gen)
-                geometry(name, res, gen, startup, report)
+                if name != "Variants_VB6":     # its designed width is in the tablet size: variants_check
+                    geometry(name, res, gen, startup, report)
                 if name == "AnchorsDock":
                     resize_check(res, gen)
+                if name == "Variants_VB6":
+                    variants_check(res, gen)
             else:
                 p = subprocess.run([str(exe)], capture_output=True, timeout=30, cwd=str(res.dist))
                 got = p.stdout.decode("utf-8", "replace").replace("\r\n", "\n").rstrip("\n")

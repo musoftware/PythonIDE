@@ -12,6 +12,7 @@ Shapes are ``[cols]`` or ``[cols x rows]`` (X fastest in memory). Units / scales
 """
 from __future__ import annotations
 
+import math
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -98,9 +99,10 @@ def _num(s: str):
     if s.startswith("{") and s.endswith("}"):
         return _arith(s[1:-1].strip())
     try:
-        return float(s)
+        v = float(s)
     except ValueError:
         return None
+    return v if math.isfinite(v) else None       # inf / nan / 1e999 are no usable numbers
 
 
 def _arith(expr: str):
@@ -119,9 +121,10 @@ def _arith(expr: str):
             return ops[type(n.op)](ev(n.left), ev(n.right))
         raise ValueError
     try:
-        return ev(ast.parse(expr, mode="eval").body)
-    except (ValueError, SyntaxError, ZeroDivisionError):
+        v = ev(ast.parse(expr, mode="eval").body)
+    except (ValueError, SyntaxError, ZeroDivisionError, OverflowError, RecursionError, MemoryError):
         return None
+    return v if math.isfinite(v) else None
 
 
 def _lines(text: str, defined: set[str]):
@@ -172,7 +175,7 @@ def parse_ini(text: str, base: int = 0, defined=None, include_scalars: bool = Fa
         key, _, val = line.partition("=")
         key, val = key.strip(), val.strip()
         if section == "MegaTune" and key == "signature" or section == "TunerStudio" and key == "signature":
-            signature = _unq(split_args(val)[0]) if val else ""
+            signature = _unq((split_args(val) or [""])[0]) if val else ""
         if section == "Constants":
             if key == "endianness":
                 endian = "be" if val.split(";")[0].strip().lower().startswith("big") else "le"
@@ -197,7 +200,7 @@ def parse_ini(text: str, base: int = 0, defined=None, include_scalars: bool = Fa
                 continue
             try:
                 off = int(float(args[2]))
-            except ValueError:
+            except (ValueError, OverflowError):        # OverflowError: Infinity / 1e999
                 continue
             f = Field(key, kind, dt, page, off)
             rest = args[3:]
@@ -230,14 +233,14 @@ def parse_ini(text: str, base: int = 0, defined=None, include_scalars: bool = Fa
                 cur = {"kind": "table", "id": a[0] if a else "", "title": _unq(a[2]) if len(a) > 2 else ""}
                 tables.append(cur)
             elif cur is not None and cur["kind"] == "table" and key in ("xBins", "yBins", "zBins"):
-                cur[key] = split_args(val)[0]
+                cur[key] = (split_args(val) or [""])[0]
         elif section == "CurveEditor":
             if key == "curve":
                 a = split_args(val)
                 cur = {"kind": "curve", "id": a[0] if a else "", "title": _unq(a[1]) if len(a) > 1 else ""}
                 curves.append(cur)
             elif cur is not None and cur["kind"] == "curve" and key in ("xBins", "yBins"):
-                cur[key] = split_args(val)[0]
+                cur[key] = (split_args(val) or [""])[0]
     pages = sorted({f.page for f in fields.values()})
     sizes = {p: (page_sizes[p - 1] if 0 < p <= len(page_sizes) else 0) for p in pages}
     for p in pages:                                   # pages without a declared size: end of their last field

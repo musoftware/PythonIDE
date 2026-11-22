@@ -125,6 +125,9 @@ typedef struct RfForm {
     COLORREF back;
     HBRUSH brush;
     int next_id;
+    int alpha_set;                  /* Opacity was set (layered window) */
+    double opacity;
+    void *fx;                       /* animations / visual states / layout variants (radforms_motion.inc) */
 } RfForm;
 
 typedef struct Ev {
@@ -184,6 +187,17 @@ static void rf_init_registry(void);
 static void rf_init_themes(void);
 static void rf_modules(void);
 static int rf_has_rtl(const wchar_t *w);
+/* radforms_motion.inc (animations, visual states, layout variants) */
+static void rf_fx_init(struct RfForm *f);
+static void rf_fx_free(struct RfForm *f);
+static void rf_fx_start(struct RfForm *f);
+static int rf_fx_timer(struct RfForm *f, WPARAM id);
+static void rf_fx_event(struct RfForm *f, const char *obj, const char *ev);
+static int rf_fx_set_hook(struct RfForm *f, RfCtl *c, const char *p, const char *v);
+static void rf_fx_after_set(struct RfForm *f, RfCtl *c, const char *p, const char *v);
+static const char *rf_fx_call(struct RfForm *f, RfCtl *c, const char *m, const char *args, int *handled);
+static int rf_fx_variants(struct RfForm *f, int notify);
+static int rf_is(const char *p, const char *a);
 static int g_themed;                /* a theme other than "Light" (the system look) is active */
 static const rf_theme *g_theme;
 static HBRUSH g_theme_brush, g_input_brush;
@@ -448,6 +462,7 @@ static int rf_coalesce(const char *ev) {
 /* report an event (when the program has a handler for it); *after* runs when it is done */
 static void rf_post_ex(RfForm *f, const char *obj, const char *ev, const char *args, int after, int vk, int delta) {
     Ev *e;
+    if (f && f->fx) rf_fx_event(f, obj, ev);
     if ((g_building && after == AFTER_NONE) || !rf_has_handler(obj, ev)) {
         rf_after(f, after);
         return;
@@ -991,6 +1006,144 @@ static void rf_subclass(RfCtl *c, HWND h) {
     SetWindowSubclass(h, rf_sub_proc, 1, (DWORD_PTR)c);
 }
 
+/* ------------------------------------------------------------------ accessibility (screen readers, UI Automation)
+ * Standard controls are named by Windows (button / check box text, the label before an edit). The owner-drawn
+ * registered classes (Rm*) and controls with an AccessibleName / AccessibleDescription get a name, role, value and
+ * checked state through Dynamic Annotation (IAccPropServices of oleacc, created through COM - no import library):
+ * the MSAA proxy of UI Automation reports them (Narrator, NVDA, JAWS, test tools). Declared here so no oleacc.h /
+ * -loleacc is needed by the toolchains that compile radforms (MinGW gcc, Go cgo, Rust cc). */
+typedef struct RfAccProps RfAccProps;
+typedef struct RfAccPropsVtbl {
+    HRESULT (STDMETHODCALLTYPE *QueryInterface)(RfAccProps *, REFIID, void **);
+    ULONG (STDMETHODCALLTYPE *AddRef)(RfAccProps *);
+    ULONG (STDMETHODCALLTYPE *Release)(RfAccProps *);
+    void *SetPropValue, *SetPropServer, *ClearProps;
+    HRESULT (STDMETHODCALLTYPE *SetHwndProp)(RfAccProps *, HWND, DWORD, DWORD, GUID, VARIANT);
+    HRESULT (STDMETHODCALLTYPE *SetHwndPropStr)(RfAccProps *, HWND, DWORD, DWORD, GUID, LPCWSTR);
+    void *SetHwndPropServer;
+    HRESULT (STDMETHODCALLTYPE *ClearHwndProps)(RfAccProps *, HWND, DWORD, DWORD, const GUID *, int);
+} RfAccPropsVtbl;
+struct RfAccProps { const RfAccPropsVtbl *lpVtbl; };
+
+static const GUID RF_CLSID_AccPropServices = {0xb5f8350b, 0x0548, 0x48b1, {0xa6, 0xee, 0x88, 0xbd, 0x00, 0xb4, 0xa5, 0xe7}};
+static const GUID RF_IID_IAccPropServices = {0x6e26e776, 0x04f0, 0x495d, {0x80, 0xe4, 0x33, 0x30, 0x35, 0x2e, 0x31, 0x69}};
+static const GUID RF_PROPID_NAME = {0x608d3df8, 0x8128, 0x4aa7, {0xa4, 0x28, 0xf5, 0x5e, 0x49, 0x26, 0x72, 0x91}};
+static const GUID RF_PROPID_VALUE = {0x123fe443, 0x211a, 0x4615, {0x95, 0x27, 0xc4, 0x5a, 0x7e, 0x93, 0x71, 0x7a}};
+static const GUID RF_PROPID_DESCRIPTION = {0x4d48dfe4, 0xbd3f, 0x491f, {0xa6, 0x48, 0x49, 0x2d, 0x6f, 0x20, 0xc5, 0x88}};
+static const GUID RF_PROPID_ROLE = {0xcb905ff2, 0x7bd1, 0x4c05, {0xb3, 0xc8, 0xe6, 0xc2, 0x41, 0x36, 0x4d, 0x70}};
+static const GUID RF_PROPID_STATE = {0xa8d4d5b0, 0x0a21, 0x42d0, {0xa5, 0xc0, 0x51, 0x4e, 0x98, 0x4f, 0x45, 0x7b}};
+#define RF_OBJID_CLIENT ((DWORD)0xFFFFFFFC)
+#define RF_ROLE_GROUPING 0x14
+#define RF_ROLE_PANE 0x10
+#define RF_ROLE_TOOLBAR 0x16
+#define RF_ROLE_STATUSBAR 0x17
+#define RF_ROLE_TABLE 0x18
+#define RF_ROLE_LIST 0x21
+#define RF_ROLE_OUTLINE 0x23
+#define RF_ROLE_TEXT 0x2A
+#define RF_ROLE_PUSHBUTTON 0x2B
+#define RF_ROLE_CHECKBUTTON 0x2C
+#define RF_ROLE_RADIOBUTTON 0x2D
+#define RF_ROLE_COMBOBOX 0x2E
+#define RF_ROLE_PROGRESSBAR 0x30
+#define RF_ROLE_SLIDER 0x33
+#define RF_ROLE_PAGETABLIST 0x3C
+#define RF_STATE_CHECKED 0x10
+#define RF_STATE_FOCUSABLE 0x100000
+
+static RfAccProps *rf_acc_services(void) {
+    static RfAccProps *svc;
+    static int tried;
+    if (!tried) {
+        tried = 1;
+        CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);          /* S_FALSE / changed mode: COM is there */
+        if (FAILED(CoCreateInstance(&RF_CLSID_AccPropServices, NULL, CLSCTX_INPROC_SERVER, &RF_IID_IAccPropServices,
+                                    (void **)&svc)))
+            svc = NULL;
+    }
+    return svc;
+}
+
+/* MSAA role of a registered class by its type name (0 = leave the default "client") */
+static int rf_acc_role(const char *t) {
+    static const struct { const char *name; int role; } map[] = {
+        {"RmButton", RF_ROLE_PUSHBUTTON}, {"RmTile", RF_ROLE_PUSHBUTTON}, {"ButtonX", RF_ROLE_PUSHBUTTON},
+        {"RmToggle", RF_ROLE_CHECKBUTTON}, {"RmCheckBox", RF_ROLE_CHECKBUTTON}, {"RmRadioButton", RF_ROLE_RADIOBUTTON},
+        {"RmProgress", RF_ROLE_PROGRESSBAR}, {"RmGauge", RF_ROLE_PROGRESSBAR}, {"RmSlider", RF_ROLE_SLIDER},
+        {"RmComboBox", RF_ROLE_COMBOBOX}, {"RmDatePicker", RF_ROLE_COMBOBOX}, {"RmTimePicker", RF_ROLE_COMBOBOX},
+        {"RmCalendar", RF_ROLE_TABLE}, {"RmGrid", RF_ROLE_TABLE}, {"RmListView", RF_ROLE_LIST},
+        {"RmTreeView", RF_ROLE_OUTLINE}, {"RmSideBar", RF_ROLE_OUTLINE}, {"RmRibbon", RF_ROLE_TOOLBAR},
+        {"RmStatusBar", RF_ROLE_STATUSBAR}, {"RmTabStrip", RF_ROLE_PAGETABLIST}, {"RmNavigationPane", RF_ROLE_PAGETABLIST},
+        {"RmTextBox", RF_ROLE_GROUPING}, {"RmGroupPanel", RF_ROLE_GROUPING}, {"RmPanel", RF_ROLE_PANE},
+        {"RmDockPanel", RF_ROLE_PANE}, {"RmDockWindow", RF_ROLE_PANE},
+    };
+    size_t i;
+    if (!t) return 0;
+    for (i = 0; i < sizeof map / sizeof map[0]; i++)
+        if (rf_ieq(map[i].name, t)) return map[i].role;
+    return 0;
+}
+
+static void rf_acc_str(RfAccProps *s, HWND h, GUID prop, const char *v) {
+    wchar_t *w = rf_wide(v ? v : "");
+    if (w) {
+        s->lpVtbl->SetHwndPropStr(s, h, RF_OBJID_CLIENT, 0, prop, w);
+        free(w);
+    }
+}
+
+static void rf_acc_int(RfAccProps *s, HWND h, GUID prop, int v) {
+    VARIANT var;
+    memset(&var, 0, sizeof var);              /* (VariantInit would need oleaut32) */
+    var.vt = VT_I4;
+    var.lVal = v;
+    s->lpVtbl->SetHwndProp(s, h, RF_OBJID_CLIENT, 0, prop, var);
+}
+
+/* (re)annotate a control: after it is built and when its AccessibleName / Text / Value / Checked change */
+static void rf_acc_apply(RfCtl *c) {
+    RfAccProps *s;
+    const char *nm, *ds, *text = "";
+    char *name = NULL;
+    int custom, role;
+    HWND inner = NULL;
+    if (!c || !c->hwnd) return;
+    custom = c->type == T_CUSTOM && c->cls && !(c->cls->flags & RF_CLASS_NONVISUAL);
+    nm = rf_kv_get(c, "AccessibleName");
+    ds = rf_kv_get(c, "AccessibleDescription");
+    if (!custom && !(nm && *nm) && !(ds && *ds)) return;     /* Windows names standard controls itself */
+    s = rf_acc_services();
+    if (!s) return;
+    role = custom ? rf_acc_role(c->cls->name) : 0;
+    if (nm && *nm) name = rf_strdup(nm);
+    else if (custom) {
+        /* an input's Text is its content (the value), not its name: its Watermark or control name */
+        int input = rf_ieq(c->cls->name, "RmTextBox") || role == RF_ROLE_COMBOBOX || role == RF_ROLE_SLIDER ||
+                    role == RF_ROLE_PROGRESSBAR;
+        text = rf_get(c->form, c, input ? "Watermark" : "Text");
+        name = rf_strdup(text && *text ? text : c->name);
+    }
+    if (name) rf_acc_str(s, c->hwnd, RF_PROPID_NAME, name);
+    if (ds && *ds) rf_acc_str(s, c->hwnd, RF_PROPID_DESCRIPTION, ds);
+    if (role) rf_acc_int(s, c->hwnd, RF_PROPID_ROLE, role);
+    if (role == RF_ROLE_SLIDER || role == RF_ROLE_PROGRESSBAR) rf_acc_str(s, c->hwnd, RF_PROPID_VALUE, rf_get(c->form, c, "Value"));
+    else if (role == RF_ROLE_COMBOBOX) rf_acc_str(s, c->hwnd, RF_PROPID_VALUE, rf_get(c->form, c, "Text"));
+    if (role == RF_ROLE_CHECKBUTTON || role == RF_ROLE_RADIOBUTTON) {
+        const char *ck = rf_get(c->form, c, "Checked");
+        rf_acc_int(s, c->hwnd, RF_PROPID_STATE, RF_STATE_FOCUSABLE | (ck && rf_bool(ck) ? RF_STATE_CHECKED : 0));
+    }
+    /* the edit inside a modern text box / combo box has the keyboard focus: it carries the name too */
+    if (custom) inner = FindWindowExW(c->hwnd, NULL, L"EDIT", NULL);
+    else if (c->inner) inner = c->inner;
+    if (inner && name) rf_acc_str(s, inner, RF_PROPID_NAME, name);
+    free(name);
+}
+
+static int rf_acc_relevant(const char *p) {
+    return rf_is(p, "AccessibleName") || rf_is(p, "AccessibleDescription") || rf_is(p, "Text") ||
+           rf_is(p, "Caption") || rf_is(p, "Value") || rf_is(p, "Checked") || rf_is(p, "SelectedIndex");
+}
+
 static int rf_align_of(const char *v) {
     if (!v) return 0;
     if (strstr(v, "Center") || strstr(v, "center")) return 1;
@@ -1026,7 +1179,11 @@ static void rf_create_window(RfCtl *c, int a, int b) {
         break;
     case T_LABEL:
     case T_LINK:
-        st |= SS_NOTIFY | SS_NOPREFIX | (c->align == 1 ? SS_CENTER : c->align == 2 ? SS_RIGHT : SS_LEFT);
+        /* a Label's "&Name:" is an access key (UseMnemonic, True by default in VB / WinForms): Alt+N moves the
+         * focus to the next control in tab order (IsDialogMessage); "&&" shows "&" */
+        v = rf_line_prop(a, b, "UseMnemonic");
+        st |= SS_NOTIFY | (c->type == T_LINK || (v && !rf_bool(v)) ? SS_NOPREFIX : 0) |
+              (c->align == 1 ? SS_CENTER : c->align == 2 ? SS_RIGHT : SS_LEFT);
         break;
     case T_PICTURE:
         st |= SS_NOTIFY | SS_BITMAP | SS_CENTERIMAGE | SS_REALSIZECONTROL;
@@ -1384,12 +1541,14 @@ static void rf_form_load(RfForm *f, int show) {
         if (!CNONVIS(c)) {
             rf_place_ctl(c);
             rf_apply_visible(c);
+            rf_acc_apply(c);
         }
         i = end - 1;
     }
     g_building--;
     if (f->toolbar) MoveWindow(f->toolbar, 0, 0, S(f, f->design_w), S(f, TOOLSTRIP_H), TRUE);
     rf_layout(f, NULL);
+    rf_fx_init(f);
     if (show) f->want_visible = 1;
     rf_post(f, f->name, "Load", "", show ? AFTER_SHOW : AFTER_NONE);
 }
@@ -1402,12 +1561,14 @@ static void rf_form_show_now(RfForm *f) {
     else ShowWindow(f->hwnd, SW_SHOW);
     SetForegroundWindow(f->hwnd);
     UpdateWindow(f->hwnd);
+    if (first) rf_fx_start(f);
 }
 
 static void rf_form_destroy(RfForm *f) {
     RfCtl *c, *n;
     int i, k = 0;
     if (!f->loaded) return;
+    rf_fx_free(f);
     for (i = 0; i < g_qn; i++) {         /* drop its queued events (but FormClosed) */
         Ev e = g_q[(g_qh + i) % 512];
         if (e.form != f || strcmp(e.ev, "FormClosed") == 0) g_q[(g_qh + k++) % 512] = e;
@@ -1636,9 +1797,7 @@ static void rf_on_command(RfCtl *c, int code) {
         }
         break;
     case T_LABEL: case T_LINK: case T_PICTURE:
-        if (code == STN_CLICKED) rf_post_c(c, "Click", "");
-        else if (code == STN_DBLCLK) rf_post_c(c, "DoubleClick", "");
-        break;
+        break;              /* Click / DoubleClick come from the mouse (rf_generic_click) */
     case T_TEXTBOX:
         if (code == EN_CHANGE) rf_post_c(c, "TextChanged", "");
         break;
@@ -1675,8 +1834,11 @@ static void rf_on_command(RfCtl *c, int code) {
 }
 
 static int rf_generic_click(int t) {
+    /* Label / LinkLabel / PictureBox too: the STATIC control sends STN_CLICKED with the button PRESS, which made
+     * Click come before MouseUp; from the mouse it is MouseDown, MouseUp, Click like a Button (and VB6) */
     return t == T_PANEL || t == T_GROUPBOX || t == T_TEXTBOX || t == T_LISTBOX || t == T_COMBOBOX ||
-           t == T_PROGRESS || t == T_TRACKBAR || t == T_UPDOWN || t == T_TAB || t == T_STATUS;
+           t == T_PROGRESS || t == T_TRACKBAR || t == T_UPDOWN || t == T_TAB || t == T_STATUS ||
+           t == T_LABEL || t == T_LINK || t == T_PICTURE;
 }
 
 /* WM_COMMAND / WM_NOTIFY / WM_CTLCOLOR* / scrolls of a form or of a container control */
@@ -1816,11 +1978,13 @@ static LRESULT CALLBACK rf_form_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
             GetClientRect(h, &r);
             MoveWindow(f->toolbar, 0, 0, r.right, S(f, TOOLSTRIP_H), TRUE);
         }
+        if (f->fx && w != SIZE_MINIMIZED) rf_fx_variants(f, 1);
         rf_layout(f, NULL);
         if (f->shown_once && w != SIZE_MINIMIZED) rf_post(f, f->name, "Resize", "", AFTER_NONE);
         return 0;
     case WM_TIMER: {
         RfCtl *c;
+        if (f->fx && rf_fx_timer(f, w)) return 0;
         for (c = f->ctls; c; c = c->next)
             if (c->type == T_TIMER && TIMER_BASE + (UINT_PTR)c->id == w) { rf_post_c(c, "Tick", ""); break; }
         return 0;
@@ -1867,6 +2031,17 @@ static void rf_pump_one(MSG *msg) {
     else if (f && msg->hwnd == f->hwnd &&
              (msg->message == WM_KEYDOWN || msg->message == WM_KEYUP || msg->message == WM_CHAR))
         rf_key_event(f, f->name, msg->message, msg->wParam);
+    /* Enter on a focused push button presses it (WinForms / dialogs); IsDialogMessage of a plain window sends IDOK */
+    if (f && msg->message == WM_KEYDOWN && msg->wParam == VK_RETURN && msg->hwnd != f->hwnd) {
+        wchar_t cls[16];
+        RfCtl *bc = (RfCtl *)GetPropW(msg->hwnd, L"radforms.ctl");
+        GetClassNameW(msg->hwnd, cls, 16);
+        if (bc && bc->hwnd == msg->hwnd && lstrcmpiW(cls, L"BUTTON") == 0 &&
+            ((GetWindowLongW(msg->hwnd, GWL_STYLE) & BS_TYPEMASK) <= BS_DEFPUSHBUTTON)) {
+            SendMessageW(msg->hwnd, BM_CLICK, 0, 0);
+            return;
+        }
+    }
     if (f && f->hwnd && IsDialogMessageW(f->hwnd, msg)) return;
     TranslateMessage(msg);
     DispatchMessageW(msg);
@@ -2051,6 +2226,15 @@ static void rf_set_form(RfForm *f, const char *p, const char *v) {
         f->cancel = rf_bool(v);
     } else if (rf_is(p, "Enabled")) {
         EnableWindow(f->hwnd, rf_bool(v));
+    } else if (rf_is(p, "Opacity")) {           /* layered window: animations fade the form */
+        double o = rad_num(v);
+        LONG_PTR ex = GetWindowLongPtrW(f->hwnd, GWL_EXSTYLE);
+        if (o > 1.0 && o <= 100.0 && strchr(v, '%')) o /= 100.0;
+        o = o < 0 ? 0 : o > 1 ? 1 : o;
+        f->opacity = o;
+        f->alpha_set = 1;
+        if (!(ex & WS_EX_LAYERED)) SetWindowLongPtrW(f->hwnd, GWL_EXSTYLE, ex | WS_EX_LAYERED);
+        SetLayeredWindowAttributes(f->hwnd, 0, (BYTE)floor(o * 255 + 0.5), LWA_ALPHA);
     }
     /* StartPosition, FormBorderStyle, ScaleMode, ... are used when the form is created */
 }
@@ -2078,6 +2262,11 @@ static const char *rf_get_form(RfForm *f, const char *p) {
     if (rf_is(p, "hWnd")) return rf_istr((long long)(INT_PTR)f->hwnd);
     if (rf_is(p, "Cancel")) return rf_tf(f->cancel);
     if (rf_is(p, "Theme")) return g_theme ? g_theme->name : "Light";
+    if (rf_is(p, "Opacity")) return rad_str(f->alpha_set ? f->opacity : 1.0);
+    if (f->fx && (rf_is(p, "CurrentSizes") || rf_is(p, "CurrentState"))) {
+        int h;
+        return rf_fx_call(f, NULL, p, "", &h);
+    }
     return "";
 }
 
@@ -2122,7 +2311,21 @@ static void rf_set_items(RfCtl *c, const char *v) {
     c->last_sel = -1;
 }
 
+static void rf_set_one(RfForm *f, RfCtl *c, const char *p, const char *v);
+
 static void rf_set(RfForm *f, RfCtl *c, const char *p, const char *v) {
+    if (f && f->fx && rf_fx_set_hook(f, c, p, v)) return;      /* "On show" / "On hide" animations */
+    if (c && (rf_is(p, "AccessibleName") || rf_is(p, "AccessibleDescription"))) {
+        rf_kv_set(c, p, v ? v : "");
+        if (!g_building) rf_acc_apply(c);
+        return;
+    }
+    rf_set_one(f, c, p, v);
+    if (c && !g_building && c->hwnd && c->type == T_CUSTOM && rf_acc_relevant(p)) rf_acc_apply(c);
+    if (f && f->fx) rf_fx_after_set(f, c, p, v);
+}
+
+static void rf_set_one(RfForm *f, RfCtl *c, const char *p, const char *v) {
     if (!v) v = "";
     if (!c) { rf_set_form(f, p, v); return; }
     if (c->type == T_CUSTOM) {
@@ -2718,6 +2921,11 @@ static const char *rf_arg_n(const char *args, int n) {     /* field n of a \t se
 }
 
 static const char *rf_call_form(RfForm *f, const char *m, const char *args) {
+    {
+        int handled;
+        const char *r = rf_fx_call(f, NULL, m, args, &handled);
+        if (handled) return r;
+    }
     if (rf_is(m, "Show")) {
         if (rf_int(rf_arg_n(args, 0)) == 1) rad_show_modal(f->name);
         else rf_form_load(f, 1);
@@ -2748,6 +2956,11 @@ static const char *rf_call_form(RfForm *f, const char *m, const char *args) {
 static const char *rf_call(RfForm *f, RfCtl *c, const char *m, const char *args) {
     const char *a0 = rf_arg_n(args, 0);
     if (!c) return rf_call_form(f, m, args);
+    if (rf_is(m, "GoToState")) {
+        int handled;
+        const char *r = rf_fx_call(f, c, m, args, &handled);
+        if (handled) return r;
+    }
     if (c->type == T_CUSTOM && c->cls->invoke) {
         const char *r = c->cls->invoke((rf_handle)c, c->state, m, args);
         if (r) return r;
@@ -2970,7 +3183,51 @@ const char *rad_str(double x) {
 
 /* ------------------------------------------------------------------ protocol in process */
 static char g_reply[1];
+static const char *rf_command(const char *line, int trim);
+
+/* "ESC <command>" (radide/runtimes/bridge.py): \\ \n \r escaped in the values (multi-line text); the answer is
+   escaped the same way */
+static char *rf_unesc(const char *s) {
+    char *b = rf_buf(strlen(s) + 1), *o = b;
+    while (*s) {
+        if (s[0] == '\\' && (s[1] == '\\' || s[1] == 'n' || s[1] == 'r')) {
+            *o++ = s[1] == 'n' ? '\n' : (s[1] == 'r' ? '\r' : '\\');
+            s += 2;
+        } else {
+            *o++ = *s++;
+        }
+    }
+    *o = 0;
+    return b;
+}
+
+static const char *rf_esc(const char *s) {
+    char *b = rf_buf(2 * strlen(s) + 1), *o = b;
+    for (; *s; s++) {
+        if (*s == '\\') { *o++ = '\\'; *o++ = '\\'; }
+        else if (*s == '\n') { *o++ = '\\'; *o++ = 'n'; }
+        else if (*s == '\r') { *o++ = '\\'; *o++ = 'r'; }
+        else *o++ = *s;
+    }
+    *o = 0;
+    return b;
+}
+
 const char *rad_command(const char *line) {
+    if (line && strncmp(line, "ESC ", 4) == 0) {
+        char *raw = rf_buf(strlen(line) + 1);
+        const char *r;
+        size_t k;
+        strcpy(raw, line + 4);
+        k = strlen(raw);
+        while (k && (raw[k - 1] == '\n' || raw[k - 1] == '\r')) raw[--k] = 0;
+        r = rf_command(rf_unesc(raw), 0);
+        return r ? rf_esc(r) : NULL;
+    }
+    return rf_command(line, 1);
+}
+
+static const char *rf_command(const char *line, int trim) {
     char cmd[16], *rest, *copy, *a, *b;
     size_t n = 0;
     if (!line) return NULL;
@@ -2978,7 +3235,7 @@ const char *rad_command(const char *line) {
     cmd[n] = 0;
     copy = rf_buf(strlen(line) + 1);
     strcpy(copy, line);
-    { size_t k = strlen(copy); while (k && (copy[k - 1] == '\n' || copy[k - 1] == '\r')) copy[--k] = 0; }
+    if (trim) { size_t k = strlen(copy); while (k && (copy[k - 1] == '\n' || copy[k - 1] == '\r')) copy[--k] = 0; }
     rest = copy + n + (copy[n] == ' ');
     if (rf_ieq(cmd, "DONE")) { rad_done(); return NULL; }
     if (rf_ieq(cmd, "END")) { rad_end(); return NULL; }
@@ -3547,6 +3804,7 @@ rf_handle rf_create(rf_handle parent, const char *type, const char *name, int x,
         rf_create_window(c, 0, 0);
         rf_place_ctl(c);
         rf_apply_visible(c);
+        rf_acc_apply(c);
     } else if (c->type == T_CUSTOM && c->cls->create) {
         c->cls->create((rf_handle)c, &c->state);
     }
@@ -3592,6 +3850,10 @@ void rf_quit(void) { rad_end(); }
 void rf_raise(rf_handle h, const char *event, const char *args) {
     RfCtl *c = HC(h);
     RfForm *f = HF(h);
+    /* the user changed a registered control (toggle, slider, text ...): screen readers see the new state */
+    if (c && event && (rf_is(event, "CheckedChanged") || rf_is(event, "ValueChanged") || rf_is(event, "TextChanged") ||
+                       rf_is(event, "SelectedIndexChanged")))
+        rf_acc_apply(c);
     if (c) rf_post(c->form, c->name, event, args ? args : "", AFTER_NONE);
     else if (f) rf_post(f, f->name, event, args ? args : "", AFTER_NONE);
 }
@@ -3983,3 +4245,6 @@ void rf_draw_image(const rf_paint *p, const char *path, int x, int y, int w, int
     }
     gp_dispose(img);
 }
+
+/* ================================================================== animations, visual states, layout variants */
+#include "radforms_motion.inc"

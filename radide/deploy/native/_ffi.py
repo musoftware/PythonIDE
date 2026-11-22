@@ -39,8 +39,9 @@ def mingw(log=print) -> dict[str, str]:
 
 
 def tool_env(bindir: str | Path, base: dict | None = None) -> dict:
-    env = dict(base or os.environ)
-    env["PATH"] = str(bindir) + os.pathsep + env.get("PATH", "")
+    from ...paths import ansi_env, ansi_safe
+    env = ansi_env(base or os.environ)          # TEMP in an Arabic user folder: gcc "can't create ...?????.o"
+    env["PATH"] = ansi_safe(bindir) + os.pathsep + env.get("PATH", "")
     return env
 
 

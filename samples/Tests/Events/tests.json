@@ -1,0 +1,4 @@
+{"defaults": {"tier": "toolchain:all", "area": "events", "timeout": 3600, "args": ["{scratch}"],
+              "note": "event semantics matrix: every desktop language x path (vbrun, FreeBASIC, Tk, radforms, WinForms, Swing, GUI Bridge); paths without their toolchain SKIP"},
+ "tests": {"test_events.py@vb6": {"args": ["{scratch}", "--only", "VB6,Python"], "tier": "toolchain:freebasic",
+                                  "timeout": 1200}}}

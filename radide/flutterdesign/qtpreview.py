@@ -1038,7 +1038,7 @@ def _visibility(node, c, env, ctx):
 
 
 @reg("IntrinsicHeight", "Form", "Hero", "Tooltip", "GestureDetector", "AnimatedSwitcher", "DefaultTabController",
-     "Expanded", "Flexible", "Positioned")
+     "Expanded", "Flexible", "Positioned", "Directionality")
 def _pass(node, c, env, ctx):
     return passthrough(slot(node, "child"), c, env, ctx)
 

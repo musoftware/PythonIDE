@@ -16,6 +16,7 @@ namespace RadIDE.Controls
     [DefaultEvent("ItemClick")]
     public class RmSideBar : RmControl
     {
+        protected override AccessibleRole RmRole { get { return AccessibleRole.Outline; } }
         string itemsSpec = "", selected = "";
         List<RmItem> items = new List<RmItem>();
         bool collapsed;
@@ -232,6 +233,7 @@ namespace RadIDE.Controls
     [DefaultEvent("ItemClick")]
     public class RmRibbon : RmControl
     {
+        protected override AccessibleRole RmRole { get { return AccessibleRole.ToolBar; } }
         string tabsSpec = "", quick = "", appText = "File", appMenu = "";
         List<RmItem> tabs = new List<RmItem>(), quickItems = new List<RmItem>(), appItems = new List<RmItem>();
         int selTab, expandedH;
@@ -630,6 +632,7 @@ namespace RadIDE.Controls
     [DefaultEvent("PanelClick")]
     public class RmStatusBar : RmControl
     {
+        protected override AccessibleRole RmRole { get { return AccessibleRole.StatusBar; } }
         string spec = "";
         List<RmItem> panels = new List<RmItem>();
         readonly List<Rectangle> rects = new List<Rectangle>();

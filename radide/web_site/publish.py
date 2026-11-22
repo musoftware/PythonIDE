@@ -32,7 +32,11 @@ DEFAULT_EXCLUDES = [".git", ".svn", ".hg", ".radide", ".radide_backup*", "projec
                     "__pycache__", "*.pyc", ".vscode", ".idea", "Thumbs.db", ".DS_Store", "*.bak", "*.tmp",
                     "~$*",
                     # runtime data of the site: never overwrite the live database / sessions on the host
-                    "data/*.sqlite", "data/*.sqlite-*", "data/*.db", "data/sessions"]
+                    "data/*.sqlite", "data/*.sqlite-*", "data/*.db", "data/sessions",
+                    # ... also where the frameworks keep them: Laravel (database/database.sqlite, sessions),
+                    # Rails (storage/*.sqlite3), CodeIgniter (writable/*.db, writable/session)
+                    "database/*.sqlite", "database/*.sqlite-*", "storage/*.sqlite3", "storage/*.sqlite3-*",
+                    "storage/framework/sessions", "writable/*.db", "writable/session"]
 CACHE_DIR = ".radide/publish"
 
 

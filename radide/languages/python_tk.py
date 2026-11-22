@@ -758,11 +758,12 @@ class PythonTkPlugin(LanguagePlugin):
         # form events
         fe = used(None)
         L.append("")
-        for ev in ("Click", "DoubleClick", "MouseDown", "MouseUp", "MouseMove", "MouseWheel",
-                   "KeyDown", "KeyUp", "KeyPress"):
+        mouse_evs = [ev for ev in ("Click", "DoubleClick", "MouseDown", "MouseUp", "MouseMove", "MouseWheel")
+                     if ev in fe]
+        L += self.generic_bind_lines(client, mouse_evs, n, own=True)
+        for ev in ("KeyDown", "KeyUp", "KeyPress"):
             if ev in fe:
-                mouse = ev.startswith(("Mouse", "Click", "Double"))
-                L.append(self._bind_line(client if mouse else "self.root", ev, f"{n}_{ev}", own=mouse))
+                L.append(self._bind_line("self.root", ev, f"{n}_{ev}"))
         if "Resize" in fe:
             L.append(f"        self._bind(self.root, \"<Configure>\", \"{n}_Resize\", own=True)")
         if "Activated" in fe:
@@ -869,10 +870,24 @@ class PythonTkPlugin(LanguagePlugin):
         visit("")
         return out
 
+    @classmethod
+    def generic_bind_lines(cls, widget: str, events: list[str], name: str, own=False) -> list[str]:
+        """Bindings of the generic events of one widget, in an order that keeps VB / WinForms semantics.
+        Tk runs only the MOST SPECIFIC binding of a widget for an event: with Click on <ButtonRelease-1> a
+        MouseUp on <ButtonRelease> never ran for the left button. MouseUp is therefore also bound to
+        <ButtonRelease-1>, before Click: MouseDown, MouseUp, Click (the order of the VB6 help and of the native
+        runtimes); MouseDown / MouseUp come first in the list."""
+        first = [e for e in ("MouseDown", "MouseUp") if e in events]
+        out = [cls._bind_line(widget, e, f"{name}_{e}", own=own) for e in first]
+        if "MouseUp" in events and "Click" in events:
+            out.append(cls._bind_line(widget, "MouseUp", f"{name}_MouseUp", own=own, seq="<ButtonRelease-1>"))
+        out += [cls._bind_line(widget, e, f"{name}_{e}", own=own) for e in events if e not in first]
+        return out
+
     @staticmethod
-    def _bind_line(widget: str, ev: str, handler: str, own=False) -> str:
+    def _bind_line(widget: str, ev: str, handler: str, own=False, seq: str = "") -> str:
         kind = event_args(ev)
-        args = [widget, f"\"{TK_SEQ[ev]}\"", f"\"{handler}\""]
+        args = [widget, f"\"{seq or TK_SEQ[ev]}\"", f"\"{handler}\""]
         if kind:
             args.append(f"\"{kind}\"")
         if ev == "KeyPress":
@@ -921,9 +936,8 @@ class PythonTkPlugin(LanguagePlugin):
                                                       _font, _colors, ANCHOR, JUSTIFY, split_items,
                                                       split_rows, tree_paths))
         # generic events (bound only when a handler exists)
-        for e in sorted(used - native):
-            if e in TK_SEQ:
-                out.append(self._bind_line(f"self.{n}", e, f"{n}_{e}").strip())
+        out += [ln.strip() for ln in self.generic_bind_lines(f"self.{n}", [e for e in sorted(used - native)
+                                                                          if e in TK_SEQ], n)]
         if p.get("ToolTip"):
             out.append(f"_ToolTip(self.{n}, {p['ToolTip']!r})")
         if not p["Enabled"] and t in ("TabControl", "TreeView", "ListView", "DataGridView", "DateTimePicker",

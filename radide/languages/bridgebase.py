@@ -47,7 +47,8 @@ def find_in_toolchains(subdirs: list[str], names: list[str]) -> str:
             for ext in exts:
                 p = d / (n + ext)
                 if p.is_file():
-                    return str(p)
+                    from ..paths import ansi_safe   # an Arabic user name on an English Windows: 8.3 name
+                    return ansi_safe(p)
     return ""
 
 
@@ -153,8 +154,9 @@ class BridgeLanguagePlugin(LanguagePlugin):
         if build:
             args += ["--build", build]
         args += ["--"] + self.run_command(folder, project)
-        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
-                   RAD_HANDLERS=",".join(self.handlers_in_project(folder, project)))
+        from ..paths import ansi_env              # the build step runs ANSI tools (gcc ...): TEMP they can open
+        env = ansi_env(dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
+                            RAD_HANDLERS=",".join(self.handlers_in_project(folder, project))))
         return RunSpec(sys.executable, args, folder, env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:

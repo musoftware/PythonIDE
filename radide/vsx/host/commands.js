@@ -332,6 +332,10 @@ class BuiltinCommands {
         if (task) await this.host.executeTask(null, task);
         return undefined;
       },
+      // RAD IDE's Command Palette ("task "): the tasks of every task provider, [{name, source}]
+      '_radide.listTasks': async () => {
+        try { return (await this.host.tasksSvc.fetch()).map((t) => ({ name: t.name, source: t.source || '' })); } catch (_) { return []; }
+      },
       'workbench.action.tasks.reRunTask': async () => {
         const last = this.host.tasksSvc.last;
         if (last) await this.host.executeTask(last.ext, last.task);

@@ -1,0 +1,29 @@
+{
+ "base": "rich",
+ "sig": "inv:TabPage inside the page list:drag",
+ "detail": "after step 1 {'op': 'drag', 'r': [0.230056, 0.779995, 0.238248, 0.857685, 0.61092, 0.957092]}: TabPage inside the page list: grpInner.TabPage = 3, 3 pages",
+ "ops": [
+  {
+   "op": "pages",
+   "r": [
+    0.572798,
+    0.963699,
+    0.145863,
+    0.967154,
+    0.332494,
+    0.011365
+   ]
+  },
+  {
+   "op": "drag",
+   "r": [
+    0.230056,
+    0.779995,
+    0.238248,
+    0.857685,
+    0.61092,
+    0.957092
+   ]
+  }
+ ]
+}

@@ -19,11 +19,14 @@ if not FROZEN and str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 _QT_KEYS = ("QT_QPA_PLATFORM", "QT_QPA_FONTDIR")
-_ORIG_ENV = {k: os.environ.get(k) for k in _QT_KEYS}
+# what the programs under test get back: never "offscreen" (also when the shell running the test exported it,
+# a Qt program - Python Qt, RingQt - would then run without any real window)
+_ORIG_ENV = {k: os.environ.get(k) for k in _QT_KEYS if os.environ.get(k) and os.environ.get(k) != "offscreen"
+             and not (k == "QT_QPA_FONTDIR" and os.environ.get("QT_QPA_PLATFORM") == "offscreen")}
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ["QT_QPA_FONTDIR"] = r"C:\Windows\Fonts"
 os.environ["RADIDE_NO_BROWSER"] = "1"
-ORG, APP = "RADIDE-TEST-QA", "RADIDE-TEST-QA"
+ORG = APP = os.environ.get("RADIDE_QA_ORG") or "RADIDE-TEST-QA"   # parallel runs: own QSettings org
 
 try:
     import psutil  # noqa: E402
@@ -155,6 +158,25 @@ def child_env(env: dict | None) -> dict:
     return e
 
 
+def program_env_begin() -> dict:
+    """Inside the offscreen IDE test: os.environ as the user's programs should see it (the IDE passes its own
+    environment to the programs it starts). Returns what program_env_end() restores."""
+    saved = {k: os.environ.get(k) for k in _QT_KEYS}
+    for k in _QT_KEYS:
+        os.environ.pop(k, None)
+        if _ORIG_ENV.get(k):
+            os.environ[k] = _ORIG_ENV[k]
+    return saved
+
+
+def program_env_end(saved: dict) -> None:
+    for k, v in saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
 class Started:
     """A process this script started (stdout/stderr collected in a thread)."""
 
@@ -274,6 +296,39 @@ HWND_TOPMOST, HWND_NOTOPMOST = wt.HWND(-1), wt.HWND(-2)
 SWP_KEEP = 0x0001 | 0x0002 | 0x0010 | 0x4000
 
 
+def awt_click(h, x, y) -> None:
+    """A click for a Java (AWT / Swing) window - SunAwtFrame / SunAwtDialog. AWT does not take the position from
+    the lParam of a sent mouse message (it uses the real cursor position) and takes the button state from
+    GetKeyState: a sent click lands wherever the real mouse is and a press without VK_LBUTTON down is treated as a
+    drag of another button (no lightweight target - the JButton never sees it). So: messages posted with *screen*
+    coordinates (what AWT's queue processing reads), our input attached to the window's thread with VK_LBUTTON
+    marked down while the press is handled."""
+    pt = wt.POINT(int(x), int(y))
+    user32.ClientToScreen(h, ctypes.byref(pt))
+    tid = user32.GetWindowThreadProcessId(h, None)
+    me = kernel32.GetCurrentThreadId()
+    attached = bool(user32.AttachThreadInput(me, tid, True))
+    ks = (ctypes.c_ubyte * 256)()
+
+    def lbutton(down):
+        if attached:
+            user32.GetKeyboardState(ks)
+            ks[1] = 0x80 if down else 0
+            user32.SetKeyboardState(ks)
+    try:
+        user32.PostMessageW(h, WM_MOUSEMOVE, 0, _lparam(pt.x, pt.y))
+        time.sleep(0.15)
+        lbutton(True)
+        user32.PostMessageW(h, WM_LBUTTONDOWN, 1, _lparam(pt.x, pt.y))
+        time.sleep(0.3)                 # handled while VK_LBUTTON is down
+        lbutton(False)
+        user32.PostMessageW(h, WM_LBUTTONUP, 0, _lparam(pt.x, pt.y))
+        time.sleep(0.3)
+    finally:
+        if attached:
+            user32.AttachThreadInput(me, tid, False)
+
+
 def post_click(h, x, y, form=None):
     """Mouse move + press + release sent to one window of the program (no real input, no screen capture).
 
@@ -372,6 +427,9 @@ def click_button(form, text="Button1", design=(20, 20, 75, 23)) -> str:
         user32.ScreenToClient(child, ctypes.byref(sp))
         target, pt = child, sp
     note = ensure_uncovered(form, target, pt.x, pt.y)
+    if class_name(target).startswith("SunAwt"):         # Java Swing (native publish): see awt_click
+        awt_click(target, pt.x, pt.y)
+        return f"at ({pt.x},{pt.y}) of {class_name(target)} (AWT click){note}"
     post_click(target, pt.x, pt.y, form)
     return f"at ({pt.x},{pt.y}) of {class_name(target)}{note}"
 

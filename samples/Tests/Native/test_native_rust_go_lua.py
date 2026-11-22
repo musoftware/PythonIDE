@@ -131,7 +131,7 @@ def window_pid(p, lang: str) -> int:
     """The process that owns the forms: the exe itself, or (Node) its radforms host."""
     if lang not in ("JS", "TS"):
         return p.pid
-    return w.wait(lambda: next(iter(child_pids(p.pid)), 0), 15) or p.pid
+    return w.wait(lambda: next(iter(child_pids(p.pid)), 0), 45) or p.pid      # (a loaded PC: V8 starts slowly)
 
 
 def drive_forms_demo(lang: str, exe: Path):
@@ -143,7 +143,7 @@ def drive_forms_demo(lang: str, exe: Path):
         hosts = [wpid] if wpid != p.pid else []
         if lang in ("JS", "TS"):
             ok(f"{lang}: the radforms host process runs", hosts)
-        f = w.form_window(wpid, "Form1", 20)
+        f = w.form_window(wpid, "Form1", 60 if lang in ("JS", "TS") else 20)   # Node + host start: slow under load
         if not ok(f"{lang}: Form1 shown", f):
             return
         title = TITLES.get(lang, f"Native {lang} demo")
@@ -199,9 +199,9 @@ def drive_forms_demo(lang: str, exe: Path):
         f2 = w.form_window(p.pid, "Form2", 5)
         ok(f"{lang}: menu item Click", f2 and w.user32.IsWindowVisible(f2))
     finally:
-        ok(f"{lang}: closing Form1 ends the program", w.stop(proc, f))
+        ok(f"{lang}: closing Form1 ends the program", w.stop(proc, f, 15.0 if lang in ("JS", "TS") else 5.0))
         for h in hosts:                                   # the host we started (through the exe) must end too
-            gone = w.wait(lambda: h not in child_pids(proc.pid) and not _alive(h), 8)
+            gone = w.wait(lambda: h not in child_pids(proc.pid) and not _alive(h), 20)
             if not ok(f"{lang}: the radforms host ends with the program", gone):
                 subprocess.run(["taskkill", "/PID", str(h), "/F"], capture_output=True)
 

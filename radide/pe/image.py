@@ -99,6 +99,12 @@ class PEImage:
 
     # ================================================================ headers
     def parse(self) -> None:
+        try:
+            self._parse()
+        except struct.error as e:                  # a header / section table cut off by the end of the file
+            raise PEError(f"Truncated or corrupted PE headers ({e}).") from None
+
+    def _parse(self) -> None:
         d = self.data
         if len(d) < 0x40 or d[:2] != b"MZ":
             raise PEError("Not a Windows program (no MZ header).")
@@ -159,8 +165,8 @@ class PEImage:
 
     # ================================================================ directories
     def directory(self, i: int) -> tuple[int, int]:
-        if i >= self.ndirs:
-            return 0, 0
+        if i >= self.ndirs or self.dir_off + 8 * i + 8 > len(self.data):
+            return 0, 0                            # (a truncated file: the directory is not there)
         return struct.unpack_from("<II", self.data, self.dir_off + 8 * i)
 
     def set_directory(self, i: int, rva: int, size: int) -> None:
@@ -211,6 +217,8 @@ class PEImage:
     # ================================================================ reading / writing
     def read(self, rva: int, n: int) -> bytes:
         out = bytearray()
+        if rva < 0 or n > max(len(self.data), self.size_of_image) + 0x1000:
+            raise PEError(f"RVA 0x{rva:X} / size {n} is outside the image.")
         while n > 0:
             off = self.rva_to_off(rva)
             s = self.section_of(rva)
@@ -222,9 +230,10 @@ class PEImage:
             else:
                 limit = (s.raw_ptr + s.raw_size) if s else self.size_of_headers
                 take = max(1, min(n, limit - off))
-                out += self.data[off:off + take]
-                if off + take > len(self.data):
-                    out += b"\0" * (off + take - len(self.data))
+                chunk = self.data[off:off + take] if off >= 0 else b""
+                out += chunk
+                if len(chunk) < take:              # past the end of a truncated file: zeros
+                    out += b"\0" * (take - len(chunk))
             rva += take
             n -= take
         return bytes(out)
@@ -515,6 +524,8 @@ class PEImage:
             return
         for i in range(size // 28):
             p = off + 28 * i + 24
+            if p + 4 > len(self.data):          # (a debug directory cut off by the end of the file)
+                break
             ptr = struct.unpack_from("<I", self.data, p)[0]
             if ptr >= after:
                 struct.pack_into("<I", self.data, p, ptr + delta)

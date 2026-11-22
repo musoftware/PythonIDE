@@ -206,7 +206,8 @@ def load_project_info(path: Path) -> PascalProjectInfo:
 
 def state_dir(project_file: Path) -> Path:
     """IDE-only state of a foreign project, outside the user's folder."""
-    base = Path(os.environ.get("APPDATA") or Path.home()) / "RADIDE" / "foreign"
+    from ..paths import roaming_dir          # <install>\settings for a portable build
+    base = roaming_dir() / "foreign"
     h = hashlib.sha1(os.path.normcase(str(Path(project_file).resolve())).encode("utf-8")).hexdigest()[:16]
     d = base / h
     d.mkdir(parents=True, exist_ok=True)

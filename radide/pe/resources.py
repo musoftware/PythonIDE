@@ -16,8 +16,28 @@ Codecs (bytes <-> editable model, all round-trip):
 """
 from __future__ import annotations
 
+import functools
 import struct
 from dataclasses import dataclass, field
+
+
+NUL = chr(0)
+
+
+class ResourceFormatError(ValueError):
+    """A resource blob (dialog, menu, string table, version ...) is truncated or corrupted."""
+
+
+def _malformed(fn):
+    """Truncated / corrupted resource data raises ResourceFormatError (a ValueError) instead of a bare
+    struct.error / IndexError / RecursionError from deep inside the parser."""
+    @functools.wraps(fn)
+    def wrapper(*a, **k):
+        try:
+            return fn(*a, **k)
+        except (struct.error, IndexError, OverflowError, RecursionError, UnicodeError) as e:
+            raise ResourceFormatError(f"{fn.__name__}: corrupted resource data ({type(e).__name__}: {e})") from None
+    return wrapper
 
 RT_CURSOR, RT_BITMAP, RT_ICON, RT_MENU, RT_DIALOG, RT_STRING, RT_FONTDIR, RT_FONT = 1, 2, 3, 4, 5, 6, 7, 8
 RT_ACCELERATOR, RT_RCDATA, RT_MESSAGETABLE, RT_GROUP_CURSOR, RT_GROUP_ICON = 9, 10, 11, 12, 14
@@ -91,6 +111,7 @@ def _rd_name(img, base: int, off: int) -> str:
     return img.read(base + off + 2, 2 * n).decode("utf-16-le", "replace")
 
 
+@_malformed
 def read_tree(img) -> list[ResEntry]:
     """Every leaf of the resource directory (type -> name -> language)."""
     from .image import DIR_RESOURCE
@@ -134,6 +155,7 @@ def _sort_key(k):
     return (0, k.upper(), k) if isinstance(k, str) else (1, "", k)
 
 
+@_malformed
 def build_tree(entries: list[ResEntry], base_rva: int) -> bytes:
     """Serialize resources into a .rsrc section placed at *base_rva* (data RVAs depend on it)."""
     tree: dict = {}
@@ -351,6 +373,7 @@ class Dialog:
         return round(pt * 0.75), round(pt * 1.6)
 
 
+@_malformed
 def parse_dialog(data: bytes) -> Dialog:
     r = Reader(data)
     ver, sig = struct.unpack_from("<HH", data, 0)
@@ -395,6 +418,7 @@ def parse_dialog(data: bytes) -> Dialog:
     return d
 
 
+@_malformed
 def build_dialog(d: Dialog) -> bytes:
     b = bytearray()
     n = len(d.controls)
@@ -458,6 +482,7 @@ class Menu:
     help_id: int = 0
 
 
+@_malformed
 def parse_menu(data: bytes) -> Menu:
     ver, off = struct.unpack_from("<HH", data, 0)
     if ver == 1:
@@ -502,6 +527,7 @@ def parse_menu(data: bytes) -> Menu:
     return m
 
 
+@_malformed
 def build_menu(m: Menu) -> bytes:
     b = bytearray()
     if m.extended:
@@ -546,6 +572,7 @@ def menu_commands(items, path=()) -> list[tuple[int, str]]:
 
 
 # ============================================================================ string tables
+@_malformed
 def parse_string_block(data: bytes, block_id: int) -> dict[int, str]:
     out = {}
     r = Reader(data)
@@ -559,6 +586,7 @@ def parse_string_block(data: bytes, block_id: int) -> dict[int, str]:
     return out
 
 
+@_malformed
 def build_string_blocks(strings: dict[int, str]) -> dict[int, bytes]:
     """{block id: data} for {string id: text} (blocks of 16 consecutive ids)."""
     blocks: dict[int, dict[int, str]] = {}
@@ -605,6 +633,7 @@ VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc", 0x20: "S
 VK_BY_NAME = {v.upper(): k for k, v in VK_NAMES.items()}
 
 
+@_malformed
 def parse_accel(data: bytes) -> list[Accel]:
     out = []
     for i in range(len(data) // 8):
@@ -615,6 +644,7 @@ def parse_accel(data: bytes) -> list[Accel]:
     return out
 
 
+@_malformed
 def build_accel(items: list[Accel]) -> bytes:
     b = bytearray()
     for i, a in enumerate(items):
@@ -697,6 +727,7 @@ def _node(data: bytes, off: int):
     return key, typ, value, children
 
 
+@_malformed
 def parse_version(data: bytes) -> VersionInfo:
     key, _t, value, children = _node(data, 0)
     v = VersionInfo()
@@ -711,7 +742,9 @@ def parse_version(data: bytes) -> VersionInfo:
     for ckey, _ct, _cv, cch in children:
         if ckey == "StringFileInfo":
             for tkey, _tt, _tv, strings in cch:
-                v.strings[tkey] = {sk: sv for sk, _st, sv, _sc in strings}
+                v.strings[tkey] = {sk: sv if isinstance(sv, str) else  # a binary node where text belongs
+                                   bytes(sv).decode("utf-16-le", "replace").split(NUL, 1)[0]
+                                   for sk, _st, sv, _sc in strings}
         elif ckey == "VarFileInfo":
             for vkey, _vt, vval, _vc in cch:
                 if vkey == "Translation" and isinstance(vval, (bytes, bytearray)):
@@ -737,6 +770,7 @@ def _build_node(key: str, value, children: list[bytes], text: bool) -> bytes:
     return bytes(b)
 
 
+@_malformed
 def build_version(v: VersionInfo) -> bytes:
     fixed = b""
     if v.has_fixed:
@@ -768,6 +802,7 @@ def parse_version_string(s: str) -> tuple:
 
 
 # ============================================================================ icons / cursors
+@_malformed
 def group_entries(group: bytes) -> list[dict]:
     _r, typ, count = struct.unpack_from("<HHH", group, 0)
     out = []
@@ -785,6 +820,7 @@ def group_entries(group: bytes) -> list[dict]:
     return out
 
 
+@_malformed
 def group_to_file(group: bytes, images: dict[int, bytes], cursor: bool = False) -> bytes:
     """GROUP_ICON / GROUP_CURSOR + the ICON / CURSOR images -> .ico / .cur file bytes."""
     ents = [e for e in group_entries(group) if e["id"] in images]
@@ -804,6 +840,7 @@ def group_to_file(group: bytes, images: dict[int, bytes], cursor: bool = False) 
     return head + bytes(dir_b) + bytes(body)
 
 
+@_malformed
 def file_to_group(data: bytes, first_id: int, cursor: bool = False) -> tuple[bytes, dict[int, bytes]]:
     """.ico / .cur file -> (group data, {image id: image data}) with image ids from *first_id*."""
     _r, typ, count = struct.unpack_from("<HHH", data, 0)
@@ -828,6 +865,7 @@ def file_to_group(data: bytes, first_id: int, cursor: bool = False) -> tuple[byt
     return bytes(group), images
 
 
+@_malformed
 def dib_to_bmp(dib: bytes) -> bytes:
     hsize = struct.unpack_from("<I", dib, 0)[0]
     if hsize == 12:                                     # BITMAPCOREHEADER
@@ -862,12 +900,14 @@ class Toolbar:
     version: int = 1
 
 
+@_malformed
 def parse_toolbar(data: bytes) -> Toolbar:
     ver, w, h, n = struct.unpack_from("<HHHH", data, 0)
     ids = list(struct.unpack_from(f"<{n}H", data, 8)) if 8 + 2 * n <= len(data) else []
     return Toolbar(w, h, ids, ver)
 
 
+@_malformed
 def build_toolbar(t: Toolbar) -> bytes:
     return struct.pack("<HHHH", t.version, t.width, t.height, len(t.ids)) + struct.pack(f"<{len(t.ids)}H", *t.ids)
 
@@ -895,6 +935,7 @@ def _has_mbcs() -> bool:
         return False
 
 
+@_malformed
 def parse_dlginit(data: bytes) -> list[DlgInitItem]:
     out, p = [], 0
     while p + 2 <= len(data):
@@ -907,6 +948,7 @@ def parse_dlginit(data: bytes) -> list[DlgInitItem]:
     return out
 
 
+@_malformed
 def build_dlginit(items: list[DlgInitItem]) -> bytes:
     b = bytearray()
     for it in items:

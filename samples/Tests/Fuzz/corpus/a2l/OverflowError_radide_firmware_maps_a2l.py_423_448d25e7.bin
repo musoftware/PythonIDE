@@ -1,0 +1,36 @@
+T). */
+/begin PROJECT DEMO_ECU "Synthetic demo ECU"
+  /begin HEADER "test header"
+    VERSION "1.0"
+/end HEADER
+  /begin MODULE DEMO "demo calibration module"
+    /begin A2ML
+r[256]; }; };
+      /begin MEMORY_SEGMENT R8000 -1 -1 -1 -1 -1
+      /end MEMORY_SEGMENT
+   AB_VERB 2
+      0 "off"
+      1 "on"
+    /end COMPU_VTAB
+
+    /begin RECORD_LAYOUT RL_KF_UB "Bosch style map: nx ny X Y values"
+      NO_AXIS_PTS_X 1 UBYTE
+      NO_AXIS_PTS_Y 2 UBYTE
+      FNC_VALUES 3 UWORD ROW_DIR DIRECT
+      ALIGNMENT_WORD 2
+    /end RECORD_LAYOUT
+
+    /begin CHARACTERISTIC KFZW "ignition angle map" MAP 0x65536 RL_KF_UB 0 CM_ZW -48 143.25
+      FORMAT "%5.1"
+      /begin AXIS_DESCR STD_AXIS nmot CM_RPM 1e999 0 10200D_AXIS rl CM_LOAD 12 0 191.25
+      /end AXIS_DESCR
+      /begin IF_DATA ETK KP_BLOB 0x1100 160 /end IF_DATA
+    /end CHARACTERISTIC
+
+    /begin AXIS_PTS SNM16_X "speed breakpoints" 0x80001200 nmoER MSB_FIRST
+      PHYS_UNIT "%"
+    /end AXIS_PTS
+    /begin FUNCTION Ignition "ignition functions"
+    /end FUNCTION
+  /end MODULE
+/end PROJECT

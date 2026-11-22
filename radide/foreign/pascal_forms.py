@@ -21,6 +21,9 @@ from dataclasses import dataclass, field
 # =============================================================================== parser
 
 
+MAX_NESTING = 200           # objects inside objects (the Delphi / Lazarus designers never get near this)
+
+
 class DfmError(ValueError):
     pass
 
@@ -140,6 +143,11 @@ class _Parser:
         m = _HDR_RX.match(self.t, self.i)
         if not m:
             self.err("'object' expected")
+        depth, up = 0, parent
+        while up is not None:
+            depth, up = depth + 1, up.parent
+        if depth > MAX_NESTING:               # a corrupted file (real forms nest a few levels)
+            self.err(f"objects nested more than {MAX_NESTING} levels deep")
         start = m.start()
         line_start = self.t.rfind("\n", 0, start) + 1
         ind = self.t[line_start:start]
@@ -323,7 +331,10 @@ def parse_dfm(text: str) -> DObj:
     """Parse a text .dfm / .lfm (raises DfmError)."""
     p = _Parser(text)
     p.ws()
-    root = p.parse_object(0, None)
+    try:
+        root = p.parse_object(0, None)
+    except RecursionError:
+        raise DfmError("objects / values nested too deeply") from None
     root.seg_start = 0
     return root
 
@@ -1370,7 +1381,10 @@ def binary_dfm_to_text(data: bytes) -> str:
         raise DfmError("not a binary form file (TPF0 signature missing)")
     r = _BinReader(data, i + 4)
     out: list[str] = []
-    r.read_object(out, "")
+    try:
+        r.read_object(out, "")
+    except (IndexError, struct.error, OverflowError, RecursionError) as e:   # truncated / corrupted stream
+        raise DfmError(f"corrupted binary form file near offset {r.p} ({type(e).__name__})") from None
     return "\r\n".join(out) + "\r\n"
 
 

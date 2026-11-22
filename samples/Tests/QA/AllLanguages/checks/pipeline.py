@@ -148,7 +148,9 @@ def run_website(r: Result, p, folder: Path, args) -> None:
         last = ""
         # framework sites install their packages on the first start (npm install / bundle install / pip)
         slow = type(p).__name__ == "FrameworkPlugin" or callable(getattr(p, "backend", None))
-        end = time.time() + max(args.timeout, 600 if slow else 60)
+        # (Rails: rails new + bundle install + db:prepare + the first boot - many minutes on a loaded PC; the
+        # dev server answers 503 "Starting" with the last output meanwhile)
+        end = time.time() + max(args.timeout, (1500 if "rails" in getattr(p, "id", "") else 600) if slow else 60)
         while time.time() < end:
             try:
                 with urllib.request.urlopen(start, timeout=10) as resp:

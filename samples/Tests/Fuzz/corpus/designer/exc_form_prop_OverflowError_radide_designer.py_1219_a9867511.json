@@ -1,0 +1,43 @@
+{
+ "base": "rich",
+ "sig": "exc:form_prop:OverflowError@radide/designer.py:1219",
+ "detail": "step 2 {'op': 'form_prop', 'r': [0.681892, 0.787734, 0.590765, 0.563472, 0.388255, 0.275915], 'int': '99999999999', 'str': 'new\\nline'}\nTraceback (most recent call last):\n  File \"D:\\Projects\\1AOrganized\\PythonProjects\\SYSTEMs\\PythonIDE\\samples\\Tests\\Fuzz\\test_designer_model.py\", line 710, in run_episode\n    raise QT_ERRORS.pop(0)\n  File \"D:\\Projects\\1AOrganized\\PythonProjects\\SYSTEMs\\PythonIDE\\radide\\designer.py\", line 1353, in on_control_changed\n    self.layout_form()\n  File \"D:\\Projects\\1AOrganized\\PythonProjects\\SYSTEMs\\PythonIDE\\radide\\designer.py\", line 1219, in layout_form\n    self.frame.setGeometry(MARGIN, MARGIN, fw, fh)\nOverflowError: argument 4 overflowed: value must be in the range -2147483648 to 2147483647\n",
+ "ops": [
+  {
+   "op": "add",
+   "r": [
+    0.26102,
+    0.92468,
+    0.550078,
+    0.212718,
+    0.324955,
+    0.934646
+   ],
+   "type": "PictureBox"
+  },
+  {
+   "op": "drag",
+   "r": [
+    0.587929,
+    0.896038,
+    0.651127,
+    0.823065,
+    0.304292,
+    0.673882
+   ]
+  },
+  {
+   "op": "form_prop",
+   "r": [
+    0.681892,
+    0.787734,
+    0.590765,
+    0.563472,
+    0.388255,
+    0.275915
+   ],
+   "int": "99999999999",
+   "str": "new\nline"
+  }
+ ]
+}

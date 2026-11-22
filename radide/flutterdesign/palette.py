@@ -39,6 +39,7 @@ TYPE_ICONS = {
     "DefaultTabController": "tab", "Card": "credit_card", "ListTile": "list", "ExpansionTile": "expand_more",
     "Material": "layers", "Opacity": "opacity", "ClipRRect": "rounded_corner", "ClipOval": "circle",
     "Hero": "flight_takeoff", "DecoratedBox": "format_paint", "RotatedBox": "screen_rotation",
+    "Directionality": "format_textdirection_r_to_l",
     "AnimatedContainer": "animation", "AnimatedOpacity": "gradient", "AnimatedSwitcher": "swap_horiz",
     "CupertinoPageScaffold": "phone_iphone", "CupertinoNavigationBar": "web", "CupertinoButton": "smart_button",
     "CupertinoTextField": "input", "CupertinoSwitch": "toggle_on", "CupertinoSlider": "tune",

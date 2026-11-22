@@ -6,9 +6,10 @@ import keyword
 import shutil
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QIcon, QPixmap
-from PyQt6.QtWidgets import (QAbstractItemView, QColorDialog, QComboBox, QFileDialog,
+from PyQt6.QtWidgets import (QAbstractItemDelegate, QAbstractItemView, QApplication, QColorDialog, QComboBox,
+                             QFileDialog,
                              QFontComboBox, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
                              QPushButton,
                              QTableWidget, QTableWidgetItem, QTabWidget, QToolButton,
@@ -25,6 +26,93 @@ CATEGORY_ORDER = ["Appearance", "Behavior", "Data", "Design", "Layout", "Misc"]
 CATEGORY_BACK = "#E4E8EE"     # category rows (Tools > Options dark theme changes it)
 LABEL_ROLE = Qt.ItemDataRole.UserRole + 1       # a property row's name without the layout-size marker
 MARK_ROLE = Qt.ItemDataRole.UserRole + 2        # True while the row is drawn as "changed on this size"
+
+
+class _CellKeys(QObject):
+    """Esc in a value editor of the grid (combo box, "..." button) goes back to the grid row."""
+
+    def __init__(self, grid: "_Grid"):
+        super().__init__(grid)
+        self.grid = grid
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Type.KeyPress and ev.key() == Qt.Key.Key_Escape and \
+                not (isinstance(obj, QComboBox) and obj.view().isVisible()):
+            g = self.grid
+            for row in range(g.rowCount()):
+                if g.cellWidget(row, 1) is obj:
+                    g.setCurrentCell(row, 0)
+                    break
+            g.setFocus(Qt.FocusReason.OtherFocusReason)
+            return True
+        return False
+
+
+class _Grid(QTableWidget):
+    """The Properties / Events grid for the keyboard (screen reader users, no mouse): one Tab stop - Up / Down
+    move between rows, Tab / Shift+Tab leave the grid (a QTableWidget moved from cell to cell forever: a focus
+    trap), Enter / F2 edit the value of the row (or focus its editor: combo box, "..." button), Esc in an editor
+    returns to the row. Enter on a row also emits rowActivated (Events: write the handler)."""
+    rowActivated = pyqtSignal(int)
+
+    def __init__(self, rows: int, cols: int):
+        super().__init__(rows, cols)
+        self._keys = _CellKeys(self)
+
+    def setCellWidget(self, row: int, col: int, w) -> None:
+        super().setCellWidget(row, col, w)
+        if w is not None:
+            w.installEventFilter(self._keys)
+            name = self.item(row, 0)
+            if name is not None:        # a screen reader names the editor by its property
+                w.setAccessibleName(str(name.data(LABEL_ROLE) or name.text()))
+
+    def focusNextPrevChild(self, nxt: bool) -> bool:
+        if self.state() == QAbstractItemView.State.EditingState:
+            ed = QApplication.focusWidget()
+            if ed is not None and self.isAncestorOf(ed):
+                self.commitData(ed)
+                self.closeEditor(ed, QAbstractItemDelegate.EndEditHint.NoHint)
+        w = self
+        for _ in range(2000):
+            w = w.nextInFocusChain() if nxt else w.previousInFocusChain()
+            if w is None or w is self:
+                break
+            if self.isAncestorOf(w):
+                continue
+            if w.window() is self.window() and w.isVisible() and w.isEnabled() and \
+                    w.focusPolicy() & Qt.FocusPolicy.TabFocus and w.focusProxy() is None:
+                w.setFocus(Qt.FocusReason.TabFocusReason if nxt else Qt.FocusReason.BacktabFocusReason)
+                return True
+        return super().focusNextPrevChild(nxt)
+
+    def closeEditor(self, editor, hint) -> None:
+        # Tab in an open text editor (the delegate asks for the next cell) commits and leaves the grid too
+        H = QAbstractItemDelegate.EndEditHint
+        if hint in (H.EditNextItem, H.EditPreviousItem):
+            super().closeEditor(editor, H.NoHint)
+            self.focusNextPrevChild(hint == H.EditNextItem)
+            return
+        super().closeEditor(editor, hint)
+
+    def keyPressEvent(self, e) -> None:
+        k = e.key()
+        if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_F2) and \
+                self.state() != QAbstractItemView.State.EditingState and self.currentRow() >= 0:
+            row = self.currentRow()
+            if k != Qt.Key.Key_F2:
+                self.rowActivated.emit(row)
+            w = self.cellWidget(row, 1)
+            if w is not None and w.isEnabled():
+                w.setFocus(Qt.FocusReason.OtherFocusReason)
+                return
+            item = self.item(row, 1)
+            if item is not None and item.flags() & Qt.ItemFlag.ItemIsEditable and \
+                    self.editTriggers() != QAbstractItemView.EditTrigger.NoEditTriggers:
+                self.setCurrentItem(item)
+                self.editItem(item)
+            return
+        super().keyPressEvent(e)
 
 
 _GENERIC_HELP = {"color": "A colour: click the value to pick one ((default) = the system colour).",
@@ -106,6 +194,8 @@ class PropertiesPanel(QWidget):
         self.events = self._make_table(["Event", "Handler"])
         self.events.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.events.cellDoubleClicked.connect(self._on_event_dclick)
+        self.events.rowActivated.connect(                     # Enter = double-click: write the handler
+            lambda row: self.events.item(row, 0) is not None and self._on_event_dclick(row, 0))
         self.events.currentCellChanged.connect(self._on_event_cell)
         self.props.itemChanged.connect(self._on_item_changed)
         self.props.currentCellChanged.connect(self._on_current_cell)
@@ -129,7 +219,7 @@ class PropertiesPanel(QWidget):
 
     @staticmethod
     def _make_table(headers) -> QTableWidget:
-        t = QTableWidget(0, 2)
+        t = _Grid(0, 2)
         t.setHorizontalHeaderLabels(headers)
         t.verticalHeader().hide()
         t.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -551,7 +641,29 @@ class PropertiesPanel(QWidget):
                     item = QTableWidgetItem()
                     self.props.setItem(row, 1, item)
                 item.setText("" if blank else str(value))
+            self._a11y_row(row, d, name_item)
         self._updating = was
+
+    def _a11y_row(self, row: int, d, name_item) -> None:
+        """Screen readers read "<property>: <value>" on the row (Up / Down) and the help text as description."""
+        if name_item is None:
+            return
+        w = self.props.cellWidget(row, 1)
+        if isinstance(w, QComboBox):
+            value = w.currentText()
+        elif isinstance(w, QPushButton):
+            value = w.text().replace("▾", "").replace("...", "").strip()
+        elif w is not None:
+            value = ""
+        else:
+            it = self.props.item(row, 1)
+            value = it.text() if it is not None else ""
+        label = str(name_item.data(LABEL_ROLE) or name_item.text())
+        text = f"{label}: {value}" if value else label
+        if name_item.data(Qt.ItemDataRole.AccessibleTextRole) != text:
+            name_item.setData(Qt.ItemDataRole.AccessibleTextRole, text)
+        if d.help and name_item.data(Qt.ItemDataRole.AccessibleDescriptionRole) != d.help:
+            name_item.setData(Qt.ItemDataRole.AccessibleDescriptionRole, d.help)
 
     @staticmethod
     def _swatch(color: str):
@@ -608,13 +720,22 @@ class PropertiesPanel(QWidget):
         text = item.text()
         if d.kind == "int":
             try:
-                value = int(text)
+                from .components.proptypes import number_text     # "١٢٠", "120 " (Arabic locale typing)
+                value = int(number_text(text))
             except ValueError:
                 self._refresh_values()
                 return
             lo, hi = (d.meta or {}).get("min"), (d.meta or {}).get("max")     # component package limits
             if (lo is not None and value < lo) or (hi is not None and value > hi):
                 self.help.setText(f"<span style='color:#b00'>{d.name}: use a value from {lo} to {hi}.</span>")
+                self._refresh_values()
+                return
+            if not -2 ** 31 <= value < 2 ** 31:                 # Int32, like VB / WinForms (Qt overflowed)
+                self.help.setText(f"<span style='color:#b00'>{d.name}: the value is too large.</span>")
+                self._refresh_values()
+                return
+            if d.name in ("Width", "Height") and value < 0:     # (VS: "Property value is not valid")
+                self.help.setText(f"<span style='color:#b00'>{d.name}: a size cannot be negative.</span>")
                 self._refresh_values()
                 return
         elif d.kind in ("float", "padding"):       # component package kinds typed in the cell
@@ -651,8 +772,13 @@ class PropertiesPanel(QWidget):
         targets = [owner]
         if owner is not None and name != "Name":
             # every other selected control that has the property (also one still at its default value)
+            # - of the SAME kind: a ListBox's Items (text "a;b") must not become a MenuStrip's Items (a menu
+            # tree), which broke the menu bar painting
+            def kind_of(t):
+                return next((d.kind for d in CONTROL_TYPES[t].prop_defs() if d.name == name), None)
+            kind = kind_of(owner.type) if owner.type in CONTROL_TYPES else None
             targets += [c for c in self.doc.selection if c is not owner and c.type in CONTROL_TYPES and
-                        (name in c.props or any(d.name == name for d in CONTROL_TYPES[c.type].prop_defs()))]
+                        kind_of(c.type) == kind and (name in c.props or kind is not None)]
         if len(targets) > 1:
             if all(t.props.get(name) == value for t in targets):
                 return                          # nothing changes: no empty undo step

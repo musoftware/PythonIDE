@@ -192,13 +192,17 @@ def details(namespace: str, name: str, version: str | None = None, *, refresh: b
     return obj
 
 
-def all_versions(ext_id: str, *, refresh: bool = False, limit: int = 400) -> list[dict]:
-    """Every published entry of an extension (newest first; one entry per version and target platform)."""
+def all_versions(ext_id: str, *, refresh: bool = False, limit: int = 400, platform: str = "") -> list[dict]:
+    """Every published entry of an extension (newest first; one entry per version and target platform).
+    *platform*: only that target platform (+ universal) - the registry filters, so extensions with nightly
+    pre-releases for ten platforms (rust-analyzer, GitLens) still reach their stable versions."""
     out: list[dict] = []
     offset = 0
     while len(out) < limit:
-        q = urllib.parse.urlencode({"extensionId": ext_id, "includeAllVersions": "true",
-                                    "offset": offset, "size": 100})
+        params = {"extensionId": ext_id, "includeAllVersions": "true", "offset": offset, "size": 100}
+        if platform:
+            params["targetPlatform"] = platform
+        q = urllib.parse.urlencode(params)
         obj = get_json(f"{base_url()}/api/-/query?{q}", refresh=refresh, ttl=3600)
         batch = list(obj.get("extensions") or [])
         out.extend(batch)
@@ -221,6 +225,10 @@ def pick_version(ext_id: str, level: str | None = None, *, allow_prerelease: boo
     level = level or api_level()
     plat = target_platform()
     entries = [e for e in all_versions(ext_id, refresh=refresh) if _platform_ok(e, plat)]
+    if not version and not any(not (e.get("preRelease") or is_prerelease(e.get("version", ""))) for e in entries):
+        # only pre-releases among the newest entries (daily pre-release builds): look further, this platform only
+        more = [e for e in all_versions(ext_id, refresh=refresh, limit=3000, platform=plat) if _platform_ok(e, plat)]
+        entries = more or entries
     if version:
         entries = [e for e in entries if e.get("version") == version]
         entries.sort(key=lambda e: 0 if e.get("targetPlatform") == plat else 1)

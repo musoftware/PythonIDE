@@ -773,7 +773,19 @@ class AutoHide(QObject):
         st.hide()
         self.strips[edge] = st
         self._restyle_strip(st)
+        st.installEventFilter(self)         # a strip moved / resized later (style, font): the panel follows
         return st
+
+    def _settle(self):
+        """Apply the main window's pending layout now: hiding docks / showing a strip only posts a LayoutRequest,
+        and a panel placed from the old geometry would overlap the strip (or the layout would reflow under it)
+        when that request is handled later - on a busy machine that can be many milliseconds later."""
+        try:
+            lay = self.win.layout()
+            if lay is not None:
+                lay.activate()
+        except RuntimeError:
+            pass
 
     def _restyle_strip(self, st: Strip):
         t = _t()
@@ -806,6 +818,7 @@ class AutoHide(QObject):
                     st.acts.append(st.addWidget(tab))
                     st.tabs.append(tab)
             st.setVisible(bool(groups) and self._vs())
+        self._settle()
         self._sync_tabs()
 
     def _sync_tabs(self):
@@ -873,6 +886,7 @@ class AutoHide(QObject):
 
     def _panel_rect(self, g: Group) -> QRect:
         win, p = self.win, self.panel
+        self._settle()
         st = self.strips.get(g.edge)
         sg = st.geometry() if st is not None and st.isVisible() else QRect()
         c = win.centralWidget().geometry() if win.centralWidget() is not None else win.rect()
@@ -1045,6 +1059,10 @@ class AutoHide(QObject):
             elif et == QEvent.Type.MouseButtonPress and self._shown is not None:
                 if obj.window() is win and not self._inside(obj) and not isinstance(obj, StripTab):
                     self.hide_panel()
+            return False
+        if isinstance(obj, Strip):
+            if et in (QEvent.Type.Move, QEvent.Type.Resize) and self._shown is not None and self.panel.isVisible():
+                QTimer.singleShot(0, self._reposition)
             return False
         if isinstance(obj, QDockWidget):
             if et == QEvent.Type.Show and obj in self._recs and not self._internal:

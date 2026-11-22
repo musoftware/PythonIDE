@@ -98,6 +98,19 @@ KIND = {"snippet": 27, "keyword": 17, "function": 1, "method": 0, "class": 5, "v
         "module": 8, "control": 4, "event": 10, "param": 4, "instance": 4, "statement": 17}
 
 
+
+# fn(editor) called when the cursor / selection of a Monaco editor changes (radide/vsx/host_ide.py forwards it to
+# the extension host: window.onDidChangeTextEditorSelection, Claude Code's selection_changed)
+SELECTION_LISTENERS: list = []
+
+
+def _selection_changed(ed) -> None:
+    for fn in list(SELECTION_LISTENERS):
+        try:
+            fn(ed)
+        except Exception:  # noqa: BLE001 - a listener must never break the editor
+            pass
+
 class _Bridge(QObject):
     """Object published to JavaScript as `rad`."""
     def __init__(self, editor: "MonacoEditor"):
@@ -120,10 +133,12 @@ class _Bridge(QObject):
     @pyqtSlot(int, int)
     def jsCursor(self, line, col):
         self.ed._cursor = (line, col)
+        _selection_changed(self.ed)
 
     @pyqtSlot(int, int, int, int)
     def jsSelection(self, l1, c1, l2, c2):
         self.ed._selection = (l1, c1, l2, c2)
+        _selection_changed(self.ed)
 
     @pyqtSlot(int)
     def jsToggleBreakpoint(self, line):
@@ -442,6 +457,7 @@ class MonacoEditor(QWebEngineView):
         self._selection = (l1, c1, l2, c2)
         self._cursor = (l2, c2)
         self._js(f"radSetSelection({l1}, {c1}, {l2}, {c2});")
+        _selection_changed(self)
 
     def selectedText(self) -> str:
         l1, c1, l2, c2 = self._selection

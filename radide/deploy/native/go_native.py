@@ -290,7 +290,7 @@ def native_main(plugin, project) -> str:
 
 def build(folder, project, cfg, work, log):
     from ..build import BuildError
-    folder = Path(folder).resolve()
+    folder = Path(folder).absolute()     # not resolve(): a deep project builds through its short alias (paths.short_alias)
     plugin = _plugin()
     go = plugin.tool()
     if not go:

@@ -111,6 +111,11 @@ def install(ext_id: str, version: str | None = None, *, force: bool = False, dep
         return []
     entry = R.pick_version(ext_id, version=version)
     if entry is None and not version:
+        # VS Code installs the pre-release when an extension publishes nothing else (GitLens on Open VSX)
+        entry = R.pick_version(ext_id, allow_prerelease=True)
+        if entry is not None:
+            _log(log, f"{ext_id}: only pre-release versions fit - installing {entry.get('version')}")
+    if entry is None and not version:
         if force or dependency_of:
             entry = R.latest_entry(ext_id)
         else:

@@ -39,6 +39,14 @@ if (eval { require ExtUtils::Installed; 1 }) {
 """
 
 
+def _is_msys_perl(exe: str) -> bool:
+    """Git for Windows' / MSYS2's perl (usr\\bin\\perl.exe beside msys-2.0.dll), not a native Win32 perl."""
+    try:
+        return (Path(exe).resolve().parent / "msys-2.0.dll").exists()
+    except OSError:
+        return False
+
+
 def _beside(exe: str, name: str) -> str:
     """Executable *name* in the same folder as *exe* (perl.exe -> cpanm / cpan)."""
     if not exe or not Path(exe).is_absolute():
@@ -75,6 +83,19 @@ class PerlBridgePlugin(ScriptBridgePlugin):
         print printf say sprintf open close chomp chop split join map grep sort reverse length substr
         index lc uc lcfirst ucfirst abs int sqrt sin cos exp log rand srand time localtime sleep""".split()
     builtins = list(API)
+
+    def tool(self) -> str:
+        """A native Windows perl first: Git for Windows puts its MSYS perl on PATH, which cannot load the
+        debugger agent (Devel::RadDbg needs a Win32 perl) nor build CPAN modules. The MSYS perl is used only
+        when no native perl (PATH, the portable Strawberry Perl in toolchains\\strawberry, C:\\Strawberry...)
+        exists."""
+        p = super().tool()
+        if p and _is_msys_perl(p):
+            from .bridgebase import find_in_toolchains
+            native = find_in_toolchains(self.toolchain_bins, list(self.tool_names)) or next(
+                (h for h in self.tool_hints if Path(h).exists() and not _is_msys_perl(h)), "")
+            return native or p
+        return p
 
     @property
     def package_manager(self) -> PackageManager:

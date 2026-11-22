@@ -627,6 +627,7 @@ class AgentSession(QObject):
         for (path, line), cond in sorted(self.bps.items()):
             d = parse_bp(cond)
             lines.append("\t".join(_esc(x) for x in (norm_key(path, self.cwd), line, d["cond"], d["hit"], d["log"])))
+        lines.append("!exc\t" + ("1" if self.break_on_exception else "0"))     # agents: break on errors
         text = "\n".join(lines) + "\n"
         if self.ep is not None:
             tmp = self.ep.bpfile.with_suffix(".tmp")
@@ -642,7 +643,11 @@ class AgentSession(QObject):
         self._write_bps()
 
     def set_break_on_exception(self, on: bool):
-        self.break_on_exception = on           # errors are caught by the bridge runtime: not supported
+        # the bridge runtime catches every handler error; the agents stop where it is raised (Lua: in the
+        # xpcall message handler, Perl: $SIG{__DIE__})
+        self.break_on_exception = on
+        if self.ep is not None:
+            self._write_bps()
 
     # ------------------------------------------------------------ commands
     def _resume(self, c):

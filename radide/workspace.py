@@ -48,7 +48,32 @@ def create_project(folder: Path, name: str, language: str) -> Project:
     folder.mkdir(parents=True, exist_ok=True)
     project = Project(folder, name, language)
     create_form(project, "Form1")
+    write_lsp_manifest(folder)
     return project
+
+
+def write_lsp_manifest(folder, server: str | None = None) -> bool:
+    """rust-analyzer and csharp-ls answer nothing (no hover, definition, diagnostics) without Cargo.toml / a .csproj;
+    the GUI Bridge projects used to get theirs only on the first Run. Written when the project is created and when
+    its language server starts (radide/lsp.py). *server* = "rust" / "csharp" / None (both). True = written."""
+    try:
+        folder = Path(folder)
+        if not (folder / Project.FILE).is_file():
+            return False
+        project = Project.load(folder)
+        langs = {project.language, *(getattr(project, "form_languages", {}) or {}).values()}
+        if server in (None, "rust") and "rust-bridge" in langs and not (folder / "Cargo.toml").is_file():
+            from .languages.rust_bridge import init_manifest
+            init_manifest(folder)
+            return (folder / "Cargo.toml").is_file()
+        if server in (None, "csharp") and "csharp-bridge" in langs:
+            from .languages.csharp_bridge import CSPROJ, build_dir, ensure_build_dir
+            if not (build_dir(folder) / CSPROJ).is_file():
+                ensure_build_dir(folder)
+                return True
+    except Exception:  # noqa: BLE001 - never block creating / opening a project
+        return False
+    return False
 
 
 def add_module(project: Project, name: str, language: str | None = None, filename: str | None = None) -> Path:

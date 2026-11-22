@@ -15,6 +15,7 @@ from ...model import Form, Project
 # Blend / data features the native code generators do not translate (the bridge build keeps them)
 FORM_EXTRAS = {"states": "Visual States", "storyboards": "storyboards (animations)",
                "bindings": "data bindings", "datasources": "data sources (databases)"}
+MOTION_EXTRAS = ("states", "storyboards")      # played by runtimes with native_plan support (problems(motion=True))
 SKIP_DATA_DIRS = {"_build", "Publish", "libs"}
 
 
@@ -24,8 +25,11 @@ def load_forms(folder: Path, project: Project, lang: str) -> list[Form]:
 
 
 def problems(folder: Path, project: Project, lang: str, supported: set[str], toolkit: str,
-             code_exts: tuple[str, ...]) -> list[str]:
-    """Reasons the forms / project cannot be translated (an empty list = it can)."""
+             code_exts: tuple[str, ...], motion: bool = False) -> list[str]:
+    """Reasons the forms / project cannot be translated (an empty list = it can).
+
+    motion=True: the builder's runtime plays radide/motion/native_plan.py (animations, storyboards, visual
+    states, layout variants), so those are no reasons."""
     out: list[str] = []
     if project.kind != "app":
         out.append(f"the project is a {project.kind}, not a program")
@@ -52,6 +56,8 @@ def problems(folder: Path, project: Project, lang: str, supported: set[str], too
             out.append(f"{name}.form cannot be read: {e}")
             continue
         for key, what in FORM_EXTRAS.items():
+            if motion and key in MOTION_EXTRAS:
+                continue
             if form.extra.get(key):
                 out.append(f"{name}: {what} are not translated to {toolkit}")
         if str(form.props.get("ScaleMode", "Pixel")) not in ("Pixel", ""):
@@ -61,7 +67,7 @@ def problems(folder: Path, project: Project, lang: str, supported: set[str], too
             if c.type not in supported:
                 bad.setdefault(c.type, []).append(c.name)
                 continue
-            if c.states or c.variants:
+            if (c.states or c.variants) and not motion:
                 out.append(f"{name}.{c.name}: visual states / layout variants are not translated")
             if str(c.props.get("DataSource") or "").strip():
                 out.append(f"{name}.{c.name}: data binding (DataSource) is not translated")

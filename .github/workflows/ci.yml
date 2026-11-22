@@ -1,0 +1,104 @@
+# Continuous integration: every push / pull request to main and feature/web-workspace.
+#   lint  - pyflakes over radide + tools (must be clean) and the test registry check (no unregistered test script)
+#   tests - the "fast" tier of tools/run_tests.py on Windows (offscreen Qt); JUnit + Markdown reports
+# The slower tiers (full, network, toolchains) run in .github/workflows/nightly.yml. See docs/TESTING.md.
+name: CI
+
+on:
+  push:
+    branches: [main, feature/web-workspace]
+  pull_request:
+    branches: [main, feature/web-workspace]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write          # JUnit check run (skipped quietly on fork PRs, which get a read-only token)
+
+env:
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  lint:
+    name: Lint (pyflakes + registry)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pyflakes
+        run: python -m pip install "pyflakes>=3.0"
+
+      - name: pyflakes radide tools
+        run: python -m pyflakes radide tools
+
+      - name: Every test script is registered
+        run: python tools/run_tests.py --check
+
+  tests:
+    name: Tests (fast tier, Windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_FONTDIR: C:\Windows\Fonts
+      RADIDE_NO_BROWSER: "1"
+      QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --disable-gpu-compositing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tools/requirements-release.txt
+            tools/requirements-ci.txt
+
+      # Toolchains the IDE downloads itself (NASM, FASM, MinGW, Lua, ...) live here; a rolling cache keeps them
+      - name: Cache RAD IDE tools
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\RADIDE\tools
+          key: radide-tools-${{ runner.os }}-v1-${{ github.run_id }}
+          restore-keys: radide-tools-${{ runner.os }}-v1-
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements-release.txt -r tools/requirements-ci.txt
+
+      - name: Registry
+        run: python tools/run_tests.py --list --tier fast
+
+      - name: Fast tier
+        run: python tools/run_tests.py --tier fast --jobs 1 --report-dir test-results
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-fast
+          path: test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish JUnit results
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: test-results/junit.xml
+          check_name: Tests (fast tier)
+          detailed_summary: true
+          include_passed: false

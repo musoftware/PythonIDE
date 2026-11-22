@@ -293,18 +293,68 @@ class VsxService(QObject):
             return []
 
     def folders(self) -> list[str]:
-        out = []
+        """The workspace folders VS Code would have: the folder of an explicit solution (.radsln, a foreign .sln /
+        .vbg ...) first, then every project folder outside it; a bare project / Open Folder workspace / web site
+        is its own folder. The active project's folder leads when there is no solution folder."""
+        win = self.win
+        projects = []
         try:
-            for st in self.win.project_states():
-                f = str(Path(st["project"].folder).resolve())
-                if f not in out:
-                    out.append(f)
+            projects = [st["project"] for st in win.project_states()]
         except Exception:  # noqa: BLE001
             pass
-        proj = getattr(self.win, "project", None)
-        if proj is not None and not out:
-            out.append(str(Path(proj.folder).resolve()))
+        proj = getattr(win, "project", None)
+        if proj is not None and proj not in projects:
+            projects.insert(0, proj)
+        elif proj is not None:
+            projects.remove(proj)
+            projects.insert(0, proj)
+        out: list[str] = []
+
+        def add(p):
+            try:
+                f = str(Path(p).resolve())
+            except (OSError, TypeError, ValueError):
+                return
+            if f and os.path.isdir(f) and os.path.normcase(f) not in {os.path.normcase(x) for x in out}:
+                out.append(f)
+        sln = getattr(win, "sln", None)
+        sfile = getattr(sln, "file", None) if sln is not None else None
+        if sfile and not getattr(sln, "implicit", False):
+            add(Path(sfile).parent)
+        for p in projects:
+            folder = getattr(p, "folder", None)
+            if folder is None:
+                continue
+            try:
+                rf = Path(folder).resolve()
+            except OSError:
+                continue
+            if any(Path(o) == rf or Path(o) in rf.parents for o in out):
+                continue                        # inside the solution folder: already part of the workspace
+            add(rf)
         return out
+
+    def sync_folders(self):
+        """Called when the project set may have changed. Like VS Code: going from no folder to a folder (VS Code
+        reloads the window) or changing the first folder (rootPath / the cwd extensions captured at activation,
+        e.g. Claude Code's session folder) restarts the extension host; other changes fire
+        onDidChangeWorkspaceFolders."""
+        try:
+            new = self.folders()
+        except Exception:  # noqa: BLE001
+            return
+        old = getattr(self, "_last_folders", None)
+        self._last_folders = new
+        if old is None or old == new:
+            return
+        if not self.host.running():
+            return                              # start() sends the folders
+        first_changed = (old[:1] != new[:1])
+        if first_changed and new:
+            self.log(f"workspace folder is now {new[0]}: restarting the extension host (VS Code reloads the window)")
+            QTimer.singleShot(0, self.restart)
+            return
+        self.host.notify("workspace/folders", {"folders": new})
 
     def root_for(self, editor) -> Path:
         f = self.folders()
@@ -325,6 +375,16 @@ class VsxService(QObject):
         try:
             from . import contrib_configuration
             out.update(contrib_configuration.load())
+        except Exception:  # noqa: BLE001
+            pass
+        try:                                     # workspace settings (.vscode/settings.json) win over user settings
+            from .user_keybindings import strip_jsonc
+            f = self.folders()
+            ws = Path(f[0]) / ".vscode" / "settings.json" if f else None
+            if ws is not None and ws.is_file():
+                data = json.loads(strip_jsonc(ws.read_text("utf-8")))
+                if isinstance(data, dict):
+                    out.update(data)
         except Exception:  # noqa: BLE001
             pass
         return out
@@ -376,7 +436,8 @@ class VsxService(QObject):
                   "webviewBase": self.webviews.server.base, "webviewOrigin": self.webviews.server.origin}
         self._synced.clear()
         self._active_sent = None                 # a new host knows nothing: send the active editor again
-        ok = self.host.start(params, node)
+        self._last_folders = list(params["workspaceFolders"])
+        ok = self.host.start(params, node, env=self._agent_env())
         if not ok:
             self.log("the extension host could not be started")
             return False
@@ -388,6 +449,20 @@ class VsxService(QObject):
         for ed in list(self._editors):          # documents already open
             self._open_doc(ed)
         return True
+
+    def _agent_env(self) -> dict:
+        """Environment of the extension host - and so of the CLIs extensions start (Claude Code ...): how to
+        build / run RAD IDE projects headless (radide/agent_cli.py) and where the workspace is."""
+        env = {}
+        try:
+            from ..agent_cli import cli_hint
+            env["RADIDE_CLI"] = cli_hint()
+        except Exception:  # noqa: BLE001
+            pass
+        f = self.folders()
+        if f:
+            env["RADIDE_WORKSPACE"] = f[0]
+        return env
 
     def stop(self):
         self.host.stop()
@@ -415,6 +490,33 @@ class VsxService(QObject):
             self.log("extension host: initialize failed")
             return
         self.log(f"extension host running (pid {res.get('pid')}, node {res.get('node')})")
+        if getattr(self, "_ide_diag_files", None):
+            self.host.notify("diagnostics/ide", {"files": self._ide_diag_files})
+
+    def push_ide_diagnostics(self, diags) -> None:
+        """The Error List's diagnostics (tools.run_checks) -> vscode.languages.getDiagnostics in the host."""
+        files: dict = {}
+        proj = getattr(self.win, "project", None)
+        base = Path(proj.folder) if proj is not None else None
+        for d in diags or []:
+            f = str(getattr(d, "file", "") or "")
+            if not f:
+                continue
+            p = Path(f)
+            if not p.is_absolute() and base is not None:
+                p = base / p
+            try:
+                key = str(p.resolve())
+            except OSError:
+                key = str(p)
+            files.setdefault(key, []).append({"line": int(getattr(d, "line", 1) or 1), "severity": str(d.severity),
+                                              "message": str(d.message), "source": "RAD IDE"})
+        old = getattr(self, "_ide_diag_files", {}) or {}
+        for k in old:                         # files whose problems are gone: an empty list clears them
+            files.setdefault(k, [])
+        self._ide_diag_files = {k: v for k, v in files.items() if v}
+        if self.host.running():
+            self.host.notify("diagnostics/ide", {"files": files})
 
     def _on_stopped(self, code):
         try:
@@ -555,6 +657,98 @@ class VsxService(QObject):
         if state != self._active_sent:
             self._active_sent = state
             self.host.notify("editor/active", {"path": str(Path(ed.path).resolve()), "selection": sel})
+
+    def check_disk_changes(self) -> list:
+        """Files changed on disk by another program (an AI agent's Write tool, git, a formatter): an open editor
+        without unsaved changes shows the new text (VS Code reloads such editors silently); one with unsaved
+        changes keeps them and says so. Code files of open forms are left to features/file_integrity.py (it asks
+        "Reload?" like Visual Studio). Returns the paths reloaded."""
+        stamps = self.__dict__.setdefault("_disk_stamps", {})
+        try:                                     # keybindings.json edited (in an editor or outside): re-bind
+            from . import user_keybindings
+            kp = user_keybindings.path()
+            ks = kp.stat().st_mtime_ns if kp.exists() else 0
+            if stamps.get("<keybindings>", ks) != ks:
+                from . import contrib_runtime
+                contrib_runtime.refresh()
+            stamps["<keybindings>"] = ks
+        except Exception:  # noqa: BLE001
+            pass
+        covered = set()
+        fi = getattr(self.win, "file_integrity", None)
+        if fi is not None:
+            try:
+                for name in set(self.win.docs) | set(self.win.codeviews):
+                    for _k, p in fi.files_of(name):
+                        covered.add(os.path.normcase(str(Path(p).resolve())))
+            except Exception:  # noqa: BLE001
+                pass
+        out = []
+        for ed in self.live_editors():
+            try:
+                path = Path(ed.path).resolve()
+                key = os.path.normcase(str(path))
+                st = path.stat()
+                stamp = (st.st_mtime_ns, st.st_size)
+            except (OSError, AttributeError, TypeError):
+                continue
+            old = stamps.get(key)
+            stamps[key] = stamp
+            if old is None or old == stamp or key in covered:
+                continue
+            try:
+                text = path.read_text("utf-8").replace("\r\n", "\n")
+            except (OSError, UnicodeError):
+                continue
+            if text == ed.text():
+                continue
+            if ed.isModified():
+                self.status(f"{path.name} changed on disk - your unsaved changes are kept", 6000)
+                continue
+            cur = tuple(getattr(ed, "_cursor", (0, 0)))
+            bps = set(getattr(ed, "_breakpoints", set()) or set())
+            ed.setText(text)
+            try:
+                if bps and hasattr(ed, "_push_breakpoints"):
+                    ed._breakpoints.update(b for b in bps if b < text.count("\n") + 1)
+                    ed._push_breakpoints()
+                ed.setCursorPosition(min(cur[0], text.count("\n")), cur[1])
+            except Exception:  # noqa: BLE001
+                pass
+            ed.setModified(False)
+            if self.host.running():
+                self.sync_text(ed.path, text)
+            out.append(str(path))
+        return out
+
+    def on_editor_selection(self, ed):
+        """Monaco cursor / selection moved: tell the host (debounced) - onDidChangeTextEditorSelection."""
+        if ed not in self._editors or not self.host.running():
+            return
+        self._sel_pending = ed
+        t = getattr(self, "_sel_timer", None)
+        if t is None:
+            t = self._sel_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(120)
+            t.timeout.connect(self._flush_selection)
+        t.start()
+
+    def _flush_selection(self):
+        ed = getattr(self, "_sel_pending", None)
+        self._sel_pending = None
+        if ed is None or not self._alive(ed) or ed is not self.active_editor() or not self.host.running():
+            return
+        self.before_request()                    # the host knows the document and that it is the active editor
+        sel = list(getattr(ed, "_selection", (0, 0, 0, 0)) or (0, 0, 0, 0))
+        if sel[0] == sel[2] and sel[1] == sel[3]:
+            cur = getattr(ed, "_cursor", (0, 0))
+            sel = [cur[0], cur[1], cur[0], cur[1]]
+        key = (_key(ed.path), tuple(sel))
+        if key == getattr(self, "_sel_sent", None):
+            return
+        self._sel_sent = key
+        self.host.notify("editor/selection", {"path": str(Path(ed.path).resolve()), "selection": sel})
 
     def _wrap(self, ed):
         """Put a CompositeClient in editor.lsp when extension providers serve this editor (or take it away)."""
@@ -715,10 +909,13 @@ class VsxService(QObject):
             cp.unregister_command(cid)
         self._palette_ids = []
         for cid, info in self._contributed_commands().items():
-            def enabled(info=info):
+            def visible(info=info):
+                # VS Code's Command Palette lists a command only while its commandPalette `when` and its
+                # `enablement` (precondition) hold (commandsQuickAccess: menu actions that are enabled)
                 ctx = self.context_for()
                 return W.evaluate(info["when"], ctx) and W.evaluate(info["enablement"], ctx)
-            cp.register_command(cid, info["title"], lambda cid=cid: self.execute(cid), info["category"], enabled=enabled)
+            cp.register_command(cid, info["title"], lambda cid=cid: self.execute(cid), info["category"],
+                                visible=visible)
             self._palette_ids.append(cid)
 
     def execute(self, command: str, args=None, cb=None):
@@ -938,14 +1135,13 @@ class VsxService(QObject):
             try:
                 from . import contrib_keybindings as KB
                 if KB.is_monaco_command(cmd):
+                    from . import editor_commands as EC
                     ed = self.active_editor()
-                    if ed is not None:
-                        ed._js(f"radEditor.focus(); radEditor.trigger('vsx', {json.dumps(cmd)}, "
-                               f"{json.dumps(args[0] if args else {})});")
+                    if ed is not None and EC.run(ed, cmd, args, win=win):
                         return True
                     return None
                 # unknown here too: the host rejects ids VS Code does not know ("command 'x' not found")
-                return True if KB.run_command(win, cmd, args) else {"$notFound": True}
+                return True if KB.run_command(win, cmd, args, fallback=False) else {"$notFound": True}
             except Exception as e:  # noqa: BLE001
                 self.log(f"command {cmd}: {e}")
                 return None
@@ -1503,14 +1699,41 @@ def install(win) -> VsxService:
             return _orig(debug)
         win.run_project = run_project
 
-    # workspace folders follow the solution
-    for sig_name in ("projectOpened", "solutionOpened"):
-        sig = getattr(win, sig_name, None)
-        if sig is not None:
-            try:
-                sig.connect(lambda *_a: svc.host.running() and svc.host.notify("workspace/folders", {"folders": svc.folders()}))
-            except Exception:  # noqa: BLE001
-                pass
+    try:                                        # the Error List's problems reach getDiagnostics (agents check their work)
+        from .. import tools as _tools
+        _orig_checks = _tools.run_checks
+
+        def run_checks(w, show=False, _orig=_orig_checks):
+            res = _orig(w, show)
+            if w is win:
+                try:
+                    svc.push_ide_diagnostics(res)
+                except Exception as e:  # noqa: BLE001
+                    svc.log(f"diagnostics: {e}")
+            return res
+        _tools.run_checks = run_checks
+    except Exception:  # noqa: BLE001
+        pass
+    # workspace folders follow the solution (MainWindow has no "opened" signal: open_project / close_solution /
+    # foreign projects / Open Folder all end in a changed project set, which a cheap poll notices)
+    try:
+        from .. import monaco_editor as _me
+        _me.SELECTION_LISTENERS.append(svc.on_editor_selection)
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                        # go back / forward, reopen closed editor (navigation.py)
+        from . import navigation
+        navigation.install(win)
+    except Exception as e:  # noqa: BLE001
+        svc.log(f"navigation: {e}")
+    svc._disk_timer = QTimer(win)                # files changed on disk -> open editors (check_disk_changes)
+    svc._disk_timer.setInterval(1200)
+    svc._disk_timer.timeout.connect(svc.check_disk_changes)
+    svc._disk_timer.start()
+    svc._folders_timer = QTimer(win)
+    svc._folders_timer.setInterval(700)
+    svc._folders_timer.timeout.connect(svc.sync_folders)
+    svc._folders_timer.start()
     try:
         from .. import theme as TH
         TH.changed.connect(lambda _n: svc.host.running() and svc.host.notify(
@@ -1525,6 +1748,14 @@ def install(win) -> VsxService:
         if e.isAccepted():
             svc.stop()
     win.closeEvent = close_event
+    if os.environ.get("RADIDE_NO_VSX"):          # headless agent commands (radide/agent_cli.py)
+        svc._folders_timer.stop()
+        return svc
+    try:                                        # AI agents: offer the RAD IDE context file (agent_context.py)
+        from . import agent_context
+        agent_context.install(win)
+    except Exception as e:  # noqa: BLE001
+        svc.log(f"agent context: {e}")
     QTimer.singleShot(1500, svc.start)          # after the IDE is up (extensions do not slow the start)
     return svc
 

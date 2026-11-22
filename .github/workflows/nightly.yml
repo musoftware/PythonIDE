@@ -1,0 +1,174 @@
+# Nightly: the slow tiers of tools/run_tests.py, one job per tier, each with the toolchain it needs installed from
+# its official source (setup-dotnet / setup-java / setup-go / rustup / setup-node / flutter-action / Chocolatey).
+# A failing tier never stops the others (continue-on-error); the "report" job merges every tier into one report.
+# Run by hand: Actions > Nightly > Run workflow (optionally only some tiers, e.g. "full,toolchain:dotnet").
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 1 * * *"        # 01:17 UTC every night
+  workflow_dispatch:
+    inputs:
+      tiers:
+        description: "Comma separated tier names to run (empty = all nightly tiers)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  QT_QPA_PLATFORM: offscreen
+  QT_QPA_FONTDIR: C:\Windows\Fonts
+  RADIDE_NO_BROWSER: "1"
+  QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --disable-gpu-compositing
+
+jobs:
+  tier:
+    name: ${{ matrix.tier }}
+    runs-on: windows-latest
+    timeout-minutes: 300
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { tier: "fast",               slug: fast }
+          - { tier: "full",               slug: full }
+          - { tier: "network",            slug: network,   node: true }
+          - { tier: "toolchain:mingw",    slug: mingw }
+          - { tier: "toolchain:dotnet",   slug: dotnet,    dotnet: true, node: true }
+          - { tier: "toolchain:java",     slug: java,      java: true }
+          - { tier: "toolchain:rust-go",  slug: rust-go,   rust: true, go: true }
+          - { tier: "toolchain:flutter",  slug: flutter,   flutter: true, dotnet: true, node: true }
+          - { tier: "toolchain:freebasic", slug: freebasic }
+          - { tier: "toolchain:dos",      slug: dos }
+          - { tier: "toolchain:retro",    slug: retro }
+          - { tier: "toolchain:inno",     slug: inno,      inno: true }
+          - { tier: "toolchain:all",      slug: all-tc,    dotnet: true, java: true, rust: true, go: true, node: true, flutter: true }
+    steps:
+      - name: Selected?
+        id: sel
+        shell: pwsh
+        run: |
+          $want = "${{ github.event.inputs.tiers }}".Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+          $run = (-not $want) -or ($want -contains "${{ matrix.tier }}") -or ($want -contains "${{ matrix.slug }}")
+          "run=$($run.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - uses: actions/checkout@v4
+        if: steps.sel.outputs.run == 'true'
+        with:
+          fetch-depth: 0            # Tutorials/Polish/check_polish.py diffs against an older commit
+
+      - uses: actions/setup-python@v5
+        if: steps.sel.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            tools/requirements-release.txt
+            tools/requirements-ci.txt
+
+      - name: Cache RAD IDE tools
+        if: steps.sel.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\RADIDE\tools
+          key: radide-tools-${{ runner.os }}-${{ matrix.slug }}-v1-${{ github.run_id }}
+          restore-keys: |
+            radide-tools-${{ runner.os }}-${{ matrix.slug }}-v1-
+            radide-tools-${{ runner.os }}-v1-
+
+      # ---- toolchains from their official sources
+      - uses: actions/setup-dotnet@v4
+        if: steps.sel.outputs.run == 'true' && matrix.dotnet
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+      - uses: actions/setup-java@v4
+        if: steps.sel.outputs.run == 'true' && matrix.java
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-go@v5
+        if: steps.sel.outputs.run == 'true' && matrix.go
+        with:
+          go-version: stable
+          cache: false
+      - name: Rust (rustup, stable)
+        if: steps.sel.outputs.run == 'true' && matrix.rust
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version; cargo --version
+      - uses: actions/setup-node@v4
+        if: steps.sel.outputs.run == 'true' && matrix.node
+        with:
+          node-version: "22"
+      - uses: subosito/flutter-action@v2
+        if: steps.sel.outputs.run == 'true' && matrix.flutter
+        with:
+          channel: stable
+          cache: true
+      - name: Inno Setup
+        if: steps.sel.outputs.run == 'true' && matrix.inno
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Install Python packages
+        if: steps.sel.outputs.run == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements-release.txt -r requirements.txt -r tools/requirements-ci.txt
+
+      - name: Run tier ${{ matrix.tier }}
+        if: steps.sel.outputs.run == 'true'
+        run: python tools/run_tests.py --tier "${{ matrix.tier }}" --jobs 1 --report-dir test-results/${{ matrix.slug }}
+
+      - name: Upload test reports
+        if: always() && steps.sel.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ matrix.slug }}
+          path: test-results/${{ matrix.slug }}
+          if-no-files-found: warn
+          retention-days: 30
+
+  report:
+    name: Aggregate report
+    needs: tier
+    if: always()
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-*
+          path: tiers
+      - name: Merge
+        # the exit code (failures) does not fail this job: each tier job already shows its own status
+        run: python tools/run_tests.py --merge tiers --report-dir nightly-report; exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightly-report
+          path: nightly-report
+          retention-days: 30
+      - name: Publish JUnit results
+        continue-on-error: true
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: nightly-report/junit.xml
+          check_name: Nightly tests
+          detailed_summary: true
+          include_passed: false

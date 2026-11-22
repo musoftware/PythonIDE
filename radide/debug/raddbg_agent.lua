@@ -80,6 +80,7 @@ end
 
 local bps = {}        -- line -> { key -> {cond, hit, log, count} }
 local bptext = nil
+local break_on_error = false   -- "!exc<TAB>1" in the breakpoint file (Debug > Break on Exceptions)
 local function load_bps(force)
   local f = BPFILE ~= "" and io.open(BPFILE, "rb")
   if not f then return end
@@ -88,11 +89,14 @@ local function load_bps(force)
   if text == bptext and not force then return end
   bptext = text
   local old, new = bps, {}
+  break_on_error = false
   for l in text:gmatch("[^\n]+") do
     local p = {}
     for x in (l:gsub("\r$", "") .. "\t"):gmatch("([^\t]*)\t") do p[#p + 1] = unesc(x) end
     local line = tonumber(p[2])
-    if p[1] and line then
+    if p[1] == "!exc" then
+      break_on_error = p[2] == "1"
+    elseif p[1] and line then
       new[line] = new[line] or {}
       local prev = old[line] and old[line][p[1]]
       new[line][p[1]] = { cond = p[3] or "", hit = p[4] or "", log = p[5] or "",
@@ -308,5 +312,30 @@ coroutine.wrap = function(f)
     if not r[1] then error(r[2], 2) end
     return unpack(r, 2)
   end
+end
+-- Break on Exceptions: rad.lua runs every handler with xpcall(..., debug.traceback); the message handler runs
+-- where the error happened (the stack is still there), so the agent's traceback stops there first
+local orig_traceback = debug.traceback
+debug.traceback = function(msg, ...)
+  if break_on_error and msg ~= nil and select("#", ...) == 0 then
+    local i2 = getinfo(2, "Sn")
+    local from_error = i2 and ((i2.what == "C" and i2.name == "error") or
+                               (type(msg) == "string" and msg:match(":%d+: ") ~= nil))
+    if from_error then
+      local l = 2
+      while true do                      -- the first frame of the program's own code
+        local fi = getinfo(l, "S")
+        if not fi then l = nil break end
+        if fi.what ~= "C" and fi.source:sub(1, 1) == "@" and not skipped(key_of(fi.source)) then break end
+        l = l + 1
+      end
+      if l then
+        sethook()
+        stopped_loop(l + 1, "exception")
+        sethook(hook, "l")
+      end
+    end
+  end
+  return orig_traceback(msg, ...)
 end
 _G.__raddbg = { eval = eval }

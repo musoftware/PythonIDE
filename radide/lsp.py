@@ -613,6 +613,16 @@ class QUrlLike:
         return QUrl(uri).toLocalFile()
 
 
+def prepare_manifest(language: str, root) -> bool:
+    """Cargo.toml / RadApp.csproj of a GUI Bridge project before rust-analyzer / csharp-ls start
+    (radide/workspace.py write_lsp_manifest)."""
+    key = server_key(language)
+    if key not in ("rust", "csharp"):
+        return False
+    from .workspace import write_lsp_manifest
+    return write_lsp_manifest(root, key)
+
+
 class LspManager(QObject):
     """One server per (language, project root); created on demand."""
 
@@ -621,6 +631,8 @@ class LspManager(QObject):
         self.clients: dict[tuple[str, str], LspClient | None] = {}
 
     def client_for(self, language: str, root: Path) -> LspClient | None:
+        if (server_key(language), str(root)) not in self.clients:
+            prepare_manifest(language, root)
         if server_key(language) == "rust":         # one rust-analyzer per cargo workspace (members share it)
             from .rust_tools import workspace_root
             root = workspace_root(root)

@@ -741,6 +741,13 @@ namespace RadIDE.Controls
         /// <summary>Accessibility role of the control (screen readers, UI Automation).</summary>
         protected virtual AccessibleRole RmRole { get { return AccessibleRole.Client; } }
 
+        /// <summary>The name screen readers read when AccessibleName is empty (default: Text, else Name). Inputs
+        /// override it: their Text is their content (the value), not their name.</summary>
+        protected virtual string RmAccessibleName { get { return string.IsNullOrEmpty(Text) ? Name : Text; } }
+
+        /// <summary>The value screen readers read (slider position, progress, date ...); null = none.</summary>
+        protected virtual string RmAccessibleValue { get { return null; } }
+
         protected override AccessibleObject CreateAccessibilityInstance() { return new RmAccessible(this); }
 
         /// <summary>Items exposed to accessibility tools as children (name, bounds in client coordinates, default
@@ -770,7 +777,8 @@ namespace RadIDE.Controls
                 return index >= 0 && index < l.Count ? new RmItemAccessible(c, this, l[index]) : null;
             }
             public override AccessibleRole Role { get { return c.AccessibleRole != AccessibleRole.Default ? c.AccessibleRole : c.RmRole; } }
-            public override string Name { get { return !string.IsNullOrEmpty(c.AccessibleName) ? c.AccessibleName : (string.IsNullOrEmpty(c.Text) ? c.Name : c.Text); } set { } }
+            public override string Name { get { return !string.IsNullOrEmpty(c.AccessibleName) ? c.AccessibleName : c.RmAccessibleName; } set { } }
+            public override string Value { get { var v = c.RmAccessibleValue; return v ?? base.Value; } set { } }
             public override string DefaultAction { get { return c.RmRole == AccessibleRole.PushButton || c.RmRole == AccessibleRole.CheckButton ? "Press" : base.DefaultAction; } }
             public override void DoDefaultAction() { if (c.RmRole == AccessibleRole.PushButton || c.RmRole == AccessibleRole.CheckButton) c.DoDefault(); else base.DoDefaultAction(); }
             public override AccessibleStates State

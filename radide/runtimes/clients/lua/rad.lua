@@ -71,11 +71,31 @@ local function read_line()
   return (line:gsub("\r$", ""))
 end
 
-function rad.set(obj, prop, value) send("SET " .. obj .. " " .. prop .. " " .. clean(value)) end
+-- "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values, so multi-line text survives
+local function esc(v)
+  if v == nil then return "" end
+  return (tostring(v):gsub("\\", "\\\\"):gsub("\n", "\\n"):gsub("\r", "\\r"))
+end
+
+local function unesc(s)
+  return (s:gsub("\\(.)", function(c)
+    if c == "n" then return "\n" elseif c == "r" then return "\r" elseif c == "\\" then return "\\" end
+    return "\\" .. c
+  end))
+end
+
+function rad.set(obj, prop, value)
+  local s = value == nil and "" or tostring(value)
+  if s:find("[\r\n]") then
+    send("ESC SET " .. obj .. " " .. prop .. " " .. esc(s))     -- multi-line text
+  else
+    send("SET " .. obj .. " " .. prop .. " " .. s)
+  end
+end
 
 function rad.get(obj, prop)
-  send("GET " .. obj .. " " .. prop)
-  return read_line()
+  send("ESC GET " .. obj .. " " .. prop)
+  return unesc(read_line())
 end
 
 function rad.getnum(obj, prop)

@@ -176,10 +176,25 @@ class NewProjectDialog(QDialog):
         self.desc.setMinimumWidth(200)
         self.desc.setProperty("radRole", "info")
 
+        # the description scrolls when it is taller than the dialog (large text sizes): never clipped
+        from PyQt6.QtWidgets import QFrame, QScrollArea
+        desc_box = QScrollArea()
+        desc_box.setWidgetResizable(True)
+        desc_box.setFrameShape(QFrame.Shape.NoFrame)
+        desc_box.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        desc_box.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        desc_box.setWidget(self.desc)
+        try:                       # screen readers: the two lists have no label of their own
+            from .i18n import tr
+        except Exception:  # noqa: BLE001
+            def tr(t):
+                return t
+        self.langs.setAccessibleName(tr("Languages"))
+        self.templates.setAccessibleName(tr("Templates"))
         split = QSplitter()
         split.addWidget(self.langs)
         split.addWidget(self.templates)
-        split.addWidget(self.desc)
+        split.addWidget(desc_box)
         split.setSizes([290, 390, 240])
         split.setChildrenCollapsible(False)
 

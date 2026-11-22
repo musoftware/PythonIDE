@@ -108,17 +108,29 @@ def check_default(kind: str, value) -> bool:
     return isinstance(value, str)
 
 
+def number_text(value) -> str:
+    """A number typed with the user's locale habits as Python reads it: Arabic decimal separator (U+066B) and
+    a single decimal comma ("0,5" on Arabic / German / Turkish Windows) become ".", Arabic thousands
+    separators (U+066C), no-break / thin spaces and Unicode minus signs are handled. Arabic-Indic digits are
+    read by int() / float() themselves."""
+    t = str(value).strip().replace("٫", ".").replace("٬", "").replace("−", "-")
+    t = t.replace(" ", "").replace(" ", "").replace(" ", "").replace("‏", "").replace("‎", "")
+    if "," in t and "." not in t and t.count(",") == 1:
+        t = t.replace(",", ".")
+    return t
+
+
 def coerce(kind: str, value, choices=()):
     """*value* converted to what *kind* stores (text typed in the Properties window, JSON from a manifest)."""
     k = normalize(kind)
     if k == "int":
         try:
-            return int(float(str(value).strip()))
+            return int(float(number_text(value)))
         except (TypeError, ValueError):
             raise ValueError(f"{value!r} is not a whole number") from None
     if k == "float":
         try:
-            return float(str(value).strip())
+            return float(number_text(value))
         except (TypeError, ValueError):
             raise ValueError(f"{value!r} is not a number") from None
     if k == "bool":

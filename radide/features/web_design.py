@@ -53,7 +53,8 @@ def install(win) -> None:
     a.triggered.connect(lambda: open_active_in_design(win))
     win.a_design_view = a
     a2 = QAction("Split", win)
-    a2.setToolTip("Open the active HTML / PHP page in Split view (design + code)")
+    a2.setToolTip("Open the active HTML / PHP page in Split view (design + code) (Ctrl+Shift+Alt+D)")
+    a2.setShortcut(QKeySequence("Ctrl+Shift+Alt+D"))        # keyboard users: not a tool-bar-only command
     a2.triggered.connect(lambda: open_active_in_design(win, "split"))
     win.a_split_view = a2
     from ..icons import icon
@@ -61,7 +62,6 @@ def install(win) -> None:
     a.setIconText("Design")
     a2.setIcon(icon("split"))
     a2.setIconText("Split")
-    a2.setToolTip("Open the active HTML / PHP page in Split view (design + code)")
     tb =next((t for t in win.findChildren(QToolBar) if t.objectName() == "Standard"), None)
     if tb is not None:
         tb.addSeparator()

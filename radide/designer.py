@@ -1089,6 +1089,15 @@ class _TrayButton(QToolButton):
                 self.view.doc.eventRequested.emit(self.ctrl, ev)
 
 
+def _fill(template: str, values: list[str]) -> str:
+    """Put *values* into the NUL placeholders of a (translated) template, in order."""
+    parts = template.split("\x00")
+    out = parts[0]
+    for i, part in enumerate(parts[1:]):
+        out += (values[i] if i < len(values) else "") + part
+    return out
+
+
 class DesignerView(QScrollArea):
     """Hosts one FormDocument's visual designer."""
     contextActions = pyqtSignal(object, object)   # (QMenu, Control|None) - app may add items
@@ -1119,6 +1128,7 @@ class DesignerView(QScrollArea):
         doc.controlChanged.connect(self.on_control_changed)
         doc.liveChanged.connect(self.on_live_changed)
         doc.selectionChanged.connect(self._on_selection)
+        doc.controlChanged.connect(self._update_accessible)
         # bound method of a QObject: PyQt disconnects it when the overlay is deleted (a lambda
         # would outlive a closed designer and raise "wrapped C/C++ object deleted" -> abort)
         TOOL_STATE.changed.connect(self.overlay._on_tool_changed)
@@ -1203,7 +1213,8 @@ class DesignerView(QScrollArea):
             self.zoom_fit()
             return
         fp = self.form_props()
-        w, h = int(fp["Width"]), int(fp["Height"])
+        # (clamped to what a QWidget can be: 99999999999 typed in the Properties window overflowed Qt)
+        w, h = (max(0, min(int(fp[k]), 16_000_000)) for k in ("Width", "Height"))
         mh = self.frame.menu_height()
         fw, fh = w + 2 * BORDER, h + CAPTION + mh + 2 * BORDER
         self.frame.setGeometry(MARGIN, MARGIN, fw, fh)
@@ -1399,7 +1410,7 @@ class DesignerView(QScrollArea):
     def _on_selection(self, c):
         # selecting a control on a hidden page (Properties / Document Outline) shows that page
         form = self.doc.form
-        if c is not None and not c.ctype.nonvisual:
+        if c is not None and not c.ctype.nonvisual and not getattr(self.doc, "restoring", False):
             x, seen = c, set()
             while x.parent and x.name not in seen:
                 seen.add(x.name)
@@ -1412,6 +1423,40 @@ class DesignerView(QScrollArea):
         self.overlay.update()
         self.frame.update()
         self.tray.sync()
+        self._update_accessible()
+
+    def _update_accessible(self, *_a) -> None:
+        """Screen readers: the designer surface (the overlay that has the keyboard focus) is named after the
+        selected control - name, type - and describes its bounds and the designer keys."""
+        try:
+            from . import i18n
+            tr = i18n.tr
+        except Exception:  # noqa: BLE001
+            def tr(t):
+                return t
+        try:
+            form = self.doc.form
+            c = self.doc.selected
+            n = len(self.doc.selection)
+            p = self.design_props(c) if c is not None else form.props
+            kind = c.type if c is not None else "Form"
+            what = c.name if c is not None else form.name
+            if n > 1:
+                name = tr("{} controls selected, {} ({}) - {} designer").replace("{}", "\x00")
+                name = _fill(name, [str(n), what, kind, form.name])
+            else:
+                name = _fill(tr("{} ({}) - {} designer").replace("{}", "\x00"), [what, kind, form.name])
+            vals = [str(int(p.get(k, 0) or 0)) for k in ("Left", "Top", "Width", "Height")] if c is not None else                 ["0", "0", str(int(p.get("Width", 0) or 0)), str(int(p.get("Height", 0) or 0))]
+            desc = _fill(tr("Left {}, Top {}, Width {}, Height {}. Arrow keys move, Shift+arrows resize, "
+                            "Ctrl+arrows snap, Tab selects the next control, Esc the container, Delete removes, "
+                            "F7 shows the code.").replace("{}", "\x00"), vals)
+            ov = self.overlay
+            if ov.accessibleName() != name:
+                ov.setAccessibleName(name)
+            if ov.accessibleDescription() != desc:
+                ov.setAccessibleDescription(desc)
+        except (RuntimeError, AttributeError, ValueError, TypeError):
+            pass
 
     # ------------------------------------------------------------ lock / tab order
     def set_locked(self, on: bool) -> None:

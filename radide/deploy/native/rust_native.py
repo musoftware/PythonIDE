@@ -358,7 +358,7 @@ def choose_target(cargo: str, log) -> str:
 
 def build(folder, project, cfg, work, log):
     from ..build import BuildError
-    folder = Path(folder).resolve()
+    folder = Path(folder).absolute()     # not resolve(): a deep project builds through its short alias (paths.short_alias)
     plugin = _plugin()
     cargo = find_cargo()
     if not cargo:
@@ -409,14 +409,18 @@ def build(folder, project, cfg, work, log):
                  f"'-C', 'link-arg=-B{nomf}']", ""]
     (conf / "config.toml").write_text("\n".join(toml), encoding="utf-8")
 
-    env = dict(os.environ, CARGO_TARGET_DIR=str(nat / "target"))
+    # a short target folder of its own (%LOCALAPPDATA%\RADIDE\cache\cargo\<hash>): under a deep publish folder
+    # target\<triple>\release\build\... passes 260 characters and link.exe fails with LNK1104
+    from ...languages.rust_bridge import cargo_cache_dir
+    tdir = cargo_cache_dir(nat)
+    env = dict(os.environ, CARGO_TARGET_DIR=str(tdir))
     env.pop("RUSTFLAGS", None)
     if not msvc:
         env = _ffi.tool_env(Path(tc["cc"]).parent, env)
     cmd = [cargo, "build", "--release", "--bin", "radapp", "--target", target]
     if _ffi.run(cmd, crate, log, env) != 0:
         raise BuildError("The native Rust build failed (see the output above)")
-    built_exe = nat / "target" / target / "release" / "radapp.exe"
+    built_exe = tdir / target / "release" / "radapp.exe"
     if not built_exe.is_file():
         raise BuildError("cargo did not create radapp.exe")
     dist = _ffi.dist_folder(work, cfg)

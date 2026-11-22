@@ -23,7 +23,8 @@ MONACO_COMMANDS = {"undo", "redo", "deleteLeft", "deleteRight", "deleteWordLeft"
                    "expandLineSelection", "removeSecondaryCursors", "editor.action.insertLineAfter",
                    "editor.action.insertLineBefore", "lineBreakInsert", "type", "editor.action.triggerSuggest",
                    "acceptSelectedSuggestion", "hideSuggestWidget", "closeFindWidget", "editor.foldAll",
-                   "editor.unfoldAll", "editor.foldRecursively", "editor.unfoldRecursively"}
+                   "editor.unfoldAll", "editor.foldRecursively", "editor.unfoldRecursively", "revealLine", "editorScroll",
+                   "cursorMove", "cancelSelection", "tab"}
 
 # VS Code workbench commands -> the IDE: a Command Palette id, or a menu path / item text
 VSCODE_TO_IDE = {
@@ -43,7 +44,6 @@ VSCODE_TO_IDE = {
     "workbench.action.openSettings": "menu:Tools/Options...",
     "workbench.action.terminal.toggleTerminal": "menu:View/Terminal",
     "workbench.action.findInFiles": "menu:Edit/Find in Files...",
-    "editor.debug.action.toggleBreakpoint": "monaco",
 }
 
 # handlers fn(command: str, args) -> bool (True = handled); the extension host appends one
@@ -51,14 +51,28 @@ COMMAND_HANDLERS: list = []
 
 
 def is_monaco_command(cmd: str) -> bool:
+    """An editor command run on the active Monaco editor: an id the bundled Monaco has
+    (reference/monaco_commands.json), one radide/vsx/editor_commands adds, or the editor id families."""
     if VSCODE_TO_IDE.get(cmd) == "monaco":
         return True
+    try:
+        from . import editor_commands as EC
+        if EC.handles(cmd):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
     return cmd in MONACO_COMMANDS or cmd.startswith(MONACO_PREFIXES)
 
 
 def platform_key(kb: dict) -> str:
     v = kb.get("win") or kb.get("key")
     return str(v or "").strip().lower()
+
+
+def _run_any(win, command, args):
+    from . import vscode_commands
+    if not vscode_commands.execute(win, command, args):
+        run_command(win, command, args)
 
 
 def collect(extensions=None) -> list[dict]:
@@ -86,6 +100,12 @@ def collect(extensions=None) -> list[dict]:
             if "args" in kb:
                 item["args"] = kb["args"]
             out.append(item)
+    if extensions is None:                   # the user's keybindings.json comes last (user rules win)
+        try:
+            from . import user_keybindings
+            out = user_keybindings.apply(out)
+        except Exception:  # noqa: BLE001
+            pass
     return out
 
 
@@ -112,8 +132,10 @@ def qt_sequence(key: str) -> str:
 
 
 # ============================================================================ running commands
-def run_command(win, command: str, args=None) -> bool:
-    """Run a VS Code command id in the IDE. Returns False (and says so in the status bar) when unknown."""
+def run_command(win, command: str, args=None, fallback: bool = True) -> bool:
+    """Run a VS Code command id in the IDE. Returns False (and says so in the status bar) when unknown.
+    *fallback*: also try radide/vsx/vscode_commands (editor commands, workbench commands, the extension host) -
+    False when the extension host itself asks (it already tried its own commands)."""
     try:
         from ..features import command_palette as cp
         c = next((x for x in cp.commands() if x.id == command), None)
@@ -139,6 +161,13 @@ def run_command(win, command: str, args=None) -> bool:
                 return True
         except Exception:  # noqa: BLE001 - a handler must not break the others
             continue
+    if fallback and win is not None:
+        try:
+            from . import vscode_commands
+            if vscode_commands.execute_core(win, command, args):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
     try:
         win.statusBar().showMessage(f"The command '{command}' is not available in RAD IDE", 5000)
     except Exception:  # noqa: BLE001
@@ -186,7 +215,7 @@ def install_shortcuts(win, bindings: list[dict]) -> int:
         if seq.isEmpty() or seq.toString() in used:
             continue
         sc = QShortcut(seq, win)
-        sc.activated.connect(lambda c=kb["command"], a=kb.get("args"): run_command(win, c, a))
+        sc.activated.connect(lambda c=kb["command"], a=kb.get("args"): _run_any(win, c, a))
         _shortcuts.append(sc)
         used.add(seq.toString())
         n += 1

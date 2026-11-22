@@ -41,7 +41,7 @@ namespace RadIDE.Controls
             box.KeyUp += (s, a) => OnKeyUp(a);
             box.GotFocus += (s, a) => { Animate(); Invalidate(); };
             box.LostFocus += (s, a) => { Animate(); Invalidate(); };
-            box.HandleCreated += (s, a) => Cue();
+            box.HandleCreated += (s, a) => { Cue(); NameInner(); };
             box.MouseEnter += (s, a) => OnMouseEnter(a);
             box.MouseLeave += (s, a) => { if (!ClientRectangle.Contains(PointToClient(Cursor.Position))) OnMouseLeave(a); };
             Controls.Add(box);
@@ -58,7 +58,18 @@ namespace RadIDE.Controls
         public override string Text { get { return box.Text; } set { box.Text = value ?? ""; } }
 
         [Category("Appearance"), DefaultValue("")]
-        public string Watermark { get { return watermark; } set { watermark = value ?? ""; Cue(); Invalidate(); } }
+        public string Watermark { get { return watermark; } set { watermark = value ?? ""; Cue(); NameInner(); Invalidate(); } }
+
+        // screen readers: the text box is named by AccessibleName, else its watermark, else its Name - never by the
+        // text typed into it (that is its value); the inner edit has the keyboard focus, so it carries the name too
+        string autoName;
+        protected override string RmAccessibleName { get { return watermark.Length > 0 ? watermark : Name; } }
+        protected override string RmAccessibleValue { get { return box.Text; } }
+        void NameInner()
+        {
+            var n = !string.IsNullOrEmpty(AccessibleName) ? AccessibleName : RmAccessibleName;
+            if (string.IsNullOrEmpty(box.AccessibleName) || box.AccessibleName == autoName) { box.AccessibleName = n; autoName = n; }
+        }
 
         [Category("Appearance"), DefaultValue(""), Description("Icon at the start: a file or a glyph (icon:search).")]
         public string Icon { get { return icon; } set { icon = value ?? ""; Layout2(); Invalidate(); } }
@@ -109,7 +120,7 @@ namespace RadIDE.Controls
             if (box.IsHandleCreated && !box.Multiline) Native.SendMessage(box.Handle, Native.EM_SETCUEBANNER, (IntPtr)1, watermark);
         }
 
-        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Cue(); Layout2(); }
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Cue(); Layout2(); NameInner(); }
 
         protected override void OnFontChanged(EventArgs e) { box.Font = Font; base.OnFontChanged(e); Layout2(); }
 
@@ -359,6 +370,10 @@ namespace RadIDE.Controls
 
         public RmSlider() { Size = new Size(200, 36); TabStop = true; SetStyle(ControlStyles.Selectable, true); }
 
+        protected override AccessibleRole RmRole { get { return AccessibleRole.Slider; } }
+        protected override string RmAccessibleName { get { return Name; } }
+        protected override string RmAccessibleValue { get { return val.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
+
         [Category("Behavior"), DefaultValue(0)]
         public int Value
         {
@@ -464,6 +479,9 @@ namespace RadIDE.Controls
     [DefaultEvent("ValueChanged"), DefaultProperty("Value")]
     public class RmCalendar : RmControl
     {
+        protected override AccessibleRole RmRole { get { return AccessibleRole.Table; } }
+        protected override string RmAccessibleName { get { return Name; } }
+        protected override string RmAccessibleValue { get { return Value.ToString("d"); } }
         DateTime value = DateTime.Today, view = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         DateTime minDate = new DateTime(1753, 1, 1), maxDate = new DateTime(9998, 12, 31);
         Point mouse = new Point(-1, -1);
@@ -620,6 +638,10 @@ namespace RadIDE.Controls
         public event EventHandler ValueChanged;
 
         public RmDatePicker() { Size = new Size(160, 30); TabStop = true; SetStyle(ControlStyles.Selectable, true); }
+
+        protected override AccessibleRole RmRole { get { return AccessibleRole.ComboBox; } }
+        protected override string RmAccessibleName { get { return Name; } }
+        protected override string RmAccessibleValue { get { return Text; } }
 
         [Category("Behavior")]
         public DateTime Value

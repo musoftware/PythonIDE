@@ -444,6 +444,7 @@ class WidgetFactory {
             textScaler: MediaQuery.textScalerOf(context));
       case 'Text':
         return Text(s('data') ?? '', style: ts('style'), textAlign: enumV(TextAlign.values, p['textAlign']),
+            textDirection: enumV(TextDirection.values, p['textDirection']),
             maxLines: i('maxLines'), overflow: enumV(TextOverflow.values, p['overflow']), softWrap: b('softWrap'));
       case 'SelectableText':
         return SelectableText(s('data') ?? '', style: ts('style'), textAlign: enumV(TextAlign.values, p['textAlign']),
@@ -769,6 +770,9 @@ class WidgetFactory {
         return DecoratedBox(decoration: decorationV(p['decoration'], c) ?? const BoxDecoration(), child: child());
       case 'RotatedBox':
         return RotatedBox(quarterTurns: i('quarterTurns') ?? 1, child: child());
+      case 'Directionality':
+        return Directionality(textDirection: enumV(TextDirection.values, p['textDirection']) ?? TextDirection.rtl,
+            child: child() ?? const SizedBox());
 
       // --------------------------------------------------------------------------------- animation
       case 'AnimatedOpacity':

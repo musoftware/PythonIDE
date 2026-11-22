@@ -21,6 +21,8 @@ public class RadEvent
     public string Args = "";        // raw argument text
     public int X, Y, Button, KeyCode;
     public string KeyChar = "";
+    /// <summary>FormClosing: set true to keep the form open (like the native WinForms runtime).</summary>
+    public bool Cancel;
 
     public static RadEvent Parse(string sender, string name, string args)
     {

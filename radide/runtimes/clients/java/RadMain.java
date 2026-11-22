@@ -46,8 +46,10 @@ public class RadMain {
             try {
                 Method m = handlers.get((obj + "_" + ev).toLowerCase());
                 if (m != null) {
+                    RadEvent e = RadEvent.parse(obj, ev, p.length > 2 ? p[2] : "");
                     if (m.getParameterCount() == 0) m.invoke(null);
-                    else m.invoke(null, RadEvent.parse(obj, ev, p.length > 2 ? p[2] : ""));
+                    else m.invoke(null, e);
+                    if (e.cancel) Rad.set(obj, "Cancel", true);       // FormClosing: e.cancel = true keeps the form
                 }
             } catch (Throwable t) {
                 Throwable e = t instanceof InvocationTargetException && t.getCause() != null ? t.getCause() : t;

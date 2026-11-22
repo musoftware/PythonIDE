@@ -622,15 +622,20 @@ def ensure_types(d: dict, folder) -> None:
     for the ones still unknown (the package is not installed)."""
     from ..controls import CONTROL_TYPES
     try:
-        types = {c.get("type") for c in d.get("controls", []) if isinstance(c, dict)}
-    except AttributeError:
+        types = {c.get("type") for c in d.get("controls", []) if isinstance(c, dict)
+                 and isinstance(c.get("type"), str)}           # (a corrupted file: no dict / list types)
+    except (AttributeError, TypeError):
         return
-    unknown = {t for t in types if isinstance(t, str) and t not in CONTROL_TYPES}
+    # unknown types, and placeholders of packages that were missing when another form was opened (the
+    # package may be installed now, e.g. in this project's .radide/components)
+    unknown = {t for t in types if isinstance(t, str) and (t not in CONTROL_TYPES or is_missing(t))}
     if not unknown:
         return
     REGISTRY.ensure_loaded()
     if folder is not None and project_components_dir(folder).is_dir():
         REGISTRY.add_project(folder)
+    if any(is_missing(t) for t in unknown):
+        REGISTRY.reload_if_changed()
     for t in unknown:
         if t not in CONTROL_TYPES and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
             try:                                     # a user control of the folder is registered later
@@ -642,6 +647,27 @@ def ensure_types(d: dict, folder) -> None:
             if folder is not None and (Path(folder) / f"{t}.form").is_file():
                 continue
             CONTROL_TYPES[t] = missing_type(t)
+
+
+def refresh_placeholders(form) -> int:
+    """Controls of an open *form* that were loaded as "not installed" placeholders and whose package is
+    installed now: the package's defaults fill the properties the saved data does not have (the placeholder's
+    own stand-in values are replaced). Returns the number of controls updated."""
+    n = 0
+    for c in getattr(form, "controls", []):
+        added = getattr(c, "added", None)
+        if not added or is_missing(c.type):
+            continue
+        try:
+            defaults = c.ctype.default_props(c.name)
+        except Exception:  # noqa: BLE001
+            continue
+        for k, v in defaults.items():
+            if k not in c.props or (k in added and c.props.get(k) == added[k]):
+                c.props[k] = v
+        c.added = {}
+        n += 1
+    return n
 
 
 def used_packages(forms) -> list[ComponentPackage]:
@@ -861,6 +887,6 @@ class {Name}(QLabel):
 __all__ = ["MANIFEST", "PACKAGE_EXT", "API_VERSION", "SCHEMA", "SCHEMA_VERSION", "SOURCES", "CATEGORY_ORDER",
            "ComponentError", "ComponentPackage", "Registry", "REGISTRY", "read_package", "builtin_packages",
            "builtin_control_types", "builtin_mobile_types", "REBUILD_PROPS", "control_type_of", "missing_type", "is_missing", "package_of",
-           "is_component_type", "help_file", "event_help", "ensure_types", "used_packages", "copy_runtimes",
+           "is_component_type", "help_file", "event_help", "ensure_types", "refresh_placeholders", "used_packages", "copy_runtimes",
            "install_package", "uninstall_package", "export_package", "new_package", "user_components_dir",
            "project_components_dir", "dev_dirs", "validate_manifest", "version_key"]

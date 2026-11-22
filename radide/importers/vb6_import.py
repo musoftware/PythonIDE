@@ -121,10 +121,21 @@ def _color(v) -> str:
     return f"#{v & 0xFF:02X}{(v >> 8) & 0xFF:02X}{(v >> 16) & 0xFF:02X}"
 
 
+def _int(v, default: int = 0) -> int:
+    """int() of a .frm property value; a corrupted file (Index = abc, TabIndex = 1E+999 ...) gives *default*."""
+    try:
+        return int(v)
+    except (TypeError, ValueError, OverflowError):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 def _px(v, default=0) -> int:
     try:
         return int(round(float(v) / TWIP))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):      # OverflowError: 1E+999 in a corrupted file
         return default
 
 
@@ -133,7 +144,7 @@ def _bool(v, default=True) -> bool:
         return default
     try:
         return int(v) != 0
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return str(v).lower() == "true"
 
 
@@ -148,13 +159,13 @@ class _FrmConverter:
         form = Form()
         form.props.update(Name=root.name, Text=str(p.get("caption", root.name)),
                           Width=_px(p.get("clientwidth", 6000), 400), Height=_px(p.get("clientheight", 4500), 300),
-                          ScaleMode="Twip" if int(p.get("scalemode", 1) or 1) == 1 else "Pixel")
+                          ScaleMode="Twip" if _int(p.get("scalemode", 1) or 1) == 1 else "Pixel")
         if _color(p.get("backcolor")):
             form.props["BackColor"] = _color(p.get("backcolor"))
-        form.props["StartPosition"] = "CenterScreen" if int(p.get("startupposition", 2) or 0) in (1, 2) else "Manual"
-        if int(p.get("borderstyle", 2) or 2) in (1, 3):
+        form.props["StartPosition"] = "CenterScreen" if _int(p.get("startupposition", 2) or 0) in (1, 2) else "Manual"
+        if _int(p.get("borderstyle", 2) or 2) in (1, 3):
             form.props["FormBorderStyle"] = "FixedSingle"
-        if int(p.get("windowstate", 0) or 0) == 2:
+        if _int(p.get("windowstate", 0) or 0) == 2:
             form.props["WindowState"] = "Maximized"
         menus = [c for c in root.children if c.cls.lower() == "vb.menu"]
         for ch in root.children:
@@ -206,11 +217,11 @@ class _FrmConverter:
             props.update(Left=_px(p.get("left", 0)), Top=_px(p.get("top", 0)),
                          Width=max(8, _px(p.get("width", 1200), 80)), Height=max(8, _px(p.get("height", 375), 25)),
                          Enabled=_bool(p.get("enabled"), True), Visible=_bool(p.get("visible"), True),
-                         TabIndex=int(p.get("tabindex", 0) or 0), ToolTip=str(p.get("tooltiptext", "") or ""))
+                         TabIndex=_int(p.get("tabindex", 0) or 0), ToolTip=str(p.get("tooltiptext", "") or ""))
         props["Parent"] = parent
         if index is not None:
             props["ArrayName"] = o.name
-            props["ArrayIndex"] = int(index)
+            props["ArrayIndex"] = _int(index)
         text = p.get("caption", p.get("text", ""))
         if isinstance(text, tuple):
             text = ""
@@ -222,23 +233,23 @@ class _FrmConverter:
             props["Multiline"] = _bool(p.get("multiline"), False) or cls == "richtextlib.richtextbox"
             props["ReadOnly"] = _bool(p.get("locked"), False)
             props["PasswordChar"] = str(p.get("passwordchar", "") or "")[:1]
-            props["MaxLength"] = int(p.get("maxlength", 0) or 0)
+            props["MaxLength"] = _int(p.get("maxlength", 0) or 0)
         if ntype in ("CheckBox",):
-            props["Checked"] = int(p.get("value", 0) or 0) == 1
+            props["Checked"] = _int(p.get("value", 0) or 0) == 1
         if ntype == "RadioButton":
             props["Checked"] = _bool(p.get("value"), False)
         if ntype == "ComboBox":
-            props["DropDownStyle"] = "DropDownList" if int(p.get("style", 0) or 0) == 2 else "DropDown"
+            props["DropDownStyle"] = "DropDownList" if _int(p.get("style", 0) or 0) == 2 else "DropDown"
         if ntype in ("TrackBar", "NumericUpDown", "ProgressBar"):
-            props["Minimum"] = int(p.get("min", 0) or 0)
-            props["Maximum"] = int(p.get("max", 100 if ntype != "TrackBar" else 32767) or 100)
-            props["Value"] = int(p.get("value", 0) or 0)
+            props["Minimum"] = _int(p.get("min", 0) or 0)
+            props["Maximum"] = _int(p.get("max", 100 if ntype != "TrackBar" else 32767) or 100)
+            props["Value"] = _int(p.get("value", 0) or 0)
         if ntype == "Label":
-            props["TextAlign"] = {0: "Left", 1: "Right", 2: "Center"}.get(int(p.get("alignment", 0) or 0), "Left")
+            props["TextAlign"] = {0: "Left", 1: "Right", 2: "Center"}.get(_int(p.get("alignment", 0) or 0), "Left")
         if ntype == "Button":
             props["TextAlign"] = "Center"
         if ntype == "Timer":
-            props["Interval"] = int(p.get("interval", 0) or 0)
+            props["Interval"] = _int(p.get("interval", 0) or 0)
             props["Enabled"] = _bool(p.get("enabled"), True) and props["Interval"] > 0
         if not ctype.nonvisual:
             bg, fg = _color(p.get("backcolor")), _color(p.get("forecolor"))
@@ -251,12 +262,20 @@ class _FrmConverter:
                 if f.get("name"):
                     props["FontName"] = {"MS Sans Serif": "Segoe UI"}.get(str(f["name"]), str(f["name"]))
                 if f.get("size"):
-                    props["FontSize"] = max(6, int(round(float(f["size"]))))
+                    try:
+                        props["FontSize"] = max(6, min(500, int(round(float(f["size"])))))
+                    except (TypeError, ValueError, OverflowError):
+                        pass
                 props["FontBold"] = int(f.get("weight", 400) or 400) >= 700
                 props["FontItalic"] = _bool(f.get("italic"), False)
         if ntype == "PictureBox" and p.get("picture"):
             self.report.warnings.append(f"{self.label}: '{name}' picture is stored in .frx - set Image again")
         _ocx_props(cls, o, props)
+        if cls not in CLASS_MAP:                  # unknown ActiveX: its class and saved properties are kept
+            props["ActiveXClass"] = o.cls          # on the placeholder (Properties window: Misc)
+            props["ActiveXProperties"] = {str(k): v if isinstance(v, (str, int, float, bool)) else str(v)
+                                          for k, v in o.props.items()
+                                          if str(k).lower() not in ("left", "top", "width", "height", "tabindex")}
         form.controls.append(Control(ntype, props))
         self.report.controls += 1
         if cls == "tabdlg.sstab":
@@ -281,7 +300,7 @@ class _FrmConverter:
             props.update(Left=_px(p.get("left", 0)), Top=_px(p.get("top", 0)),
                          Width=max(8, _px(p.get("width", 1200), 80)), Height=max(8, _px(p.get("height", 375), 25)),
                          Enabled=_bool(p.get("enabled"), True), Visible=_bool(p.get("visible"), True),
-                         TabIndex=int(p.get("tabindex", 0) or 0), ToolTip=str(p.get("tooltiptext", "") or ""))
+                         TabIndex=_int(p.get("tabindex", 0) or 0), ToolTip=str(p.get("tooltiptext", "") or ""))
             bg, fg = _color(p.get("backcolor")), _color(p.get("forecolor"))
             if bg and "BackColor" in props:
                 props["BackColor"] = bg
@@ -292,7 +311,7 @@ class _FrmConverter:
         props["Parent"] = parent
         if index is not None:
             props["ArrayName"] = o.name
-            props["ArrayIndex"] = int(index)
+            props["ArrayIndex"] = _int(index)
         props.update(_vb6map.read_props(ntype, p))
         form.controls.append(Control(ntype, props))
         self.report.controls += 1
@@ -313,7 +332,7 @@ class _FrmConverter:
             self._add(form, ch, name)
             idx = ch.props.get("index")
             key = (ch.name if idx is None else f"{ch.name}_{idx}").lower()
-            page = page_of.get(key, page_of.get(ch.name.lower(), int(o.props.get("tab", 0) or 0)))
+            page = page_of.get(key, page_of.get(ch.name.lower(), _int(o.props.get("tab", 0) or 0)))
             for c in form.controls[n:]:
                 if c.props.get("Parent") != name:
                     continue
@@ -350,10 +369,10 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
     """Type-specific properties of the VB6 / ActiveX controls mapped onto neutral controls."""
     p = o.props
     if cls in ("tabdlg.sstab",):
-        n = int(p.get("tabs", 3) or 3)
+        n = max(0, min(_int(p.get("tabs", 3) or 3), 256))       # (a corrupted file: Tabs = 999999999)
         caps = [str(p.get(f"tabcaption({i})", f"Tab {i}") or f"Tab {i}").strip() or f"Tab {i}" for i in range(n)]
         props["TabPages"] = ";".join(c.replace(";", ",") for c in caps)
-        props["SelectedIndex"] = int(p.get("tab", 0) or 0)
+        props["SelectedIndex"] = _int(p.get("tab", 0) or 0)
     elif cls in ("mscomctllib.tabstrip", "comctllib.tabstrip"):
         tabs = _pb(o, "Tabs")
         caps = []
@@ -362,9 +381,9 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
         props["TabPages"] = ";".join(caps) or "Tab1"
     elif cls in GRID_CLASSES:
         if cls in ("msflexgridlib.msflexgrid", "mshierarchicalflexgridlib.mshflexgrid"):
-            cols = max(1, int(p.get("cols", 2) or 2))
-            rows = max(1, int(p.get("rows", 2) or 2))
-            fixed = int(p.get("fixedrows", 1) if p.get("fixedrows") is not None else 1)
+            cols = max(1, min(_int(p.get("cols", 2) or 2), 1000))
+            rows = max(1, min(_int(p.get("rows", 2) or 2), 10000))
+            fixed = _int(p.get("fixedrows", 1) if p.get("fixedrows") is not None else 1)
             heads = []
             fs = p.get("formatstring")
             if isinstance(fs, str) and fs:
@@ -374,7 +393,7 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
             props["Rows"] = ";".join("|".join([""] * cols) for _ in range(max(0, rows - max(1, fixed))))
             props["ReadOnly"] = True
         else:
-            n = int(p.get("columncount", 2) or 2)
+            n = max(0, min(_int(p.get("columncount", 2) or 2), 1000))
             names = []
             for i in range(n):
                 cp = _pb_props(_pb(o, f"Column{i:02d}"))
@@ -383,7 +402,7 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
             props["Rows"] = ""
             props["ReadOnly"] = not _bool(p.get("allowupdate"), True)
     elif cls in ("mscomctl2.dtpicker", "comct2lib.dtpicker"):
-        fmt = int(p.get("format", 1) or 0) & 0xFF
+        fmt = _int(p.get("format", 1) or 0) & 0xFF
         props["Format"] = {0: "Long", 2: "Time"}.get(fmt, "Short")
         props["Value"] = _ole_date(p.get("currentdate")) if p.get("currentdate") is not None else ""
     elif cls in ("mscomctl2.monthview", "msacal.calendar"):
@@ -404,7 +423,7 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
         cols = [t.replace(";", ",") for _i, t in sorted(hdrs)]
         props["Columns"] = ";".join(c if c.strip() else f"Column{i + 1}" for i, c in enumerate(cols))
         props["Items"] = ""
-        props["View"] = "Details" if int(p.get("view", 0) or 0) == 3 else "List"
+        props["View"] = "Details" if _int(p.get("view", 0) or 0) == 3 else "List"
     elif cls in ("mscomctllib.treeview", "comctllib.treeview"):
         props["Nodes"] = ""
     elif cls in DATA_CONTROLS:
@@ -416,7 +435,7 @@ def _ocx_props(cls: str, o: FrmObject, props: dict) -> None:
             y1, y2 = float(p.get("y1", 0)), float(p.get("y2", 0))
         except (TypeError, ValueError):
             return
-        w = max(1, int(p.get("borderwidth", 1) or 1))
+        w = max(1, _int(p.get("borderwidth", 1) or 1))
         props.update(Left=_px(min(x1, x2)), Top=_px(min(y1, y2)), Width=max(w, _px(abs(x2 - x1))),
                      Height=max(w, _px(abs(y2 - y1))))
         props["BackColor"] = _color(p.get("bordercolor", 0)) or "#000000"

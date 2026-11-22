@@ -180,6 +180,76 @@ class Host {
       }
       return origLoad.apply(this, arguments);
     };
+    this._installEsmHook();
+  }
+
+  // `import * as vscode from 'vscode'` in ES-module extensions (Prettier 12, "type": "module" bundles): ESM
+  // resolution never goes through Module._load, so 'vscode' resolves to a generated module that re-exports the
+  // importing extension's API object (VS Code's extension host does the same with its own ESM loader).
+  _installEsmHook() {
+    const host = this;
+    const { pathToFileURL, fileURLToPath } = require('url');
+    globalThis.__radideVscodeApi = (parentURL) => {
+      let file = '';
+      try { file = parentURL && parentURL.startsWith('file:') ? fileURLToPath(parentURL) : ''; } catch (_) { /* */ }
+      const ext = host._extForFile(file) || host._activating || host._anyExt();
+      if (!ext) throw new Error("Cannot find module 'vscode'");
+      if (!ext.api) ext.api = createApi(host, ext);
+      return ext.api;
+    };
+    let names = null;
+    const exportNames = () => {
+      if (names) return names;
+      try {
+        const ext = host._anyExt();
+        const api = ext ? (ext.api || (ext.api = createApi(host, ext)))
+          : createApi(host, { id: 'radide.esm-probe', idOriginal: 'radide.esm-probe', path: __dirname, packageJSON: { name: 'esm-probe', publisher: 'radide', version: '0.0.0' } });
+        names = Object.keys(api).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k) && k !== 'default');
+      } catch (_) { names = []; }
+      return names;
+    };
+    const source = (parentURL) => {
+      const lines = [`const api = globalThis.__radideVscodeApi(${JSON.stringify(parentURL || '')});`, 'export default api;'];
+      for (const n of exportNames()) lines.push(`export const ${n} = api[${JSON.stringify(n)}];`);
+      return lines.join('\n');
+    };
+    const PREFIX = 'radide-vscode:';
+    const M = require('module');
+    if (typeof M.registerHooks === 'function') {          // Node >= 22.15: synchronous in-thread hooks
+      try {
+        M.registerHooks({
+          resolve(specifier, context, next) {
+            if (specifier === 'vscode') return { url: PREFIX + encodeURIComponent(context.parentURL || ''), shortCircuit: true };
+            return next(specifier, context);
+          },
+          load(url, context, next) {
+            if (url.startsWith(PREFIX)) return { format: 'module', source: source(decodeURIComponent(url.slice(PREFIX.length))), shortCircuit: true };
+            return next(url, context);
+          },
+        });
+        return;
+      } catch (e) { this.logHost('ESM hook: ' + e); }
+    }
+    if (typeof M.register === 'function') {               // Node 20.6+: off-thread hooks; the generated source runs here
+      const hooks = `
+        const PREFIX = ${JSON.stringify(PREFIX)};
+        let names = [];
+        export async function initialize(data) { names = (data && data.names) || []; }
+        export async function resolve(specifier, context, next) {
+          if (specifier === 'vscode') return { url: PREFIX + encodeURIComponent(context.parentURL || ''), shortCircuit: true };
+          return next(specifier, context);
+        }
+        export async function load(url, context, next) {
+          if (!url.startsWith(PREFIX)) return next(url, context);
+          const parent = decodeURIComponent(url.slice(PREFIX.length));
+          const lines = ['const api = globalThis.__radideVscodeApi(' + JSON.stringify(parent) + ');', 'export default api;'];
+          for (const n of names) lines.push('export const ' + n + ' = api[' + JSON.stringify(n) + '];');
+          return { format: 'module', source: lines.join('\\n'), shortCircuit: true };
+        }`;
+      try {
+        M.register('data:text/javascript,' + encodeURIComponent(hooks), pathToFileURL(__filename), { data: { names: exportNames() } });
+      } catch (e) { this.logHost('ESM hook: ' + e); }
+    }
   }
 
   _extForFile(file) {
@@ -1291,6 +1361,30 @@ class Host {
     return coll;
   }
 
+  _ideDiagnostics(files) {
+    if (!this._ideDiag) {
+      const map = new Map();
+      this._ideDiag = { name: 'RAD IDE', _map: map, get: (u) => { const e = map.get(u.toString()); return e ? e[1] : undefined; } };
+      this.collections.add(this._ideDiag);
+    }
+    const map = this._ideDiag._map;
+    const uris = [];
+    for (const [k, [u]] of map) { if (!(u.fsPath in files)) { map.delete(k); uris.push(u); } }
+    for (const [file, list] of Object.entries(files)) {
+      const u = T.Uri.file(file);
+      const diags = (list || []).map((d) => {
+        const r = new T.Range(Math.max(0, (d.line || 1) - 1), Math.max(0, (d.col || 1) - 1), Math.max(0, (d.endLine || d.line || 1) - 1), Math.max(0, (d.endCol || 1000) - 1));
+        const sev = { error: 0, warning: 1, information: 2, info: 2, hint: 3 }[String(d.severity || 'error').toLowerCase()];
+        const x = new T.Diagnostic(r, String(d.message || ''), sev === undefined ? 0 : sev);
+        x.source = d.source || 'RAD IDE';
+        return x;
+      });
+      map.set(u.toString(), [u, diags]);
+      uris.push(u);
+    }
+    if (uris.length) this.events.diagnostics.fire({ uris });
+  }
+
   getDiagnostics(uri) {
     if (uri) {
       const out = [];
@@ -1501,6 +1595,7 @@ class Host {
       if (p.machineId) this.machineId = p.machineId;
       this._settings = p.settings || {};
       this._folders = (p.workspaceFolders || []).map((f, i) => ({ uri: T.Uri.file(f), name: path.basename(f), index: i }));
+      this._chdirFirstFolder();
       const loaded = [];
       for (const e of p.extensions || []) {
         let pj = e.packageJSON;
@@ -1658,6 +1753,9 @@ class Host {
       });
     });
     N('workspace/folders', (p) => this._setFolders(p.folders || []));
+    // the IDE's own diagnostics (Error List: syntax checks, IDE language servers) - VS Code's getDiagnostics also
+    // returns the built-in language features' problems; agents (Claude Code's getDiagnostics tool) rely on it
+    N('diagnostics/ide', (p) => this._ideDiagnostics(p.files || {}));
     N('theme/changed', (p) => { this.themeKind = p.kind || this.themeKind; this.events.theme.fire({ kind: this.themeKind }); });
     N('window/focus', (p) => { this.windowState = { focused: !!p.focused, active: !!p.focused }; this.events.windowState.fire(this.windowState); });
     N('progress/cancel', (p) => { const c = this._progress && this._progress.get(p.id); if (c) c.cancel(); });
@@ -1684,9 +1782,17 @@ class Host {
   _setFolders(list) {
     const old = this._folders;
     this._folders = list.map((f, i) => ({ uri: T.Uri.file(f), name: path.basename(f), index: i }));
+    this._chdirFirstFolder();
     this.events.workspaceFolders.fire({ added: this._folders.filter((f) => !old.some((o) => o.uri.fsPath === f.uri.fsPath)), removed: old.filter((o) => !this._folders.some((f) => o.uri.fsPath === f.uri.fsPath)) });
     this._ensureFsWatch();
     this._workspaceContains();
+  }
+
+  // processes extensions spawn without a cwd (CLIs, language servers) start in the workspace, not in the IDE's folder
+  _chdirFirstFolder() {
+    const f = this._folders[0];
+    if (!f) return;
+    try { process.chdir(f.uri.fsPath); process.env.RADIDE_WORKSPACE = f.uri.fsPath; } catch (_) { /* folder gone */ }
   }
 
   /** workspace.updateWorkspaceFolders: the extension host's folder list (the IDE is told; it keeps its projects) */

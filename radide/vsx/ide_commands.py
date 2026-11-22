@@ -358,8 +358,8 @@ def _refresh_explorer(wb, args):
 
 def _quick_open(wb, args):
     from ..features import command_palette as cp
-    prefix = _arg(args)
-    cp.show_palette(_win(wb), str(prefix) if isinstance(prefix, str) else "")
+    prefix = _arg(args)          # workbench.action.quickOpen(prefix?): the quick input with that text
+    cp.quick_open(_win(wb), str(prefix) if isinstance(prefix, str) else "")
     return True
 
 
@@ -376,6 +376,162 @@ def _terminal_tab(wb, step: int):
 
 def _debug(*actions, menu=()):
     return lambda wb, args: True if (_action(_win(wb), *actions) or _menu(_win(wb), *menu)) else True
+
+
+# ============================================================================ navigation / editors
+def _nav(wb):
+    nav = getattr(_win(wb), "vsx_nav", None)
+    if nav is None:
+        from . import navigation
+        nav = navigation.install(_win(wb))
+    return nav
+
+
+def _palette(prefix: str):
+    def run(wb, args):
+        from ..features import command_palette as cp
+        cp.quick_open(_win(wb), prefix)
+        return True
+    return run
+
+
+def _keybindings_json(wb, args):
+    from . import user_keybindings
+    wb.svc.open_path(str(user_keybindings.ensure_file()))
+    return True
+
+
+def _keyboard_shortcuts(wb, args):
+    """workbench.action.openGlobalKeybindings(query?): the Keyboard Shortcuts page (radide/vsx/settings_ui.py)."""
+    from PyQt6.QtCore import QTimer
+    q = _settings_query(args)
+
+    def go():
+        from . import settings_ui
+        settings_ui.show_keyboard_shortcuts(_win(wb), q)
+    QTimer.singleShot(0, go)
+    return True
+
+
+def _settings_ui(wb, args):
+    from PyQt6.QtCore import QTimer
+    q = _settings_query(args)
+
+    def go():
+        from . import settings_ui
+        settings_ui.show_settings(_win(wb), q)
+    QTimer.singleShot(0, go)
+    return True
+
+
+def _revert(wb, args):
+    """workbench.action.files.revert: the active editor's file as it is on disk (unsaved changes dropped)."""
+    win = _win(wb)
+    ed = wb.svc.active_editor() if hasattr(wb.svc, "active_editor") else None
+    if ed is None or not getattr(ed, "path", None):
+        return True
+    try:
+        text = Path(ed.path).read_text("utf-8").replace("\r\n", "\n")
+    except (OSError, UnicodeError):
+        return True
+    ed.setText(text)
+    ed.setModified(False)
+    win.statusBar().showMessage(f"Reverted {Path(ed.path).name}", 3000)
+    return True
+
+
+def _close_editor(wb, args):
+    win = _win(wb)
+    tabs = getattr(win, "tabs", None)
+    if tabs is None or tabs.currentIndex() < 0:
+        return True
+    if _menu(win, "File/Close"):
+        return True
+    i = tabs.currentIndex()
+    req = getattr(win, "_close_tab", None) or getattr(win, "close_tab", None)
+    if callable(req):
+        req(i)
+    else:
+        tabs.tabCloseRequested.emit(i)
+    return True
+
+
+def _new_file(wb, args):
+    """workbench.action.files.newUntitledFile / welcome.showNewFileEntries: File > New File (IDE) or an
+    untitled document through the host."""
+    win = _win(wb)
+    if _menu(win, "File/New File", "File/New/File..."):
+        return True
+    if wb.svc.host.running():
+        wb.svc.execute("workbench.action.files.newUntitledFile", args)
+    return True
+
+
+def _problem(step: int):
+    """editor.action.marker.nextInFiles / prevInFiles (F8 / Shift+F8) and workbench problem navigation: the next
+    entry of the Error List, opened at its line."""
+    def run(wb, args):
+        win = _win(wb)
+        lst = getattr(win, "error_list", None)
+        if lst is None or lst.topLevelItemCount() == 0:
+            ed = wb.svc.active_editor() if hasattr(wb.svc, "active_editor") else None
+            if ed is not None:
+                from . import editor_commands as EC
+                EC.run(ed, "editor.action.marker.next" if step > 0 else "editor.action.marker.prev", [])
+            return True
+        n = lst.topLevelItemCount()
+        cur = lst.indexOfTopLevelItem(lst.currentItem()) if lst.currentItem() is not None else -1
+        i = (cur + step) % n
+        it = lst.topLevelItem(i)
+        lst.setCurrentItem(it)
+        try:
+            from ..tools import _goto
+            _goto(win, it.text(2), int(it.text(3) or 1))
+        except Exception:  # noqa: BLE001
+            pass
+        return True
+    return run
+
+
+def _git(op: str):
+    """git.* commands of VS Code's built-in Git extension that other extensions run, on RAD IDE's Git."""
+    def run(wb, args):
+        win = _win(wb)
+        panel = getattr(win, "git_panel", None)
+        full = getattr(win, "git_full", None)
+        target = _uri_path(_arg(args))
+        if isinstance(_arg(args), dict) and "resourceUri" in _arg(args):
+            target = _uri_path(_arg(args)["resourceUri"])
+        if op == "refresh":
+            if panel is not None:
+                panel.refresh()
+            return True
+        if op in ("fetch", "sync", "push") and full is not None:
+            getattr(full, op)()
+            return True
+        if op == "pull" and full is not None and hasattr(full, "pull"):
+            full.pull()
+            return True
+        if op == "openChange":
+            p = Path(target) if target else (Path(wb.svc.active_editor().path) if wb.svc.active_editor() else None)
+            if p is not None and full is not None and hasattr(full, "compare_path"):
+                full.compare_path(p)
+            return True
+        if op in ("stage", "unstage") and panel is not None:
+            git = getattr(panel, "git", None)
+            paths = [target] if target else ([str(wb.svc.active_editor().path)] if wb.svc.active_editor() else [])
+            if git is not None and paths:
+                getattr(git, op)(paths)
+                panel.refresh()
+            return True
+        if op == "stageAll" and panel is not None:
+            panel.stage_all()
+            return True
+        if op in ("commit", "openRepository", "showOutput", "init", "clone", "checkout", "branch"):
+            show_dock(win, "dock_git", "scm") or _action(win, "a_git")
+            return True
+        return True
+    return run
 
 
 # ============================================================================ the table
@@ -459,7 +615,196 @@ COMMANDS = {
     "workbench.action.debug.stepOut": _debug("a_step_out"),
     "workbench.action.debug.restart": _debug(menu=("Debug/Restart",)),
     "workbench.action.debug.pause": _debug(menu=("Debug/Break All",)),
+    "workbench.action.debug.stepIntoTarget": _debug("a_step_into"),
+    "workbench.action.debug.selectandstart": _palette("debug "),
+    "workbench.action.debug.configure": lambda wb, a: _launch_json(wb),
+    # quick access (the Command Palette's prefixes)
+    "workbench.action.showCommands": _palette(">"),
+    "workbench.action.gotoLine": _palette(":"),
+    "workbench.action.gotoSymbol": _palette("@"),
+    "workbench.action.showAllSymbols": _palette("#"),
+    "workbench.action.quickOpenView": _palette("view "),
+    "workbench.action.showAllEditors": _palette("edt "),
+    "workbench.action.showAllEditorsByMostRecentlyUsed": _palette("edt mru "),
+    "workbench.action.showEditorsInActiveGroup": _palette("edt active "),
+    "workbench.action.quickOpenTerm": _palette("term "),
+    "workbench.action.tasks.showTasks": _palette("task "),
+    "workbench.action.openRecent": _palette("recent "),
+    "workbench.action.quickOpenPreviousRecentlyUsedEditor": _palette("edt mru "),
+    "workbench.extensions.action.installExtensions": lambda wb, a: _extensions_view(_win(wb), ""),
+    "workbench.extensions.action.listEnabledExtensions": lambda wb, a: _extensions_view(_win(wb)),
+    # navigation history / closed editors
+    "workbench.action.navigateBack": lambda wb, a: _nav(wb).navigate_back() or True,
+    "workbench.action.navigateForward": lambda wb, a: _nav(wb).navigate_forward() or True,
+    "workbench.action.navigateLast": lambda wb, a: _nav(wb).navigate_last() or True,
+    "workbench.action.navigateToLastEditLocation": lambda wb, a: _nav(wb).last_edit() or True,
+    "workbench.action.navigateBackInEditLocations": lambda wb, a: _nav(wb).last_edit() or True,
+    "workbench.action.reopenClosedEditor": lambda wb, a: _nav(wb).reopen_closed() or True,
+    # files / editors
+    "workbench.action.files.revert": _revert,
+    "workbench.action.files.save": lambda wb, a: _menu(_win(wb), "File/Save") or True,
+    "workbench.action.files.saveAll": lambda wb, a: (getattr(_win(wb), "save_all", lambda: None)(), True)[1],
+    "workbench.action.closeActiveEditor": _close_editor,
+    "workbench.action.files.newUntitledFile": _new_file,
+    "welcome.showNewFileEntries": _new_file,
+    "workbench.action.files.newFile": _new_file,
+    # problems
+    "editor.action.marker.nextInFiles": _problem(+1),
+    "editor.action.marker.prevInFiles": _problem(-1),
+    "workbench.action.problems.next": _problem(+1),
+    "workbench.action.problems.previous": _problem(-1),
+    # preferences
+    "workbench.action.openGlobalKeybindingsFile": _keybindings_json,
+    "workbench.action.openDefaultKeybindingsFile": _keybindings_json,
+    "workbench.action.openKeyboardLayoutPicker": lambda wb, a: True,
+    "workbench.action.openRawDefaultSettings": _settings_json,
+    "workbench.action.openSettingsUI": _settings_ui,
+    # git (VS Code's built-in Git extension)
+    "git.refresh": _git("refresh"), "git.fetch": _git("fetch"), "git.sync": _git("sync"), "git.push": _git("push"),
+    "git.pull": _git("pull"), "git.openChange": _git("openChange"), "git.stage": _git("stage"),
+    "git.unstage": _git("unstage"), "git.stageAll": _git("stageAll"), "git.commit": _git("commit"),
+    "git.openRepository": _git("openRepository"), "git.showOutput": _git("showOutput"), "git.init": _git("init"),
+    "git.clone": _git("clone"), "git.checkout": _git("checkout"), "git.branch": _git("branch"),
 }
+COMMANDS["workbench.action.openGlobalKeybindings"] = _keyboard_shortcuts
+
+
+def _list_cmd(op: str):
+    """list.* (VS Code's list / tree navigation): on the focused Qt list or tree of the IDE."""
+    def run(wb, args):
+        from PyQt6.QtWidgets import QAbstractItemView, QApplication, QTreeView
+        w = QApplication.focusWidget()
+        while w is not None and not isinstance(w, QAbstractItemView):
+            w = w.parentWidget()
+        if w is None or w.model() is None:
+            return True
+        m = w.model()
+        cur = w.currentIndex()
+        if op in ("focusDown", "focusUp", "focusFirst", "focusLast", "focusPageDown", "focusPageUp"):
+            action = {"focusDown": QAbstractItemView.CursorAction.MoveDown, "focusUp": QAbstractItemView.CursorAction.MoveUp,
+                      "focusFirst": QAbstractItemView.CursorAction.MoveHome,
+                      "focusLast": QAbstractItemView.CursorAction.MoveEnd,
+                      "focusPageDown": QAbstractItemView.CursorAction.MovePageDown,
+                      "focusPageUp": QAbstractItemView.CursorAction.MovePageUp}[op]
+            idx = w.moveCursor(action, w.keyboardModifiers() if hasattr(w, "keyboardModifiers") else
+                               QApplication.keyboardModifiers())
+            if idx.isValid():
+                w.setCurrentIndex(idx)
+            elif m.rowCount() and not cur.isValid():
+                w.setCurrentIndex(m.index(0, 0))
+            return True
+        if not cur.isValid():
+            return True
+        if op == "select":
+            w.activated.emit(cur)
+            w.doubleClicked.emit(cur)
+        elif isinstance(w, QTreeView) and op == "collapse":
+            if w.isExpanded(cur):
+                w.collapse(cur)
+            elif cur.parent().isValid():
+                w.setCurrentIndex(cur.parent())
+        elif isinstance(w, QTreeView) and op == "expand":
+            w.expand(cur)
+        elif isinstance(w, QTreeView) and op == "toggleExpand":
+            w.setExpanded(cur, not w.isExpanded(cur))
+        return True
+    return run
+
+
+def _run_selected_text(wb, args):
+    """workbench.action.terminal.runSelectedText: the editor's selection (or line) to the active terminal."""
+    ed = wb.svc.active_editor() if hasattr(wb.svc, "active_editor") else None
+    if ed is None:
+        return True
+    text = ed.selectedText() if hasattr(ed, "selectedText") else ""
+    if not text:
+        line = getattr(ed, "_cursor", (0, 0))[0]
+        lines = ed.text().split("\n")
+        text = lines[line] if 0 <= line < len(lines) else ""
+    if text and wb.svc.host.running():
+        wb.svc.execute("workbench.action.terminal.sendSequence", [{"text": text.rstrip("\n") + "\r"}])
+    return True
+
+
+def _toggle_breakpoint(wb, args):
+    ed = wb.svc.active_editor() if hasattr(wb.svc, "active_editor") else None
+    if ed is not None and hasattr(ed, "toggle_breakpoint"):
+        ed.toggle_breakpoint()
+        return True
+    return _action(_win(wb), "a_toggle_breakpoint") or _menu(_win(wb), "Debug/Toggle Breakpoint") or True
+
+
+def _compare_with(wb, args):
+    """workbench.files.action.compareFileWith: pick a file, open a Diff with the active one."""
+    from PyQt6.QtWidgets import QFileDialog
+    ed = wb.svc.active_editor() if hasattr(wb.svc, "active_editor") else None
+    if ed is None or os.environ.get("RADIDE_TEST_NO_DIALOGS"):
+        return True
+    other, _ = QFileDialog.getOpenFileName(_win(wb), "Select File to Compare", str(Path(ed.path).parent))
+    if other and wb.svc.host.running():
+        wb.svc.execute("vscode.diff", [{"$uri": Path(ed.path).resolve().as_uri()}, {"$uri": Path(other).resolve().as_uri()},
+                                       f"{Path(ed.path).name} ↔ {Path(other).name}"])
+    return True
+
+
+def _palette_move(step: int):
+    def run(wb, args):
+        box = getattr(_win(wb), "command_palette", None)
+        if box is not None and box.isVisible() and box.list.count():
+            box.list.setCurrentRow((box.list.currentRow() + step) % box.list.count())
+        else:
+            from ..features import command_palette as cp
+            cp.quick_open(_win(wb), "edt mru ")
+        return True
+    return run
+
+
+def _tasks_json(wb, args):
+    folders = wb.svc.folders() if hasattr(wb.svc, "folders") else []
+    if not folders:
+        return True
+    p = Path(folders[0]) / ".vscode" / "tasks.json"
+    if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('{\n  "version": "2.0.0",\n  "tasks": []\n}\n', "utf-8")
+    wb.svc.open_path(str(p))
+    return True
+
+
+COMMANDS.update({
+    "list.focusDown": _list_cmd("focusDown"), "list.focusUp": _list_cmd("focusUp"),
+    "list.focusFirst": _list_cmd("focusFirst"), "list.focusLast": _list_cmd("focusLast"),
+    "list.focusPageDown": _list_cmd("focusPageDown"), "list.focusPageUp": _list_cmd("focusPageUp"),
+    "list.select": _list_cmd("select"), "list.collapse": _list_cmd("collapse"), "list.expand": _list_cmd("expand"),
+    "list.toggleExpand": _list_cmd("toggleExpand"),
+    "workbench.action.terminal.runSelectedText": _run_selected_text,
+    "editor.debug.action.toggleBreakpoint": _toggle_breakpoint,
+    "editor.debug.action.runToCursor": lambda wb, a: _action(_win(wb), "a_run_to_cursor") or
+    _menu(_win(wb), "Debug/Run To Cursor") or True,
+    "workbench.files.action.compareFileWith": _compare_with,
+    "workbench.action.quickOpenNavigateNextInRecentFilesPicker": _palette_move(+1),
+    "workbench.action.quickOpenNavigatePreviousInRecentFilesPicker": _palette_move(-1),
+    "workbench.action.quickOpenSelectNext": _palette_move(+1),
+    "workbench.action.quickOpenSelectPrevious": _palette_move(-1),
+    "workbench.action.tasks.configureTaskRunner": _tasks_json,
+    "workbench.action.tasks.configureDefaultBuildTask": _tasks_json,
+    "filesExplorer.findInFolder": lambda wb, a: _menu(_win(wb), "Edit/Find in Files...") or True,
+    "breadcrumbs.focusAndSelect": _palette("@"),
+    "workbench.action.closeWindow": lambda wb, a: (_win(wb).close(), True)[1],
+})
+
+
+def _launch_json(wb):
+    """workbench.action.debug.configure: .vscode/launch.json of the first workspace folder."""
+    folders = wb.svc.folders() if hasattr(wb.svc, "folders") else []
+    if not folders:
+        return True
+    p = Path(folders[0]) / ".vscode" / "launch.json"
+    if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('{\n  "version": "0.2.0",\n  "configurations": []\n}\n', "utf-8")
+    wb.svc.open_path(str(p))
+    return True
 
 # accepted, nothing to do in RAD IDE (one editor group, one window, no editor locking ...)
 NOOP = {
@@ -467,12 +812,15 @@ NOOP = {
     "workbench.action.splitEditorRight", "workbench.action.splitEditorDown", "workbench.action.moveEditorToNextGroup",
     "workbench.action.moveEditorToPreviousGroup", "workbench.action.newGroupRight", "workbench.action.newGroupBelow",
     "workbench.action.focusSecondEditorGroup", "workbench.action.focusThirdEditorGroup", "workbench.action.joinAllGroups",
-    "workbench.action.evenEditorWidths", "workbench.action.toggleMaximizeEditorGroup", "workbench.action.reopenClosedEditor",
+    "workbench.action.evenEditorWidths", "workbench.action.toggleMaximizeEditorGroup",
     "workbench.action.terminal.scrollToBottom", "workbench.action.terminal.scrollToTop",
     "workbench.action.focusNextGroup", "workbench.action.focusPreviousGroup", "vscode.setEditorLayout",
     "workbench.action.editorLayoutSingle", "workbench.action.toggleEditorGroupLayout", "workbench.action.resetViewLocations",
     "workbench.action.toggleDevTools", "workbench.action.closeEditorsInOtherGroups", "workbench.action.closeEditorsInGroup",
 }
+
+
+NOOP.update({"noop", "workbench.action.movePanelToSecondarySideBar", "outline.expand", "explorer.openAndPassFocus"})
 
 
 def _settings_query(args) -> str:

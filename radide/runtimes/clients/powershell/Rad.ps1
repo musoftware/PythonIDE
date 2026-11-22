@@ -46,13 +46,33 @@ function RadToNumber($Text) {
 
 function RadToBool($Text) { return ("$Text" -eq "True" -or "$Text" -eq "1" -or "$Text" -eq "-1") }
 
+# "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values, so multi-line text survives
+function RadEsc([string]$s) { return $s.Replace("\", "\\").Replace("`n", "\n").Replace("`r", "\r") }
+function RadUnesc([string]$s) {
+    if ($null -eq $s) { return $s }
+    return [regex]::Replace($s, '\\([\\nr])', {
+        param($m)
+        switch ($m.Groups[1].Value) { 'n' { "`n" } 'r' { "`r" } default { '\' } }
+    })
+}
+function RadText($Value) {
+    if ($null -eq $Value) { return "" }
+    if ($Value -is [bool]) { if ($Value) { return "True" } else { return "False" } }
+    if ($Value -is [System.IFormattable]) { return $Value.ToString($null, [System.Globalization.CultureInfo]::InvariantCulture) }
+    return "$Value"
+}
+
 # ---------------------------------------------------------------- GUI
-function RadSet([string]$Object, [string]$Property, $Value) { RadSend "SET $Object $Property $(RadStr $Value)" }
+function RadSet([string]$Object, [string]$Property, $Value) {
+    $s = RadText $Value
+    if ($s -match "[`r`n]") { RadSend "ESC SET $Object $Property $(RadEsc $s)" }     # multi-line text
+    else { RadSend "SET $Object $Property $s" }
+}
 function RadGet([string]$Object, [string]$Property) {
     # stopped in a debugger (PSES lists every variable's properties): asking the IDE now would read the next
     # event line from stdin as the answer - the value is not read while paused
     if ($null -ne $PSDebugContext) { return "<${Object}.${Property} not read while paused>" }
-    return RadAsk "GET $Object $Property"
+    return RadUnesc (RadAsk "ESC GET $Object $Property")
 }
 function RadInvoke([string]$Object, [string]$Method) {
     $line = "CALL $Object $Method"

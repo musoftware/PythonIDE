@@ -7,6 +7,7 @@ in VB syntax (``Me.Button1 = New System.Windows.Forms.Button()``, ``Friend WithE
 """
 from __future__ import annotations
 
+import bisect
 import re
 from pathlib import Path
 
@@ -205,8 +206,20 @@ def conv_expr(toks) -> str:
     return s
 
 
+MAX_STATEMENT = 100_000     # chars: no designer statement gets near this (a corrupted / generated file)
+
+
 def vb_to_cs(stmt: str) -> str | None:
     """One VB statement (designer subset) -> C# text for the shared parser; None = not understood."""
+    if len(stmt) > MAX_STATEMENT:
+        return None
+    try:
+        return _vb_to_cs(stmt)
+    except RecursionError:      # expressions nested thousands of levels deep
+        return None
+
+
+def _vb_to_cs(stmt: str) -> str | None:
     s = _strip_comment(stmt).strip()
     if not s:
         return None
@@ -255,6 +268,41 @@ def _strip_comment(s: str) -> str:
         i += 1
     text = "".join(out)
     return re.sub(r"[ \t]+_[ \t]*\r?\n", " ", text)
+
+
+class _IncrementalStrip:
+    """_strip_comment(s[start:j]) for a growing j: upto(j) -> (bracket depth, rstripped tail). Each char
+    is scanned once (the rules are those of _strip_comment; the tail is taken from the last 4000 chars)."""
+
+    def __init__(self, s: str, start: int):
+        self.s, self.i, self.in_str, self.stopped = s, start, False, False
+        self.start = start
+        self.out: list[str] = []
+        self.depth = 0
+
+    def upto(self, j: int) -> tuple[int, str]:
+        s, out = self.s, self.out
+        i, in_str = self.i, self.in_str
+        while not self.stopped and i < j:
+            c = s[i]
+            if c == '"':
+                in_str = not in_str
+            elif c == "'" and not in_str:
+                self.stopped = True
+                break
+            elif not in_str and c in "rR" and s[i:min(i + 4, j)].upper() == "REM " and \
+                    (i == self.start or not s[i - 1].isalnum()):
+                self.stopped = True
+                break
+            out.append(c)
+            if c in "({":
+                self.depth += 1
+            elif c in ")}":
+                self.depth -= 1
+            i += 1
+        self.i, self.in_str = i, in_str
+        tail = re.sub(r"[ \t]+_[ \t]*\r?\n", " ", "".join(out[-4000:])).rstrip()
+        return self.depth, tail
 
 
 # ============================================================================ dialect
@@ -309,10 +357,11 @@ class VBDialect(CSharpDialect):
             else:
                 kind = "code"
                 # continuation: trailing " _" or open brackets / trailing comma / operator
+                strip = _IncrementalStrip(text, s0)
                 while j < b1:
-                    body = _strip_comment(text[s0:j])
-                    depth = sum(body.count(c) for c in "({") - sum(body.count(c) for c in ")}")
-                    tail = body.rstrip()
+                    # = _strip_comment(text[s0:j]) and its bracket depth, without re-scanning the lines
+                    # already joined (an unclosed "(" in a corrupted file made this quadratic)
+                    depth, tail = strip.upto(j)
                     if re.search(r"(\s_|,|\{|\(|\b(Or|And|OrElse|AndAlso)|[&+=])$", tail) or depth > 0:
                         k = text.find("\n", j)
                         j = b1 if k < 0 or k > b1 else k + 1
@@ -336,10 +385,17 @@ class VBDialect(CSharpDialect):
         subs = []
         head = re.compile(r"(?im)^[ \t]*(?:(?:Private|Public|Protected|Friend|Overrides|Overridable|Shared|Async|"
                           r"Partial|Overloads|Shadows|ReadOnly|WriteOnly|Iterator)\s+)*(Sub|Function|Property)\s+\w+")
+        ends: dict[str, tuple[list, list]] = {}      # kind -> (starts, ends) of its "End <kind>" lines
         for m in head.finditer(text, b0, b1):
-            e = re.compile(rf"(?im)^[ \t]*End\s+{m.group(1)}\b").search(text, m.end(), b1)
-            if e:
-                subs.append((m.start(), e.end()))
+            kind = m.group(1).lower()
+            if kind not in ends:      # found once, then bisected: thousands of headers without an "End Sub"
+                found = [(e.start(), e.end()) for e in    # (a corrupted file) made this quadratic
+                         re.compile(rf"(?im)^[ \t]*End\s+{m.group(1)}\b").finditer(text, b0, b1)]
+                ends[kind] = ([a for a, _ in found], [b for _, b in found])
+            starts, stops = ends[kind]
+            k = bisect.bisect_left(starts, m.end())
+            if k < len(starts):
+                subs.append((m.start(), stops[k]))
         for m in rx.finditer(text, b0, b1):
             if any(a <= m.start() < b for a, b in subs):
                 continue

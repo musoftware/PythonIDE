@@ -516,6 +516,10 @@ class VBStoryboard:
         return self.vb_get(name)
 
 
+_A11Y_PROPS = {"accessiblename": "AccessibleName", "accessibledescription": "AccessibleDescription",
+               "accessiblerole": "AccessibleRole", "usemnemonic": "UseMnemonic"}
+
+
 class VBControl:
     vb_default = "text"
 
@@ -573,6 +577,10 @@ class VBControl:
             v = self._comp_get(name)
             if v is not _NA:
                 return v
+        if name == "checked" and t in ("CheckBox", "RadioButton"):     # .NET name of Value (bridge languages)
+            return bool(self.vb_get("value"))
+        if name in _A11Y_PROPS:
+            return to_str(self.ctrl.props.get(_A11Y_PROPS[name], ""))
         if name == "maxlength":
             return getattr(self, "_maxlength", int(self.ctrl.props.get("MaxLength", 0) or 0))
         if name in ("datasource", "datamember", "datafield"):
@@ -787,6 +795,12 @@ class VBControl:
                 set_datasource(self, value)
             else:
                 setattr(self, "_" + name, to_str(value) if not hasattr(value, "vb_get") else value)
+            return
+        if name == "checked" and t in ("CheckBox", "RadioButton"):     # .NET name of Value (bridge languages)
+            self.vb_set("value", 1 if to_bool(value) else 0)
+            return
+        if name in _A11Y_PROPS:          # screen-reader names (the native runtimes report them; kept here)
+            self.ctrl.props[_A11Y_PROPS[name]] = to_str(value)
             return
         if name == "maxlength":
             self._maxlength = int(to_num(value))
@@ -1621,6 +1635,10 @@ class VBForm:
         menu = self.model.menu()
         if menu is not None and hasattr(self.ui, menu.name):
             self._map_menu(getattr(self.ui, menu.name), menu.props.get("Items", []))
+        self.runtime.bind_validate(self)
+        if not getattr(self, "_initialized", False):       # Form_Initialize: before Load, once per form object
+            self._initialized = True
+            self.runtime.call_form_event(self, "Form_Initialize")
         self.runtime.fire(self, "Form", "Load")
         if datas and self.loaded:
             from .vbdata import after_load
@@ -1899,7 +1917,13 @@ class Clipboard:
         self.runtime = runtime
 
     def vb_get(self, name):
+        if name == "text":                     # bridge languages: GET Clipboard Text
+            name = "gettext"
         return self.vb_call(name, [])          # s = Clipboard.GetText / Clipboard.Clear (no parentheses)
+
+    def vb_set(self, name, value):
+        if name == "text":                     # bridge languages: SET Clipboard Text <value>
+            self.vb_call("settext", [value])
 
     def vb_call(self, name, args):
         r = self.runtime.root
@@ -2106,6 +2130,8 @@ class Runtime:
 
     def run_handler(self, vf: VBForm, vbname: str, event: str, *a, index=None):
         """Translate the toolkit event into VB arguments and run the procedure."""
+        if event in ("GotFocus", "LostFocus") and getattr(self, "_focus_hold", None) is not None:
+            return None
         e = a[0] if a else None
         args, cells = [], []
         ret = None
@@ -2155,9 +2181,97 @@ class Runtime:
             return "break"
         if event == "KeyPress" and cells and cells[0].value == 0:
             ret = "break"
+        elif (event == "KeyPress" and cells and e is not None and len(e.KeyChar or "") == 1
+              and int(to_num(cells[0].value)) != ord(e.KeyChar)):
+            ret = self._replace_key(e, int(to_num(cells[0].value)))      # KeyAscii = Asc("B"): type "B"
         if event == "FormClosing" and cells and int(to_num(cells[0].value)) != 0 and e is not None:
             e.Cancel = True
         return ret
+
+    @staticmethod
+    def _replace_key(e, code: int):
+        """Insert chr(code) where the key would have typed (KeyAscii changed in KeyPress); "break" stops the
+        original character."""
+        w = getattr(getattr(e, "raw", None), "widget", None)
+        if w is None or not (0 < code < 0x110000):
+            return None
+        try:
+            if isinstance(w, tk.Text):
+                if w.tag_ranges("sel"):
+                    w.delete("sel.first", "sel.last")
+            elif w.selection_present():
+                w.delete("sel.first", "sel.last")
+            if str(w.cget("state")) in ("disabled", "readonly"):
+                return "break"
+            w.insert("insert", chr(code))
+        except (tk.TclError, AttributeError):
+            return None
+        return "break"
+
+    def call_form_event(self, vf: VBForm, vbname: str, args=None, cells=None) -> bool:
+        """Run Form_<event> if the form has it (Initialize / Terminate ...); True when it ran."""
+        st = self.interp.modules.get(vf.name.lower())
+        if st is None or vbname.lower() not in st.mod.procs:
+            return False
+        try:
+            self.interp.call_by_name(vf.name, vbname, list(args or []), me=vf, arg_cells=cells)
+        except EndProgram:
+            self.end()
+        except VBRuntimeError as ex:
+            self.runtime_error(ex)
+        return True
+
+    # -- Validate (VB6): runs when the focus moves from the control to another control of the program, before
+    #    LostFocus; Cancel = True keeps the focus there (no LostFocus, no GotFocus of the other control)
+    def bind_validate(self, vf: VBForm):
+        st = self.interp.modules.get(vf.name.lower())
+        if st is None:
+            return
+        for c in vf.model.controls:
+            owner = c.props.get("ArrayName") or c.name
+            if f"{owner}_validate".lower() not in st.mod.procs:
+                continue
+            vc = vf.controls.get(c.name.lower())
+            w = getattr(vc, "w", None) if vc is not None else None
+            if w is None:
+                continue
+            index = int(c.props.get("ArrayIndex", 0)) if c.props.get("ArrayName") else None
+            funcid = w.register(lambda *_a, _vf=vf, _w=w, _o=owner, _i=index: self._validate(_vf, _w, _o, _i))
+            old = w.bind("<FocusOut>") or ""
+            # first in the widget's FocusOut script: "break" (Cancel) also stops the LostFocus handler
+            w.tk.call("bind", w._w, "<FocusOut>", f'if {{"[{funcid}]" == "break"}} break\n{old}')
+
+    def _validate(self, vf: VBForm, w, owner: str, index):
+        if getattr(self, "_focus_hold", None) is not None:
+            return None
+        try:
+            new = w.focus_get()
+        except (tk.TclError, KeyError):
+            new = None
+        if new is None or new is w:              # the program lost the focus (another window): no Validate
+            return None
+        cell = Cell(False)
+        args, cells = ([index, False], [None, cell]) if index is not None else ([False], [cell])
+        try:
+            self.interp.call_by_name(vf.name, f"{owner}_Validate", args, me=vf, arg_cells=cells)
+        except EndProgram:
+            self.end()
+            return "break"
+        except VBRuntimeError as ex:
+            self.runtime_error(ex)
+            return None
+        if not to_bool(cell.value):
+            return None
+        self._focus_hold = w                     # GotFocus / LostFocus of the move back are not events
+
+        def back():
+            try:
+                w.focus_set()
+            except tk.TclError:
+                pass
+            w.after(60, lambda: setattr(self, "_focus_hold", None))
+        w.after_idle(back)
+        return "break"
 
     def runtime_error(self, ex: VBRuntimeError):
         mod = self.interp.modules.get((ex.module or "").lower())
@@ -2200,6 +2314,11 @@ class Runtime:
             return
         if events:
             st = self.interp.modules.get(vf.name.lower())
+            if st and "form_queryunload" in st.mod.procs:       # Unload statement: UnloadMode 1 = vbFormCode
+                cell = Cell(0)
+                self.call_form_event(vf, "Form_QueryUnload", [0, 1], [cell, None])
+                if int(to_num(cell.value)):
+                    return
             if st and "form_unload" in st.mod.procs:
                 e = type("E", (), {"Cancel": False, "raw": None})()
                 self.run_handler(vf, "Form_Unload", "FormClosing", e)
@@ -2208,6 +2327,8 @@ class Runtime:
         root = vf.ui.root
         vf.loaded = False
         vf.controls.clear()
+        if not any(f.loaded for f in self.forms.values()):
+            self.call_form_event(vf, "Form_Terminate")
         if root is self.root:
             root.withdraw()
         else:
@@ -2342,8 +2463,26 @@ class Debugger:
         self.depth = 0
         self.bps: set[tuple[str, int]] = set()
         self.conds: dict[tuple[str, int], str] = {}
+        self.break_on_error = True
         for spec in filter(None, os.environ.get("RADDBG_BP", "").split(";")):
             self._add_bp(spec, True)
+        # the IDE's commands are read all the time: breakpoints / conditions set while the program runs apply
+        # at once (not only at the next pause); the others wait in the queue for pause()
+        import queue
+        import threading
+        self.commands: queue.Queue = queue.Queue()
+        threading.Thread(target=self._reader, daemon=True).start()
+
+    def _reader(self):
+        for raw in sys.stdin:
+            cmd = raw.strip().lstrip("﻿")
+            if cmd.startswith(("b ", "B ")):
+                self._add_bp(cmd[2:], cmd[0] == "b")
+            elif cmd.startswith("x "):
+                self.break_on_error = cmd[2:].strip().lower() != "off"
+            elif cmd:
+                self.commands.put(cmd)
+        self.commands.put("c")                    # the IDE is gone: run on
 
     def _add_bp(self, spec, on):
         """spec = file|line[|condition]"""
@@ -2439,9 +2578,19 @@ class Debugger:
         return h
 
     def stop_on_error(self, filename, line, ex):
-        frame = self.rt.interp.stack[-1] if self.rt.interp.stack else None
-        if frame is not None:
+        if not self.break_on_error:
+            return
+        it = self.rt.interp
+        frame = getattr(ex, "frame", None) or (it.stack[-1] if it.stack else None)
+        if frame is None:
+            return
+        saved = it.stack
+        if not saved and getattr(ex, "stack", None):    # unwound already: show the stack of the error
+            it.stack = list(ex.stack)
+        try:
             self.pause(frame, "error", filename, line)
+        finally:
+            it.stack = saved
 
     def pause(self, frame, reason, filename=None, line=None):
         it = self.rt.interp
@@ -2462,10 +2611,7 @@ class Debugger:
                       str(self.rt.folder / getattr(f.module, "filename", f.module.name + ".bas")), f.line)
         while True:
             self.send("wait")
-            cmd = sys.stdin.readline()
-            if not cmd:
-                cmd = "c"
-            cmd = cmd.strip().lstrip("﻿")
+            cmd = self.commands.get()
             if cmd.startswith("e "):
                 try:
                     from .vbinterp import _repr
@@ -2489,9 +2635,6 @@ class Debugger:
                     self.send("watch", _typename(v), self._handle(v), _repr(v))
                 except Exception as ex:  # noqa: BLE001
                     self.send("watch", "", 0, f"Error: {ex}")
-                continue
-            if cmd.startswith(("b ", "B ")):
-                self._add_bp(cmd[2:], cmd[0] == "b")
                 continue
             if cmd in ("c", "s", "n", "o"):
                 self.mode = {"c": "run", "s": "step", "n": "next", "o": "out"}[cmd]

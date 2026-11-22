@@ -308,7 +308,7 @@ class UserControlsFeature:
         doc = view.doc
         orig_create = view.create_control
 
-        def create_control(type_name, pos, _orig=orig_create, _view=view):
+        def create_control(type_name, pos, size=None, *, _orig=orig_create, _view=view):   # size: a click-drag
             name = _view.doc.form.name
             if type_name == name or self._contains(type_name, name):
                 self.win.statusBar().showMessage(f"{type_name} cannot be placed inside itself.", 5000)
@@ -323,7 +323,7 @@ class UserControlsFeature:
                         return
                 except Exception:  # noqa: BLE001
                     pass
-            return _orig(type_name, pos)
+            return _orig(type_name, pos, size)
         view.create_control = create_control
         if not uc.is_usercontrol(doc.form):
             return

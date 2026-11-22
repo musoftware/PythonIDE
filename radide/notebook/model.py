@@ -19,8 +19,10 @@ DEFAULT_KERNELSPEC = {"name": "python3", "display_name": "Python 3 (ipykernel)",
 
 def _join(src) -> str:
     if isinstance(src, list):
-        return "".join(src)
-    return src or ""
+        return "".join(s if isinstance(s, str) else json.dumps(s) for s in src)
+    if src is None or isinstance(src, str):
+        return src or ""
+    return json.dumps(src)                  # a number / object where text belongs (hand-edited file)
 
 
 def _split(text: str) -> list[str]:
@@ -113,6 +115,13 @@ class Notebook:
 
     @classmethod
     def from_json(cls, data: dict, path: Path | None = None) -> "Notebook":
+        try:
+            return cls._from_json(data, path)
+        except (TypeError, AttributeError, KeyError) as e:     # wrong JSON types (hand-edited / corrupted)
+            raise ValueError(f"not a valid Jupyter notebook ({type(e).__name__}: {e})") from None
+
+    @classmethod
+    def _from_json(cls, data: dict, path: Path | None = None) -> "Notebook":
         if not isinstance(data, dict) or "cells" not in data:
             if isinstance(data, dict) and data.get("nbformat", 4) < 4 and "worksheets" in data:
                 cells = []
@@ -147,7 +156,11 @@ class Notebook:
         text = path.read_text(encoding="utf-8")
         if not text.strip():
             return cls.new(path)
-        return cls.from_json(json.loads(text), path)
+        try:
+            data = json.loads(text)
+        except RecursionError:                  # JSON nested thousands of levels deep
+            raise ValueError(f"{path.name}: not a valid Jupyter notebook (nested too deeply)") from None
+        return cls.from_json(data, path)
 
     def to_json(self) -> dict:
         return {"cells": [c.to_json() for c in self.cells], "metadata": self.metadata,

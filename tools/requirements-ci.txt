@@ -1,0 +1,8 @@
+# Test-only packages for tools/run_tests.py in CI (.github/workflows/ci.yml, nightly.yml), on top of
+# tools/requirements-release.txt (CI fast tier) or requirements.txt (nightly). None of these is bundled with the IDE.
+pyserial>=3.5          # CarDiag link tests: the socket:// serial path (SKIPped without it)
+unicorn>=2.0           # Assembly SmartSim runtime checks
+pytest>=8              # the "project" tier (sample projects' own pytest suites)
+pyftpdlib>=2.0         # Site > Publish tests: local FTP / FTPS server
+pyopenssl>=24
+pypdf>=4               # Reports: PDF text checks

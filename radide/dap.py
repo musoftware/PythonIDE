@@ -148,6 +148,8 @@ class DapSession(QObject):
     def _dispatch(self, msg):
         t = msg.get("type")
         if t == "response":
+            if msg.get("command") == "initialize" and msg.get("success", True):
+                self.capabilities = msg.get("body") or {}
             cb = self._callbacks.pop(msg.get("request_seq"), None)
             if not msg.get("success", True) and msg.get("command") in ("launch", "attach", "initialize"):
                 self.failed.emit(msg.get("message", "debug adapter error"))
@@ -156,8 +158,10 @@ class DapSession(QObject):
         elif t == "event":
             ev, body = msg.get("event"), msg.get("body") or {}
             if ev == "initialized":
-                self._request("setExceptionBreakpoints",
-                              {"filters": ["uncaught", "userUnhandled"] if self.break_on_exception else []})
+                self._request("setExceptionBreakpoints", {"filters": self._exception_filters()})
+                if self.exception_functions:          # e.g. Delve: runtime.gopanic = break on panics
+                    self._request("setFunctionBreakpoints", {"breakpoints": [
+                        {"name": n} for n in (self.exception_functions if self.break_on_exception else ())]})
                 self._send_breakpoints(lambda: self._request("configurationDone"))
             elif ev == "output":
                 if body.get("category") != "telemetry":
@@ -197,12 +201,49 @@ class DapSession(QObject):
             self._request("setBreakpoints", {"source": {"path": path},
                                              "breakpoints": self._bp_list(path, lines)}, one_done)
 
+    # adapters that change breakpoints only while the program is halted (Delve): set_breakpoint pauses it
+    pause_for_bp_changes = False
+
+    def _flush_bp_queue(self, then=None):
+        paths = sorted(self.__dict__.pop("_bp_queue", set()))
+        self._bp_pausing = False
+        if not paths:
+            if then:
+                then()
+            return
+        left = [len(paths)]
+
+        def one(*_a):
+            left[0] -= 1
+            if left[0] == 0 and then:
+                then()
+        for path in paths:
+            self._request("setBreakpoints", {"source": {"path": path},
+                                             "breakpoints": self._bp_list(path, self.breakpoints.get(path, set()))},
+                          one)
+
     def _on_stopped(self, reason):
+        if getattr(self, "_bp_pausing", False):
+            if reason == "pause":           # the pause asked for by set_breakpoint: change them, go on
+                self._flush_bp_queue(lambda: self._request("continue", {"threadId": self.thread_id}))
+                return
+            self._flush_bp_queue()          # stopped for another reason meanwhile: change them, stay stopped
+
         def got_stack(body, _m):
+            nonlocal reason
             frames = body.get("stackFrames", [])
             if not frames:
                 return
             top = frames[0]
+            if self.exception_functions and any(n.split(".")[-1] in (top.get("name") or "")
+                                                for n in self.exception_functions):
+                reason = "exception"            # runtime.gopanic / rust_panic: a panic starts
+            if reason == "breakpoint" and self._hit_held_back(top):
+                return
+            if reason == "exception":       # a panic / signal inside the runtime or a library: show the user's line
+                user = next((f for f in frames if self._is_user_frame(f)), None)
+                if user is not None:
+                    top = user
             self.frame_id = top["id"]
             info = StopInfo(top.get("source", {}).get("path", ""), top.get("line", 0),
                             {"breakpoint": "breakpoint", "exception": "error"}.get(reason, "step"))
@@ -234,6 +275,22 @@ class DapSession(QObject):
                     self._request("variables", {"variablesReference": s["variablesReference"]}, got_vars)
             self._request("scopes", {"frameId": self.frame_id}, got_scopes)
         self._request("stackTrace", {"threadId": self.thread_id, "startFrame": 0, "levels": 30}, got_stack)
+
+    # GUI Bridge client libraries (radide/runtimes/clients) are copied next to the user's code
+    _CLIENT_FILES = {"radgui.c", "radgui.h", "radgui.hpp", "rad.cs", "radmain.cs", "radgui.dart", "radworker.dart",
+                     "radlib.go", "rad.java", "radcontrol.java", "radevent.java", "radjson.java", "radmain.java",
+                     "radgui.js", "radworker.js", "rad.lua", "radworker.lua", "radgui.pm", "radworker.pl",
+                     "rad.ps1", "radmain.ps1", "rad.rb", "radworker.rb", "radgui.rs"}
+
+    def _is_user_frame(self, frame: dict) -> bool:
+        path = (frame.get("source") or {}).get("path") or ""
+        if not path or not frame.get("line"):
+            return False
+        try:
+            p = Path(path).resolve()
+            return p.name.lower() not in self._CLIENT_FILES and self.cwd in p.parents
+        except (OSError, ValueError):
+            return False
 
     def _emit_stop(self, info):
         self.paused = True
@@ -278,7 +335,42 @@ class DapSession(QObject):
 
     def _bp_list(self, path, lines):
         from .debug_extras import dap_breakpoint        # condition + hitCondition + logMessage
-        return [dap_breakpoint(n, self.conditions.get((path, n), ""), self.adapter) for n in sorted(lines)]
+        out = [dap_breakpoint(n, self.conditions.get((path, n), ""), self.adapter) for n in sorted(lines)]
+        if not self._adapter_hits():
+            for bp in out:
+                bp.pop("hitCondition", None)            # counted here instead (_hit_held_back)
+        return out
+
+    def _adapter_hits(self) -> bool:
+        """Does the adapter count hit conditions itself? (netcoredbg does not: then this session counts)"""
+        caps = getattr(self, "capabilities", None)
+        return caps is None or bool(caps.get("supportsHitConditionalBreakpoints"))
+
+    def _hit_held_back(self, top: dict) -> bool:
+        """A breakpoint with a hit count the adapter does not support: count the stop and go on until it is met."""
+        if self._adapter_hits():
+            return False
+        import os
+
+        from .debug_extras import hit_ok, parse_bp
+        path = (top.get("source") or {}).get("path") or ""
+        line = int(top.get("line") or 0)
+        if not path:
+            return False
+        try:
+            norm = os.path.normcase(str(Path(path).resolve()))
+        except OSError:
+            return False
+        key = next(((p, n) for (p, n) in self.conditions if n == line and os.path.normcase(p) == norm), None)
+        hit = parse_bp(self.conditions.get(key, ""))["hit"] if key else ""
+        if not hit:
+            return False
+        hits = self.__dict__.setdefault("_hits", {})
+        hits[key] = hits.get(key, 0) + 1
+        if hit_ok(hit, hits[key]):
+            return False
+        self._request("continue", {"threadId": self.thread_id})
+        return True
 
     # ------------------------------------------------------------ expandable values, threads (debug_extras)
     def children(self, ref, cb):
@@ -328,11 +420,39 @@ class DapSession(QObject):
             self.conditions[(path, line)] = cond
         elif not on or not cond:
             self.conditions.pop((path, line), None)
+        self.__dict__.get("_hits", {}).pop((path, line), None)      # a changed breakpoint counts again
+        if self.pause_for_bp_changes and not self.paused and self.running():
+            # Delve answers setBreakpoints only while the program is halted: pause, change, go on
+            self.__dict__.setdefault("_bp_queue", set()).add(path)
+            if not getattr(self, "_bp_pausing", False):
+                self._bp_pausing = True
+                self._request("pause", {"threadId": self.thread_id})
+            return
         self._request("setBreakpoints", {"source": {"path": path}, "breakpoints": self._bp_list(path, lines)})
+
+    # exception filters for Debug > Break on Exceptions, in order of preference: the first ones the adapter offers
+    # (initialize -> exceptionBreakpointFilters) are used. BridgeDebugSession sets its own (the bridge client
+    # catches every handler error, so "uncaught" never fires there)
+    exception_filter_prefs: tuple = ("uncaught", "userUnhandled", "user-unhandled", "Unhandled", "unhandled")
+    # adapters without exception filters: functions whose breakpoint means "an exception" (a stop there shows the
+    # user's line that raised it)
+    exception_functions: tuple = ()
+
+    def _exception_filters(self) -> list[str]:
+        if not self.break_on_exception:
+            return []
+        offered = [f.get("filter") for f in (getattr(self, "capabilities", {}) or {}).get(
+            "exceptionBreakpointFilters", []) if isinstance(f, dict)]
+        if not offered:
+            return ["uncaught", "userUnhandled"]
+        return [f for f in offered if f in self.exception_filter_prefs]
 
     def set_break_on_exception(self, on: bool):
         self.break_on_exception = on
-        self._request("setExceptionBreakpoints", {"filters": ["uncaught", "userUnhandled"] if on else []})
+        self._request("setExceptionBreakpoints", {"filters": self._exception_filters()})
+        if self.exception_functions:
+            self._request("setFunctionBreakpoints",
+                          {"breakpoints": [{"name": n} for n in (self.exception_functions if on else ())]})
 
     def stop(self):
         if self.running():

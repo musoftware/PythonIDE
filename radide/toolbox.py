@@ -536,8 +536,11 @@ class Toolbox(QListWidget):
         for cat, head in self._headers.items():
             if head is None or head.data(CAT_ROLE) != cat:
                 continue
-            arrow = "\u25b8 " if cat in self._collapsed and not self.search.text().strip() else "\u25be "
+            closed = cat in self._collapsed and not self.search.text().strip()
+            arrow = "\u25b8 " if closed else "\u25be "
             head.setText(arrow + cat)
+            # screen readers: the group name and its state instead of the arrow character
+            head.setData(Qt.ItemDataRole.AccessibleTextRole, f"{cat} ({'collapsed' if closed else 'expanded'})")
 
     def toggle_group(self, cat: str) -> None:
         if cat in self._collapsed:
@@ -555,6 +558,30 @@ class Toolbox(QListWidget):
     def _on_clicked(self, item) -> None:
         if item is not None and item.data(TB_ROLE) == "header":
             self.toggle_group(item.data(CAT_ROLE))
+
+    def keyPressEvent(self, e) -> None:
+        """Keyboard (VS): Enter on a control adds it to the shown form (like a double-click); Enter / Space on a
+        group header opens / closes the group, Left closes it, Right opens it."""
+        item = self.currentItem()
+        k = e.key()
+        if item is not None and e.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.KeypadModifier):
+            if item.data(TB_ROLE) == "header":
+                cat = item.data(CAT_ROLE)
+                closed = cat in self._collapsed
+                if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space) or \
+                        (k == Qt.Key.Key_Left and not closed) or (k == Qt.Key.Key_Right and closed):
+                    self.toggle_group(cat)
+                    for row in range(self.count()):          # the rebuilt list: stay on the header
+                        it = self.item(row)
+                        if it.data(TB_ROLE) == "header" and it.data(CAT_ROLE) == cat:
+                            self.setCurrentRow(row)
+                            break
+                    return
+            elif k in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and item.data(Qt.ItemDataRole.UserRole) not in (None, POINTER):
+                if item.flags() & Qt.ItemFlag.ItemIsEnabled:
+                    self.itemDoubleClicked.emit(item)
+                return
+        super().keyPressEvent(e)
 
     def _on_mode(self, mobile: bool, supported) -> None:
         """Desktop forms: the classic controls only.  Phone forms: the Mobile group first and the

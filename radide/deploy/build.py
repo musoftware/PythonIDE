@@ -107,11 +107,19 @@ KIND_NAMES = {
 def run(cmd, cwd: Path, log, env=None, shell=False) -> int:
     shown = cmd if isinstance(cmd, str) else " ".join(f'"{c}"' if " " in str(c) else str(c) for c in cmd)
     log(f"> {shown}")
-    p = subprocess.Popen(cmd, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                         encoding="utf-8", errors="replace", env=env, shell=shell, creationflags=tools.NO_WINDOW)
+    from ..console_text import decode
+    from ..paths import ansi_env
+    env = ansi_env(env)         # TEMP / TMP usable by ANSI tools (MinGW, fbc) in an Arabic / Chinese user folder
+    if shell and os.name == "nt" and isinstance(cmd, str) and str(cwd).startswith("\\\\"):
+        # cmd.exe refuses a UNC working folder (it falls back to C:\Windows): pushd maps a temporary drive
+        # letter for the command and popd removes it again (success / failure is kept)
+        cmd = f'pushd "{cwd}" && ({cmd}) && (popd & exit /b 0) || (popd & exit /b 1)'
+        cwd = Path(os.environ.get("SystemRoot", r"C:\Windows"))
+    p = subprocess.Popen(cmd, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, shell=shell,
+                         creationflags=tools.NO_WINDOW)
     assert p.stdout is not None
-    for line in p.stdout:
-        log(line.rstrip("\n"))
+    for raw in p.stdout:        # each line: UTF-8, else the OEM / ANSI code page (MSVC, cmd) - never an error
+        log(decode(raw).rstrip("\r\n"))
     return p.wait()
 
 
@@ -313,11 +321,119 @@ def build_python(folder: Path, project: Project, cfg: PublishConfig, work: Path,
         # Panda3D loads its display module (libpandagl.dll) and etc/Config.prc at run time - PyInstaller does not
         # see them; ursina needs its built-in models / textures / fonts ("No graphics pipe is available!")
         collect += ["data:ursina", "data:panda3d", "bin:panda3d"]
+    qt_uses = qt_features(folder)
     out = pyinstaller(python, script, folder, cfg, work, log, paths=[folder, *upaths], datas=datas,
                       hidden=sorted(set(hidden) | set(uhidden)),
-                      excludes=PY_EXCLUDES + unused_db_drivers(folder, project), hooks=uhooks,
+                      excludes=PY_EXCLUDES + unused_db_drivers(folder, project) + qt_excludes(qt_uses), hooks=uhooks,
                       icon=make_icon(folder, cfg, gen, log), collect=collect)
+    if qt_uses is not None:
+        prune_qt(out, qt_uses, log)
     return BuildResult(out, cfg.exe_base() + ".exe", "pyinstaller", python_based=True)
+
+
+# Qt modules a widgets program does not load unless its code names them (PySide6 / PyQt6 / PyQt5 / PySide2)
+QT_HEAVY = {"qml": ("QtQml", "QtQuick", "QtQuickWidgets", "QtQuickControls2", "QtQuick3D"),
+            "webengine": ("QtWebEngineCore", "QtWebEngineWidgets", "QtWebEngineQuick", "QtWebChannel",
+                          "QtWebSockets", "QtWebView"),
+            "multimedia": ("QtMultimedia", "QtMultimediaWidgets", "QtSpatialAudio"),
+            "pdf": ("QtPdf", "QtPdfWidgets"), "3d": ("Qt3DCore", "Qt3DRender", "Qt3DInput", "Qt3DLogic",
+                                                    "Qt3DAnimation", "Qt3DExtras"),
+            "charts": ("QtCharts", "QtDataVisualization", "QtGraphs"), "opengl": ("QtOpenGL", "QtOpenGLWidgets"),
+            "designer": ("QtDesigner", "QtUiTools", "QtHelp"), "bluetooth": ("QtBluetooth", "QtNfc"),
+            "location": ("QtLocation", "QtPositioning", "QtSensors", "QtSerialPort", "QtSerialBus", "QtRemoteObjects",
+                         "QtScxml", "QtStateMachine", "QtTextToSpeech", "QtHttpServer")}
+QT_BINDINGS = ("PySide6", "PyQt6", "PyQt5", "PySide2")
+
+
+def qt_features(folder: Path) -> set[str] | None:
+    """The heavy Qt feature groups the project's Python code uses (QT_HEAVY keys + "translations"), or None when
+    the code does not use Qt at all."""
+    import re as _re
+    text = ""
+    for f in Path(folder).rglob("*.py"):
+        if any(part in SKIP_DIRS or part.startswith((".", "_build", "Publish")) for part in f.relative_to(folder).parts[:-1]):
+            continue
+        try:
+            text += f.read_text(encoding="utf-8", errors="replace") + "\n"
+        except OSError:
+            continue
+    if not _re.search(r"\b(PySide6|PyQt6|PyQt5|PySide2|qtpy)\b", text):
+        return None
+    uses = {g for g, mods in QT_HEAVY.items() if any(_re.search(rf"\b{m}\b", text) for m in mods)}
+    if "webengine" in uses:
+        uses |= {"qml", "opengl"}           # Qt WebEngine runs on Qt Quick
+    if "3d" in uses or "charts" in uses:
+        uses |= {"qml", "opengl"}
+    if _re.search(r"\bQTranslator\b|\bQLibraryInfo\b", text):
+        uses.add("translations")
+    return uses
+
+
+def qt_excludes(uses: set[str] | None) -> list[str]:
+    if uses is None:
+        return []
+    return [f"{b}.{m}" for g, mods in QT_HEAVY.items() if g not in uses for b in QT_BINDINGS for m in mods]
+
+
+def prune_qt(dist: Path, uses: set[str], log) -> int:
+    """Remove the Qt files a widgets program never loads from a PyInstaller folder: the DLLs / .pyd of the unused
+    QT_HEAVY groups, their plugins and qml/, opengl32sw.dll (software OpenGL - Qt Quick / OpenGL only) and Qt's own
+    translations (only loaded through QTranslator). PySide6 programs shrink from ~114 MB to ~60 MB."""
+    import re as _re
+    dll_rx = []
+    for g, mods in QT_HEAVY.items():
+        if g in uses:
+            continue
+        for m in mods:
+            core = m[2:] if m.startswith("Qt") else m          # QtQuick -> Quick
+            dll_rx.append(_re.compile(rf"^(Qt[56]{_re.escape(core)}\w*\.dll|{_re.escape(m)}\w*\.(pyd|pyi|abi3\.so))$", _re.I))
+    plugin_dirs = set()
+    if "qml" not in uses:
+        plugin_dirs |= {"qmltooling", "qmllint", "qmlls", "scenegraph", "platforminputcontexts"}
+    if "multimedia" not in uses:
+        plugin_dirs |= {"multimedia", "mediaservice", "audio", "playlistformats"}
+    if "location" not in uses:
+        plugin_dirs |= {"position", "geoservices", "sensors", "texttospeech", "canbus"}
+    if "3d" not in uses:
+        plugin_dirs |= {"sceneparsers", "renderers", "renderplugins", "geometryloaders"}
+    if "webengine" not in uses:
+        plugin_dirs |= {"webview"}
+    removed, freed = 0, 0
+
+    def rm(p: Path):
+        nonlocal removed, freed
+        try:
+            if p.is_dir():
+                size = sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+                shutil.rmtree(p)
+            else:
+                size = p.stat().st_size
+                p.unlink()
+            removed += 1
+            freed += size
+        except OSError:
+            pass
+    for b in QT_BINDINGS:
+        for root in [d for d in Path(dist).rglob(b) if d.is_dir()]:
+            for p in list(root.rglob("*")):
+                if not p.exists():
+                    continue
+                name = p.name
+                if p.is_file() and any(rx.match(name) for rx in dll_rx):
+                    rm(p)
+                elif p.is_file() and name.lower() in ("opengl32sw.dll",) and not uses & {"qml", "opengl"}:
+                    rm(p)
+                elif p.is_dir() and name == "qml" and "qml" not in uses:
+                    rm(p)
+                elif p.is_dir() and name == "translations" and "translations" not in uses \
+                        and "webengine" not in uses:
+                    rm(p)
+                elif p.is_dir() and name in plugin_dirs and p.parent.name == "plugins":
+                    rm(p)
+    if removed:
+        log(f"Qt: {removed} unused files / folders removed ({freed / 1048576:.1f} MB - "
+            f"widgets program; used Qt features: {', '.join(sorted(uses)) or 'none'})")
+    return freed
 
 
 LAUNCH_VB = '''"""RAD IDE published VB6 program: the bundled VB runtime runs the project files in .\\app."""
@@ -423,7 +539,9 @@ def build_bridge(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     if build:
         if run(build, folder, log, shell=True) != 0:
             raise BuildError(f"The {plugin.display_name} build failed")
-    program = plugin.run_command(folder, project)
+    # a plugin may publish a different program than it runs (Dart: dart compile exe - no SDK on the user's PC)
+    pub = getattr(plugin, "publish_command", None)
+    program = (pub(folder, project, log) if callable(pub) else None) or plugin.run_command(folder, project)
     roots = {str(folder), str(Path(folder).resolve())}
     rel, notes = [], []
     for i, a in enumerate(program):
@@ -537,6 +655,46 @@ def ring2exe_options(folder: Path, main: str) -> list[str]:
     return opts
 
 
+# RingQt classes that live in the full ringqt.dll only (Qt WebEngine, Multimedia, Charts, Quick/QML, Svg, Print
+# Support, ActiveX, 3D, Bluetooth, Serial port, ...): a project using none of them runs on RingQt Light
+RING_FULL_ONLY = (r"\bq(AxWidget\w*|AxObject|WebView|WebEngine\w*|WebPage|MediaPlayer\w*|MediaPlaylist|VideoWidget\w*|"
+                  r"Camera\w*|AudioOutput|AudioInput|Sound\w*|Chart\w*|\w*Series|ValueAxis|BarSet|PieSlice|Quick\w*|"
+                  r"Qml\w*|Svg\w*|Printer\w*|PrintDialog|PrintPreview\w*|PageSetupDialog|Bluetooth\w*|SerialPort\w*|"
+                  r"3D\w*|Nfc\w*|TextToSpeech|Geo\w*|Sensor\w*|OpenGL\w*|Sql\w*|Network\w*|TcpSocket|TcpServer|"
+                  r"UdpSocket|Http\w*|Xml\w*)\b")
+
+
+def ring_light_ok(folder: Path) -> bool:
+    import re as _re
+    rx = _re.compile(RING_FULL_ONLY, _re.I)
+    for f in Path(folder).rglob("*.ring"):
+        if any(p in ("target", "Publish", "_build") or p.startswith(".") for p in f.relative_to(folder).parts[:-1]):
+            continue
+        try:
+            if rx.search(f.read_text(encoding="utf-8", errors="replace")):
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def ring_light_mirror(folder: Path, dst: Path, log) -> Path:
+    """A copy of the project for ring2exe with RingQt Light: `load "guilib.ring"` -> `load "lightguilib.ring"`."""
+    import re as _re
+    if dst.exists():
+        shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(folder, dst, ignore=shutil.ignore_patterns("target", "Publish", "_build", ".git", ".radide*"))
+    n = 0
+    for f in dst.rglob("*.ring"):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        new = _re.sub(r'''(load\s+["'])guilib\.ring(["'])''', r"\1lightguilib.ring\2", text, flags=_re.I)
+        if new != text:
+            f.write_text(new, encoding="utf-8")
+            n += 1
+    log(f"RingQt Light: widgets-only program ({n} file(s) load lightguilib.ring in the build copy)")
+    return dst
+
+
 def build_ring(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
     from ..languages import get_plugin
     plugin = get_plugin(startup_language(project))
@@ -550,13 +708,23 @@ def build_ring(folder: Path, project: Project, cfg: PublishConfig, work: Path, i
         raise BuildError(f"{named.name} already exists: choose another exe name")
     shutil.copy2(folder / main, named)
     opts = ring2exe_options(folder, main)
+    src = folder
+    if "-qt" in opts and "-allruntime" not in opts and ring_light_ok(folder):
+        # widgets only: RingQt Light (ringqt_light.dll needs only Qt5Core/Gui/Widgets) instead of the full RingQt,
+        # whose ringqt.dll imports Qt WebEngine / Multimedia / Charts / Quick (~320 MB -> ~30 MB). Built from a
+        # copy whose `load "guilib.ring"` lines say lightguilib.ring - the project itself is not changed.
+        src = ring_light_mirror(folder, work / "ring_light", log)
+        opts = [("-lightguilib" if o == "-qt" else o) for o in opts]
+        named.unlink(missing_ok=True)
+        named = src / named.name
+        shutil.copy2(src / main, named)
     log("ring2exe options: " + " ".join(opts))
     try:
-        if run([str(ring2exe), named.name, *opts], folder, log) != 0:
+        if run([str(ring2exe), named.name, *opts], src, log) != 0:
             raise BuildError("ring2exe failed")
     finally:
         named.unlink(missing_ok=True)
-    target = folder / "target" / "windows"
+    target = src / "target" / "windows"
     exe = target / (cfg.exe_base() + ".exe")
     if not exe.is_file():
         found = list(target.glob("*.exe")) if target.is_dir() else []
@@ -575,11 +743,75 @@ def build_ring(folder: Path, project: Project, cfg: PublishConfig, work: Path, i
     return BuildResult(out, exe.name, "ring2exe")
 
 
+FLUTTER_MIRROR_SKIP = {"build", ".dart_tool", ".git", ".idea", ".vs", "Publish", "_build", "node_modules"}
+
+
+def short_build_mirror(src: Path, kind: str, skip=FLUTTER_MIRROR_SKIP, log=print) -> Path:
+    """Mirror the project *src* into a short folder %LOCALAPPDATA%\\RADIDE\\cache\\<kind>\\<hash> (only changed files
+    are copied, files gone from *src* are removed; the build folders are kept, so the next build is incremental).
+    MSBuild's FileTracker (FTK1011) and CMake fail once build\\windows\\x64\\...\\*.tlog passes 260 characters -
+    a junction does not help there (CMake and the Flutter tool resolve it back to the long path)."""
+    import hashlib
+    from ..paths import user_data_dir
+    src = Path(os.path.realpath(src))
+    h = hashlib.sha1(os.path.normcase(str(src)).encode("utf-8")).hexdigest()[:10]
+    dst = user_data_dir() / "cache" / kind / h
+    dst.mkdir(parents=True, exist_ok=True)
+    seen: set[str] = set()
+    copied = 0
+    for dirpath, dirnames, filenames in os.walk(src):
+        rel_dir = os.path.relpath(dirpath, src)
+        if rel_dir == ".":
+            dirnames[:] = [d for d in dirnames if d not in skip]
+        dirnames[:] = [d for d in dirnames if d not in (".git", ".dart_tool")]
+        for fn in filenames:
+            rel = os.path.normpath(os.path.join(rel_dir, fn))
+            seen.add(os.path.normcase(rel))
+            s, d = os.path.join(dirpath, fn), dst / rel
+            try:
+                st = os.stat(s)
+                if d.is_file():
+                    dt = d.stat()
+                    if dt.st_size == st.st_size and int(dt.st_mtime) == int(st.st_mtime):
+                        continue
+                d.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(s, d)
+                copied += 1
+            except OSError:
+                continue
+    for dirpath, dirnames, filenames in os.walk(dst):       # files deleted from the project
+        rel_dir = os.path.relpath(dirpath, dst)
+        if rel_dir == ".":
+            dirnames[:] = [d for d in dirnames if d not in skip]
+        for fn in filenames:
+            rel = os.path.normpath(os.path.join(rel_dir, fn))
+            if os.path.normcase(rel) not in seen:
+                try:
+                    os.remove(os.path.join(dirpath, fn))
+                except OSError:
+                    pass
+    log(f"(long path: building in the short mirror {dst} - {copied} file(s) updated)")
+    return dst
+
+
 def build_flutter(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
     from ..languages.flutter import flutter_exe
+    from ..paths import is_long
     fl = interpreter or flutter_exe()
     if not fl:
         raise BuildError("The Flutter SDK was not found (flutter.bat)")
+    real = Path(os.path.realpath(folder))
+    if os.name == "nt" and is_long(real):
+        # a deep project: build in a short mirror (FTK1011 / CMake path too long); a new windows/ runner made there
+        # is copied back so the project keeps it
+        had_runner = (real / "windows").is_dir()
+        folder = short_build_mirror(real, "flutter", log=log)
+        if not (folder / "windows").is_dir():
+            log("No windows/ folder: adding the Windows desktop runner (flutter create --platforms=windows .)")
+            if run([fl, "create", "--platforms=windows", "."], folder, log, shell=fl.lower().endswith(".bat")) != 0:
+                raise BuildError("flutter create --platforms=windows failed")
+        if not had_runner and (folder / "windows").is_dir():
+            shutil.copytree(folder / "windows", real / "windows", dirs_exist_ok=True)
     if not (folder / "windows").is_dir():      # designer / mobile projects have no Windows runner yet
         log("No windows/ folder: adding the Windows desktop runner (flutter create --platforms=windows .)")
         if run([fl, "create", "--platforms=windows", "."], folder, log, shell=fl.lower().endswith(".bat")) != 0:
@@ -698,15 +930,53 @@ BUILDERS = {"native": build_native, "pyinstaller": build_python, "vbrun": build_
 
 
 def build(folder: Path, cfg: PublishConfig, log=print, interpreter: str = "") -> BuildResult:
-    folder = Path(folder).resolve()
+    from ..paths import is_long, short_alias
+    real = Path(folder).resolve()
+    # a project in a deep folder (> 100 characters) builds through a short junction: Windows cannot start a
+    # program in a working directory over MAX_PATH and the toolchains fail on long file names (paths.py)
+    folder = short_alias(real)
+    aliases = [(folder, real)] if folder != real else []
     project = Project.load(folder)
     kind = detect_kind(project, cfg)
     if kind not in BUILDERS:
         raise BuildError(f"Unknown build kind: {kind}")
-    work = out_root(folder, cfg) / "build"
+    out = out_root(folder, cfg)
+    out.mkdir(parents=True, exist_ok=True)
+    if is_long(out):                    # an output folder of its own in a deep place
+        short = short_alias(out)
+        if short != out:
+            aliases.append((short, out))
+            out = short
+    for short, long_ in aliases:
+        log(f"(long path: building through the short alias {short} -> {long_})")
+    work = out / "build"
+    net_work = None
+    if str(out).startswith("\\\\"):
+        # a network share (\server\share): cmd.exe cannot run in a UNC folder ("UNC paths are not supported",
+        # windres / bridge builds fail) and thousands of small build files over SMB are slow - the build runs
+        # in a local folder and only the finished program is copied to <output>uild\dist on the share
+        from ..paths import user_data_dir
+        from ..safeio import folder_key
+        net_work, work = work, user_data_dir() / "netbuild" / folder_key(out) / "build"
+        log(f"(network folder: building in {work}, the program is copied to {net_work})")
     work.mkdir(parents=True, exist_ok=True)
     log(f"------ Build ({KIND_NAMES.get(kind, kind)}): {project.name}")
     res = BUILDERS[kind](folder, project, cfg, work, interpreter, log)
+    if net_work is not None:
+        try:
+            dst = net_work / Path(res.dist).relative_to(work)
+        except ValueError:
+            dst = net_work / "dist" / Path(res.dist).name
+        if dst.exists():
+            shutil.rmtree(dst, ignore_errors=True)
+        shutil.copytree(res.dist, dst, dirs_exist_ok=True)
+        res.dist = dst
+    for short, long_ in aliases:        # report the real folder, not the alias
+        try:
+            res.dist = long_ / Path(res.dist).relative_to(short)
+            break
+        except ValueError:
+            continue
     for item in cfg.extra_files:
         p = resolve(folder, item)
         if p and p.is_dir():

@@ -47,6 +47,12 @@ class ComponentsFeature:
 
     def on_registry_changed(self) -> None:
         """Packages changed: designers redraw, the Properties window shows the new schema."""
+        from .. import components as _components
+        for d in list(getattr(self.win, "docs", {}).values()):     # placeholders whose package is back
+            try:
+                _components.refresh_placeholders(d.form)
+            except Exception:  # noqa: BLE001
+                pass
         for v in list(getattr(self.win, "designers", {}).values()):
             try:
                 v.rebuild()

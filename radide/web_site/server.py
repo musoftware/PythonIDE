@@ -560,6 +560,8 @@ class DevServer(QObject):
 
     # ------------------------------------------------------------ backend process
     def _emit_log(self, text: str) -> None:
+        if text.strip():
+            self._last_line = text.strip()[-300:]          # shown on the "Starting" page
         try:
             self.log.emit(text)
         except RuntimeError:          # the QObject was deleted
@@ -609,11 +611,21 @@ class DevServer(QObject):
         with self._lock:
             self._proc = proc
         threading.Thread(target=self._read_output, args=(proc,), daemon=True, name="radide-devserver-out").start()
-        deadline = time.monotonic() + float(spec.get("timeout", 30))
-        while not self._stop.is_set() and time.monotonic() < deadline:
+        t0 = time.monotonic()
+        deadline = t0 + float(spec.get("timeout", 30))
+        # past the deadline a server that is still running is waited for (a first start can take many minutes:
+        # gems / bootsnap caches, the antivirus scanning thousands of new files) - the browser shows the
+        # "Starting" page with the server's last output instead of a 502; only after hard_limit does it give up
+        hard_limit = t0 + max(float(spec.get("timeout", 30)), float(spec.get("hard_timeout", 1800)))
+        warned = False
+        while not self._stop.is_set() and time.monotonic() < hard_limit:
             if proc.poll() is not None:
                 self.backend_error = f"the server exited with code {proc.returncode}"
                 break
+            if not warned and time.monotonic() > deadline:
+                warned = True
+                self._emit_log(f"*** the site's server has not opened its port after {int(time.monotonic() - t0)} s - "
+                               "still waiting (the first start can take several minutes)")
             for h in ("127.0.0.1", "::1"):
                 if port_open(h, self.backend_port):
                     self.backend_host = h
@@ -872,7 +884,12 @@ class DevServer(QObject):
 
     def _wait_backend(self, h) -> tuple[int, int, str] | None:
         if not self._ready.wait(60 if not self._restarting else 30):
-            return self._error_page(h, 503, "Starting", "The site's server is still starting...", refresh=1)
+            import html
+            last = getattr(self, "_last_line", "")
+            return self._error_page(h, 503, "Starting", "The site's server is still starting..." +
+                                    (f"<br><br>Last output: <code>{html.escape(last)}</code>" if last else "") +
+                                    "<br>(the first start can take several minutes - see the Output window)",
+                                    refresh=2)
         if self.backend_error and (self._proc is None or self._proc.poll() is not None):
             import html
             return self._error_page(h, 502, "Server not running",

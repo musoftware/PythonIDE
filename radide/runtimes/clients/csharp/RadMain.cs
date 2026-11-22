@@ -37,10 +37,11 @@ public static class RadMain
                 if (handlers.TryGetValue($"{obj}_{ev}", out var m))
                 {
                     var ps = m.GetParameters();
-                    object[] call = ps.Length == 0 ? Array.Empty<object>()
-                        : new object[] { RadEvent.Parse(obj, ev, parts.Length > 2 ? parts[2] : "") };
+                    var e = RadEvent.Parse(obj, ev, parts.Length > 2 ? parts[2] : "");
+                    object[] call = ps.Length == 0 ? Array.Empty<object>() : new object[] { e };
                     var r = m.Invoke(null, call);
                     if (r is Task t) t.GetAwaiter().GetResult();
+                    if (e.Cancel) Rad.Set(obj, "Cancel", true);       // FormClosing: e.Cancel = true keeps the form
                 }
             }
             catch (Exception ex)

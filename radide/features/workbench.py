@@ -1517,8 +1517,17 @@ QToolButton#wbStatusItem:hover {{ background: {hover}; }}
     def side_visible(self) -> bool:
         if self.mode == "vs":
             return False
-        docks = self.side_map().get(self._active.get(self.mode), [])
-        return any(not d.isHidden() for d in docks)
+        # re-entrancy guard: a VS Code view container's factory evaluates its "when" clause, whose context
+        # (vsx/context_keys.compute) asks side_visible() again -> unbounded mutual recursion (crawler hang)
+        if getattr(self, "_side_visible_busy", False):
+            return getattr(self, "_side_visible_last", False)
+        self._side_visible_busy = True
+        try:
+            docks = self.side_map().get(self._active.get(self.mode), [])
+            self._side_visible_last = any(not d.isHidden() for d in docks)
+        finally:
+            self._side_visible_busy = False
+        return self._side_visible_last
 
     def _on_activity(self, vid: str):
         s = self.spec(vid)

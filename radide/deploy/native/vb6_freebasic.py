@@ -223,6 +223,8 @@ def build(folder, project, cfg, work, log):
     tr = translate_project(folder, project, str(Path(fbc).parent), cfg)
     if tr.reasons:
         raise NativeUnsupported(tr.reasons)
+    for note in getattr(tr, "notes", None) or []:
+        log(f"  note: {note}")
     gen = Path(work) / "native_vb6"
     shutil.rmtree(gen, ignore_errors=True)
     gen.mkdir(parents=True, exist_ok=True)

@@ -1250,7 +1250,8 @@ class VBAdapter(Adapter):
         out = self.tmp / "vb.json"
         if out.exists():
             out.unlink()
-        ide_root = str(HERE.parent.parent)
+        from ..paths import python_root      # never _internal of a release build (another Python version)
+        ide_root = str(python_root())
         argv = [sys.executable, "-m", "radide.testing.vbtest", str(self.root), str(out), *[i.id for i in items or []]]
 
         def parse(_t):

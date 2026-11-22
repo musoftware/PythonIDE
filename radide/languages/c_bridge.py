@@ -44,7 +44,8 @@ def find_native(names: list[str]) -> str:
         for n in names:
             p = d / (n + EXE)
             if p.exists():
-                return str(p)
+                from ..paths import ansi_safe       # MinGW finds cc1 / as / ld through an ANSI path
+                return ansi_safe(p)
     return ""
 
 

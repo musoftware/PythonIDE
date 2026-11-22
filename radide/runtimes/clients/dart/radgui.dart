@@ -74,11 +74,24 @@ class Rad {
     return line.endsWith('\r') ? line.substring(0, line.length - 1) : line;
   }
 
-  static void set(String obj, String prop, Object? value) => _send('SET $obj $prop ${_clean(value)}');
+  // "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values (multi-line text)
+  static String _esc(String s) => s.replaceAll('\\', '\\\\').replaceAll('\n', '\\n').replaceAll('\r', '\\r');
+
+  static String _unesc(String s) => s.replaceAllMapped(
+      RegExp(r'\\([\\nr])'), (m) => m.group(1) == 'n' ? '\n' : (m.group(1) == 'r' ? '\r' : '\\'));
+
+  static void set(String obj, String prop, Object? value) {
+    final s = (value ?? '').toString();
+    if (s.contains('\n') || s.contains('\r')) {
+      _send('ESC SET $obj $prop ${_esc(s)}'); // multi-line text
+    } else {
+      _send('SET $obj $prop $s');
+    }
+  }
 
   static String get(String obj, String prop) {
-    _send('GET $obj $prop');
-    return _readLine();
+    _send('ESC GET $obj $prop');
+    return _unesc(_readLine());
   }
 
   static num getNum(String obj, String prop) {

@@ -16,6 +16,7 @@ no warnings;
 our ($single, $trace, $signal, $sub, %sub, @args, $active);
 my ($OUT, $IN, $BPFILE, $CWD, $bptext, %bps, $mode, $step_depth, $last_check, $have_pw, @refs);
 my %keycache;
+my $EXC;                     # (no initializer: BEGIN below sets it before this line would run)
 
 BEGIN {
     $mode = 'run';
@@ -76,10 +77,12 @@ sub _load_bps {
     $text = '' unless defined $text;
     return if !$force && defined $bptext && $text eq $bptext;
     $bptext = $text;
+    $EXC = 0;
     my %new;
     for my $l (split /\n/, $text) {
         $l =~ s/\r$//;
         my @p = map { _unesc($_) } split(/\t/, $l, -1);
+        if ($p[0] eq '!exc') { $EXC = ($p[1] // '') eq '1'; next }     # Debug > Break on Exceptions
         next unless defined $p[1] && $p[1] =~ /^\d+$/;
         my $old = $bps{$p[1]} && $bps{$p[1]}{$p[0]};
         $new{$p[1]}{$p[0]} = { cond => $p[2] // '', hit => $p[3] // '', log => $p[4] // '',
@@ -243,6 +246,18 @@ sub sub {
     return &$sub;
 }
 
+# Break on Exceptions: RadGUI.pm runs every handler inside eval { }; a __DIE__ handler still runs where die was
+# called (the stack and the lexicals are still there), so the agent stops there first - only for a die in the
+# program's own code (not in Perl's libraries, not in a die that an eval of a library catches)
+sub _on_die {
+    my ($pkg, $file, $line) = caller(0);
+    return unless $active && $EXC;
+    my $k = _key($file);
+    return if _skipped($k) || ($CWD ne '' && index($k, "$CWD/") != 0);
+    local $active = 0;
+    _stopped('exception', $pkg, $file, $line, [_locals()]);
+}
+
 BEGIN {
     my $pipe = $ENV{RADDBG_PIPE};
     if (defined $pipe && $pipe ne '') {
@@ -275,6 +290,7 @@ BEGIN {
             }
             _load_bps(1);
             $active = 1;
+            $SIG{__DIE__} = \&_on_die;
         } else {
             print STDERR "[debugger] cannot reach the IDE pipe\n";
         }

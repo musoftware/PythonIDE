@@ -1,0 +1,175 @@
+ASAP2_VERSION 1 71
+/* Sample A2L written for the RAD IDE map tests (original, no real ECU data).
+   It describes samples/Tests/Firmware/Maps/sample_ecu.py:build_sample_bin() - a 64 KB calibration image whose
+   file offset 0 is the ECU address 0x80000000.  Covers: MOD_COMMON, MOD_PAR / MEMORY_SEGMENT, RECORD_LAYOUT
+   (dynamic Bosch-style axes, alignment, column order), CHARACTERISTIC VALUE / CURVE / MAP / VAL_BLK,
+   AXIS_DESCR STD_AXIS / COM_AXIS / FIX_AXIS, AXIS_PTS, COMPU_METHOD IDENTICAL / LINEAR / RAT_FUNC / TAB_VERB,
+   FUNCTION groups, and blocks that are skipped (A2ML, IF_DATA, MEASUREMENT). */
+/begin PROJECT DEMO_ECU "Synthetic demo ECU"
+  /begin HEADER "test header"
+    VERSION "1.0"
+    PROJECT_NO RADTEST
+  /end HEADER
+  /begin MODULE DEMO "demo calibration module"
+    /begin A2ML
+      struct Protocol_Layer { uint; uint; taggedstruct { "SEED_AND_KEY" char[256]; }; };
+      block "IF_DATA" taggedunion if_data { "XCP" struct { taggedstruct { ("DAQ" struct { uint; }) }; }; };
+    /end A2ML
+    /begin MOD_COMMON "module wide settings"
+      BYTE_ORDER MSB_LAST      // little endian (Intel)
+      ALIGNMENT_BYTE 1
+      ALIGNMENT_WORD 1
+      ALIGNMENT_LONG 1
+    /end MOD_COMMON
+    /begin MOD_PAR "memory"
+      /begin MEMORY_SEGMENT CAL "calibration data" DATA FLASH INTERN 0x80000000 0x10000 -1 -1 -1 -1 -1
+        /begin IF_DATA XCP
+          /begin SEGMENT 0 2 0 0 0
+          /end SEGMENT
+        /end IF_DATA
+      /end MEMORY_SEGMENT
+      /begin MEMORY_SEGMENT RAM1 "work ram" VARIABLES RAM INTERN 0xD0000000 0x8000 -1 -1 -1 -1 -1
+      /end MEMORY_SEGMENT
+    /end MOD_PAR
+
+    /begin COMPU_METHOD CM_IDENT "" IDENTICAL "%6.0" ""
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_ZW "ignition angle" LINEAR "%5.2" "deg"
+      COEFFS_LINEAR 0.75 -48
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_RPM "engine speed (RAT_FUNC, linear)" RAT_FUNC "%6.0" "1/min"
+      COEFFS 0 1 0 0 0 40
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_LOAD "relative load" LINEAR "%5.1" "%"
+      COEFFS_LINEAR 0.75 0
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_LAMBDA "lambda" LINEAR "%5.4" "-"
+      COEFFS_LINEAR 0.0001 0
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_PCT "percent" RAT_FUNC "%5.1" "%"
+      COEFFS 0 2 0 0 0 1
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_SPEED16 "speed axis" LINEAR "%6.0" "1/min"
+      COEFFS_LINEAR 1 0
+    /end COMPU_METHOD
+    /begin COMPU_METHOD CM_MODE "switch" TAB_VERB "%3.0" ""
+      COMPU_TAB_REF VT_MODE
+    /end COMPU_METHOD
+    /begin COMPU_VTAB VT_MODE "modes" TAB_VERB 2
+      0 "off"
+      1 "on"
+    /end COMPU_VTAB
+
+    /begin RECORD_LAYOUT RL_KF_UB "Bosch style map: nx ny X Y values"
+      NO_AXIS_PTS_X 1 UBYTE
+      NO_AXIS_PTS_Y 2 UBYTE
+      AXIS_PTS_X 3 UBYTE INDEX_INCR DIRECT
+      AXIS_PTS_Y 4 UBYTE INDEX_INCR DIRECT
+      FNC_VALUES 5 UBYTE ROW_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_VAL_SW_COL
+      FNC_VALUES 1 SWORD COLUMN_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_VAL_SW
+      FNC_VALUES 1 SWORD ROW_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_VAL_UB
+      FNC_VALUES 1 UBYTE ROW_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_VAL_UL
+      FNC_VALUES 1 ULONG ROW_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_VAL_F32
+      FNC_VALUES 1 FLOAT32_IEEE ROW_DIR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_AX_UW
+      AXIS_PTS_X 1 UWORD INDEX_INCR DIRECT
+    /end RECORD_LAYOUT
+    /begin RECORD_LAYOUT RL_KL_ALIGNED "curve: n (byte), aligned word axis, word values"
+      NO_AXIS_PTS_X 1 UBYTE
+      AXIS_PTS_X 2 UWORD INDEX_INCR DIRECT
+      FNC_VALUES 3 UWORD ROW_DIR DIRECT
+      ALIGNMENT_WORD 2
+    /end RECORD_LAYOUT
+
+    /begin CHARACTERISTIC KFZW "ignition angle map" MAP 0x80001000 RL_KF_UB 0 CM_ZW -48 143.25
+      FORMAT "%5.1"
+      /begin AXIS_DESCR STD_AXIS nmot CM_RPM 16 0 10200
+      /end AXIS_DESCR
+      /begin AXIS_DESCR STD_AXIS rl CM_LOAD 12 0 191.25
+      /end AXIS_DESCR
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC KFLAMBDA "lambda target (big endian, column order)" MAP 0x80001100 RL_VAL_SW_COL 0
+      CM_LAMBDA -3.2768 3.2767
+      BYTE_ORDER MSB_FIRST
+      /begin AXIS_DESCR COM_AXIS nmot CM_SPEED16 10 0 65535
+        AXIS_PTS_REF SNM16_X
+      /end AXIS_DESCR
+      /begin AXIS_DESCR COM_AXIS rl CM_LOAD 8 0 191.25
+        AXIS_PTS_REF SNL12_Y
+      /end AXIS_DESCR
+      /begin IF_DATA ETK KP_BLOB 0x1100 160 /end IF_DATA
+    /end CHARACTERISTIC
+
+    /begin AXIS_PTS SNM16_X "speed breakpoints" 0x80001200 nmot RL_AX_UW 0 CM_SPEED16 10 0 65535
+      BYTE_ORDER MSB_FIRST
+    /end AXIS_PTS
+    /begin AXIS_PTS SNL12_Y "load breakpoints" 0x80001220 rl RL_AX_UW 0 CM_LOAD 8 0 191.25
+      BYTE_ORDER MSB_FIRST
+      PHYS_UNIT "%"
+    /end AXIS_PTS
+
+    /begin CHARACTERISTIC KLTEMP "temperature correction" CURVE 0x80001300 RL_VAL_SW 0 NO_COMPU_METHOD -1000 1000
+      PHYS_UNIT "mg"
+      /begin AXIS_DESCR FIX_AXIS tmot NO_COMPU_METHOD 9 -40 120
+        FIX_AXIS_PAR_DIST -40 20 99999999999999999999999999
+        PHYS_UNIT "degC"
+      /end AXIS_DESCR
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC CWLAMBDA "lambda control share" VALUE 0x80001400 RL_VAL_UB 0 CM_PCT 0 127.5
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC ATAB "table of 16 words" VAL_BLK 0x80001410 RL_VAL_UL 0 CM_IDENT 0 4294967295
+      NUMBER 16
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC KFF32 "float map, fixed axes" MAP 0x80001500 RL_VAL_F32 0 NO_COMPU_METHOD -100 100
+      /begin AXIS_DESCR FIX_AXIS NO_INPUT_QUANTITY NO_COMPU_METHOD 6 0 100
+        /begin FIX_AXIS_PAR_LIST 0 10 25 50 75 100 /end FIX_AXIS_PAR_LIST
+      /end AXIS_DESCR
+      /begin AXIS_DESCR FIX_AXIS NO_INPUT_QUANTITY NO_COMPU_METHOD 5 0 16
+        FIX_AXIS_PAR 0 2 5
+      /end AXIS_DESCR
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC KLAL "aligned curve" CURVE 0x80001600 RL_KL_ALIGNED 0 CM_IDENT 0 65535
+      /begin AXIS_DESCR STD_AXIS NO_INPUT_QUANTITY CM_IDENT 8 0 65535
+      /end AXIS_DESCR
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC SWMODE "mode switch" VALUE 0x80001700 RL_VAL_UB 0 CM_MODE 0 1
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC VERSION_TEXT "software text" ASCII 0x80001800 RL_VAL_UB 0 NO_COMPU_METHOD 0 255
+      NUMBER 16
+    /end CHARACTERISTIC
+
+    /begin CHARACTERISTIC CUBE3 "3D block (not supported)" CUBOID 0x80001900 RL_VAL_UB 0 NO_COMPU_METHOD 0 255
+    /end CHARACTERISTIC
+
+    /begin MEASUREMENT nmot_w "engine speed" UWORD CM_SPEED16 1 100 0 65535
+      ECU_ADDRESS 0xD0000010
+    /end MEASUREMENT
+
+    /begin FUNCTION Ignition "ignition functions"
+      /begin DEF_CHARACTERISTIC KFZW
+      /end DEF_CHARACTERISTIC
+    /end FUNCTION
+    /begin FUNCTION Mixture "mixture control"
+      /begin DEF_CHARACTERISTIC KFLAMBDA KLTEMP CWLAMBDA
+      /end DEF_CHARACTERISTIC
+    /end FUNCTION
+  /end MODULE
+/end PROJECT

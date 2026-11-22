@@ -203,6 +203,9 @@ class JdwpSession(QObject):
         self.ready = False
         self.user_stopped = False
         self.break_on_exception = False
+        # GUI Bridge: the generated RadMain catches every handler's Throwable, so "uncaught" never fires - also ask
+        # for caught exceptions and stop only for those thrown in the program's own source files
+        self.break_on_caught_user = False
         self.wire: Wire | None = None
         self.bps: dict[str, dict[int, str]] = {}          # file basename (lower) -> {line: condition string}
         for bp in breakpoints:
@@ -379,7 +382,8 @@ class JdwpSession(QObject):
             w.request(15, 2, bytes([EXCEPTION]) + struct.pack(">i", self._exc_req))
             self._exc_req = 0
         if on:
-            data = bytes([EXCEPTION, SUSPEND_ALL]) + struct.pack(">i", 1) + b"\x08" + w.id("ref", 0) + b"\x00\x01"
+            caught = b"\x01" if self.break_on_caught_user else b"\x00"
+            data = bytes([EXCEPTION, SUSPEND_ALL]) + struct.pack(">i", 1) + b"\x08" + w.id("ref", 0) + caught + b"\x01"
             self._exc_req = struct.unpack(">i", w.request(15, 1, data)[:4])[0]
 
     # ------------------------------------------------------------ type information (cached)
@@ -592,6 +596,16 @@ class JdwpSession(QObject):
             pass
         return out
 
+    _CLIENT = {"radmain.java", "rad.java", "radcontrol.java", "radevent.java", "radjson.java"}
+
+    def _user_class(self, cid) -> bool:
+        """The class is compiled from one of the program's own .java files (not the JDK, not the bridge client)."""
+        try:
+            src = self._source_file(cid)
+        except JdwpError:
+            return False
+        return bool(src) and src.lower() not in self._CLIENT and Path(self._path_of(cid)).exists()
+
     def _path_of(self, cid) -> str:
         src = self._source_file(cid)
         if not src:
@@ -647,8 +661,9 @@ class JdwpSession(QObject):
                     stop = stop or (thread, "breakpoint")
             elif kind == EXCEPTION:
                 thread = r.id("object")
-                r.location(), r.value(), r.location()            # location, exception, catch location
-                stop = (thread, "error")
+                where, catch = r.location(), (r.value(), r.location())[1]      # throw / (exception) / catch
+                if not catch[1] or self._user_class(where[1]):
+                    stop = (thread, "error")
             elif kind in (THREAD_START, 7, VM_START):
                 r.id("object")
             elif kind == CLASS_PREPARE:

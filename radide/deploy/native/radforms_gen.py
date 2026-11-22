@@ -42,12 +42,13 @@ SUPPORTED_PROPS = {p.lower() for p in """
     Alignment Image Picture ToolTip ToolTipText SelStart SelectionStart SelLength SelectionLength SelText
     SelectedText Tag Name Interval Multiline hWnd Focused FileName FileTitle Filter Title InitialDirectory Color
     SelectedPath Description WindowState TopMost Icon Cancel ScaleWidth ScaleHeight StartPosition FormBorderStyle
-    Theme RightToLeft
+    Theme RightToLeft Opacity CurrentSizes CurrentState AccessibleName AccessibleDescription UseMnemonic
     """.split()}
 SUPPORTED_METHODS = {m.lower() for m in """
     AddItem Add RemoveItem RemoveAt Clear List Item Items IndexOf FindString AppendText SelectAll TabCaption
     PerformClick SetFocus Focus Refresh Move ZOrder BringToFront SendToBack Show Hide ShowDialog ShowOpen ShowSave
     ShowColor ShowFont ShowFolder Start Stop Load Unload Close Activate
+    BeginAnimation StopAnimation GoToState ApplySizeVariants CurrentSizes CurrentState Opacity
     """.split()} | SUPPORTED_PROPS
 
 SKIP_PROPS = {"Name", "Parent", "Left", "Top", "Width", "Height", "Anchor", "Dock", "TabIndex", "DataSource",
@@ -87,15 +88,14 @@ def form_reasons(form: Form) -> list[str]:
         if c.type not in SUPPORTED_TYPES and c.type not in module_classes():
             out.append(f"{form.name}.{c.name}: control type {c.type} is not supported by the native runtime")
             continue
-        if c.states or c.variants:
-            out.append(f"{form.name}.{c.name}: visual states / layout variants are not supported natively")
         if any(str(c.props.get(k) or "") for k in ("DataSource", "DataMember")):
             out.append(f"{form.name}.{c.name}: data binding is not supported natively")
         if c.props.get("ArrayName"):
             out.append(f"{form.name}.{c.name}: control arrays are not supported natively")
         if c.type == "ToolStrip" and any(it.get("Items") for it in c.props.get("Items") or []):
             out.append(f"{form.name}.{c.name}: ToolStrip drop-down buttons are not supported natively")
-    for key in ("states", "storyboards", "bindings", "datasources", "animations"):
+    # animations, storyboards, visual states and layout variants are played by radforms_motion.inc
+    for key in ("bindings", "datasources"):
         if form.extra.get(key):
             out.append(f"{form.name}: {key} (Blend / data) are not supported natively")
     return out
@@ -232,6 +232,9 @@ def form_lines(form: Form, images: dict, folder: Path) -> list[str]:
         L.append(f"C\t{c.type}\t{_esc(c.name)}\t")
         for k, v in _props(c, images, folder):
             L.append(f"P\t{_esc(k)}\t{_esc(v)}")
+    # animations / storyboards / visual states / layout variants (radforms_motion.inc)
+    from ...motion import native_plan
+    L += native_plan.lines(form, "py")
     return L
 
 
@@ -459,12 +462,13 @@ def build_static_lib(out_dir: Path, cc: str, ar: str = "", log=print) -> Path:
 # ------------------------------------------------------------------ machine-readable API (radforms_api.json)
 API_JSON = RADFORMS_DIR / "radforms_api.json"
 COMMON_PROPS = ["Name", "Text", "Left", "Top", "Width", "Height", "Visible", "Enabled", "BackColor", "ForeColor",
-                "FontName", "FontSize", "FontBold", "FontItalic", "FontUnderline", "ToolTip", "Tag", "TabIndex"]
+                "FontName", "FontSize", "FontBold", "FontItalic", "FontUnderline", "ToolTip", "Tag", "TabIndex",
+                "AccessibleName", "AccessibleDescription"]
 CLASS_PROPS = {
     "Form": ["Text", "Width", "Height", "Left", "Top", "BackColor", "Visible", "Enabled", "WindowState", "TopMost",
              "Icon", "StartPosition", "FormBorderStyle", "MaximizeBox", "MinimizeBox", "ControlBox", "RightToLeft",
              "ScaleMode", "Theme", "Cancel"],
-    "Button": ["TextAlign"], "Label": ["TextAlign"], "LinkLabel": ["TextAlign", "LinkColor"],
+    "Button": ["TextAlign"], "Label": ["TextAlign", "UseMnemonic"], "LinkLabel": ["TextAlign", "LinkColor"],
     "TextBox": ["Multiline", "ReadOnly", "PasswordChar", "MaxLength", "TextAlign", "SelStart", "SelLength", "SelText"],
     "CheckBox": ["Checked", "Value"], "RadioButton": ["Checked", "Value"],
     "ListBox": ["Items", "ListIndex", "SelectedIndex", "ListCount", "SelectedItem"],

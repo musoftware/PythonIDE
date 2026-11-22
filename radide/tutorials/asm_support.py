@@ -59,7 +59,8 @@ def gcc() -> str:
 
 def _env() -> dict:
     env = dict(os.environ)
-    root = str(Path(__file__).resolve().parents[2])           # python -m radide.asm.build (forms)
+    from ..paths import python_root                              # python -m radide.asm.build (forms); never
+    root = str(python_root())                                    # _internal of a release build
     env["PYTHONPATH"] = root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     g = gcc()
     if g:

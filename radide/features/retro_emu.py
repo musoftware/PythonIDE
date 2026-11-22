@@ -232,9 +232,19 @@ def _safe_offer(win) -> None:
 # ====================================================================== install
 def install(win) -> None:
     register_detector()
-    try:
+    try:     # the Mesen controller offer only once a retro project is open - not at every start of every user
         from PyQt6.QtCore import QTimer
-        QTimer.singleShot(4000, lambda: _safe_offer(win))
+        timer = QTimer(win)
+        timer.setInterval(3000)
+
+        def _when_retro():
+            lang = str(getattr(getattr(win, "project", None), "language", "") or "")
+            if lang.startswith("retro-"):
+                timer.stop()
+                _safe_offer(win)
+        timer.timeout.connect(_when_retro)
+        timer.start()
+        win._mesen_offer_timer = timer
     except Exception:  # noqa: BLE001
         pass
     try:

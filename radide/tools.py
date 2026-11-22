@@ -820,21 +820,27 @@ def goto_definition(win):
 
 
 def autosave(win):
-    """Write modified editors to .radide_backup (crash recovery) without touching the real files."""
-    if not win.project:
-        return
-    backup = win.project.folder / ".radide_backup"
-    views = [((getattr(cv.editor, "plugin", None) or win.plugin).code_file(n), cv.editor)
-             for n, cv in win.codeviews.items()]
-    views += [(m, mv.editor) for m, mv in win.modviews.items()]
-    for fname, ed in views:
-        if ed.isModified() and not Path(fname).is_absolute() and ".." not in Path(fname).parts:
-            (backup / fname).parent.mkdir(parents=True, exist_ok=True)   # website files: css/site.css
-            (backup / fname).write_text(ed.text(), encoding="utf-8")
+    """Crash recovery snapshot of the unsaved documents (editors and form designers) of every open project
+    in %LOCALAPPDATA%/RADIDE/recovery - the project files are never touched (features/recovery.py)."""
+    from .features.recovery import snapshot
+    snapshot(win)
 
 
 def offer_restore(win):
-    """Called after a project opens: restore backups newer than the files."""
+    """Called after a project opens: the crash recovery snapshot of a previous session (features/recovery.py),
+    and the .radide_backup folder older versions wrote into the project."""
+    try:
+        from .features.recovery import offer_for_project
+        offer_for_project(win)
+    except Exception as e:  # noqa: BLE001 - recovery must never stop a project from opening
+        win.log(f"[recovery] {e}")
+    try:
+        _offer_legacy_backup(win)
+    except Exception as e:  # noqa: BLE001
+        win.log(f"[recovery] .radide_backup: {e}")
+
+
+def _offer_legacy_backup(win):
     from PyQt6.QtWidgets import QMessageBox
     backup = win.project.folder / ".radide_backup"
     if not backup.exists():

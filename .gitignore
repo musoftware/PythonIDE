@@ -158,3 +158,4 @@ __recovery/
 
 # ---- RAD IDE release build output (tools/build_ide_release.py)
 build-ide/
+samples/Tests/E2E/_out/

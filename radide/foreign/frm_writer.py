@@ -34,7 +34,8 @@ from ..controls import CONTROL_TYPES
 from ..model import Control, Form
 
 TWIP = 15
-_NL = re.compile(r"\r\n|\n|\r")
+MAX_NESTING = 200           # controls inside containers inside ... (VB6 forms never get near this)
+_NL =re.compile(r"\r\n|\n|\r")
 _BEGIN = re.compile(r"^(\s*)Begin\s+(\S+)\s+(\S+)\s*$", re.I)
 _BEGINPROP = re.compile(r"^(\s*)BeginProperty\s+(\S+)", re.I)
 _ENDPROP = re.compile(r"^\s*EndProperty\s*$", re.I)
@@ -200,9 +201,13 @@ class FrmBlock:
         return self.name if self.index is None else f"{self.name}_{self.index}"
 
     def walk(self):
-        for c in self.children:
+        # pre-order without recursion: a (corrupted) form nested thousands of levels deep must not hit
+        # Python's recursion limit
+        stack = list(reversed(self.children))
+        while stack:
+            c = stack.pop()
             yield c
-            yield from c.walk()
+            stack.extend(reversed(c.children))
 
 
 @dataclass
@@ -502,6 +507,13 @@ def load_form(text: str, frm_path: Path, cache_dir: Path | None = None,
     if doc.root is None:
         info.warnings.append(f"{Path(frm_path).name}: no form description found")
         return None, info
+    depth, level = 0, [(doc.root, 0)]
+    while level:                    # (iterative) a corrupted file must not reach the recursive converter
+        b, d = level.pop()
+        depth = max(depth, d)
+        level.extend((c, d + 1) for c in b.children)
+    if depth > MAX_NESTING:
+        raise ValueError(f"{Path(frm_path).name}: controls nested {depth} levels deep (corrupted form file)")
     info.frx_name = frx_name_of(doc, frm_path)
     frx = Frx(Path(frm_path).parent / info.frx_name)
     scalemode = doc.root.get("ScaleMode", 1)

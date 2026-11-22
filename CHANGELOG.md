@@ -23,6 +23,12 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   58 ms, tab switch 3.7 s -> 0.2 s, click-select 200 -> 10 ms); IDE start-up 9.3 s -> 4.8 s.
 
 ### Fixed
+- Project files: opening and saving without changes keeps the file byte-for-byte (encoding and line endings
+  too); damaged, truncated, conflicted or newer-format files give a clear message and are never overwritten;
+  forms whose control package is missing open with a placeholder and keep the control's data; files changed
+  outside the IDE ask to reload; UTF-16 and Arabic-code-page files; ActiveX controls of VB6 imports keep their data.
+- Testing: tools/run_tests.py (smoke / changed / area / fast / full, automatic discovery, HTML / JUnit
+  reports), run_tests.bat, GitHub Actions CI on every push and a nightly full run (docs/TESTING.md).
 - Multi-line text, ShowDialog, SelStart/SelLength/SelText, run-time TextAlign / colours over the GUI Bridge; C/C++
   helpers are no longer taken for event handlers; Publish of console programs, Cargo projects, assembly, Flutter
   without a windows folder, Godot imports, smaller Python and Ring publishes; FASM debug link; emu8086 / Apollo /

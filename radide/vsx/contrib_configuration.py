@@ -64,7 +64,8 @@ def settings_path() -> Path:
 def load() -> dict:
     with _lock:
         try:
-            data = json.loads(settings_path().read_text("utf-8"))
+            from .user_keybindings import strip_jsonc          # VS Code's settings.json allows comments
+            data = json.loads(strip_jsonc(settings_path().read_text("utf-8")))
             return data if isinstance(data, dict) else {}
         except (OSError, ValueError):
             return {}

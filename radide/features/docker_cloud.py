@@ -513,7 +513,24 @@ class DockerPanel(QWidget):
             self.proc.kill()
 
     def _need(self) -> dk.DockerCli | None:
-        cli = self.cli or dk.find_cli()
+        cli = self.cli
+        if cli is None and "cli" not in dk._CLI_CACHE:
+            # find_cli runs `docker --version` / `docker compose version`, which take up to ~40 s while Docker
+            # Desktop starts or hangs: never in the UI thread (the action crawler found the IDE frozen here).
+            # The panel's refresh() is detecting it in the background already; start that if it is not.
+            self.state.setText("Looking for Docker ...")
+            if not getattr(self, "_finding_cli", False):
+                self._finding_cli = True
+
+                def found(c):
+                    self._finding_cli = False
+                    if not isinstance(c, Exception) and self.cli is None:
+                        self.cli = c
+                _thread(lambda _log: dk.find_cli(), found)
+            QMessageBox.information(self, "Docker", "Still looking for the Docker command line - "
+                                                    "try again in a moment.")
+            return None
+        cli = cli or dk.find_cli()          # cached: instant
         if cli is None:
             QMessageBox.information(self, "Docker", dk.DOCKER_INSTALL_HINT)
         return cli

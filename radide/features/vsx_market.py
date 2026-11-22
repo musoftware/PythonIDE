@@ -18,7 +18,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPixmap
 from PyQt6.QtWidgets import (QComboBox, QDockWidget, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
                              QListWidget, QListWidgetItem, QMenu, QMessageBox, QPushButton, QSizePolicy,
@@ -301,6 +301,49 @@ class ExtensionsView(QWidget):
         self._update_banner()
         QTimer.singleShot(0, self.do_search)
         QTimer.singleShot(3000, lambda: self.check_updates(show=False))
+
+    # ------------------------------------------------------------------ language
+    def changeEvent(self, e):  # noqa: N802
+        # the texts here are translated when they are made (cards, headers, menus): Tools > Language rebuilds them
+        # (radide/i18n switches the layout direction with the language; Qt's LanguageChange only comes when
+        # a Qt translation file is (un)installed)
+        if e.type() in (QEvent.Type.LanguageChange, QEvent.Type.LayoutDirectionChange):
+            if not getattr(self, "_retranslate_queued", False):
+                self._retranslate_queued = True
+                QTimer.singleShot(0, self.retranslate)
+        super().changeEvent(e)
+
+    def retranslate(self) -> None:
+        self._retranslate_queued = False
+        try:
+            self.search.setPlaceholderText(_tr("Search Extensions in Open VSX"))
+            self.more.setToolTip(_tr("More Actions"))
+            en = ["Install from VSIX...", "Check for Extension Updates", "Update All Extensions", None,
+                  "RAD IDE Extensions...", "Open Extensions Folder", "Clear Marketplace Cache"]
+            for a, t in zip(self.more.menu().actions(), en):
+                if t and not a.isSeparator():
+                    a.setText(_tr(t))
+            self.category.setItemText(0, _tr("All categories"))
+            for i in range(1, self.category.count()):
+                self.category.setItemText(i, _tr(self.category.itemData(i) or ""))
+            sorts = {"relevance": "Relevance", "downloads": "Most downloads", "rating": "Rating",
+                     "date": "Recently published"}
+            for i in range(self.sort.count()):
+                self.sort.setItemText(i, _tr(sorts.get(self.sort.itemData(i), self.sort.itemText(i))))
+            self.banner_btn.setText(_tr("Reload"))
+            self.tabs.setTabText(0, _tr("Marketplace"))
+            for i in range(self.market.count()):
+                if self.market.item(i).data(Qt.ItemDataRole.UserRole) == "__more__":
+                    w = self.market.itemWidget(self.market.item(i))
+                    if isinstance(w, QPushButton):
+                        w.setText(_tr("Load more"))
+            if self._total:
+                self.status.setText(_tr("{} extensions").replace("{}", str(self._total)))
+            else:
+                self.status.clear()
+            self._on_changed()
+        except RuntimeError:
+            pass
 
     def _list(self) -> QListWidget:
         lw = QListWidget()
@@ -757,6 +800,20 @@ class DetailsPage(QWidget):
         vsx.on_changed.connect(self._changed)
         self.destroyed.connect(lambda *_: vsx.on_changed.disconnect(self._changed))
         self.populate()
+
+    def changeEvent(self, e):  # noqa: N802
+        if e.type() in (QEvent.Type.LanguageChange, QEvent.Type.LayoutDirectionChange):
+            def again():
+                try:
+                    self.contrib.setHeaderLabels([_tr("Contribution"), _tr("RAD IDE"), _tr("Notes")])
+                    self.deps.setHeaderLabels([_tr("Extension"), _tr("Kind"), _tr("Status")])
+                    for i, t in enumerate(("Details", "Changelog", "Feature Contributions", "Dependencies")):
+                        self.tabs.setTabText(i, _tr(t))
+                    self._changed()
+                except RuntimeError:
+                    pass
+            QTimer.singleShot(0, again)
+        super().changeEvent(e)
 
     def _browser(self) -> QTextBrowser:
         b = QTextBrowser()

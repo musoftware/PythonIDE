@@ -160,18 +160,68 @@ contains
   end subroutine rad_print
 
   ! ---------------------------------------------------------------- GUI
-  ! Set a property:  call rad_set('lblResult', 'Caption', 'Hello')
+  ! "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values, so multi-line text survives
+  function rad_esc(s) result(r)
+    character(len=*), intent(in) :: s
+    character(len=:), allocatable :: r
+    integer :: i
+    r = ''
+    do i = 1, len(s)
+      if (s(i:i) == achar(92)) then
+        r = r // achar(92) // achar(92)
+      else if (s(i:i) == achar(10)) then
+        r = r // achar(92) // 'n'
+      else if (s(i:i) == achar(13)) then
+        r = r // achar(92) // 'r'
+      else
+        r = r // s(i:i)
+      end if
+    end do
+  end function rad_esc
+
+  function rad_unesc(s) result(r)
+    character(len=*), intent(in) :: s
+    character(len=:), allocatable :: r
+    integer :: i
+    r = ''
+    i = 1
+    do while (i <= len(s))
+      if (s(i:i) == achar(92) .and. i < len(s)) then
+        if (s(i + 1:i + 1) == 'n') then
+          r = r // achar(10)
+          i = i + 2
+          cycle
+        else if (s(i + 1:i + 1) == 'r') then
+          r = r // achar(13)
+          i = i + 2
+          cycle
+        else if (s(i + 1:i + 1) == achar(92)) then
+          r = r // achar(92)
+          i = i + 2
+          cycle
+        end if
+      end if
+      r = r // s(i:i)
+      i = i + 1
+    end do
+  end function rad_unesc
+
+  ! Set a property:  call rad_set('lblResult', 'Caption', 'Hello')   (multi-line text: lines joined with achar(10))
   subroutine rad_set(obj, prop, value)
     character(len=*), intent(in) :: obj, prop, value
-    call rad_send('SET ' // trim(obj) // ' ' // trim(prop) // ' ' // trim(value))
+    if (index(value, achar(10)) > 0 .or. index(value, achar(13)) > 0) then
+      call rad_send('ESC SET ' // trim(obj) // ' ' // trim(prop) // ' ' // rad_esc(trim(value)))
+    else
+      call rad_send('SET ' // trim(obj) // ' ' // trim(prop) // ' ' // trim(value))
+    end if
   end subroutine rad_set
 
-  ! Get a property as text:  s = rad_get('txtA', 'Text')
+  ! Get a property as text:  s = rad_get('txtA', 'Text')   (lines of a multi-line text separated by achar(10))
   function rad_get(obj, prop) result(value)
     character(len=*), intent(in) :: obj, prop
     character(len=:), allocatable :: value
-    call rad_send('GET ' // trim(obj) // ' ' // trim(prop))
-    value = rad_reply()
+    call rad_send('ESC GET ' // trim(obj) // ' ' // trim(prop))
+    value = rad_unesc(rad_reply())
   end function rad_get
 
   ! Call a method:  call rad_call('lstLog', 'AddItem', 'text')   (several args: separate with achar(9))

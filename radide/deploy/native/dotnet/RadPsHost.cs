@@ -24,10 +24,35 @@ namespace RadNative
             return out1;
         }
 
+        static string Escape(string s)
+        {
+            return (s ?? "").Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
+        }
+
+        static string Unescape(string s)
+        {
+            if (s.IndexOf('\\') < 0) return s;
+            var b = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c == '\\' && i + 1 < s.Length && (s[i + 1] == '\\' || s[i + 1] == 'n' || s[i + 1] == 'r'))
+                {
+                    char n = s[++i];
+                    b.Append(n == 'n' ? '\n' : n == 'r' ? '\r' : '\\');
+                }
+                else b.Append(c);
+            }
+            return b.ToString();
+        }
+
         /// <summary>One line of the GUI Bridge protocol (program -> host); returns the answer line.</summary>
         public static string Ask(string line)
         {
             line = line ?? "";
+            // "ESC <command>" (Rad.ps1 sends GET / multi-line SET so): \ newline CR are escaped in the values and the
+            // answer is escaped the same way - like radide/runtimes/bridge.py
+            if (line.StartsWith("ESC ", StringComparison.Ordinal)) return Escape(Ask(Unescape(line.Substring(4))));
             var sp = line.IndexOf(' ');
             var cmd = (sp < 0 ? line : line.Substring(0, sp)).ToUpperInvariant();
             var rest = sp < 0 ? "" : line.Substring(sp + 1);

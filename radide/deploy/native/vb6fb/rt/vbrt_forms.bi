@@ -65,6 +65,9 @@ Enum VBEvent
     vbeTerminate
     vbeMouseEnter
     vbeMouseLeave
+    vbeInitialize
+    vbeValidate
+    vbeSizeVariantChanged        ' layout variants (rt/vbrt_motion.bi)
     vbeCount
 End Enum
 
@@ -224,12 +227,25 @@ Dim Shared vbCtls(Any) As VBCtl
 Dim Shared vbCtlCount As Long
 Dim Shared vbScale As Long = 96                 ' screen DPI
 Dim Shared vbCreating As Long                    ' no events while controls are being created
+Dim Shared vbFireDepth As Long                   ' event handlers running (nested)
+Dim Shared vbRefocus As Long                     ' Validate Cancel: the focus goes back to this control (no events)
+Const VB_WM_REFOCUS = WM_APP + 77
 Dim Shared vbStartForm As Long
 Dim Shared vbTooltip As HWND
 Dim Shared vbImageLoader As Function(ByRef path As String) As Any Ptr
 Dim Shared vbImageDraw As Sub(ByVal img As Any Ptr, ByVal dc As HDC, ByRef rc As RECT)
 Dim Shared vbIconLoader As Function(ByRef path As String) As HICON
 Dim Shared vbHandCursor As HCURSOR
+' animations / visual states / layout variants: rt/vbrt_motion.bi (included only by programs that use them)
+' sets these hooks; vbFxQuiet > 0 while it writes properties itself
+Dim Shared vbFxQuiet As Long
+Dim Shared vbFxHot As Long                      ' the control under the mouse (MouseEnter / MouseLeave)
+Dim Shared vbFxOnEvent As Sub(ByVal id As Long, ByVal ev As Long)
+Dim Shared vbFxOnSet As Function(ByVal id As Long, ByVal p As Long, ByVal v As Long) As Long
+Dim Shared vbFxOnForm As Sub(ByVal f As Long, ByVal what As Long, ByVal wp As WPARAM, ByVal lp As LPARAM)
+Const VB_WM_FX = WM_APP + 78
+Const VB_FX_TIMER0 = 20000                       ' timer ids of the motion runtime (VB Timers: 1000 + id)
+Const VB_HOVER_TIMER = 19999                     ' watches the cursor after a WM_MOUSELEAVE that came too early
 
 #define VBS(v) MulDiv((v), vbScale, 96)          ' design pixels -> screen pixels
 #define VBU(v) MulDiv((v), 96, vbScale)          ' screen pixels -> design pixels
@@ -312,10 +328,13 @@ End Sub
 
 Private Function VBFire(ByVal id As Long, ByVal ev As Long, ByRef e As VBEventArgs) As Long
     If id <= 0 OrElse id > vbCtlCount OrElse vbCreating Then Return 0
+    If vbFxOnEvent <> 0 Then vbFxOnEvent(id, ev)       ' triggers / automatic visual states
     Dim h As VBHandler = vbCtls(id).ev(ev)
     If h = 0 Then Return 0
     e.index = vbCtls(id).arrIndex
+    vbFireDepth += 1
     h(e)
+    vbFireDepth -= 1
     If vbErrPending Then VBUnhandled()
     Return -1
 End Function
@@ -323,6 +342,54 @@ End Function
 Private Sub VBFire0(ByVal id As Long, ByVal ev As Long)
     Dim e As VBEventArgs
     VBFire(id, ev, e)
+End Sub
+
+' the mouse came over control id (only tracked when the motion runtime is in): MouseLeave of the previous one,
+' TME_LEAVE for this window, MouseEnter
+Private Sub VBHoverEnter(ByVal h As HWND, ByVal id As Long)
+    If vbFxHot = id Then Exit Sub
+    If vbFxHot > 0 Then
+        Dim old As Long = vbFxHot
+        vbFxHot = 0
+        VBFire0(old, vbeMouseLeave)
+    End If
+    Dim t As TRACKMOUSEEVENT
+    t.cbSize = SizeOf(t)
+    t.dwFlags = TME_LEAVE
+    t.hwndTrack = h
+    TrackMouseEvent(@t)
+    vbFxHot = id
+    VBFire0(id, vbeMouseEnter)
+End Sub
+
+Private Function VBHoverOver(ByVal id As Long) As Long
+    Dim cp As POINT
+    GetCursorPos(@cp)
+    Dim w As HWND = WindowFromPoint(cp)
+    Return w <> 0 AndAlso (w = vbCtls(id).hwnd OrElse w = vbCtls(id).inner)
+End Function
+
+Private Sub VBHoverLeave(ByVal id As Long)
+    If vbFxHot <> id OrElse id = 0 Then Exit Sub
+    ' a WM_MOUSELEAVE while the cursor is still over the control (themed buttons track the mouse themselves and
+    ' end our tracking): the cursor is watched instead (VBHoverPoll)
+    Dim f As Long = vbCtls(id).form
+    If vbCtls(f).hwnd <> 0 AndAlso VBHoverOver(id) Then
+        SetTimer(vbCtls(f).hwnd, VB_HOVER_TIMER, 60, 0)
+        Exit Sub
+    End If
+    vbFxHot = 0
+    VBFire0(id, vbeMouseLeave)
+End Sub
+
+Private Sub VBHoverPoll(ByVal f As Long)
+    Dim id As Long = vbFxHot
+    If id > 0 AndAlso id <= vbCtlCount AndAlso vbCtls(id).hwnd <> 0 AndAlso VBHoverOver(id) Then Exit Sub
+    KillTimer(vbCtls(f).hwnd, VB_HOVER_TIMER)
+    If id > 0 Then
+        vbFxHot = 0
+        VBFire0(id, vbeMouseLeave)
+    End If
 End Sub
 
 ' ------------------------------------------------------------------------------ helpers
@@ -563,15 +630,44 @@ Private Function VBCtlSub(ByVal hwnd As HWND, ByVal msg As UINT, ByVal wp As WPA
             VBFire(id, vbeKeyUp, e)
         End If
     Case WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN
-        If vbCtls(id).ev(vbeMouseDown) Then VBMouseArgs(id, msg, wp, lp, e): VBFire(id, vbeMouseDown, e)
+        If vbCtls(id).ev(vbeMouseDown) <> 0 OrElse vbFxOnEvent <> 0 Then VBMouseArgs(id, msg, wp, lp, e): VBFire(id, vbeMouseDown, e)
     Case WM_LBUTTONUP, WM_RBUTTONUP, WM_MBUTTONUP
-        If vbCtls(id).ev(vbeMouseUp) Then VBMouseArgs(id, msg, wp, lp, e): VBFire(id, vbeMouseUp, e)
+        If vbCtls(id).ev(vbeMouseUp) <> 0 OrElse vbFxOnEvent <> 0 Then VBMouseArgs(id, msg, wp, lp, e): VBFire(id, vbeMouseUp, e)
+        ' Label / LinkLabel / PictureBox: Click after MouseUp, released over the control (VB6 order; the STATIC
+        ' control's STN_CLICKED comes with the button press)
+        Select Case vbCtls(id).kind
+        Case vbkLabel, vbkLink, vbkPicture
+            If msg = WM_LBUTTONUP Then
+                Dim rc As RECT
+                GetClientRect(hwnd, @rc)
+                Dim As Long mx = CShort(LoWord(lp)), my = CShort(HiWord(lp))
+                If mx >= 0 AndAlso my >= 0 AndAlso mx < rc.right AndAlso my < rc.bottom Then VBFire0(id, vbeClick)
+            End If
+        End Select
     Case WM_MOUSEMOVE
+        If vbFxOnEvent <> 0 AndAlso vbFxHot <> id Then VBHoverEnter(hwnd, id)
         If vbCtls(id).ev(vbeMouseMove) Then VBMouseArgs(id, msg, wp, lp, e): VBFire(id, vbeMouseMove, e)
+    Case WM_MOUSELEAVE
+        VBHoverLeave(id)
     Case WM_SETFOCUS
-        VBFire0(id, vbeGotFocus)
+        If vbRefocus = 0 Then VBFire0(id, vbeGotFocus)
     Case WM_KILLFOCUS
-        VBFire0(id, vbeLostFocus)
+        If vbRefocus = 0 Then
+            ' VB6 Validate: the focus goes to another control of the same form - before LostFocus; Cancel keeps
+            ' the focus here (the other control gets no GotFocus, this one no LostFocus)
+            Dim nh As HWND = Cast(HWND, wp)
+            Dim fh As HWND = vbCtls(vbCtls(id).form).hwnd
+            If vbCtls(id).ev(vbeValidate) AndAlso nh <> 0 AndAlso fh <> 0 AndAlso GetAncestor(nh, GA_ROOT) = fh Then
+                e.cancel = 0
+                VBFire(id, vbeValidate, e)
+                If e.cancel Then
+                    vbRefocus = id
+                    PostMessageW(fh, VB_WM_REFOCUS, id, 0)
+                    Return DefSubclassProc(hwnd, msg, wp, lp)
+                End If
+            End If
+            VBFire0(id, vbeLostFocus)
+        End If
     Case WM_SETCURSOR
         If vbCtls(id).kind = vbkLink Then SetCursor(vbHandCursor): Return -1
     Case WM_LBUTTONDBLCLK
@@ -611,9 +707,13 @@ Private Function VBBoxProc(ByVal hwnd As HWND, ByVal msg As UINT, ByVal wp As WP
             Case WM_LBUTTONUP, WM_RBUTTONUP
                 VBFire(id, vbeMouseUp, e)
                 If msg = WM_LBUTTONUP Then VBFire0(id, vbeClick)
-            Case Else: VBFire(id, vbeMouseMove, e)
+            Case Else
+                If vbFxOnEvent <> 0 AndAlso vbFxHot <> id Then VBHoverEnter(hwnd, id)
+                VBFire(id, vbeMouseMove, e)
             End Select
         End If
+    Case WM_MOUSELEAVE
+        VBHoverLeave(VBIdOf(hwnd))
     Case WM_LBUTTONDBLCLK
         VBFire0(VBIdOf(hwnd), vbeDblClick)
     End Select
@@ -725,7 +825,7 @@ Private Function VBHandleCommon(ByVal hwnd As HWND, ByVal msg As UINT, ByVal wp 
             If code = CBN_EDITCHANGE Then VBFire0(id, vbeChange)
             If code = CBN_DBLCLK Then VBFire0(id, vbeDblClick)
         Case vbkLabel, vbkLink, vbkPicture, vbkPanel
-            If code = STN_CLICKED Then VBFire0(id, vbeClick)
+            If code = STN_CLICKED AndAlso vbCtls(id).kind = vbkPanel Then VBFire0(id, vbeClick)   ' others: on WM_LBUTTONUP
             If code = STN_DBLCLK Then VBFire0(id, vbeDblClick)
         End Select
         Return 0
@@ -809,6 +909,8 @@ Private Function VBFormProc(ByVal hwnd As HWND, ByVal msg As UINT, ByVal wp As W
         Dim r As LRESULT = VBHandleCommon(hwnd, msg, wp, lp, handled)
         If handled Then Return r
     Case WM_TIMER
+        If wp >= VB_FX_TIMER0 AndAlso vbFxOnForm <> 0 Then vbFxOnForm(f, 3, wp, 0): Return 0
+        If wp = VB_HOVER_TIMER Then VBHoverPoll(f): Return 0
         Dim id As Long = CLng(wp) - 1000
         If id > 0 AndAlso id <= vbCtlCount AndAlso vbCtls(id).kind = vbkTimer Then
             If vbCtls(id).timerOn Then VBFire0(id, vbeTimer)
@@ -825,12 +927,21 @@ Private Function VBFormProc(ByVal hwnd As HWND, ByVal msg As UINT, ByVal wp As W
         If vbCtls(f).loaded AndAlso wp <> SIZE_MINIMIZED Then
             vbCtls(f).pw = VBU(LoWord(lp)): vbCtls(f).ph = VBU(HiWord(lp))
             VBLayoutChildren(0, f)
+            If vbFxOnForm <> 0 Then vbFxOnForm(f, 4, 0, 0)      ' layout variants
             If IsWindowVisible(hwnd) Then VBFire0(f, vbeResize)
         End If
+    Case VB_WM_FX                                     ' <storyboard>_Completed / Form_SizeVariantChanged
+        If vbFxOnForm <> 0 Then vbFxOnForm(f, 6, wp, lp)
+        Return 0
     Case WM_ACTIVATE
         If LoWord(wp) = WA_INACTIVE Then VBFire0(f, vbeDeactivate) Else VBFire0(f, vbeActivate)
     Case WM_CLOSE
         VBFormUnload(f, 0)
+        Return 0
+    Case VB_WM_REFOCUS                                ' after Validate Cancel: back to the control, no events
+        Dim id As Long = CLng(wp)
+        If id > 0 AndAlso id <= vbCtlCount AndAlso vbCtls(id).hwnd Then SetFocus(vbCtls(id).hwnd)
+        vbRefocus = 0
         Return 0
     Case WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN
         Dim e As VBEventArgs
@@ -1199,6 +1310,7 @@ End Function
 ' VB6 Load: create the form window and its controls (hidden), then Form_Load
 Private Sub VBFormLoad(ByVal f As Long)
     If f <= 0 OrElse vbCtls(f).loaded Then Exit Sub
+    VBFire0(f, vbeInitialize)
     VBInitGui()
     vbCreating += 1
     With vbCtls(f)
@@ -1273,6 +1385,7 @@ Private Sub VBFormLoad(ByVal f As Long)
         ' applied when shown
     End If
     vbCreating -= 1
+    If vbFxOnForm <> 0 Then vbFxOnForm(f, 1, 0, 0)      ' animations / states / variants of the form
     VBFire0(f, vbeLoad)
 End Sub
 
@@ -1299,6 +1412,7 @@ Private Sub VBFormShow(ByVal f As Long, ByVal modal As Long = 0)
         If owner Then SetWindowLongPtrW(hw, GWLP_HWNDPARENT, Cast(LONG_PTR, owner))
         ShowWindow(hw, IIf(vbCtls(f).winState = 2, SW_SHOWMAXIMIZED, SW_SHOW))
         If first Then VBFire0(f, vbeResize)
+        If first AndAlso vbFxOnForm <> 0 Then vbFxOnForm(f, 2, 0, 0)    ' "On load" animations, timers
         SetForegroundWindow(hw)
         VBMessageLoop(f)
         For i As Long = 0 To nd - 1
@@ -1309,6 +1423,7 @@ Private Sub VBFormShow(ByVal f As Long, ByVal modal As Long = 0)
     End If
     ShowWindow(hw, IIf(vbCtls(f).winState = 2, SW_SHOWMAXIMIZED, IIf(vbCtls(f).winState = 1, SW_SHOWMINIMIZED, SW_SHOW)))
     If first Then VBFire0(f, vbeResize)
+    If first AndAlso vbFxOnForm <> 0 Then vbFxOnForm(f, 2, 0, 0)        ' "On load" animations, timers
     SetForegroundWindow(hw)
 End Sub
 
@@ -1335,9 +1450,11 @@ Private Sub VBFormUnload(ByVal f As Long, ByVal mode As Long = 1)
     VBFire(f, vbeUnload, e)
     If e.cancel Then Exit Sub
     If vbCtls(f).loaded = 0 Then Exit Sub
+    If vbFxOnForm <> 0 Then vbFxOnForm(f, 5, 0, 0)      ' animations stop
     For i As Long = 1 To vbCtlCount
         With vbCtls(i)
             If .form = f AndAlso i <> f Then
+                If vbFxHot = i Then vbFxHot = 0
                 If .kind = vbkTimer Then KillTimer(vbCtls(f).hwnd, 1000 + i)
                 .hwnd = 0: .inner = 0: .buddy = 0
                 If .hfont Then DeleteObject(.hfont): .hfont = 0
@@ -1354,7 +1471,9 @@ Private Sub VBFormUnload(ByVal f As Long, ByVal mode As Long = 1)
         DestroyWindow(hw)
     End With
     VBFire0(f, vbeTerminate)
-    If VBAnyFormLoaded() = 0 Then VBEnd()
+    ' VB6 ends the program when no form is loaded AND no code runs: "Unload Me" inside a handler goes on with the
+    ' rest of the handler; the message loop ends the program afterwards (it stops when no form is loaded)
+    If VBAnyFormLoaded() = 0 AndAlso vbFireDepth = 0 Then VBEnd()
 End Sub
 
 Private Sub VBPump(ByRef m As MSG)
@@ -1737,11 +1856,16 @@ Private Sub VBSetN(ByVal id As Long, ByVal p As Long, ByVal v As Double)
                 If .buddy Then EnableWindow(.buddy, iv <> 0)
                 If .kind = vbkTab Then EnableWindow(.hwnd, iv <> 0)
             End If
+            If vbFxOnSet <> 0 AndAlso vbFxQuiet = 0 Then vbFxOnSet(id, vbpEnabled, iv)    ' Disabled state
             Exit Sub
         Case vbpVisible
             If .kind = vbkForm Then
                 If iv Then VBFormShow(id) Else VBFormHide(id)
                 Exit Sub
+            End If
+            ' "On show" / "On hide" animations: shown at once, hidden at the end of the animation
+            If vbFxOnSet <> 0 AndAlso vbFxQuiet = 0 AndAlso .kind <> vbkMenu Then
+                If vbFxOnSet(id, vbpVisible, iv) Then Exit Sub
             End If
             .visible = IIf(iv, -1, 0)
             If .kind = vbkMenu Then Exit Sub

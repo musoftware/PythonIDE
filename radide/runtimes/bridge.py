@@ -33,7 +33,7 @@ from pathlib import Path
 
 from ..controls import CONTROL_TYPES, FORM_EVENTS, menu_leaves
 from ..model import Form
-from .vbinterp import to_str
+from .vbinterp import to_bool, to_str
 from .vbrun import Runtime, VBForm
 
 DEBUG = bool(os.environ.get("RAD_BRIDGE_DEBUG"))      # started by the IDE debugger (radide/bridgedebug.py)
@@ -66,6 +66,89 @@ def one_line(s: str) -> str:
     return s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ") if ("\n" in s or "\r" in s) else s
 
 
+RUNTIME_HINTS = {
+    "dart": "the Dart SDK (https://dart.dev/get-dart)", "perl": "Perl (https://strawberryperl.com)",
+    "ruby": "Ruby (https://rubyinstaller.org)", "php": "PHP (https://windows.php.net/download)",
+    "node": "Node.js (https://nodejs.org)", "lua": "Lua (https://www.lua.org)", "java": "Java (https://adoptium.net)",
+    "javaw": "Java (https://adoptium.net)", "dotnet": ".NET (https://dotnet.microsoft.com/download)",
+    "pwsh": "PowerShell 7 (https://aka.ms/powershell)", "python": "Python (https://www.python.org)",
+    "ring": "Ring (https://ring-lang.github.io)", "tsx": "Node.js + tsx (https://nodejs.org)",
+}
+
+
+def missing_runtime_text(exe: str, ex: Exception | None = None) -> str:
+    name = Path(str(exe)).stem.lower()
+    what = RUNTIME_HINTS.get(name, f"'{Path(str(exe)).name}'")
+    text = (f"This program needs {what} to run, but '{Path(str(exe)).name}' was not found on this computer "
+            f"(not in the program folder and not on PATH).\n\nInstall it, then start the program again.")
+    if ex is not None and not isinstance(ex, FileNotFoundError):
+        text += f"\n\n({ex})"
+    return text
+
+
+def fatal(title: str, text: str, code: int = 3):
+    """A message box (the published host has no console) and exit. RADIDE_TEST_NO_DIALOGS: stderr only."""
+    print(f"[bridge] {title}: {text}", file=sys.stderr, flush=True)
+    if not os.environ.get("RADIDE_TEST_NO_DIALOGS"):
+        try:
+            if os.name == "nt":
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(None, text, title, 0x10 | 0x10000)     # MB_ICONERROR|SETFOREGROUND
+            else:
+                root = tk.Tk()
+                root.withdraw()
+                from tkinter import messagebox
+                messagebox.showerror(title, text)
+                root.destroy()
+        except Exception:  # noqa: BLE001 - no GUI at all: stderr is all there is
+            pass
+    os._exit(code)          # forms may already be loaded (Tk root, threads): leave at once
+
+
+# Tk keysym -> Windows virtual-key code (KeyCode of KeyDown / KeyUp / KeyPress for the bridge clients)
+_VK = {"return": 13, "kp_enter": 13, "tab": 9, "backspace": 8, "escape": 27, "space": 32, "prior": 33, "next": 34,
+       "end": 35, "home": 36, "left": 37, "up": 38, "right": 39, "down": 40, "insert": 45, "delete": 46,
+       "shift_l": 16, "shift_r": 16, "control_l": 17, "control_r": 17, "alt_l": 18, "alt_r": 18, "pause": 19,
+       "caps_lock": 20, "num_lock": 144, "scroll_lock": 145, "print": 44, "menu": 93, "app": 93,
+       "win_l": 91, "win_r": 92, "super_l": 91, "super_r": 92, "kp_multiply": 106, "kp_add": 107,
+       "kp_subtract": 109, "kp_decimal": 110, "kp_divide": 111, "semicolon": 186, "equal": 187, "plus": 187,
+       "comma": 188, "minus": 189, "period": 190, "slash": 191, "grave": 192, "bracketleft": 219,
+       "backslash": 220, "bracketright": 221, "apostrophe": 222, "quoteright": 222}
+
+
+def vk_code(e) -> int:
+    """The Windows virtual-key code of a key event (EventArgs of radide/languages/python_tk.py: KeyCode is the Tk
+    keysym name, raw the Tk event). On Windows Tk's own keycode already is the VK code."""
+    code = getattr(e, "KeyCode", 0)
+    if isinstance(code, int):
+        return code
+    raw = getattr(e, "raw", None)
+    kc = getattr(raw, "keycode", None)
+    if os.name == "nt" and isinstance(kc, int) and kc > 0:
+        return kc
+    return keysym_to_vk(str(code or ""))
+
+
+def keysym_to_vk(sym: str) -> int:
+    if not sym or sym == "??":
+        return 0
+    if sym.lstrip("-").isdigit():
+        return int(sym)
+    low = sym.lower()
+    if low in _VK:
+        return _VK[low]
+    if len(sym) == 1:
+        ch = sym.upper()
+        if "A" <= ch <= "Z" or "0" <= ch <= "9":
+            return ord(ch)
+        return 0
+    if low.startswith("f") and low[1:].isdigit() and 1 <= int(low[1:]) <= 24:
+        return 111 + int(low[1:])                         # F1 = 112
+    if low.startswith("kp_") and low[3:].isdigit():
+        return 96 + int(low[3:])                          # numpad 0 = 96
+    return 0
+
+
 class BridgeRuntime(Runtime):
     def __init__(self, folder: Path, program: list[str], handlers: set[str]):
         super().__init__(folder)
@@ -78,9 +161,20 @@ class BridgeRuntime(Runtime):
 
     # -- process
     def start_program(self):
-        self.proc = subprocess.Popen(self.program, cwd=str(self.folder), stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=None, text=True, encoding="utf-8",
-                                     errors="replace", bufsize=1)
+        if not self.program:
+            fatal("GUI Bridge", "No program to run (the published _radlaunch.json names none).")
+        try:
+            self.proc = subprocess.Popen(self.program, cwd=str(self.folder), stdin=subprocess.PIPE,
+                                         stdout=subprocess.PIPE, stderr=None, text=True, encoding="utf-8",
+                                         errors="replace", bufsize=1,
+                                         # the published (windowed) host: no console window for a console program
+                                         creationflags=0x08000000 if os.name == "nt" and getattr(sys, "frozen", False)
+                                         else 0)
+        except OSError as ex:
+            # a published program whose interpreter (dart, perl, ruby, php, node ...) is not installed: say so
+            # instead of sitting there with no window
+            fatal(f"{self.project.name if getattr(self, 'project', None) else 'Program'} cannot start",
+                  missing_runtime_text(self.program[0], ex))
         threading.Thread(target=self._reader, daemon=True).start()
         if DEBUG:
             # IDE debugger (radide/bridgedebug.py): tell it the pid, wait until it has attached and
@@ -177,9 +271,10 @@ class BridgeRuntime(Runtime):
         args = ""
         if e is not None and hasattr(e, "X"):
             # a control character as KeyChar (Return = CR, Tab ...) would break the line protocol: leave it out
-            # like the native runtimes do (KeyCode still names the key: Return, Tab, BackSpace, Escape)
+            # like the native runtimes do; KeyCode is the numeric Windows virtual-key code (13 = Enter, 27 = Esc,
+            # 65 = A ...) the clients parse as a number, like the native (radforms / WinForms / Swing) paths
             char = "".join(ch for ch in str(e.KeyChar or "") if ch >= " " and ch != "\x7f")
-            args = f"{e.X} {e.Y} {e.Button} {e.KeyCode} {char}".strip()
+            args = f"{e.X} {e.Y} {e.Button} {vk_code(e)} {char}".strip()
         self.send(f"EVENT {owner} {ev} {args}".rstrip())
         self._serving = True
         try:
@@ -219,7 +314,11 @@ class BridgeRuntime(Runtime):
                     return None
                 if up == "SET":
                     obj, prop, value = (rest.split(" ", 2) + ["", ""])[:3]
-                    self.resolve_obj(obj).vb_set(prop.lower(), value)
+                    target = self.resolve_obj(obj)
+                    if prop.lower() == "cancel" and isinstance(target, VBForm):
+                        target._close_cancel = to_bool(value)     # FormClosing: keep the form open
+                    else:
+                        target.vb_set(prop.lower(), value)
                 elif up == "GET":
                     obj, prop = (rest.split(" ", 1) + [""])[:2]
                     target, prop = self.resolve_obj(obj), prop.strip().lower()
@@ -290,12 +389,34 @@ class BridgeRuntime(Runtime):
         for vf in self.forms.values():
             if vf.loaded and vf.vb_has(parts[0].lower()):
                 return vf.vb_get(parts[0].lower())
+        glob = self.global_object(parts[0].lower())
+        if glob is not None:            # GET Screen Width / CALL Clipboard SetText / GET App Path
+            return glob
         raise KeyError(f"unknown object '{path}'")
 
+    def global_object(self, name: str):
+        """The VB global objects App, Screen and Clipboard (radide/runtimes/vbrun.py) for the bridge languages."""
+        from .vbrun import App, Clipboard, Screen
+        cls = {"app": App, "screen": Screen, "clipboard": Clipboard}.get(name)
+        if cls is None:
+            return None
+        cache = self.__dict__.setdefault("_globals", {})
+        if name not in cache:
+            cache[name] = cls(self)
+        return cache[name]
+
     def close_form(self, vf):
+        # FormClosing: the program cancels with SET <Form> Cancel True (radforms' rad_set / Set / rad.set) or
+        # e.Cancel = true (C# / Java clients send that SET after the handler) - like the native runtimes
+        vf._close_cancel = False
         if f"{vf.name}_FormClosing".lower() in self.handler_names:
             self.event(vf.name, "FormClosing")
+        if getattr(vf, "_close_cancel", False):
+            vf._close_cancel = False
+            return
         self.unload(vf, events=False)
+        if f"{vf.name}_FormClosed".lower() in self.handler_names:
+            self.event(vf.name, "FormClosed")
 
     def end(self):
         if self.proc and self.proc.poll() is None:
@@ -334,8 +455,11 @@ def main(argv=None):
     if build:
         print(f"------ Build: {build}", flush=True)
         r = subprocess.run(build if os.name == "nt" else shlex.split(build), cwd=str(folder), shell=os.name == "nt",
-                           capture_output=True, text=True)
-        out = (r.stdout + r.stderr).strip()
+                           capture_output=True)
+        # bytes: a compiler may answer in UTF-8, the OEM (cp720 ...) or the ANSI code page (cp1256 ...) -
+        # text=True would decode with the ANSI code page and crash on bytes it does not define
+        from ..console_text import decode
+        out = (decode(r.stdout) + decode(r.stderr)).strip()
         if out:
             print(out, flush=True)
         if r.returncode != 0:
@@ -353,7 +477,10 @@ def main(argv=None):
     if console and program:
         sys.stdout.flush()
         if not DEBUG:
-            sys.exit(subprocess.run(program, cwd=str(folder)).returncode)     # stdin/stdout/stderr inherited
+            try:
+                sys.exit(subprocess.run(program, cwd=str(folder)).returncode)     # stdin/stdout/stderr inherited
+            except OSError as ex:
+                fatal("Program cannot start", missing_runtime_text(program[0], ex))
         # debugger (radide/bridgedebug.py): same handshake as the GUI Bridge - pid, then wait for "go"
         proc = subprocess.Popen(program, cwd=str(folder), stdin=subprocess.DEVNULL)
         print(f"@@RADBRIDGE@@pid|{proc.pid}", flush=True)

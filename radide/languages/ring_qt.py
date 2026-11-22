@@ -248,6 +248,7 @@ class RingQtPlugin(LanguagePlugin):
     interpreter_names = ["ring"]
     interpreter_hints = [r"C:\ring\ring\bin\ring.exe", r"C:\ring\bin\ring.exe"]
     supports_debug = True
+    debug_bp_extras = True           # hit counts / logpoints: checked by the IDE (debugger.live_bp_env)
     # RingPM (found in PATH or next to ring.exe); packages are installed into Ring itself
     package_manager = PackageManager(
         "RingPM", "ringpm", list_cmd=["ringpm", "list"], search_cmd=["ringpm", "search", "{query}"],
@@ -902,7 +903,8 @@ class RingQtPlugin(LanguagePlugin):
         return RunSpec(interpreter, [self._main_file(folder, startup_form, False)], folder)
 
     def debug_spec(self, folder, startup_form, interpreter, breakpoints) -> RunSpec:
-        env = dict(os.environ, RADDBG_BP=self.breakpoints_env(breakpoints))
+        from ..debugger import live_bp_env      # breakpoints / conditions changed while running
+        env = dict(os.environ, RADDBG_BP=self.breakpoints_env(breakpoints), **live_bp_env())
         return RunSpec(interpreter, [self._main_file(folder, startup_form, True)], folder, env)
 
 

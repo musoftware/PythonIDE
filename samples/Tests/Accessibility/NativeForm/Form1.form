@@ -1,0 +1,163 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Accessible form",
+    "Width": 520,
+    "Height": 320,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnOK",
+        "Left": 20,
+        "Top": 200,
+        "Width": 90,
+        "Height": 28,
+        "Parent": "",
+        "TabIndex": 3,
+        "Text": "&OK"
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblName",
+        "Left": 20,
+        "Top": 20,
+        "Width": 80,
+        "Height": 20,
+        "Parent": "",
+        "TabIndex": 0,
+        "Text": "&Name:"
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtName",
+        "Left": 110,
+        "Top": 18,
+        "Width": 200,
+        "Height": 24,
+        "Parent": "",
+        "TabIndex": 1,
+        "Text": ""
+      }
+    },
+    {
+      "type": "CheckBox",
+      "props": {
+        "Name": "chkAgree",
+        "Left": 20,
+        "Top": 56,
+        "Width": 200,
+        "Height": 24,
+        "Parent": "",
+        "TabIndex": 2,
+        "Text": "I &agree",
+        "Checked": false
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "lstItems",
+        "Left": 330,
+        "Top": 18,
+        "Width": 150,
+        "Height": 90,
+        "Parent": "",
+        "TabIndex": 4,
+        "Items": "Alpha;Beta;Gamma"
+      }
+    },
+    {
+      "type": "RmButton",
+      "props": {
+        "Name": "rmSave",
+        "Left": 20,
+        "Top": 100,
+        "Width": 120,
+        "Height": 32,
+        "Parent": "",
+        "TabIndex": 5,
+        "Text": "Save"
+      }
+    },
+    {
+      "type": "RmToggle",
+      "props": {
+        "Name": "tgDark",
+        "Left": 160,
+        "Top": 104,
+        "Width": 160,
+        "Height": 26,
+        "Parent": "",
+        "TabIndex": 6,
+        "Text": "Dark mode",
+        "Checked": false
+      }
+    },
+    {
+      "type": "RmSlider",
+      "props": {
+        "Name": "slVolume",
+        "Left": 20,
+        "Top": 140,
+        "Width": 220,
+        "Height": 46,
+        "Parent": "",
+        "TabIndex": 7,
+        "Value": 35
+      }
+    },
+    {
+      "type": "RmProgress",
+      "props": {
+        "Name": "pbLoad",
+        "Left": 260,
+        "Top": 150,
+        "Width": 200,
+        "Height": 20,
+        "Parent": "",
+        "TabIndex": 8,
+        "Value": 60
+      }
+    },
+    {
+      "type": "RmTextBox",
+      "props": {
+        "Name": "rmSearch",
+        "Left": 330,
+        "Top": 196,
+        "Width": 160,
+        "Height": 30,
+        "Parent": "",
+        "TabIndex": 9,
+        "Watermark": "Search"
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblOut",
+        "Left": 20,
+        "Top": 240,
+        "Width": 300,
+        "Height": 20,
+        "Parent": "",
+        "TabIndex": 10,
+        "Text": "ready"
+      }
+    }
+  ]
+}

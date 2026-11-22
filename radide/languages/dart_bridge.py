@@ -176,6 +176,31 @@ class DartBridgePlugin(ScriptBridgePlugin):
     def run_command(self, folder: Path, project: Project) -> list[str]:
         return [self.tool() or "dart", self.console_script(project) or "_radmain.dart"]
 
+    def publish_command(self, folder: Path, project: Project, log=print) -> list[str] | None:
+        """Build > Publish: ``dart compile exe`` - a native program with the Dart runtime inside, so the user's PC
+        needs no Dart SDK (the bridge host still draws the forms). None = keep run_command (needs dart)."""
+        dart = self.tool()
+        if not dart:
+            return None
+        folder = Path(folder)
+        src = self.console_script(project) or "_radmain.dart"
+        out = folder / "_build" / ("radapp.exe" if sys.platform == "win32" else "radapp")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        cmd = [dart, "compile", "exe", src, "-o", str(out)]
+        log("> " + " ".join(f'"{c}"' if " " in str(c) else str(c) for c in cmd))
+        try:
+            r = subprocess.run(cmd, cwd=str(folder), capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=900)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            log(f"dart compile exe failed ({e}): the published program needs the Dart SDK")
+            return None
+        for line in (r.stdout + r.stderr).splitlines():
+            log(line)
+        if r.returncode != 0 or not out.is_file():
+            log("dart compile exe failed: the published program needs the Dart SDK on the user's PC")
+            return None
+        return [str(out)]
+
     # ------------------------------------------------------------ worker
     def worker_argv(self, tool: str, folder: Path, module_rel: str) -> list[str]:
         path = folder / module_rel

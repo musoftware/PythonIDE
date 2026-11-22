@@ -277,7 +277,8 @@ function radStartHost() {
   if (!exe) throw lastErr;
   const pipe = '\\\\.\\pipe\\radforms-' + process.pid + '-' + require('crypto').randomBytes(8).toString('hex');
   require('child_process').spawn(exe, [pipe], { stdio: 'ignore', windowsHide: false });
-  const end = Date.now() + 20000;
+  // a freshly extracted host may be scanned by the antivirus first, a loaded PC starts it slowly: wait up to 90 s
+  const end = Date.now() + 90000;
   for (;;) {
     try { return fs.openSync(pipe, 'r+'); } catch (e) {
       if (Date.now() > end) throw new Error('the forms host did not start: ' + e.message);
@@ -489,7 +490,7 @@ def npm_requires(folder: Path, files: list[str], builtins: set[str]) -> tuple[li
         if f.lower().endswith(".json"):
             continue
         raw = _read(folder / f)
-        text = raw
+        text = _strip_js_comments(raw)      # the new-form template mentions require("name") in a comment
         for _q, name in _REQ_RX.findall(text):
             if name.startswith((".", "/")) or name.startswith("node:") or name.split("/")[0] in builtins:
                 continue
@@ -591,7 +592,7 @@ def _app_resources(nat: Path, folder: Path, cfg, tc: dict, log) -> list:
 
 def build(folder, project, cfg, work, log):
     from ..build import BuildError
-    folder = Path(folder).resolve()
+    folder = Path(folder).absolute()     # not resolve(): a deep project builds through its short alias (paths.short_alias)
     lang = project.form_languages.get(project.startup, project.language) if project.startup else project.language
     plugin = _plugin(lang)
     node = find_node(log)

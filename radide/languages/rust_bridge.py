@@ -30,6 +30,25 @@ RUST_CLIENT = CLIENTS / "rust" / "radgui.rs"
 EXE = ".exe" if os.name == "nt" else ""
 TARGET = "_build"
 
+
+def cargo_cache_dir(key) -> Path:
+    """A short cargo target folder for *key* (a project or build folder): %LOCALAPPDATA%\\RADIDE\\cache\\cargo\\<hash>.
+    cargo + MSVC link.exe fail (LNK1104) once target/<triple>/release/build/<crate>-<hash>/out/... passes 260
+    characters, which a target folder inside a deep project or publish folder easily does."""
+    import hashlib
+    from ..paths import user_data_dir
+    h = hashlib.sha1(os.path.normcase(str(Path(key).absolute())).encode("utf-8")).hexdigest()[:12]
+    d = user_data_dir() / "cache" / "cargo" / h
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def target_dir(folder) -> str:
+    """The cargo --target-dir of the GUI Bridge build: ``_build`` inside the project, or a short cache folder when
+    the project folder is deep (over paths.LONG_PATH_LIMIT characters)."""
+    from ..paths import is_long
+    return str(cargo_cache_dir(folder)) if os.name == "nt" and is_long(Path(folder).absolute()) else TARGET
+
 HELPERS = {
     "set": "set(obj, prop, value)  - value: any Display (text, number)",
     "get": "get(obj, prop) -> String", "get_num": "get_num(obj, prop) -> f64",
@@ -264,10 +283,10 @@ class RustBridgePlugin(BridgeLanguagePlugin):
             path.write_text(text, encoding="utf-8")
 
     def build_command(self, folder: Path, project: Project) -> str | None:
-        return f'"{find_cargo()}" build --quiet --bin radapp --target-dir {TARGET}'
+        return f'"{find_cargo()}" build --quiet --bin radapp --target-dir "{target_dir(folder)}"'
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [str(folder / TARGET / "debug" / ("radapp" + EXE))]
+        return [str(Path(folder) / target_dir(folder) / "debug" / ("radapp" + EXE))]
 
     # ------------------------------------------------------------ RAD Hub worker
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
@@ -282,8 +301,8 @@ class RustBridgePlugin(BridgeLanguagePlugin):
                 project.modules.append(module_file)
             self.prepare(folder, project)
             r = subprocess.run([cargo, "build", "--quiet", "--bin", self._worker_bin(module_file),
-                                "--target-dir", TARGET], cwd=str(folder), capture_output=True, text=True)
-            exe = folder / TARGET / "debug" / (self._worker_bin(module_file) + EXE)
+                                "--target-dir", target_dir(folder)], cwd=str(folder), capture_output=True, text=True)
+            exe = folder / target_dir(folder) / "debug" / (self._worker_bin(module_file) + EXE)
             if r.returncode == 0 and exe.exists():
                 return [str(exe)]
             err = (r.stdout + r.stderr).strip() or "cargo build failed"

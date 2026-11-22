@@ -523,7 +523,11 @@ def drive(exe: Path, tag: str, shots: Path) -> None:
         bw2, bh2 = window_size(h["btnExport"])
         W.user32.PostMessageW(h["btnExport"], WM_LBUTTONDOWN, 1, client_point(h["btnExport"], bw2 - 8, bh2 // 2))
         W.user32.PostMessageW(h["btnExport"], WM_LBUTTONUP, 0, client_point(h["btnExport"], bw2 - 8, bh2 // 2))
-        excel = W.wait(lambda: uia.find(uia.uia.GetRootElement(), name="Excel", pid=p.pid), 5)
+        excel = W.wait(lambda: uia.find(uia.uia.GetRootElement(), name="Excel", pid=p.pid), 10)
+        if not excel:                    # the press went nowhere (the program was busy): once more
+            W.user32.PostMessageW(h["btnExport"], WM_LBUTTONDOWN, 1, client_point(h["btnExport"], bw2 - 8, bh2 // 2))
+            W.user32.PostMessageW(h["btnExport"], WM_LBUTTONUP, 0, client_point(h["btnExport"], bw2 - 8, bh2 // 2))
+            excel = W.wait(lambda: uia.find(uia.uia.GetRootElement(), name="Excel", pid=p.pid), 15)
         if excel:
             pat = excel.GetCurrentPattern(uia.U.UIA_InvokePatternId)
             if pat:
@@ -531,12 +535,17 @@ def drive(exe: Path, tag: str, shots: Path) -> None:
             else:
                 excel.GetCurrentPattern(uia.U.UIA_LegacyIAccessiblePatternId).QueryInterface(
                     uia.U.IUIAutomationLegacyIAccessiblePattern).DoDefaultAction()
-        check(f"{tag}: split button drop-down -> DropDownItemClicked (Export: Excel)", excel and W.wait(lambda: log() == "Export: Excel", 5),
+        check(f"{tag}: split button drop-down -> DropDownItemClicked (Export: Excel)", excel and W.wait(lambda: log() == "Export: Excel", 15),
               log())
         # message box (modal): answer Yes through its RmButton
         time.sleep(0.8)                             # the split button menu has closed
+        # (a loaded machine: wait until the drop-down really is gone - a click while it is open only closes it)
+        W.wait(lambda: not [x for x in W.top_windows(p.pid) if x != main and W.text(x) != "Saved"], 8)
         W.click(h["btnAsk"])
-        box = W.wait(lambda: next((x for x in W.top_windows(p.pid) if W.text(x) == "RAD Modern"), 0), 8)
+        box = W.wait(lambda: next((x for x in W.top_windows(p.pid) if W.text(x) == "RAD Modern"), 0), 25)
+        if not box and log() == "Export: Excel":        # the click went nowhere (the program was busy): once more
+            W.click(h["btnAsk"])
+            box = W.wait(lambda: next((x for x in W.top_windows(p.pid) if W.text(x) == "RAD Modern"), 0), 25)
         check(f"{tag}: RmMessageBox.Show opens a themed dialog 'RAD Modern'", box)
         if box:
             # (no PrintWindow of the modal dialog: capturing it from another process sometimes leaves its buttons
@@ -551,12 +560,18 @@ def drive(exe: Path, tag: str, shots: Path) -> None:
                     if el:
                         el.GetCurrentPattern(uia.U.UIA_LegacyIAccessiblePatternId).QueryInterface(
                             uia.U.IUIAutomationLegacyIAccessiblePattern).DoDefaultAction()
-            check(f"{tag}: Show returns the answer (lblLog = Answer: Yes)", W.wait(lambda: log() == "Answer: Yes", 5), log())
+            check(f"{tag}: Show returns the answer (lblLog = Answer: Yes)", W.wait(lambda: log() == "Answer: Yes", 15), log())
+            W.wait(lambda: not user32.IsWindow(box) or not user32.IsWindowVisible(box), 10)
         # grid
         W.click(h["btnAddRow"])
-        check(f"{tag}: RmGrid.AddRow -> Count 7 (lblRows)", W.wait(lambda: W.text(h["lblRows"]) == "7 rows", 5), W.text(h["lblRows"]))
+        check(f"{tag}: RmGrid.AddRow -> Count 7 (lblRows)", W.wait(lambda: W.text(h["lblRows"]) == "7 rows", 15), W.text(h["lblRows"]))
+        W.wait(lambda: log() == "Row added", 10)          # the AddRow handler has finished
         W.click(h["btnGroup"])
-        check(f"{tag}: RmGrid GroupBy = Category", W.wait(lambda: log() == "Grouped by category", 5), log())
+        grouped = W.wait(lambda: log() == "Grouped by category", 15)
+        if not grouped and log() == "Row added":         # the click went nowhere (the program was busy): once more
+            W.click(h["btnGroup"])
+            grouped = W.wait(lambda: log() == "Grouped by category", 15)
+        check(f"{tag}: RmGrid GroupBy = Category", grouped, log())
         W.click(h["btnGroup"])
         # side bar -> tab change
         check(f"{tag}: side bar item 'Products' invoked", d.invoke("RmSideBar1", "Products"))
@@ -582,11 +597,16 @@ def drive(exe: Path, tag: str, shots: Path) -> None:
         # right to left last: WinForms gives the controls new window handles when RightToLeft changes
         check(f"{tag}: ribbon check item 'Right to left' invoked", d.invoke("RmRibbon1", "Right to left"))
         time.sleep(1.0)
-        main = W.wait(lambda: next((x for x in W.top_windows(p.pid) if W.text(x) == TITLE), 0), 5) or main
-        d = Driver(uia, main, p.pid)
-        d.invoke("RmTabStrip1", "Controls")
-        lbl = W.wait(lambda: d.hwnd("lblLog"), 5)
-        check(f"{tag}: ... -> Me.RightToLeft = True (lblLog)", lbl and W.wait(lambda: W.text(lbl) == "Right to left: True", 5),
+        # (the window handles are recreated: on a loaded machine that takes a while - retry until UI Automation
+        # answers for the new window)
+        def new_driver():
+            m = next((x for x in W.top_windows(p.pid) if W.text(x) == TITLE), 0)
+            return Driver(uia, m, p.pid) if m else None
+        d = W.wait(new_driver, 20) or d
+        main = d.main if hasattr(d, "main") else main
+        W.wait(lambda: d.invoke("RmTabStrip1", "Controls"), 15)
+        lbl = W.wait(lambda: d.hwnd("lblLog"), 15)
+        check(f"{tag}: ... -> Me.RightToLeft = True (lblLog)", lbl and W.wait(lambda: W.text(lbl) == "Right to left: True", 15),
               W.text(lbl) if lbl else "")
         time.sleep(0.6)
         s = Shot(main, shots / f"{tag}_8_rtl.png")

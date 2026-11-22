@@ -1518,7 +1518,10 @@ class Interpreter:
         if st is None or proc_name.lower() not in st.mod.procs:
             return False, None
         proc = st.mod.procs[proc_name.lower()]
-        return True, self.call_proc(st, proc, list(args), arg_cells, me)
+        try:
+            return True, self.call_proc(st, proc, list(args), arg_cells, me)
+        except RecursionError:      # endless recursion / absurdly nested expressions: VB6 error 28
+            raise err(28, "Out of stack space") from None
 
     # ------------------------------------------------------------ blocks / statements
     def run_block(self, stmts: list, frame: Frame, top=False, start=0):
@@ -1550,6 +1553,8 @@ class Interpreter:
                 if not e.line:
                     e.line = frame.line
                     e.module = frame.module.name
+                if getattr(e, "frame", None) is None:      # the debugger breaks where the error happened
+                    e.frame, e.stack = frame, list(self.stack)
                 self.err.number, self.err.description = e.number, e.description
                 self.err.source = getattr(e, "source", "") or self.err.default_source
                 self.err.helpfile = getattr(e, "helpfile", "")

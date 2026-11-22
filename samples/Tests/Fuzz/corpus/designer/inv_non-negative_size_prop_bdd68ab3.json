@@ -1,0 +1,20 @@
+{
+ "base": "rich",
+ "sig": "inv:non-negative size:prop",
+ "detail": "after step 0 {'op': 'prop', 'r': [0.676204, 0.221264, 0.791215, 0.723572, 0.750504, 0.901393], 'int': '-5', 'str': 'back\\\\slash'}: non-negative size: chkDeep 90x-5",
+ "ops": [
+  {
+   "op": "prop",
+   "r": [
+    0.676204,
+    0.221264,
+    0.791215,
+    0.723572,
+    0.750504,
+    0.901393
+   ],
+   "int": "-5",
+   "str": "back\\slash"
+  }
+ ]
+}

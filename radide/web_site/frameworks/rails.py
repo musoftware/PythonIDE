@@ -64,7 +64,14 @@ def ruby_bin_dir() -> Path | None:
 
 
 def devkit_installed() -> bool:
-    return (MSYS_HOME / "ucrt64" / "bin" / "gcc.exe").exists() and (MSYS_HOME / "usr" / "bin" / "make.exe").exists()
+    """The IDE's own MSYS2 (toolchains\\msys64) or the one a full RubyInstaller "with DevKit" puts next to Ruby
+    (C:\\Ruby33-x64\\msys64) - RubyInstaller finds that one by itself, so ~400 MB need not be downloaded again."""
+    homes = [MSYS_HOME]
+    rb = ruby_bin_dir()
+    if rb is not None:
+        homes.append(rb.parent / "msys64")
+    return any((h / "ucrt64" / "bin" / "gcc.exe").exists() and (h / "usr" / "bin" / "make.exe").exists()
+               for h in homes)
 
 
 def rails_bin() -> str:

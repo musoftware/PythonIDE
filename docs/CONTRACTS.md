@@ -26,13 +26,16 @@ them build pieces that fit together without waiting for each other.
 
 ## 1. GUI Bridge protocol (existing - `radide/runtimes/bridge.py`)
 
-host -> program: `EVENT <object> <event> [args]` (args for mouse/key: `X Y Button KeyCode KeyChar`), `QUIT`.
+host -> program: `EVENT <object> <event> [args]` (args for mouse/key: `X Y Button KeyCode KeyChar`; KeyCode is the
+numeric Windows virtual-key code, 13 = Enter), `QUIT`. The VB objects `App`, `Screen` and `Clipboard` (`Text`, `GetText`,
+`SetText`) are reachable like controls; `Checked` is an alias of a CheckBox / RadioButton `Value`.
 program -> host (one per line, flush after each):
 `SET <obj> <prop> <value>`, `GET <obj> <prop>` (host answers one line), `CALL <obj> <method> [arg\targ...]`
 (answers one line), `MSGBOX <text>` (answers `1`), `INPUT <prompt>` (answers text), `SHOW <form>`, `HIDE <form>`,
 `DONE` (event finished - **must** be sent after every EVENT), `END` (quit). Other lines = program output.
 `ESC <command>` = the same command with `\\` `\n` `\r` escaped in its values (multi-line text; the C/C++, C#,
-Java, Go and Rust clients always use it) - its answer is escaped the same way; answers to commands
+Java, Go, Rust, JS, PHP, Lua, Perl, Ruby, PowerShell, Dart and Fortran clients use it; radforms' rad_command
+/ rad_line_out understand it too) - its answer is escaped the same way; answers to commands
 without `ESC` are kept on one line (newlines -> spaces). `CALL <Form> ShowDialog` shows the form modally for the
 user but answers at once (handle the result in the dialog's OK / Cancel handlers).
 `<obj>` = control name, form name, or `Form.Control`. Property/method names are VB-style and case-insensitive:

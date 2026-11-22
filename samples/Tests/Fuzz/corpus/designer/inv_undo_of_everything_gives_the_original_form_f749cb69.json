@@ -1,0 +1,20 @@
+{
+ "base": "rich",
+ "sig": "inv:undo of everything gives the original form",
+ "detail": "end of episode (undo/redo all): undo of everything gives the original form: $.controls[4].props.SelectedIndex: 0 != 1",
+ "ops": [
+  {
+   "op": "rename",
+   "r": [
+    0.435261,
+    0.003633,
+    0.028361,
+    0.265983,
+    0.658186,
+    0.469213
+   ],
+   "valid": true,
+   "bad": "a-b"
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+[MegaTune]
+ signature = "fuzz"
+[Constants]
+ endianness = little
+ page = 1
+
+ reqFuel = scalar, U16, 0, "ms", 0.1, 0, 0, 25.5, 1
+ veTable = array, U08, 2, [4x4], "%", 1, 0, 0, 255, Infinity
+
+ rpmBins = array, U08, 18, [4], "RPM", 100, 0, 100, 25500, 0
+#if LAMBDA
+ afr = scalar, U08, 30, "", 0.1, 0
+#else
+
+ afr = scalar, U08, 31, "", 0.1, 0
+#endif
+[TableEditor]
+ table = veTbl, veMap, "VE", 1
+ xBins = rpmBins
+ zBins = veTable

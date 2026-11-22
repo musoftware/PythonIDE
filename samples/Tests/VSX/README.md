@@ -159,3 +159,48 @@ the secondary side bar), the same again after an extension-host restart with the
 input, New Conversation, Show Logs, and the Claude button in the editor title bar.
 Scratch `RADIDE_VSX_ROOT`, `RADIDE-TEST` QSettings (cleared before / after), `RADIDE_NO_BROWSER=1`, `widget.grab()` only.
 Checks: 70 (86 with Claude Code).
+
+## Command Palette, editor commands, keybindings, settings - `test_vsx_palette.py`
+
+    python samples\Tests\VSX\test_vsx_palette.py <scratch>
+
+VS Code parity of the quick input (`radide/features/command_palette.py`): `>` commands (extension commands with
+category + keybinding, commandPalette `when` / `enablement` hide them until the context keys are set, VS Code's own
+palette commands that RAD IDE runs from `radide/vsx/vscode_commands.py`, recently used first, fuzzy highlight), `@`
+symbols (language server / plugin outline / declaration scan), `:` line, `#` workspace symbols, `view `, `task `
+(`.vscode/tasks.json`, JSONC), `debug ` (`launch.json`), `ext install`, `edt `, `?`. Editor commands run on Monaco
+from an extension (`vscode.commands.executeCommand('editor.action.commentLine' | 'cursorDown' | 'type' | 'undo' |
+'editor.fold' | 'editor.action.toggleWordWrap' | 'actions.find' | 'workbench.action.zoomIn' ...)`) and from the IDE
+(`radide/vsx/editor_commands.py`, ids in `radide/vsx/reference/monaco_commands.json`). Navigation history
+(`workbench.action.navigateBack / Forward`, `radide/vsx/navigation.py`), `reopenClosedEditor`, user
+`keybindings.json` with `-command` removal (`radide/vsx/user_keybindings.py`), the Keyboard Shortcuts and Settings
+pages (`radide/vsx/settings_ui.py`: search, `@ext:`, `@modified`, editing), and the Extensions panel retranslating
+when the UI language goes back to English. Test extension `palette-test/` (MIT). `RADIDE-TEST-VSX2` QSettings.
+
+## Claude Code in RAD IDE (workspace, IDE MCP tools, agent context) - `test_vsx_claude.py`
+
+    python samples\Tests\VSX\test_vsx_claude.py <scratch> <Anthropic.claude-code .vsix>
+
+No real Claude conversation: `claude_mcp_client.js` plays the Claude CLI towards the extension's MCP WebSocket
+server (lock file in a scratch `CLAUDE_CONFIG_DIR`). Checks that opening a project after start-up restarts the
+extension host so Claude Code's session folder / lock file `workspaceFolders` / CLI cwd are the project folder (not
+the home folder), `RADIDE_CLI` / `RADIDE_WORKSPACE` in the host environment, the RAD IDE section in
+`.claude/CLAUDE.md` (user text kept), every IDE tool of Claude Code 2.1 (`getDiagnostics` with the IDE's Error List
+problems, `openDiff` Accept -> `FILE_SAVED` / Reject -> `DIFF_REJECTED`, `close_tab`, `closeAllDiffTabs`,
+`executeCode`), `selection_changed` when the user selects text, `at_mentioned` from Insert At-Mentioned,
+`vscode.open` with a selection, and a file written on disk by the agent reaching the open editor.
+
+## Real extensions from Open VSX (network) - `test_vsx_matrix.py`
+
+    python samples\Tests\VSX\test_vsx_matrix.py <scratch> [ext.id ...]
+
+NETWORK TEST. Installs popular extensions (Prettier, ESLint, Error Lens, Todo Tree, Path Intellisense, Code Spell
+Checker, Live Server, Material Icon Theme, One Dark Pro, Dracula, Markdown All in One, YAML, XML, Ruff, Pyright,
+Python, GitLens, Go, rust-analyzer, clangd, Java) into a scratch root, opens a multi-language project and records
+installed version, activation, registered commands, a safe command run and unsupported API per extension
+(`matrix.json` / `matrix.md` in the scratch folder). Skips when Open VSX is unreachable.
+
+## Headless commands for agents - `radide/agent_cli.py`
+
+`RADIDE.exe --check | --build | --run [--timeout S] | --publish [--native] | --info <project|solution|folder>`
+(source: `python -m radide ...`) open the target like the IDE, print the Output window and exit 0 / 1.

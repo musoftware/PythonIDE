@@ -10,7 +10,7 @@ from pathlib import Path
 from PyQt6.QtCore import QMimeData, QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-from .controls import CONTROL_TYPES, MENU_TYPES, PAGED_TYPES
+from .controls import CONTROL_TYPES, MENU_TYPES, PAGED_TYPES, split_items
 from .layout import client_size, relayout, resize_children
 from .model import Control, Form
 from .preview import REBUILD_PROPS
@@ -61,6 +61,7 @@ class FormDocument(QObject):
         self._undo: list[str] = []
         self._redo: list[str] = []
         self._live: dict | None = None         # id -> Control (None key = the form) changed while live
+        self.restoring = False                 # True while _restore (undo / redo) notifies the views
 
     # ------------------------------------------------------------ state
     @property
@@ -139,9 +140,15 @@ class FormDocument(QObject):
         self.form.controls = restored.controls
         self.form.extra = restored.extra          # Blend states / storyboards / data bindings
         self.selection = [c for c in (self.form.find(n) for n in names) if c]
-        self.structureChanged.emit()
-        self.controlChanged.emit(None)
-        self.selectionChanged.emit(self.selected)
+        # an undo / redo gives back EXACTLY the recorded form: listeners must not adjust it while they
+        # follow (the designer would show the page of a selected control by changing SelectedIndex)
+        self.restoring = True
+        try:
+            self.structureChanged.emit()
+            self.controlChanged.emit(None)
+            self.selectionChanged.emit(self.selected)
+        finally:
+            self.restoring = False
         self.set_modified()
         self.undoStateChanged.emit()
 
@@ -189,6 +196,14 @@ class FormDocument(QObject):
         resized = name in ("Width", "Height") and (owner is None or owner.ctype.container)
         before = client_size(self.form, owner) if resized else None
         props[name] = value
+        if owner is not None and owner.type in PAGED_TYPES and name in ("TabPages", "Pages"):
+            # a page was removed: its controls go onto the last page that is left (same undo step) instead of
+            # staying on a page that no longer exists (never shown, never reachable in the designer)
+            n = max(1, len(split_items(value)))
+            for c in self.form.controls:
+                if c.parent == owner.name and isinstance(c.props.get("TabPage"), int) and c.props["TabPage"] >= n:
+                    c.props["TabPage"] = n - 1
+                    self._emit_changed(c)
         if resized:          # anchored children follow the container / the form
             for c in resize_children(self.form, owner, before, client_size(self.form, owner)):
                 self._emit_changed(c)
@@ -274,7 +289,13 @@ class FormDocument(QObject):
         """Controls dropped on a TabControl go to its selected page."""
         parent = self.form.find(ctrl.parent) if ctrl.parent else None
         if parent is not None and parent.type in PAGED_TYPES:
-            ctrl.props["TabPage"] = int(parent.props.get("SelectedIndex", 0) or 0)
+            try:
+                idx = int(parent.props.get("SelectedIndex", 0) or 0)
+            except (TypeError, ValueError):
+                idx = 0
+            n = len(split_items(parent.props.get("TabPages", parent.props.get("Pages", ""))))
+            # (SelectedIndex typed past the last page / -1): the control goes onto an existing page
+            ctrl.props["TabPage"] = max(0, min(idx, max(1, n) - 1))
         else:
             ctrl.props.pop("TabPage", None)
 

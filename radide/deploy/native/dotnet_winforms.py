@@ -17,6 +17,11 @@ Publish options (PublishConfig.dotnet_target; each falls back to the others when
 Control types come from a data table (dotnet/controls.json + dotnet/*.controls.json + <project>/dotnet.controls.json),
 so a control library can add its types (with a project / dll reference) without editing this generator.
 
+Animations, Blend storyboards, Visual States and layout variants: each form that uses them embeds the records of
+radide/motion/native_plan.py (UseMotion(...) in its constructor) and RadMotion (RadWinForms.cs) plays them like the
+IDE's Python runtime / radforms_motion.inc (Rad.Call(form, "BeginAnimation" | "GoToState" | ...)); forms without
+them generate the same code as before. What WinForms cannot draw exactly (native_plan.notes) is logged.
+
 PowerShell: the exe hosts a Windows PowerShell 5.1 runspace (System.Management.Automation is part of
 Windows) with the project's scripts embedded as resources; the GUI Bridge client Rad.ps1 is loaded unchanged
 with RadSend/RadAsk redirected to the WinForms runtime. Scripts that need PowerShell 7 syntax fall back.
@@ -60,7 +65,9 @@ RESERVED = {"Text", "Name", "Left", "Top", "Width", "Height", "Size", "Location"
             "MenuHeight", "Activate", "Refresh", "Update", "Invalidate", "BackColor", "ForeColor", "Components",
             "InitializeComponent", "Dispose", "Invoke", "Scale", "Select", "Validate", "Layout", "Load", "Closed",
             "Closing", "Shown", "Resize", "Move", "Click", "Paint", "Leave", "Enter", "Created", "Disposing",
-            "ClientSize", "ClientRectangle", "WindowState", "TopMost", "ActiveControl", "Modal", "MdiParent"}
+            "ClientSize", "ClientRectangle", "WindowState", "TopMost", "ActiveControl", "Modal", "MdiParent",
+            "Motion", "UseMotion", "BeginAnimation", "StopAnimation", "GoToState", "ApplySizeVariants",
+            "CurrentSizes", "CurrentState", "ClientPanel", "SetBack"}
 TAB_PAGE_X, TAB_PAGE_Y = 2, 24
 TOOLSET = "microsoft.net.compilers.toolset"
 NUGET = "https://api.nuget.org/v3-flatcontainer"
@@ -212,7 +219,8 @@ def check(folder, project: Project, cfg) -> list[str]:
     lang = _lang(project)
     exts = (".cs",) if lang == "csharp-bridge" else (".ps1",)
     cmap = control_map(folder)
-    out = problems(folder, project, lang, {k for k in cmap if not k.startswith("__")}, "WinForms", exts)
+    # animations, storyboards, Visual States and layout variants are played by RadMotion (RadWinForms.cs)
+    out = problems(folder, project, lang, {k for k in cmap if not k.startswith("__")}, "WinForms", exts, motion=True)
     if framework_dir() is None and lang == "powershell-bridge":
         out.append("the .NET Framework 4 of Windows was not found")
     if lang == "powershell-bridge":
@@ -571,10 +579,14 @@ class _Gen:
             wire.append(f"this.Wire(this.Client, {lit(n)}, {', '.join(lit(e) for e in mouse)});")
         if other:
             wire.append(f"this.Wire(this, {lit(n)}, {', '.join(lit(e) for e in other)});")
+        # animations / storyboards / visual states / layout variants: native_plan records played by RadMotion
+        from ...motion import native_plan
+        plan = native_plan.text(form, "winforms")
+        ctor = ["        InitializeComponent();"] + ([f"        this.UseMotion({lit(plan)});"] if plan else [])
         L = [f"/// <summary>Form {n} (generated from {n}.form by RAD IDE - do not edit).</summary>",
              f"public sealed class {cls} : RadFormBase", "{",
              *[f"    {d}" for d in decl], "",
-             f"    public {cls}() : base({lit(n)})", "    {", "        InitializeComponent();", "    }", "",
+             f"    public {cls}() : base({lit(n)})", "    {", *ctor, "    }", "",
              "    private void InitializeComponent()", "    {"]
         body = list(create)
         if menu is not None and menu_setup:
@@ -896,6 +908,10 @@ def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim:
     if reasons:
         raise NativeUnsupported(reasons)
     forms = load_forms(folder, project, lang)
+    from ...motion import native_plan
+    for f in forms:                  # how RadMotion shows what WinForms cannot draw exactly (never silent)
+        for msg in native_plan.notes(f, "winforms"):
+            log("Motion: " + msg)
     from ...languages import get_plugin
     plugin = get_plugin(lang)
     handlers = sorted(set(plugin.handlers_in_project(folder, project)))

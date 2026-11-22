@@ -1,0 +1,29 @@
+{
+ "base": "rich",
+ "sig": "inv:TabPage inside the page list:pages",
+ "detail": "after step 1 {'op': 'pages', 'r': [0.350795, 0.502252, 0.531828, 0.494438, 0.742709, 0.831286]}: TabPage inside the page list: lblPage1.TabPage = 1, 1 pages",
+ "ops": [
+  {
+   "op": "pages",
+   "r": [
+    0.720873,
+    0.646537,
+    0.976505,
+    0.690722,
+    0.164645,
+    0.403276
+   ]
+  },
+  {
+   "op": "pages",
+   "r": [
+    0.350795,
+    0.502252,
+    0.531828,
+    0.494438,
+    0.742709,
+    0.831286
+   ]
+  }
+ ]
+}

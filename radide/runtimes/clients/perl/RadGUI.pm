@@ -54,16 +54,37 @@ sub _read_line {
     return $line;
 }
 
+# "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values, so multi-line text survives
+sub _esc {
+    my $v = shift;
+    $v = '' unless defined $v;
+    $v =~ s/\\/\\\\/g;
+    $v =~ s/\n/\\n/g;
+    $v =~ s/\r/\\r/g;
+    return $v;
+}
+
+sub _unesc {
+    my $v = shift;
+    $v =~ s/\\([\\nr])/$1 eq 'n' ? "\n" : ($1 eq 'r' ? "\r" : "\\")/ge;
+    return $v;
+}
+
 sub rad_set {
     my ($obj, $prop, $value) = @_;
-    _send("SET $obj $prop " . _clean($value));
+    $value = '' unless defined $value;
+    if ($value =~ /[\r\n]/) {
+        _send("ESC SET $obj $prop " . _esc($value));      # multi-line text
+    } else {
+        _send("SET $obj $prop $value");
+    }
     return;
 }
 
 sub rad_get {
     my ($obj, $prop) = @_;
-    _send("GET $obj $prop");
-    return _read_line();
+    _send("ESC GET $obj $prop");
+    return _unesc(_read_line());
 }
 
 sub rad_getnum {

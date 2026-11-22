@@ -46,6 +46,9 @@ HEADER_ARGS = {
 SKIP_BLOCKS = {"IF_DATA", "A2ML"}
 
 
+MAX_AXIS_POINTS = 65535            # an axis count is a UWORD in ASAP2
+
+
 class A2LError(ValueError):
     pass
 
@@ -98,9 +101,12 @@ class Node:
         return [c for c in self.children if c.tag == tag]
 
     def walk(self):
-        yield self
-        for c in self.children:
-            yield from c.walk()
+        # pre-order without recursion (a corrupted file may nest blocks thousands of levels deep)
+        stack = [self]
+        while stack:
+            node = stack.pop()
+            yield node
+            stack.extend(reversed(node.children))
 
 
 _KW = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -175,10 +181,14 @@ def num(s) -> float:
     s = str(s).strip()
     try:
         if s.lower().startswith(("0x", "-0x")):
-            return float(int(s, 16))
-        return float(s)
-    except ValueError:
+            v = float(int(s, 16))
+        else:
+            v = float(s)
+    except (ValueError, OverflowError):
         raise A2LError(f"not a number: {s!r}") from None
+    if v != v or v in (float("inf"), float("-inf")):          # nan / inf / 1e999: no usable number
+        raise A2LError(f"not a finite number: {s!r}")
+    return v
 
 
 # ====================================================================== import
@@ -458,9 +468,15 @@ def parse_a2l(text: str, data=None, base: int | None = None, name: str = "") -> 
                 n_ = ax.count
                 if ad.item("FIX_AXIS_PAR"):
                     o_, sh, n_ = (num(x) for x in ad.item("FIX_AXIS_PAR")[:3])
+                    if not (0 <= n_ <= MAX_AXIS_POINTS and -64 <= sh <= 64):
+                        warnings.append(f"{cname}: FIX_AXIS_PAR {n_:g} points / shift {sh:g} out of range")
+                        continue
                     ax.values = [o_ + i * (2 ** sh) for i in range(int(n_))]
                 elif ad.item("FIX_AXIS_PAR_DIST"):
                     o_, dist, n_ = (num(x) for x in ad.item("FIX_AXIS_PAR_DIST")[:3])
+                    if not 0 <= n_ <= MAX_AXIS_POINTS:     # (a corrupted file: 4294967295 points)
+                        warnings.append(f"{cname}: FIX_AXIS_PAR_DIST {n_:g} points out of range")
+                        continue
                     ax.values = [o_ + i * dist for i in range(int(n_))]
                 elif ad.kids("FIX_AXIS_PAR_LIST"):
                     ax.values = [num(x) for x in ad.kids("FIX_AXIS_PAR_LIST")[0].rest]

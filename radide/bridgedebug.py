@@ -614,6 +614,18 @@ class BridgeDebugSession(QObject):
                           {"request": "attach", "vmServiceUri": f"http://127.0.0.1:{self.port}/", "cwd": str(cwd)},
                           cwd, None, bps, self)
         d.break_on_exception = self.break_on_exception
+        # Break on Exceptions: the bridge client runs every handler inside its own catch (the error is printed,
+        # the program goes on), so an "uncaught" filter never fires - use the adapter's "all exceptions" filter
+        # (js-debug skips node internals; netcoredbg / Dart: only exceptions thrown in the program's own code)
+        if eng in ("netcoredbg", "jsdebug", "dart"):
+            d.exception_filter_prefs = ("all", "All")
+        elif eng == "dlv":                      # panics are recovered by radlib.go: break where they start
+            d.exception_functions = ("runtime.gopanic",)
+            d.pause_for_bp_changes = True
+        elif self.plugin.id == "rust-bridge":   # std's rust_panic exists for debuggers to break on panics
+            d.exception_functions = ("rust_panic",)
+        elif eng == "jdwp":
+            d.break_on_caught_user = True
         self.dap = d
         d.configured.connect(self._go)
         d.output.connect(self._dap_output)

@@ -78,14 +78,28 @@ module Rad
       line.chomp
     end
 
+    # "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values (multi-line text)
+    def esc(v)
+      v.to_s.gsub("\\") { "\\\\" }.gsub("\n", "\\n").gsub("\r", "\\r")
+    end
+
+    def unesc(s)
+      s.gsub(/\\([\\nr])/) { { "n" => "\n", "r" => "\r", "\\" => "\\" }[Regexp.last_match(1)] }
+    end
+
     def set(obj, prop, value)
-      send_line("SET #{obj} #{prop} #{clean(value)}")
+      s = value.to_s
+      if s.match?(/[\r\n]/)
+        send_line("ESC SET #{obj} #{prop} #{esc(s)}")     # multi-line text
+      else
+        send_line("SET #{obj} #{prop} #{s}")
+      end
       nil
     end
 
     def get(obj, prop)
-      send_line("GET #{obj} #{prop}")
-      read_line
+      send_line("ESC GET #{obj} #{prop}")
+      unesc(read_line)
     end
 
     def get_num(obj, prop)

@@ -24,7 +24,7 @@ from .editor import CodeView
 from .languages import code_extensions, get_plugin, language_label
 from .languages import plugin_for_form as _form_plugin
 from .languages import plugin_for_module as _module_plugin
-from .model import Form, Project
+from .model import Form, Project, write_text_safe
 from .properties import PropertiesPanel, valid_identifier
 from .solution import EXT as SOLUTION_EXT
 from .solution import Solution
@@ -782,6 +782,14 @@ class MainWindow(QMainWindow):
 
     def open_any_file(self, path: Path):
         path = Path(path).resolve()
+        from .safeio import SaveError, check_open_size
+        try:
+            check_open_size(path)               # a 1 GB file is never read into an editor (safeio.py)
+        except SaveError as e:
+            self.statusBar().showMessage(str(e).splitlines()[0], 8000)
+            if not os.environ.get("RADIDE_TEST_NO_DIALOGS"):
+                QMessageBox.warning(self, APP_NAME, str(e))
+            return None
         if self.project is not None and callable(getattr(self, "open_file", None)):
             return self.open_file(path)                # web_workspace: project/web files, images ...
         for w in (self.tabs.widget(i) for i in range(self.tabs.count())):
@@ -809,7 +817,29 @@ class MainWindow(QMainWindow):
         return mv.editor
 
     def save_current(self) -> bool:
-        """File > Save <file>: only the document of the current tab."""
+        """File > Save <file>: only the document of the current tab. A failed write (disk full, read-only,
+        locked by another program) shows why and keeps the document modified; the file on disk is unchanged
+        (radide/safeio.py)."""
+        try:
+            return self._save_current()
+        except OSError as e:
+            self.show_save_error(e)
+            return False
+
+    def show_save_error(self, e: OSError) -> None:
+        from .safeio import SaveError, describe
+        text = str(e) if isinstance(e, SaveError) else describe(e, getattr(e, "filename", None))
+        try:                                    # Arabic UI: each sentence of the message (radide/i18n)
+            from .i18n import tr
+            text = "\n".join(tr(line) for line in text.splitlines())
+        except Exception:  # noqa: BLE001
+            pass
+        self.log("*** " + " ".join(text.splitlines()))
+        self.statusBar().showMessage(text.splitlines()[0], 8000)
+        if not os.environ.get("RADIDE_TEST_NO_DIALOGS"):
+            QMessageBox.warning(self, "Save failed", text)
+
+    def _save_current(self) -> bool:
         w = self.tabs.currentWidget()
         if w is None or isinstance(w, StartPage):
             return False
@@ -829,12 +859,12 @@ class MainWindow(QMainWindow):
                 if callable(writer):
                     writer(self.project.folder / mod, w.editor.text())
                 else:
-                    (self.project.folder / mod).write_text(w.editor.text(), encoding="utf-8")
+                    write_text_safe(self.project.folder / mod, w.editor.text())
                 w.editor.setModified(False)
                 self._update_module_title(mod)
             name = mod
         elif isinstance(w, ModuleView):                     # a file opened without a project
-            w.path.write_text(w.editor.text(), encoding="utf-8")
+            write_text_safe(w.path, w.editor.text())
             w.editor.setModified(False)
             name = w.path.name
         elif callable(getattr(w, "save", None)):           # Design View and other documents
@@ -1043,18 +1073,27 @@ class MainWindow(QMainWindow):
         return len(ids) > 1
 
     def _confirm_close_project(self) -> bool:
+        ok = self._confirm_close_inner()
+        if ok:              # saved or discarded on purpose: the crash recovery snapshot is not needed any more
+            try:
+                from .features.recovery import discard_open
+                discard_open(self)
+            except Exception:  # noqa: BLE001
+                pass
+        return ok
+
+    def _confirm_close_inner(self) -> bool:
         if not self._any_modified():
             return True
         if not self.option("confirm_unsaved", True):      # Tools > Options: save without asking
-            self.save_all()
-            return True
+            return bool(self.save_all())               # a failed save keeps the project open
         r = QMessageBox.question(self, APP_NAME, "Save changes to the current project?",
                                  QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard |
                                  QMessageBox.StandardButton.Cancel)
         if r == QMessageBox.StandardButton.Cancel:
             return False
         if r == QMessageBox.StandardButton.Save:
-            self.save_all()
+            return bool(self.save_all())               # a failed save (disk full, locked) cancels the close
         return True
 
     def _any_modified(self) -> bool:
@@ -1487,6 +1526,21 @@ class MainWindow(QMainWindow):
         if getattr(self.project, "kind", "") == "website" and Path(file).is_absolute() and \
                 Path(file).is_file() and callable(getattr(self, "open_file", None)):
             return self.open_file(Path(file))       # web site debugging: .php / .js files of the site
+        # the debugger stopped in another source file (Step Into a client library, a designer file, the caller
+        # of an event handler...): open it like Visual Studio does, so the current line is shown
+        # (open_any_file -> web_workspace.open_file asks _editor_for_file again: not twice)
+        if getattr(self, "_opening_debug_file", False):
+            return None
+        p = Path(file) if Path(file).is_absolute() else Path(self.project.folder) / file
+        self._opening_debug_file = True
+        try:
+            if file and p.is_file() and p.suffix.lower() not in (".exe", ".dll", ".so", ".o", ".obj", ".pyc"):
+                ed = self.open_any_file(p)
+                return ed if hasattr(ed, "set_current_line") else None
+        except OSError:
+            pass
+        finally:
+            self._opening_debug_file = False
         return None
 
     @staticmethod
@@ -1877,15 +1931,25 @@ class MainWindow(QMainWindow):
             return False
         active = self.project
         saved_libs = []
-        for st in list(self._pstates.values()) or [None]:
-            if st is not None:
-                self.activate_project(st["project"])
-            if self._save_active_project() and self.project.is_library:
-                saved_libs.append(self.project)
+        try:
+            for st in list(self._pstates.values()) or [None]:
+                if st is not None:
+                    self.activate_project(st["project"])
+                if self._save_active_project() and self.project.is_library:
+                    saved_libs.append(self.project)
+        except OSError as e:            # disk full / read-only / locked: nothing truncated, documents stay dirty
+            self.activate_project(active)
+            self.show_save_error(e)
+            return False
         self.activate_project(active)
         if saved_libs and self.sln is not None:   # consumers see the library's new functions
             from .features.solution_ui import refresh_consumers
             refresh_consumers(self, saved_libs)
+        try:                            # everything is on disk: drop the crash recovery snapshot
+            from .features.recovery import snapshot
+            snapshot(self)
+        except Exception:  # noqa: BLE001
+            pass
         self.statusBar().showMessage("All files saved", 3000)
         return True
 
@@ -1912,14 +1976,14 @@ class MainWindow(QMainWindow):
             cv = self.codeviews[name]
             code = cv.editor.text()
             if cv.editor.isModified() or not code_path.exists():
-                code_path.write_text(code, encoding="utf-8")
+                write_text_safe(code_path, code)
                 cv.editor.setModified(False)
                 wrote = True
         else:
             code = code_path.read_text(encoding="utf-8")
         doc.save()
         designer_path = self.project.folder / fp.designer_file(name)
-        designer_path.write_text(fp.generate_designer(doc.form, code), encoding="utf-8")
+        write_text_safe(designer_path, fp.generate_designer(doc.form, code))
         self._update_tab_titles(name)
         return wrote
 
@@ -1935,7 +1999,7 @@ class MainWindow(QMainWindow):
                 if callable(writer):
                     writer(self.project.folder / mod, mv.editor.text())
                 else:
-                    (self.project.folder / mod).write_text(mv.editor.text(), encoding="utf-8")
+                    write_text_safe(self.project.folder / mod, mv.editor.text())
                 mv.editor.setModified(False)
                 self._update_module_title(mod)
                 wrote = True
@@ -2071,7 +2135,8 @@ class MainWindow(QMainWindow):
     def run_project(self, debug: bool = True):
         if not self.project or (self.session is not None and self.session.running()):
             return
-        self.save_all()
+        if self.save_all() is False:             # disk full / locked file: the message is shown, no run of old code
+            return
         if self.sln is not None:                 # a solution runs its StartUp Project
             from .features.solution_ui import prepare_run
             if not prepare_run(self):
@@ -2091,12 +2156,19 @@ class MainWindow(QMainWindow):
         startup = self._effective_startup(rp)
         if startup is None:
             return
+        # a project in a deep folder runs through a short junction (Windows cannot start a program in a working
+        # directory over MAX_PATH, toolchains fail on long names); debugging only when it would fail otherwise,
+        # so breakpoint paths stay the real ones (paths.short_alias)
+        from .paths import short_alias
+        run_folder = short_alias(self.project.folder, limit=200 if debug else 100)
+        if run_folder != Path(self.project.folder):
+            self.log(f"(long path: running through the short alias {run_folder})")
         try:
             if debug:
-                spec = rp.debug_spec(self.project.folder, startup, interp,
+                spec = rp.debug_spec(run_folder, startup, interp,
                                      self._all_breakpoints())
             else:
-                spec = rp.run_spec(self.project.folder, startup, interp)
+                spec = rp.run_spec(run_folder, startup, interp)
         except Exception as e:  # noqa: BLE001 - show plugin errors instead of crashing
             self.log(f"*** Cannot start the program: {e}")
             return
@@ -2122,6 +2194,8 @@ class MainWindow(QMainWindow):
         s.failed.connect(lambda err: self.log(f"*** Error: {err}"))
         self.session = s
         s.start()
+        if debug and type(s) is Session:      # agents (VB, Ring, ...): Debug > Break on Exceptions from the start
+            s.set_break_on_exception(self.settings.value("debug/break_on_exception", True) in (True, "true"))
         self._set_run_state("Running...")
         self._update_actions()
 
@@ -2141,13 +2215,20 @@ class MainWindow(QMainWindow):
             s = DapSession("debugpy", program, [], self.project.folder.resolve(), spec.env,
                            self._all_breakpoints(), self)
             s.launch_args["python"] = [real_python(interp)]
+            # the generated *_designer.py is not "my code" (like VS's designer files): stepping skips it, and an
+            # error in an event handler called by Qt (C++ calls the designer's wrapper, nothing in Python catches
+            # it) still counts as user-unhandled - debugpy then pauses on the line that raised it
+            s.launch_args["rules"] = [{"path": str(Path(self.project.folder).resolve() / "*_designer.py"),
+                                       "include": False}]
             s.break_on_exception = self.settings.value("debug/break_on_exception", True) in (True, "true")
             return s
         from .languages.bridgebase import BridgeLanguagePlugin
         if debug and isinstance(plugin, BridgeLanguagePlugin):
             from .bridgedebug import BridgeDebugSession, engine_for
             if engine_for(plugin):        # GUI Bridge program: attach gdb / netcoredbg / js-debug / dart
-                return BridgeDebugSession(spec, plugin, self._all_breakpoints(), self)
+                return BridgeDebugSession(spec, plugin, self._all_breakpoints(), self,       # Debug > Break on
+                                          break_on_exception=self.settings.value(          # Exceptions
+                                              "debug/break_on_exception", True) in (True, "true"))
         return Session(spec, debug, self)
 
     # ---------------------------------------------------------- RAD Hub (cross-language calls)
@@ -2375,6 +2456,7 @@ def parse_command_line(args: list[str]):
     ap.add_argument("--no-uninstall-entry", action="store_true")
     ap.add_argument("--shell-options", default=None)     # e.g. file_assoc,open_with,context_menu (installer tasks)
     ap.add_argument("--if-owner", action="store_true")   # --unregister only a registration of this exe (uninstaller)
+    ap.add_argument("--automation", default=None)       # opt-in test automation pipe name (radide/automation)
     ns, _unknown = ap.parse_known_args(args)
     ns.paths = [p for p in ns.paths if p and Path(p).exists()]
     return ns
@@ -2382,6 +2464,9 @@ def parse_command_line(args: list[str]):
 
 def main(argv=None):
     argv = sys.argv if argv is None else argv
+    from . import agent_cli                  # --check / --build / --run / --publish / --info: headless (agents)
+    if agent_cli.wants(list(argv[1:])):
+        return agent_cli.main(list(argv[1:]))
     opts = parse_command_line(list(argv[1:]))
     if opts.register or opts.unregister or opts.shell_status:     # Windows integration, no window
         from .shell_integration import cli
@@ -2401,6 +2486,9 @@ def main(argv=None):
         from .paths import clean_child_environment
         clean_child_environment()
     app.setApplicationName(APP_NAME)
+    test_org = os.environ.get("RADIDE_SETTINGS_ORG", "")    # automation runs from source: test settings only
+    if test_org.upper().startswith("RADIDE-TEST") and os.environ.get("RADIDE_AUTOMATION"):
+        app.setOrganizationName(test_org)
     app.setStyle("Fusion")
     try:      # one consistent theme: Light unless Tools > Options says Dark (not Windows' dark mode)
         app.styleHints().setColorScheme(Qt.ColorScheme.Light)
@@ -2450,8 +2538,22 @@ def main(argv=None):
     elif win.option("reopen_last", False) and win.recent_projects():
         win.open_project(Path(win.recent_projects()[0]), ask=False)
     win.show()
+    if not opts.paths:                 # unsaved work of a session that crashed / was killed (features/recovery.py)
+        def _offer_recovery():
+            try:
+                from .features.recovery import offer_at_startup
+                offer_at_startup(win)
+            except Exception as e:  # noqa: BLE001
+                win.log(f"[recovery] {e}")
+        QTimer.singleShot(300, _offer_recovery)
     # smoke tests of release builds: run a script with win/app - only in test runs (RADIDE-TEST settings),
     # never in a normal user session
+    try:                               # opt-in automation channel (RADIDE_AUTOMATION / --automation), off by default
+        from .automation import maybe_start, requested
+        if requested(opts.automation):
+            maybe_start(win, app, opts.automation)
+    except Exception as e:  # noqa: BLE001
+        win.log(f"*** [automation] {e}")
     hook = os.environ.get("RADIDE_STARTUP_SCRIPT")
     if hook and Path(hook).is_file() and QCoreApplication.organizationName().upper().startswith("RADIDE-TEST"):
         QTimer.singleShot(0, lambda: exec(compile(Path(hook).read_text(encoding="utf-8"), hook, "exec"),  # noqa: S102

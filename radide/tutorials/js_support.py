@@ -217,7 +217,8 @@ def run_form(folder: Path, spec: dict | None, timeout: int = 40) -> dict:
     sp.write_text(json.dumps(spec or {}, ensure_ascii=False), encoding="utf-8")
     if rp.exists():
         rp.unlink()
-    repo = Path(__file__).resolve().parents[2]
+    from ..paths import python_root          # never _internal of a release build (another Python version)
+    repo = python_root()
     env = dict(os.environ, PYTHONPATH=str(repo), PYTHONIOENCODING="utf-8")
     try:
         subprocess.run([sys.executable, "-m", "radide.tutorials.js_support", "--child", str(folder), str(sp),

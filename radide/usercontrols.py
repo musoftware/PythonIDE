@@ -118,7 +118,7 @@ def control_type_for(name: str, data: dict) -> ControlType:
 def register(name: str, data: dict, path: Path | None = None) -> bool:
     """Make the user control *name* (its .form dict) a control type. False when the name is a built-in
     control type."""
-    if not _ident(name) or (name in CONTROL_TYPES and name not in USER_CONTROLS):
+    if not _ident(name) or (name in CONTROL_TYPES and name not in USER_CONTROLS and not _placeholder(name)):
         return False
     CONTROL_TYPES[name] = control_type_for(name, data)
     USER_CONTROLS[name] = {"path": Path(path) if path else None,
@@ -126,6 +126,14 @@ def register(name: str, data: dict, path: Path | None = None) -> bool:
                            "data": data}
     _custom_event_help(data)
     return True
+
+
+def _placeholder(name: str) -> bool:
+    """CONTROL_TYPES[name] is the "not installed" placeholder (the user control's .form was missing when a
+    form using it was opened): the user control replaces it when it is back."""
+    t = CONTROL_TYPES.get(name)
+    from .components import MISSING_CATEGORY
+    return t is not None and t.category == MISSING_CATEGORY
 
 
 def _custom_event_help(data: dict) -> None:
@@ -139,9 +147,11 @@ def _custom_event_help(data: dict) -> None:
 
 
 def unregister(name: str) -> None:
+    """Forget a user control; forms still using it keep working with a "not installed" placeholder."""
     if name in USER_CONTROLS:
         USER_CONTROLS.pop(name, None)
-        CONTROL_TYPES.pop(name, None)
+        from .components import missing_type
+        CONTROL_TYPES[name] = missing_type(name)
 
 
 def register_folder(folder) -> list[str]:
@@ -158,7 +168,7 @@ def register_folder(folder) -> list[str]:
             if info and info.get("path") and Path(info["path"]) == path and info.get("mtime") == mtime:
                 out.append(name)
                 continue
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8-sig")
             if '"usercontrol"' not in text:
                 continue
             data = json.loads(text)
@@ -172,10 +182,12 @@ def register_folder(folder) -> list[str]:
 def ensure_types(d: dict, folder) -> None:
     """Called by Form.load: register the folder's user controls when *d* uses an unknown control type."""
     try:
-        types = {c.get("type") for c in d.get("controls", []) if isinstance(c, dict)}
-    except AttributeError:
+        types = {c.get("type") for c in d.get("controls", []) if isinstance(c, dict)
+                 and isinstance(c.get("type"), str)}           # (a corrupted file: no dict / list types)
+    except (AttributeError, TypeError):
         return
-    if any(t not in CONTROL_TYPES for t in types) or any(t in USER_CONTROLS for t in types):
+    if any(t not in CONTROL_TYPES or _placeholder(t) for t in types if isinstance(t, str)) or \
+            any(t in USER_CONTROLS for t in types):
         register_folder(folder)
 
 

@@ -50,8 +50,8 @@ def extensions_dir() -> Path:
     if env:
         d = Path(env)
     else:
-        base = os.environ.get("APPDATA") or str(Path.home() / ".config")
-        d = Path(base) / "RADIDE" / "extensions"
+        from ..paths import roaming_dir      # <install>\settings for a portable build
+        d = roaming_dir() / "extensions"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

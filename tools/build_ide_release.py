@@ -152,7 +152,8 @@ def pyinstaller(work: Path, version: str, python: str) -> Path:
     args += ["--hidden-import", "PyQt6.QtWebEngineWidgets", "--hidden-import", "PyQt6.QtWebEngineCore",
              "--hidden-import", "PyQt6.QtWebChannel", "--hidden-import", "PyQt6.Qsci",
              "--hidden-import", "PyQt6.QtNetwork", "--hidden-import", "PyQt6.QtSvg",
-             "--hidden-import", "PyQt6.QtPrintSupport"]
+             "--hidden-import", "PyQt6.QtPrintSupport",
+             "--hidden-import", "PyQt6.QtTest"]          # the opt-in automation channel (radide/automation)
     for pkg in COLLECT_DATA:
         if installed(pkg, python):
             args += ["--collect-data", pkg]

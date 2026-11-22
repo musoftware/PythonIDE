@@ -5,6 +5,7 @@ public class RadEvent {
     public String args = "";     // raw argument text
     public int x, y, button, keyCode;
     public String keyChar = "";
+    public boolean cancel;       // FormClosing: set true to keep the form open
 
     public static RadEvent parse(String sender, String name, String args) {
         RadEvent e = new RadEvent();

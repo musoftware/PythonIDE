@@ -53,6 +53,7 @@ ENUMS: dict[str, list[str]] = {
     "RadPaneMode": ["auto", "horizontal", "vertical"],
     "RadPane": ["start", "end"],
     "AutovalidateMode": ["disabled", "always", "onUserInteraction", "onUnfocus"],
+    "TextDirection": ["ltr", "rtl"],
 }
 ANIM_TYPES = ["fadeIn", "fadeInUp", "fadeInDown", "fadeInLeft", "fadeInRight", "slideUp", "slideDown",
               "slideLeft", "slideRight", "scaleIn", "zoomIn", "bounceIn",
@@ -324,7 +325,9 @@ _w("PageView", "Scroll", "Swipeable pages",
 _TEXT_PROPS = {"data": P("string", "Text", pos=0, req=True, group="Text"),
                "style": P("text_style", group="Text"), "textAlign": P("enum:TextAlign", group="Text"),
                "maxLines": P("int", group="Text"), "overflow": P("enum:TextOverflow", group="Text"),
-               "softWrap": P("bool", group="Text")}
+               "softWrap": P("bool", group="Text"),
+               "textDirection": P("enum:TextDirection", group="Text",
+                                  help="TextDirection.rtl for Arabic / Hebrew text")}
 _SPANS_HELP = 'TextSpan list: [{"text": "Hello ", "style": {...}}, ...]'
 _w("Text", "Content", "A run of text with a style (font, size, weight, colour)", _TEXT_PROPS,
    ctors={"rich": CtorSpec(props={"spans": P("text_spans", [{"text": "Rich "}, {"text": "text", "style": {
@@ -547,6 +550,9 @@ _w("DecoratedBox", "Effects", "Paints a decoration behind the child",
    {"decoration": P("box_decoration", {"color": "#FFE3E7FF"}, req=True)}, _CHILD)
 _w("RotatedBox", "Effects", "Rotates the child by quarter turns", {"quarterTurns": P("int", 1, req=True)},
    _CHILD)
+_w("Directionality", "Layout", "Lays out its subtree right-to-left (Arabic, Hebrew) or left-to-right",
+   {"textDirection": P("enum:TextDirection", "TextDirection.rtl", req=True, group="Layout")}, _CHILD_REQ,
+   template=T("Directionality", {"textDirection": "TextDirection.rtl"}))
 
 # --------------------------------------------------------------------------------------- Animation
 _w("AnimatedContainer", "Animation", "Container that animates changes of its properties",
@@ -679,6 +685,7 @@ for _t in ("SafeArea", "Container", "Padding", "Center", "Align", "Column", "Row
            "FractionallySizedBox", "FittedBox", "Transform", "Visibility", "IntrinsicHeight",
            "SingleChildScrollView", "ListView", "GridView", "PageView", "Text", "Icon", "Image", "Placeholder",
            "Form", "GestureDetector", "Opacity", "ClipRRect", "ClipOval", "Hero", "DecoratedBox", "RotatedBox",
+           "Directionality",
            "AnimatedContainer", "AnimatedOpacity", "AnimatedSwitcher", "FlutterLogo", "AnimatedPadding",
            "AnimatedAlign", "AnimatedPositioned", "AnimatedScale", "AnimatedRotation", "AnimatedSlide",
            "AnimatedSize", "AnimatedDefaultTextStyle", "AnimatedCrossFade", "FadeTransition",
@@ -688,7 +695,7 @@ for _t in ("SafeArea", "Container", "Padding", "Center", "Align", "Column", "Row
 # the wrappers offered by "Wrap with" (designer context menu)
 WRAPPERS = ["Padding", "Center", "Align", "Container", "SizedBox", "Expanded", "Flexible", "Column", "Row",
             "Stack", "Positioned", "Card", "SingleChildScrollView", "SafeArea", "ClipRRect", "Opacity", "InkWell",
-            "GestureDetector", "Hero", "Visibility", "AspectRatio", "FittedBox", "Material"]
+            "GestureDetector", "Hero", "Visibility", "AspectRatio", "FittedBox", "Material", "Directionality"]
 CATEGORY_ORDER = ["Layout", "Scroll", "Content", "Input", "Buttons", "Material", "Navigation", "Effects",
                   "Animation", "Cupertino", "Special"]
 

@@ -224,6 +224,26 @@ try:
     pump()
     check("View shows the closed window docked", not win.dock_props.isHidden())
 
+    # ------------------------------------------------------------ no event processing between hide and slide out
+    # (a loaded machine: the main window's LayoutRequest is still pending when the panel is placed)
+    grp_b = set(win.tabifiedDockWidgets(win.dock_output)) | {win.dock_output}
+    mgr.auto_hide(win.dock_output)
+    central_now = win.centralWidget().geometry()
+    mgr.slide_out(win.dock_output, focus=False)
+    pg_now, strip_now = p.geometry(), bottom.geometry()
+    pump(30)
+    check("settled at once: panel right above the strip without a pump",
+          abs(pg_now.bottom() + 1 - strip_now.top()) <= 1 and strip_now == bottom.geometry(), (pg_now, strip_now,
+                                                                                            bottom.geometry()))
+    check("settled at once: no reflow after the pending layout", win.centralWidget().geometry() == central_now,
+          (central_now, win.centralWidget().geometry()))
+    check("settled at once: panel still right above the strip", abs(p.geometry().bottom() + 1 - bottom.geometry().top())
+          <= 1, (p.geometry(), bottom.geometry()))
+    mgr.hide_panel()
+    mgr.restore(win.dock_output, focus=False)
+    pump(25)
+    check("settled at once: group docked back", all(not d.isHidden() for d in grp_b))
+
     # ------------------------------------------------------------ late docks of features
     from PyQt6.QtWidgets import QTextEdit
     late = QDockWidget("Late Tool", win)

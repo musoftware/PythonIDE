@@ -101,12 +101,16 @@ def find_jdk() -> Jdk | None:
 # ====================================================================== check
 def check(folder, project: Project, cfg) -> list[str]:
     folder = Path(folder)
-    out = problems(folder, project, "java-bridge", SUPPORTED, "Swing", (".java",))
+    # animations, storyboards, visual states and layout variants are played by java/RadMotion.java
+    out = problems(folder, project, "java-bridge", SUPPORTED, "Swing", (".java",), motion=True)
     for n in project.forms:
         p = folder / f"{n}.java"
-        if p.is_file() and re.search(r"\bRadJson\.parse\b.*RAD_HUB|System\.getenv\(\"RAD_HUB\"\)",
-                                     p.read_text(encoding="utf-8", errors="replace")):
+        text = p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+        if re.search(r"\bRadJson\.parse\b.*RAD_HUB|System\.getenv\(\"RAD_HUB\"\)", text):
             out.append(f"{n}.java talks to the RAD Hub directly")
+        if re.search(r"\"Animate\"|\.animate\s*\(", text):
+            out.append(f"{n}.java calls Animate (ad hoc presets need the IDE runtime; design the animation with "
+                       "trigger Manual and call BeginAnimation)")
     if find_jdk() is None:
         out.append("no JDK with jlink + jpackage (JDK 17+ with jmods, or JDK 24+) was found")
     return out
@@ -338,6 +342,12 @@ class _Gen:
         icon = str(fp.get("Icon") or "")
         if icon:
             body.append(f"{{ ImageIcon ic = image({lit(icon)}); if (ic != null && ic.getIconWidth() > 0) setIconImage(ic.getImage()); }}")
+        # animations / storyboards / visual states / layout variants (java/RadMotion.java plays the records)
+        from ...motion import native_plan
+        plan = native_plan.text(form, "py")
+        if plan:
+            parts = [plan[i:i + 4000] for i in range(0, len(plan), 4000)]    # Java constants are <= 64 KB
+            body.append("motion(" + ",\n                ".join(lit(s) for s in parts) + ");")
         L = [f"/** Form {n} (generated from {n}.form by RAD IDE - do not edit). */",
              f"final class {cls} extends RadSwing.FormBase {{",
              f"    {cls}() {{", f"        super({lit(n)});", "        initComponents();", "    }", "",
@@ -413,7 +423,11 @@ def build(folder, project: Project, cfg, work, log):
         (src / f"{f.name}_designer.java").write_text(plugin.generate_designer(f, code), encoding="utf-8")
     for name in CLIENT_KEEP:
         shutil.copy2(CLIENT_DIR / name, src / name)
-    for name in ("Rad.java", "RadSwing.java") + (("RadTestHook.java",) if hook else ()):
+    from ...motion import native_plan
+    for f in forms:
+        for note in native_plan.notes(f, "py"):
+            log(f"Motion: {note}")
+    for name in ("Rad.java", "RadSwing.java", "RadMotion.java") + (("RadTestHook.java",) if hook else ()):
         shutil.copy2(HERE / name, src / name)
     (src / "RadForms_g.java").write_text(forms_code(forms, handlers), encoding="utf-8")
     (src / "RadMainNative.java").write_text(main_java(project, cfg, forms, class_names(folder), hook), encoding="utf-8")

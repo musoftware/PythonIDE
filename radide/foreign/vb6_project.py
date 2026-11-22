@@ -332,7 +332,8 @@ def state_root() -> Path:
     env = os.environ.get("RADIDE_FOREIGN_STATE")
     if env:
         return Path(env)
-    return Path(os.environ.get("APPDATA") or str(Path.home())) / "RADIDE" / "foreign"
+    from ..paths import roaming_dir          # <install>\settings for a portable build
+    return roaming_dir() / "foreign"
 
 
 def mirror_dir_for(path: Path) -> Path:
@@ -477,7 +478,7 @@ def sync_mirror(mdir: Path) -> list[str]:
             text, libs = new_frm_text(now, code, nl, target, enc_default)
             target.write_bytes(encode_vb(text, enc_default))
             vbp.add_file("Form", _rel(target, folder))
-            for lib in libs:
+            for lib in sorted(libs, key=lambda x: (not x.startswith("ctl:"), x)):   # stable .vbp order
                 _ensure_object(vbp, lib)
             known[name] = {"path": str(target), "encoding": enc_default}
             mine.add(os.path.normcase(str(target)))
@@ -499,7 +500,7 @@ def sync_mirror(mdir: Path) -> list[str]:
         if code != bcode:
             head, _old_code = split_code(new_text)
             new_text = join_code(head, code, dominant_newline(text))
-        for lib in libs:
+        for lib in sorted(libs, key=lambda x: (not x.startswith("ctl:"), x)):   # stable .vbp order
             _ensure_object(vbp, lib)
         data = encode_vb(new_text, enc)
         if data != raw:

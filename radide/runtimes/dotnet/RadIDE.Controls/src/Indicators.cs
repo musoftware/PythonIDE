@@ -25,6 +25,8 @@ namespace RadIDE.Controls
         bool showText;
 
         protected override AccessibleRole RmRole { get { return AccessibleRole.ProgressBar; } }
+        protected override string RmAccessibleName { get { return string.IsNullOrEmpty(Text) ? Name : Text; } }
+        protected override string RmAccessibleValue { get { return val.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
 
         public RmProgress() { Size = new Size(200, 8); SetStyle(ControlStyles.Selectable, false); TabStop = false; }
 
@@ -126,6 +128,9 @@ namespace RadIDE.Controls
         List<Tuple<double, double, Color>> bands = new List<Tuple<double, double, Color>>();
 
         public RmGauge() { Size = new Size(160, 140); TabStop = false; SetStyle(ControlStyles.Selectable, false); }
+
+        protected override AccessibleRole RmRole { get { return AccessibleRole.ProgressBar; } }
+        protected override string RmAccessibleValue { get { return val.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
 
         [Category("Behavior"), DefaultValue(0d)]
         public double Value { get { return val; } set { val = Math.Max(min, Math.Min(max, value)); Animate(); } }

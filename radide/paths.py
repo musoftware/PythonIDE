@@ -94,8 +94,115 @@ def python_root() -> Path:
     return _PY_ROOT
 
 
+# ----------------------------------------------------------------------------------- long paths
+# Windows refuses a working directory longer than MAX_PATH (CreateProcess: "The directory name is invalid")
+# even with LongPathsEnabled, and most toolchains (MSVC link.exe LNK1104, MSBuild, windres, fbc, gcc, Go)
+# still fail on file names over 260 characters. A build or run of a project in a deep folder therefore
+# goes through a short junction %LOCALAPPDATA%\RADIDE\sp\<hash> -> the folder (no admin rights needed;
+# removing a junction never touches the target).
+LONG_PATH_LIMIT = 100           # a folder longer than this gets a short alias (tools add ~150 characters)
+
+
+def _plain(path: str) -> str:
+    """'\\\\?\\C:\\x' -> 'C:\\x' and '\\\\?\\UNC\\srv\\share' -> '\\\\srv\\share'."""
+    if path.startswith("\\\\?\\UNC\\"):
+        return "\\\\" + path[8:]
+    if path.startswith("\\\\?\\"):
+        return path[4:]
+    return path
+
+
+def short_alias(folder, limit: int = LONG_PATH_LIMIT) -> Path:
+    """*folder* itself when its path is short (or it is not a local folder), otherwise a short junction
+    pointing at it. The alias is reused for the same folder and repaired when it points elsewhere."""
+    folder = Path(_plain(str(folder)))
+    if os.name != "nt" or len(str(folder)) <= limit or str(folder).startswith("\\\\") or not folder.is_dir():
+        return folder
+    import hashlib
+    key = hashlib.sha1(os.path.normcase(str(folder)).encode("utf-8")).hexdigest()[:10]
+    root = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "RADIDE" / "sp"
+    if portable():
+        root = settings_dir() / "sp"
+    link = root / key
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        if os.path.lexists(link):
+            try:
+                same = os.path.normcase(_plain(os.path.realpath(link))) == os.path.normcase(
+                    _plain(os.path.realpath(folder)))
+            except OSError:
+                same = False
+            if same:
+                return link
+            os.rmdir(link)                          # a stale junction: only the link goes
+        import _winapi
+        _winapi.CreateJunction(str(folder), str(link))
+        return link if link.is_dir() else folder
+    except Exception:  # noqa: BLE001 - no junction possible (FAT32, network drive): the long path
+        return folder
+
+
+def ansi_safe(path) -> str:
+    """*path* as a program that uses the ANSI Windows API (MinGW gcc / as / ld, fbc, many build tools) can open
+    it: unchanged when every character exists in the ANSI code page, else its 8.3 short name (an Arabic or
+    Chinese user name on an English Windows: C:\\Users\\محمود\\AppData -> C:\\Users\\5D1F~1\\AppData).
+    Unchanged when the volume has no short names."""
+    s = str(path)
+    if os.name != "nt" or s.isascii():
+        return s
+    try:
+        s.encode("mbcs")                       # strict: no best-fit "?" replacement
+        return s
+    except UnicodeEncodeError:
+        pass
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(32768)
+        n = ctypes.windll.kernel32.GetShortPathNameW(s, buf, 32768)
+        return buf.value if 0 < n < 32768 else s
+    except Exception:  # noqa: BLE001
+        return s
+
+
+def ansi_env(env=None) -> dict:
+    """A copy of *env* (default os.environ) whose TEMP / TMP an ANSI program can use (ansi_safe): gcc writes
+    its temporary .s / .o files there and fails with "can't create ...?????.o" otherwise."""
+    env = dict(os.environ if env is None else env)
+    for k in ("TEMP", "TMP"):
+        if env.get(k):
+            env[k] = ansi_safe(env[k])
+    return env
+
+
+def is_long(path, limit: int = LONG_PATH_LIMIT) -> bool:
+    return len(_plain(str(path))) > limit
+
+
+_SETTINGS_WRITABLE: dict[str, bool] = {}
+
+
+def _settings_writable() -> bool:
+    """Can <install>\\settings be written? A portable zip unpacked under Program Files (read-only for the
+    user) cannot keep its settings there: it then behaves like an installed IDE (registry, %LOCALAPPDATA%)
+    instead of failing at start-up."""
+    d = settings_dir()
+    key = os.path.normcase(str(d))
+    if key not in _SETTINGS_WRITABLE:
+        ok = False
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            probe = d / f".write-test-{os.getpid()}"
+            probe.write_bytes(b"")
+            probe.unlink()
+            ok = True
+        except OSError:
+            ok = False
+        _SETTINGS_WRITABLE[key] = ok
+    return _SETTINGS_WRITABLE[key]
+
+
 def portable() -> bool:
-    return frozen() and (install_dir() / PORTABLE_FLAG).is_file()
+    return frozen() and (install_dir() / PORTABLE_FLAG).is_file() and _settings_writable()
 
 
 def settings_dir() -> Path:
@@ -109,9 +216,21 @@ def user_data_dir() -> Path:
     return Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "RADIDE"
 
 
+def roaming_dir() -> Path:
+    """Per-user IDE data that roams (%APPDATA%\\RADIDE: foreign project state, extensions ...), or
+    <install>\\settings for a portable build - a portable copy never writes into the user's profile."""
+    if portable():
+        return settings_dir()
+    return Path(os.environ.get("APPDATA") or Path.home()) / "RADIDE"
+
+
 def qsettings(org: str = "RADIDE", app: str = "RADIDE"):
-    """QSettings(org, app) - an INI file in <install>\\settings for a portable build."""
-    from PyQt6.QtCore import QSettings
+    """QSettings(org, app) - an INI file in <install>\\settings for a portable build. A test run (organisation
+    "RADIDE-TEST...") gets the test settings the main window uses (app.ide_settings), never the user's."""
+    from PyQt6.QtCore import QCoreApplication, QSettings
+    test_org = QCoreApplication.organizationName()
+    if org == "RADIDE" and test_org.upper().startswith("RADIDE-TEST"):
+        return QSettings(test_org, QCoreApplication.applicationName() or test_org)
     if portable():
         return QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, org, app)
     return QSettings(org, app)
@@ -295,5 +414,5 @@ def run_as_python(argv: list[str]) -> int:
 
 
 __all__ = ["GITHUB_REPO", "PORTABLE_FLAG", "find_python", "frozen", "ide_exe", "install_dir", "package_dir",
-           "portable", "prepare_frozen", "python_has_module", "qsettings", "resource_root", "run_as_python",
-           "settings_dir", "setup_portable_settings", "user_data_dir", "wants_python"]
+           "portable", "prepare_frozen", "python_has_module", "qsettings", "resource_root", "roaming_dir", "run_as_python",
+           "settings_dir", "setup_portable_settings", "short_alias", "user_data_dir", "wants_python"]

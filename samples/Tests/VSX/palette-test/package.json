@@ -1,0 +1,38 @@
+{
+  "name": "palette-test",
+  "displayName": "RAD IDE Test: Command Palette",
+  "description": "Test extension for RAD IDE's Command Palette, keybindings, settings and VS Code editor commands.",
+  "version": "0.0.1",
+  "publisher": "radide-test",
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "paletteTest.visible", "title": "Always Visible", "category": "PT", "icon": "$(zap)" },
+      { "command": "paletteTest.hidden", "title": "Hidden By When", "category": "PT" },
+      { "command": "paletteTest.disabled", "title": "Needs Enablement", "category": "PT", "enablement": "paletteTest.enabled" },
+      { "command": "paletteTest.exec", "title": "Execute Command", "category": "PT" },
+      { "command": "paletteTest.calls", "title": "Calls", "category": "PT" }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "paletteTest.hidden", "when": "paletteTest.show" },
+        { "command": "paletteTest.exec", "when": "false" },
+        { "command": "paletteTest.calls", "when": "false" }
+      ]
+    },
+    "keybindings": [
+      { "key": "ctrl+alt+shift+9", "command": "paletteTest.visible" }
+    ],
+    "configuration": {
+      "title": "Palette Test",
+      "properties": {
+        "paletteTest.flag": { "type": "boolean", "default": false, "description": "A flag for the Settings page test." },
+        "paletteTest.mode": { "type": "string", "enum": ["one", "two"], "default": "one", "description": "An enum setting." }
+      }
+    }
+  }
+}

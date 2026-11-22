@@ -753,8 +753,16 @@ def open_file(win, path, line: int | None = None):
     mv = win.modviews.get(key)
     if mv is None:
         from ..app import ModuleView
+        from ..safeio import SaveError, check_open_size
         try:
+            check_open_size(p)                  # a 1 GB log / dump is not read into an editor (safeio.py)
             text = p.read_text(encoding="utf-8")
+        except SaveError as e:
+            QMessageBox.warning(win, "Open File", str(e))
+            return None
+        except OSError as e:                    # locked by another program, access denied, vanished
+            QMessageBox.warning(win, "Open File", f"Cannot open the file:\n{e}")
+            return None
         except UnicodeDecodeError:
             try:
                 text = p.read_text(encoding="cp1252")

@@ -27,9 +27,19 @@ TOKEN_RX = re.compile(r"""
   | (?P<hex>&[Hh][0-9A-Fa-f]+&?)
   | (?P<oct>&[Oo][0-7]+&?)
   | (?P<num>(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?[%&!#@]?)
-  | (?P<id>[A-Za-z_][A-Za-z0-9_]*[$%&!#@]?)
+  | (?P<id>[^\W\d][\w]*[$%&!#@]?)          # Unicode letters too (Arabic / Turkish names)
   | (?P<op><>|<=|>=|:=|[-+*/\\^&=<>(),.:;!#])
 """, re.X)
+
+
+_TURKISH_I = str.maketrans({"İ": "I", "ı": "i"})
+
+
+def id_key(name: str) -> str:
+    """The case-insensitive key of a VB identifier, the same on every Windows locale: plain lower() (TITLE ==
+    title also on a Turkish PC, where a locale-aware lower would give "tıtle"), and the Turkish dotted / dotless
+    I count as I / i ("SAYI" == "sayı", "İl" == "il")."""
+    return name.translate(_TURKISH_I).lower()
 
 
 @dataclass
@@ -82,7 +92,7 @@ def tokenize(src: str) -> list[Tok]:
             if text.endswith("!") and pos < len(src) and (src[pos].isalpha() or src[pos] in "_["):
                 text = text[:-1]                # rs!Field: a bang, not the Single type suffix
                 pos -= 1
-            low = text.rstrip("$%&!#@").lower()
+            low = id_key(text.rstrip("$%&!#@"))
             if low == "rem":            # Rem comment
                 end = src.find("\n", pos)
                 pos = end if end >= 0 else len(src)
@@ -1193,7 +1203,10 @@ class Parser:
 
 
 def parse_module(src: str, name: str = "Module1", filename: str = "") -> Module:
-    mod = Parser(tokenize(src)).parse_module(name)
+    try:
+        mod = Parser(tokenize(src)).parse_module(name)
+    except RecursionError:          # thousands of nested parentheses / blocks: VB6 says the same
+        raise VBSyntaxError("expression too complex (nested too deeply)", 0) from None
     mod.filename = filename
     if filename.lower().endswith(".cls"):
         mod.is_class = True
@@ -1202,5 +1215,8 @@ def parse_module(src: str, name: str = "Module1", filename: str = "") -> Module:
 
 def parse_expression(src: str):
     p = Parser(tokenize(src))
-    e = p.parse_expr()
+    try:
+        e = p.parse_expr()
+    except RecursionError:
+        raise VBSyntaxError("expression too complex (nested too deeply)", 0) from None
     return e

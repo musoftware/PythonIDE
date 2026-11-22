@@ -306,6 +306,23 @@ class ViewsUI(QObject):
                                 "ext": ext, "icon": v.get("icon")}
         return None
 
+    def all_views(self) -> list[tuple[str, dict]]:
+        """(view id, view_info) of every contributed view whose when clause holds (Command Palette "view ")."""
+        out = []
+        for c in self.containers():
+            for vid in c.get("views") or []:
+                info = self.view_info(vid)
+                if info is None:
+                    continue
+                try:
+                    if not self.view_when(vid):
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
+                info = dict(info, container=c.get("title") or info.get("container"))
+                out.append((vid, info))
+        return out
+
     def container_info(self, cid: str) -> dict | None:
         if cid in BUILTIN_CONTAINERS:
             t, loc = BUILTIN_CONTAINERS[cid]

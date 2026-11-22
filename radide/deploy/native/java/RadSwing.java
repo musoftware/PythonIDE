@@ -146,7 +146,7 @@ public final class RadSwing {
                 if (show) ((FormBase) o).showForm();
                 else ((FormBase) o).setVisible(false);
             } else if (o != null) {
-                set((Item) o, "visible", show ? "True" : "False");
+                progSet((Item) o, "visible", show ? "True" : "False");
             }
             return null;
         });
@@ -176,6 +176,7 @@ public final class RadSwing {
         final Map<String, String> data = new HashMap<>();
         boolean muteText;
         String lastText;
+        FormBase form;            // the form it belongs to (animations / visual states)
 
         Item(String name, String type, Object comp, JComponent outer) {
             this.name = name;
@@ -234,7 +235,7 @@ public final class RadSwing {
             try {
                 String p = prop.trim().toLowerCase(Locale.ROOT);
                 if (o instanceof FormBase) ((FormBase) o).setProp(p, value == null ? "" : value);
-                else set((Item) o, p, value == null ? "" : value);
+                else progSet((Item) o, p, value == null ? "" : value);
             } catch (RuntimeException e) {
                 warn(path + "." + prop + ": " + e);
             }
@@ -257,6 +258,14 @@ public final class RadSwing {
                 return "";
             }
         });
+    }
+
+    /** A property set by the program: "On show" / "On hide" animations and the Disabled state (RadMotion). */
+    static void progSet(Item it, String p, String v) {
+        RadMotion fx = it.form == null ? null : it.form.motion;
+        if (fx != null && fx.setHook(it, p, v)) return;
+        set(it, p, v);
+        if (fx != null) fx.afterSet(it, p, v);
     }
 
     static void warn(String msg) { System.err.println("[rad] " + msg); }
@@ -641,8 +650,14 @@ public final class RadSwing {
                 if (parent != null) parent.repaint();
                 return "";
             }
-            case "show": set(it, "visible", "True"); return "";
-            case "hide": set(it, "visible", "False"); return "";
+            case "show": progSet(it, "visible", "True"); return "";
+            case "hide": progSet(it, "visible", "False"); return "";
+            case "gotostate":
+            case "beginanimation":
+            case "stopanimation": {
+                String r = RadMotion.call(it.form, it, m, a);
+                return r == null ? "" : r;
+            }
             case "performclick":
             case "click":
                 if (c instanceof AbstractButton) ((AbstractButton) c).doClick(0);
@@ -711,6 +726,7 @@ public final class RadSwing {
         protected final Map<Container, ButtonGroup> radioGroups = new HashMap<>();
         boolean loaded;
         String tag = "";
+        RadMotion motion;         // animations / visual states / layout variants (null: the form has none)
 
         protected FormBase(String name) {
             radName = name;
@@ -750,6 +766,13 @@ public final class RadSwing {
             }
             setVisible(true);
             toFront();
+            if (motion != null) motion.start();
+        }
+
+        /** The form's animations / visual states / layout variants (radide/motion/native_plan.py records). */
+        protected void motion(String... parts) {
+            String text = String.join("", parts);
+            if (!text.isEmpty()) motion = new RadMotion(this, text);
         }
 
         // ---------------------------------------------------------- helpers for the generated code
@@ -767,6 +790,7 @@ public final class RadSwing {
 
         protected Item reg(String name, String type, Object comp, JComponent outer) {
             Item it = new Item(name, type, comp, outer);
+            it.form = this;
             if (comp instanceof JComponent) ((JComponent) comp).setName(name);
             items.put(name, it);
             return it;
@@ -857,7 +881,16 @@ public final class RadSwing {
                 final Component c = target instanceof Component ? (Component) target : null;
                 switch (ev) {
                     case "Click":
-                        if (target instanceof AbstractButton) ((AbstractButton) target).addActionListener(e -> fire(owner, ev, null));
+                        if (target instanceof javax.swing.JButton) ((AbstractButton) target).addActionListener(e -> {
+                            // a mouse click: BasicButtonListener fires the action inside mouseReleased, before the
+                            // MouseUp listeners - deliver Click after them (MouseDown, MouseUp, Click: VB6 and the
+                            // other runtimes; a JLabel already gets mouseClicked after mouseReleased)
+                            java.awt.AWTEvent cur = java.awt.EventQueue.getCurrentEvent();
+                            if (cur instanceof MouseEvent && cur.getID() == MouseEvent.MOUSE_RELEASED && has(owner + "_MouseUp"))
+                                SwingUtilities.invokeLater(() -> fire(owner, ev, null));
+                            else fire(owner, ev, null);
+                        });
+                        else if (target instanceof AbstractButton) ((AbstractButton) target).addActionListener(e -> fire(owner, ev, null));
                         else if (c != null) c.addMouseListener(new MouseAdapter() {
                             @Override
                             public void mouseClicked(MouseEvent e) { if (e.getClickCount() == 1 && SwingUtilities.isLeftMouseButton(e)) fire(owner, ev, null); }
@@ -1010,6 +1043,8 @@ public final class RadSwing {
                 case "enabled": return b(isEnabled());
                 case "backcolor": return fromColor(client.getBackground());
                 case "windowstate": return (getExtendedState() & MAXIMIZED_BOTH) != 0 ? "Maximized" : (getExtendedState() & ICONIFIED) != 0 ? "Minimized" : "Normal";
+                case "currentsizes":
+                case "currentstate": return RadMotion.call(this, null, p, new String[0]);
                 default:
                     warn("Form doesn't support property '" + p + "'");
                     return "";
@@ -1045,6 +1080,10 @@ public final class RadSwing {
                 case "close":
                 case "unload": userClose(); return "";
                 case "refresh": repaint(); return "";
+                case "beginanimation":
+                case "stopanimation":
+                case "gotostate":
+                case "applysizevariants": return RadMotion.call(this, null, m, a);
                 default: return getProp(m);
             }
         }
@@ -1067,6 +1106,7 @@ public final class RadSwing {
             Container p = c.getParent();
             if (p != null && p.getLayout() instanceof RadLayout) {
                 ((RadLayout) p.getLayout()).places.put(c, new double[]{r.x, r.y, r.width, r.height, 0, 0, 0, 0});
+                c.setBounds(r);           // at once: Left / Top / Width / Height read back the new value
                 p.revalidate();
                 p.repaint();
             } else c.setBounds(r);

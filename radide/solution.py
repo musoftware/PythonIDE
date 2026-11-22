@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .model import Project
+from .model import Project, ProjectFileError, read_json_file, write_text_safe
 
 EXT = ".radsln"
 
@@ -58,6 +58,9 @@ class Solution:
     startup: str = ""
     file: Path | None = None          # the .radsln file; None = implicit (bare project) solution
     _cache: dict = field(default_factory=dict, repr=False, compare=False)
+    # keys of the .radsln this version does not know (kept when saving) and how the file was read
+    extra: dict = field(default_factory=dict, repr=False, compare=False)
+    source: dict | None = field(default=None, repr=False, compare=False)
 
     # ------------------------------------------------------------------ io
     @property
@@ -70,7 +73,10 @@ class Solution:
         return self.file if self.file is not None else self.folder / f"{self.name}{EXT}"
 
     def to_dict(self) -> dict:
-        return {"name": self.name, "projects": [p.to_dict() for p in self.projects], "startup": self.startup}
+        d = {"name": self.name, "projects": [p.to_dict() for p in self.projects], "startup": self.startup}
+        for k, v in self.extra.items():
+            d.setdefault(k, v)
+        return d
 
     def save(self, path: Path | None = None) -> Path:
         """Write the .radsln (an implicit solution becomes a real one)."""
@@ -80,21 +86,41 @@ class Solution:
             for p in self.projects:
                 p.path = _relpath(self._abs(p.path), target.parent)
             self.folder = target.parent
-        target.write_text(json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        data = self.to_dict()
+        src = self.source
+        if src is not None and src.get("data") == data and self.file is not None and _same(target, self.file):
+            try:
+                if target.read_bytes() == src["raw"]:
+                    return target                # unchanged: not rewritten (byte-identical)
+            except OSError:
+                pass
+        enc = (src or {}).get("encoding") or "utf-8"
+        write_text_safe(target, json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+                        "utf-16" if enc.startswith("utf-16") else enc, (src or {}).get("newline") or None)
         self.file = target
+        try:
+            self.source = dict(src or {}, raw=target.read_bytes(), data=json.loads(json.dumps(data)))
+        except OSError:
+            pass
         return target
 
     @staticmethod
     def load(path: Path) -> "Solution":
         path = Path(path).resolve()
-        d = json.loads(path.read_text(encoding="utf-8"))
+        d, fmt = read_json_file(path, "solution file")
         if not isinstance(d, dict):
-            raise ValueError(f"{path.name} is not a solution file")
+            raise ProjectFileError(path, "is not a solution file (a JSON object is expected)")
+        if d.get("projects") is not None and not isinstance(d.get("projects"), list):
+            raise ProjectFileError(path, "is not a valid solution file: \"projects\" is not a list")
         projects = []
         for e in d.get("projects") or []:
             if isinstance(e, dict) and e.get("name") and e.get("path") is not None:
                 projects.append(SolutionProject(str(e["name"]), str(e["path"])))
-        return Solution(str(d.get("name") or path.stem), path.parent, projects, str(d.get("startup") or ""), path)
+        sol = Solution(str(d.get("name") or path.stem), path.parent, projects, str(d.get("startup") or ""), path,
+                       extra={k: v for k, v in d.items() if k not in ("name", "projects", "startup")})
+        fmt["data"] = json.loads(json.dumps(sol.to_dict()))
+        sol.source = fmt
+        return sol
 
     @staticmethod
     def implicit_for(project_folder: Path) -> "Solution":

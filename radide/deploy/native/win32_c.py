@@ -359,7 +359,7 @@ def _copy_data(folder: Path, cfg, dist: Path, log):
 
 def build(folder, project, cfg, work, log):
     from ..build import BuildError, BuildResult, make_icon, startup_language
-    folder = Path(folder).resolve()
+    folder = Path(folder).absolute()     # not resolve(): a deep project builds through its short alias (paths.short_alias)
     lang = startup_language(project)
     plugin = _plugin(lang)
     tc = toolchain(lang, log)
