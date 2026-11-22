@@ -1,0 +1,12 @@
+{
+  "name": "FormsDemo",
+  "language": "c-bridge",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Helpers.c"
+  ]
+}

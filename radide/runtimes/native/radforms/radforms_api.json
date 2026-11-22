@@ -1,0 +1,2652 @@
+{
+ "library": "radforms",
+ "abi_version": 1,
+ "header": "radforms.h",
+ "calling_convention": "cdecl",
+ "strings": "UTF-8, NUL-terminated; returned strings are valid until 16 more strings are returned",
+ "handles": "rf_handle = opaque pointer",
+ "functions": [
+  {
+   "name": "rad_arg",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "index",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rad_init",
+   "returns": "void",
+   "params": []
+  },
+  {
+   "name": "rad_next_event",
+   "returns": "int",
+   "params": []
+  },
+  {
+   "name": "rad_done",
+   "returns": "void",
+   "params": []
+  },
+  {
+   "name": "rad_set",
+   "returns": "void",
+   "params": [
+    {
+     "name": "obj",
+     "type": "const char*"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    },
+    {
+     "name": "value",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_set_num",
+   "returns": "void",
+   "params": [
+    {
+     "name": "obj",
+     "type": "const char*"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    },
+    {
+     "name": "value",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "rad_get",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "obj",
+     "type": "const char*"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_get_num",
+   "returns": "double",
+   "params": [
+    {
+     "name": "obj",
+     "type": "const char*"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_call",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "obj",
+     "type": "const char*"
+    },
+    {
+     "name": "method",
+     "type": "const char*"
+    },
+    {
+     "name": "args",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_msgbox",
+   "returns": "void",
+   "params": [
+    {
+     "name": "text",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_input",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "prompt",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_show",
+   "returns": "void",
+   "params": [
+    {
+     "name": "form",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_hide",
+   "returns": "void",
+   "params": [
+    {
+     "name": "form",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_end",
+   "returns": "void",
+   "params": []
+  },
+  {
+   "name": "rad_print",
+   "returns": "void",
+   "params": [
+    {
+     "name": "text",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_num",
+   "returns": "double",
+   "params": [
+    {
+     "name": "text",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_str",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "x",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "radcall",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "name",
+     "type": "const char*"
+    },
+    {
+     "name": "json_args",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_error",
+   "returns": "const char*",
+   "params": []
+  },
+  {
+   "name": "rad_json_num",
+   "returns": "double",
+   "params": [
+    {
+     "name": "json",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_json_str",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "json",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_json_quote",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "text",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_json_numtext",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "x",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "rad_fail",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "message",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_wk_next",
+   "returns": "int",
+   "params": []
+  },
+  {
+   "name": "rad_wk_func",
+   "returns": "const char*",
+   "params": []
+  },
+  {
+   "name": "rad_wk_argc",
+   "returns": "int",
+   "params": []
+  },
+  {
+   "name": "rad_wk_arg",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "i",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rad_wk_reply",
+   "returns": "void",
+   "params": [
+    {
+     "name": "json",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_wk_error",
+   "returns": "void",
+   "params": [
+    {
+     "name": "message",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_worker_main",
+   "returns": "int",
+   "params": [
+    {
+     "name": "dispatch",
+     "type": "callback",
+     "returns": "const char *",
+     "params": [
+      {
+       "name": "func",
+       "type": "const char*"
+      },
+      {
+       "name": "argc",
+       "type": "int"
+      },
+      {
+       "name": "argv",
+       "type": "const char**"
+      },
+      {
+       "name": "found",
+       "type": "int*"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "rad_forms_load",
+   "returns": "int",
+   "params": [
+    {
+     "name": "description",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_handlers",
+   "returns": "void",
+   "params": [
+    {
+     "name": "csv",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_run",
+   "returns": "int",
+   "params": [
+    {
+     "name": "dispatch",
+     "type": "rad_dispatch_fn"
+    }
+   ]
+  },
+  {
+   "name": "rad_show_modal",
+   "returns": "void",
+   "params": [
+    {
+     "name": "form",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_msgbox_ex",
+   "returns": "int",
+   "params": [
+    {
+     "name": "text",
+     "type": "const char*"
+    },
+    {
+     "name": "title",
+     "type": "const char*"
+    },
+    {
+     "name": "vbflags",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rad_input_ex",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "prompt",
+     "type": "const char*"
+    },
+    {
+     "name": "title",
+     "type": "const char*"
+    },
+    {
+     "name": "default_text",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_register",
+   "returns": "void",
+   "params": [
+    {
+     "name": "name",
+     "type": "const char*"
+    },
+    {
+     "name": "fn",
+     "type": "rad_func_fn"
+    }
+   ]
+  },
+  {
+   "name": "rad_command",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "line",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_event_line",
+   "returns": "const char*",
+   "params": []
+  },
+  {
+   "name": "rad_line_out",
+   "returns": "void",
+   "params": [
+    {
+     "name": "line",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_line_in",
+   "returns": "const char*",
+   "params": []
+  },
+  {
+   "name": "rf_abi_version",
+   "returns": "int",
+   "params": []
+  },
+  {
+   "name": "rf_find",
+   "returns": "rf_handle",
+   "params": [
+    {
+     "name": "path",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_form",
+   "returns": "rf_handle",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_name",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_type",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_hwnd",
+   "returns": "void*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_state",
+   "returns": "void*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_prop_set",
+   "returns": "int",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    },
+    {
+     "name": "value",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_prop_set_num",
+   "returns": "int",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    },
+    {
+     "name": "value",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "rf_prop_get",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_prop_get_num",
+   "returns": "double",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "prop",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_invoke",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "method",
+     "type": "const char*"
+    },
+    {
+     "name": "args",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_create",
+   "returns": "rf_handle",
+   "params": [
+    {
+     "name": "parent",
+     "type": "rf_handle"
+    },
+    {
+     "name": "type",
+     "type": "const char*"
+    },
+    {
+     "name": "name",
+     "type": "const char*"
+    },
+    {
+     "name": "x",
+     "type": "int"
+    },
+    {
+     "name": "y",
+     "type": "int"
+    },
+    {
+     "name": "w",
+     "type": "int"
+    },
+    {
+     "name": "h",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_destroy",
+   "returns": "void",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_show",
+   "returns": "void",
+   "params": [
+    {
+     "name": "form",
+     "type": "rf_handle"
+    },
+    {
+     "name": "modal",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_quit",
+   "returns": "void",
+   "params": []
+  },
+  {
+   "name": "rf_event_id",
+   "returns": "int",
+   "params": [
+    {
+     "name": "name",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_event_name",
+   "returns": "const char*",
+   "params": [
+    {
+     "name": "id",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_set_event_handler",
+   "returns": "void",
+   "params": [
+    {
+     "name": "fn",
+     "type": "rf_event_fn"
+    },
+    {
+     "name": "user",
+     "type": "void*"
+    }
+   ]
+  },
+  {
+   "name": "rf_run_events",
+   "returns": "int",
+   "params": [
+    {
+     "name": "fn",
+     "type": "rf_event_fn"
+    },
+    {
+     "name": "user",
+     "type": "void*"
+    }
+   ]
+  },
+  {
+   "name": "rf_raise",
+   "returns": "void",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "event",
+     "type": "const char*"
+    },
+    {
+     "name": "args",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_theme_set",
+   "returns": "int",
+   "params": [
+    {
+     "name": "name",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_theme_current",
+   "returns": "const rf_theme*",
+   "params": []
+  },
+  {
+   "name": "rf_theme_define",
+   "returns": "int",
+   "params": [
+    {
+     "name": "theme",
+     "type": "const rf_theme*"
+    }
+   ]
+  },
+  {
+   "name": "rf_theme_color",
+   "returns": "unsigned",
+   "params": [
+    {
+     "name": "key",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_register_class",
+   "returns": "int",
+   "params": [
+    {
+     "name": "cls",
+     "type": "const rf_class*"
+    }
+   ]
+  },
+  {
+   "name": "rf_find_class",
+   "returns": "const rf_class*",
+   "params": [
+    {
+     "name": "name",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rf_class_count",
+   "returns": "int",
+   "params": []
+  },
+  {
+   "name": "rf_class_at",
+   "returns": "const rf_class*",
+   "params": [
+    {
+     "name": "index",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_invalidate",
+   "returns": "void",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    }
+   ]
+  },
+  {
+   "name": "rf_set_timer",
+   "returns": "void",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "id",
+     "type": "int"
+    },
+    {
+     "name": "ms",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_px",
+   "returns": "int",
+   "params": [
+    {
+     "name": "p",
+     "type": "const rf_paint*"
+    },
+    {
+     "name": "v96",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "rf_blend",
+   "returns": "unsigned",
+   "params": [
+    {
+     "name": "a",
+     "type": "unsigned"
+    },
+    {
+     "name": "b",
+     "type": "unsigned"
+    },
+    {
+     "name": "t",
+     "type": "double"
+    }
+   ]
+  },
+  {
+   "name": "rf_draw_rect",
+   "returns": "void",
+   "params": [
+    {
+     "name": "p",
+     "type": "const rf_paint*"
+    },
+    {
+     "name": "x",
+     "type": "int"
+    },
+    {
+     "name": "y",
+     "type": "int"
+    },
+    {
+     "name": "w",
+     "type": "int"
+    },
+    {
+     "name": "h",
+     "type": "int"
+    },
+    {
+     "name": "fill",
+     "type": "unsigned"
+    },
+    {
+     "name": "border",
+     "type": "unsigned"
+    },
+    {
+     "name": "border_width",
+     "type": "int"
+    },
+    {
+     "name": "radius",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_draw_line",
+   "returns": "void",
+   "params": [
+    {
+     "name": "p",
+     "type": "const rf_paint*"
+    },
+    {
+     "name": "x1",
+     "type": "int"
+    },
+    {
+     "name": "y1",
+     "type": "int"
+    },
+    {
+     "name": "x2",
+     "type": "int"
+    },
+    {
+     "name": "y2",
+     "type": "int"
+    },
+    {
+     "name": "color",
+     "type": "unsigned"
+    },
+    {
+     "name": "width",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_draw_text",
+   "returns": "void",
+   "params": [
+    {
+     "name": "p",
+     "type": "const rf_paint*"
+    },
+    {
+     "name": "text",
+     "type": "const char*"
+    },
+    {
+     "name": "x",
+     "type": "int"
+    },
+    {
+     "name": "y",
+     "type": "int"
+    },
+    {
+     "name": "w",
+     "type": "int"
+    },
+    {
+     "name": "h",
+     "type": "int"
+    },
+    {
+     "name": "color",
+     "type": "unsigned"
+    },
+    {
+     "name": "align",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_draw_image",
+   "returns": "void",
+   "params": [
+    {
+     "name": "p",
+     "type": "const rf_paint*"
+    },
+    {
+     "name": "path",
+     "type": "const char*"
+    },
+    {
+     "name": "x",
+     "type": "int"
+    },
+    {
+     "name": "y",
+     "type": "int"
+    },
+    {
+     "name": "w",
+     "type": "int"
+    },
+    {
+     "name": "h",
+     "type": "int"
+    }
+   ]
+  }
+ ],
+ "callbacks": [
+  {
+   "name": "rad_dispatch_fn",
+   "returns": "int",
+   "params": [
+    {
+     "name": "key",
+     "type": "const char*"
+    }
+   ]
+  },
+  {
+   "name": "rad_func_fn",
+   "returns": "const char *",
+   "params": [
+    {
+     "name": "argc",
+     "type": "int"
+    },
+    {
+     "name": "argv",
+     "type": "const char**"
+    }
+   ]
+  },
+  {
+   "name": "rf_event_fn",
+   "returns": "struct rf_object *rf_handle; RF_API int rf_abi_version(void); RF_API rf_handle rf_find(const char *path); RF_API rf_handle rf_form(rf_handle h); RF_API const char *rf_name(rf_handle h); RF_API const char *rf_type(rf_handle h); RF_API void *rf_hwnd(rf_handle h); RF_API void *rf_state(rf_handle h); RF_API int rf_prop_set(rf_handle h, const char *prop, const char *value); RF_API int rf_prop_set_num(rf_handle h, const char *prop, double value); RF_API const char *rf_prop_get(rf_handle h, const char *prop); RF_API double rf_prop_get_num(rf_handle h, const char *prop); RF_API const char *rf_invoke(rf_handle h, const char *method, const char *args); RF_API rf_handle rf_create(rf_handle parent, const char *type, const char *name, int x, int y, int w, int h); RF_API void rf_destroy(rf_handle h); RF_API void rf_show(rf_handle form, int modal); RF_API void rf_quit(void); enum { RF_EV_NONE = 0, RF_EV_CLICK = 1, RF_EV_DOUBLECLICK = 2, RF_EV_MOUSEDOWN = 3, RF_EV_MOUSEUP = 4, RF_EV_MOUSEMOVE = 5, RF_EV_MOUSEENTER = 6, RF_EV_MOUSELEAVE = 7, RF_EV_MOUSEWHEEL = 8, RF_EV_KEYDOWN = 9, RF_EV_KEYUP = 10, RF_EV_KEYPRESS = 11, RF_EV_GOTFOCUS = 12, RF_EV_LOSTFOCUS = 13, RF_EV_TEXTCHANGED = 14, RF_EV_CHECKEDCHANGED = 15, RF_EV_SELECTEDINDEXCHANGED = 16, RF_EV_VALUECHANGED = 17, RF_EV_TICK = 18, RF_EV_LOAD = 19, RF_EV_ACTIVATED = 20, RF_EV_DEACTIVATE = 21, RF_EV_RESIZE = 22, RF_EV_FORMCLOSING = 23, RF_EV_FORMCLOSED = 24, RF_EV_CUSTOM = 1000 }; typedef struct rf_event_args { int size; const char *object; const char *event; const char *args; int x, y, button, delta; int key_code; const char *key_name; const char *key_char; int cancel; } rf_event_args; typedef int",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "event_id",
+     "type": "int"
+    },
+    {
+     "name": "args",
+     "type": "rf_event_args*"
+    },
+    {
+     "name": "user",
+     "type": "void*"
+    }
+   ]
+  },
+  {
+   "name": "create",
+   "returns": "struct rf_theme { int size; const char *name; int dark; unsigned window, window_text, face, face_text, border, hot, hot_border, pressed, accent, accent_text, disabled_text, selection, selection_text, input, input_text; const char *font_name; double font_size; int radius, border_width, padding; int anim_ms; } rf_theme; RF_API int rf_theme_set(const char *name); RF_API const rf_theme *rf_theme_current(void); RF_API int rf_theme_define(const rf_theme *theme); RF_API unsigned rf_theme_color(const char *key); enum { RF_CLASS_CONTAINER = 1, RF_CLASS_NONVISUAL = 2, RF_CLASS_FOCUSABLE = 4, RF_CLASS_OWNERDRAW = 8, RF_CLASS_BUILTIN = 0x100 }; typedef struct rf_paint { int size; rf_handle handle; void *hdc; int width, height; int dpi; const rf_theme *theme; int hot, pressed, focused, enabled; double hover, press; void *font; const char *text; unsigned back, fore; int has_back, has_fore; } rf_paint; typedef struct rf_class { int size; const char *name; unsigned flags; const char *win_class; unsigned long style, ex_style; int",
+   "params": [
+    {
+     "name": "h",
+     "type": "rf_handle"
+    },
+    {
+     "name": "state",
+     "type": "void**"
+    }
+   ]
+  }
+ ],
+ "structs": [
+  {
+   "name": "rf_event_args",
+   "fields": [
+    {
+     "name": "size",
+     "type": "int"
+    },
+    {
+     "name": "object",
+     "type": "const char*"
+    },
+    {
+     "name": "event",
+     "type": "const char*"
+    },
+    {
+     "name": "args",
+     "type": "const char*"
+    },
+    {
+     "name": "x",
+     "type": "int"
+    },
+    {
+     "name": "y",
+     "type": "int"
+    },
+    {
+     "name": "button",
+     "type": "int"
+    },
+    {
+     "name": "delta",
+     "type": "int"
+    },
+    {
+     "name": "key_code",
+     "type": "int"
+    },
+    {
+     "name": "key_name",
+     "type": "const char*"
+    },
+    {
+     "name": "key_char",
+     "type": "const char*"
+    },
+    {
+     "name": "cancel",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_theme",
+   "fields": [
+    {
+     "name": "size",
+     "type": "int"
+    },
+    {
+     "name": "name",
+     "type": "const char*"
+    },
+    {
+     "name": "dark",
+     "type": "int"
+    },
+    {
+     "name": "window",
+     "type": "unsigned"
+    },
+    {
+     "name": "window_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "face",
+     "type": "unsigned"
+    },
+    {
+     "name": "face_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "border",
+     "type": "unsigned"
+    },
+    {
+     "name": "hot",
+     "type": "unsigned"
+    },
+    {
+     "name": "hot_border",
+     "type": "unsigned"
+    },
+    {
+     "name": "pressed",
+     "type": "unsigned"
+    },
+    {
+     "name": "accent",
+     "type": "unsigned"
+    },
+    {
+     "name": "accent_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "disabled_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "selection",
+     "type": "unsigned"
+    },
+    {
+     "name": "selection_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "input",
+     "type": "unsigned"
+    },
+    {
+     "name": "input_text",
+     "type": "unsigned"
+    },
+    {
+     "name": "font_name",
+     "type": "const char*"
+    },
+    {
+     "name": "font_size",
+     "type": "double"
+    },
+    {
+     "name": "radius",
+     "type": "int"
+    },
+    {
+     "name": "border_width",
+     "type": "int"
+    },
+    {
+     "name": "padding",
+     "type": "int"
+    },
+    {
+     "name": "anim_ms",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_paint",
+   "fields": [
+    {
+     "name": "size",
+     "type": "int"
+    },
+    {
+     "name": "handle",
+     "type": "rf_handle"
+    },
+    {
+     "name": "hdc",
+     "type": "void*"
+    },
+    {
+     "name": "width",
+     "type": "int"
+    },
+    {
+     "name": "height",
+     "type": "int"
+    },
+    {
+     "name": "dpi",
+     "type": "int"
+    },
+    {
+     "name": "theme",
+     "type": "const rf_theme*"
+    },
+    {
+     "name": "hot",
+     "type": "int"
+    },
+    {
+     "name": "pressed",
+     "type": "int"
+    },
+    {
+     "name": "focused",
+     "type": "int"
+    },
+    {
+     "name": "enabled",
+     "type": "int"
+    },
+    {
+     "name": "hover",
+     "type": "double"
+    },
+    {
+     "name": "press",
+     "type": "double"
+    },
+    {
+     "name": "font",
+     "type": "void*"
+    },
+    {
+     "name": "text",
+     "type": "const char*"
+    },
+    {
+     "name": "back",
+     "type": "unsigned"
+    },
+    {
+     "name": "fore",
+     "type": "unsigned"
+    },
+    {
+     "name": "has_back",
+     "type": "int"
+    },
+    {
+     "name": "has_fore",
+     "type": "int"
+    }
+   ]
+  },
+  {
+   "name": "rf_class",
+   "fields": [
+    {
+     "name": "size",
+     "type": "int"
+    },
+    {
+     "name": "name",
+     "type": "const char*"
+    },
+    {
+     "name": "flags",
+     "type": "unsigned"
+    },
+    {
+     "name": "win_class",
+     "type": "const char*"
+    },
+    {
+     "name": "style",
+     "type": "unsigned long"
+    },
+    {
+     "name": "ex_style",
+     "type": "unsigned long"
+    },
+    {
+     "name": "create",
+     "type": "callback",
+     "returns": "int",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void**"
+      }
+     ]
+    },
+    {
+     "name": "destroy",
+     "type": "callback",
+     "returns": "void",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      }
+     ]
+    },
+    {
+     "name": "set",
+     "type": "callback",
+     "returns": "int",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      },
+      {
+       "name": "prop",
+       "type": "const char*"
+      },
+      {
+       "name": "value",
+       "type": "const char*"
+      }
+     ]
+    },
+    {
+     "name": "get",
+     "type": "callback",
+     "returns": "const char *",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      },
+      {
+       "name": "prop",
+       "type": "const char*"
+      }
+     ]
+    },
+    {
+     "name": "invoke",
+     "type": "callback",
+     "returns": "const char *",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      },
+      {
+       "name": "method",
+       "type": "const char*"
+      },
+      {
+       "name": "args",
+       "type": "const char*"
+      }
+     ]
+    },
+    {
+     "name": "paint",
+     "type": "callback",
+     "returns": "void",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      },
+      {
+       "name": "p",
+       "type": "const rf_paint*"
+      }
+     ]
+    },
+    {
+     "name": "message",
+     "type": "callback",
+     "returns": "int",
+     "params": [
+      {
+       "name": "h",
+       "type": "rf_handle"
+      },
+      {
+       "name": "state",
+       "type": "void*"
+      },
+      {
+       "name": "msg",
+       "type": "unsigned"
+      },
+      {
+       "name": "wparam",
+       "type": "uintptr_t"
+      },
+      {
+       "name": "lparam",
+       "type": "intptr_t"
+      },
+      {
+       "name": "result",
+       "type": "intptr_t*"
+      }
+     ]
+    },
+    {
+     "name": "properties",
+     "type": "const char*"
+    },
+    {
+     "name": "events",
+     "type": "const char*"
+    },
+    {
+     "name": "methods",
+     "type": "const char*"
+    }
+   ]
+  }
+ ],
+ "constants": {
+  "RF_EV_NONE": 0,
+  "RF_EV_CLICK": 1,
+  "RF_EV_DOUBLECLICK": 2,
+  "RF_EV_MOUSEDOWN": 3,
+  "RF_EV_MOUSEUP": 4,
+  "RF_EV_MOUSEMOVE": 5,
+  "RF_EV_MOUSEENTER": 6,
+  "RF_EV_MOUSELEAVE": 7,
+  "RF_EV_MOUSEWHEEL": 8,
+  "RF_EV_KEYDOWN": 9,
+  "RF_EV_KEYUP": 10,
+  "RF_EV_KEYPRESS": 11,
+  "RF_EV_GOTFOCUS": 12,
+  "RF_EV_LOSTFOCUS": 13,
+  "RF_EV_TEXTCHANGED": 14,
+  "RF_EV_CHECKEDCHANGED": 15,
+  "RF_EV_SELECTEDINDEXCHANGED": 16,
+  "RF_EV_VALUECHANGED": 17,
+  "RF_EV_TICK": 18,
+  "RF_EV_LOAD": 19,
+  "RF_EV_ACTIVATED": 20,
+  "RF_EV_DEACTIVATE": 21,
+  "RF_EV_RESIZE": 22,
+  "RF_EV_FORMCLOSING": 23,
+  "RF_EV_FORMCLOSED": 24,
+  "RF_EV_CUSTOM": 1000,
+  "RF_CLASS_CONTAINER": 1,
+  "RF_CLASS_NONVISUAL": 2,
+  "RF_CLASS_FOCUSABLE": 4,
+  "RF_CLASS_OWNERDRAW": 8,
+  "RF_CLASS_BUILTIN": 256,
+  "RF_ALIGN_LEFT": 0,
+  "RF_ALIGN_CENTER": 1,
+  "RF_ALIGN_RIGHT": 2,
+  "RF_ALIGN_TOP": 0,
+  "RF_ALIGN_VCENTER": 4,
+  "RF_ALIGN_BOTTOM": 8,
+  "RF_ALIGN_WRAP": 16,
+  "RF_ALIGN_ELLIPSIS": 32,
+  "RADFORMS_VERSION": 2,
+  "RF_ABI_VERSION": 1,
+  "RF_NONE": 4294967295
+ },
+ "classes": [
+  {
+   "name": "Form",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Text",
+    "Width",
+    "Height",
+    "Left",
+    "Top",
+    "BackColor",
+    "Visible",
+    "Enabled",
+    "WindowState",
+    "TopMost",
+    "Icon",
+    "StartPosition",
+    "FormBorderStyle",
+    "MaximizeBox",
+    "MinimizeBox",
+    "ControlBox",
+    "RightToLeft",
+    "ScaleMode",
+    "Theme",
+    "Cancel"
+   ],
+   "events": [
+    "Load",
+    "Activated",
+    "Deactivate",
+    "Resize",
+    "FormClosing",
+    "FormClosed",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress"
+   ],
+   "methods": [
+    "Show",
+    "ShowDialog",
+    "Hide",
+    "Close",
+    "Load",
+    "Unload",
+    "Refresh",
+    "Activate",
+    "Move"
+   ]
+  },
+  {
+   "name": "Button",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "TextAlign"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "Label",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "TextAlign"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "TextBox",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Multiline",
+    "ReadOnly",
+    "PasswordChar",
+    "MaxLength",
+    "TextAlign",
+    "SelStart",
+    "SelLength",
+    "SelText"
+   ],
+   "events": [
+    "TextChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "Clear",
+    "AppendText",
+    "SelectAll",
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "CheckBox",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Checked",
+    "Value"
+   ],
+   "events": [
+    "CheckedChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "RadioButton",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Checked",
+    "Value"
+   ],
+   "events": [
+    "CheckedChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "ListBox",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Items",
+    "ListIndex",
+    "SelectedIndex",
+    "ListCount",
+    "SelectedItem"
+   ],
+   "events": [
+    "SelectedIndexChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "AddItem",
+    "RemoveItem",
+    "Clear",
+    "List",
+    "IndexOf",
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "ComboBox",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Items",
+    "ListIndex",
+    "SelectedIndex",
+    "ListCount",
+    "SelectedItem",
+    "DropDownStyle"
+   ],
+   "events": [
+    "SelectedIndexChanged",
+    "TextChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "AddItem",
+    "RemoveItem",
+    "Clear",
+    "List",
+    "IndexOf",
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "PictureBox",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Image",
+    "BorderStyle"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "ProgressBar",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Minimum",
+    "Maximum",
+    "Value"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "NumericUpDown",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Minimum",
+    "Maximum",
+    "Value"
+   ],
+   "events": [
+    "ValueChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "TrackBar",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Minimum",
+    "Maximum",
+    "Value"
+   ],
+   "events": [
+    "ValueChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "Panel",
+   "builtin": true,
+   "container": true,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "BorderStyle"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "GroupBox",
+   "builtin": true,
+   "container": true,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "TabControl",
+   "builtin": true,
+   "container": true,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "TabPages",
+    "SelectedIndex"
+   ],
+   "events": [
+    "SelectedIndexChanged",
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "TabCaption",
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "LinkLabel",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "TextAlign",
+    "LinkColor"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "StatusBar",
+   "builtin": true,
+   "container": false,
+   "nonvisual": false,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex"
+   ],
+   "events": [
+    "Click",
+    "DoubleClick",
+    "MouseDown",
+    "MouseUp",
+    "MouseMove",
+    "MouseEnter",
+    "MouseLeave",
+    "MouseWheel",
+    "KeyDown",
+    "KeyUp",
+    "KeyPress",
+    "GotFocus",
+    "LostFocus"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  },
+  {
+   "name": "Timer",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "Interval",
+    "Enabled"
+   ],
+   "events": [
+    "Tick"
+   ],
+   "methods": [
+    "Start",
+    "Stop"
+   ]
+  },
+  {
+   "name": "OpenFileDialog",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "Title",
+    "Filter",
+    "FileName",
+    "FileTitle",
+    "InitialDirectory"
+   ],
+   "events": [],
+   "methods": [
+    "ShowDialog",
+    "ShowOpen",
+    "ShowSave",
+    "ShowColor",
+    "ShowFont",
+    "ShowFolder"
+   ]
+  },
+  {
+   "name": "SaveFileDialog",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "Title",
+    "Filter",
+    "FileName",
+    "FileTitle",
+    "InitialDirectory"
+   ],
+   "events": [],
+   "methods": [
+    "ShowDialog",
+    "ShowOpen",
+    "ShowSave",
+    "ShowColor",
+    "ShowFont",
+    "ShowFolder"
+   ]
+  },
+  {
+   "name": "ColorDialog",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "Color"
+   ],
+   "events": [],
+   "methods": [
+    "ShowDialog",
+    "ShowOpen",
+    "ShowSave",
+    "ShowColor",
+    "ShowFont",
+    "ShowFolder"
+   ]
+  },
+  {
+   "name": "FontDialog",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic"
+   ],
+   "events": [],
+   "methods": [
+    "ShowDialog",
+    "ShowOpen",
+    "ShowSave",
+    "ShowColor",
+    "ShowFont",
+    "ShowFolder"
+   ]
+  },
+  {
+   "name": "FolderBrowserDialog",
+   "builtin": true,
+   "container": false,
+   "nonvisual": true,
+   "properties": [
+    "SelectedPath",
+    "Description"
+   ],
+   "events": [],
+   "methods": [
+    "ShowDialog",
+    "ShowOpen",
+    "ShowSave",
+    "ShowColor",
+    "ShowFont",
+    "ShowFolder"
+   ]
+  },
+  {
+   "name": "ButtonX",
+   "builtin": false,
+   "module": "rf_buttonx.c",
+   "container": false,
+   "nonvisual": false,
+   "ownerdraw": true,
+   "properties": [
+    "Name",
+    "Text",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "Enabled",
+    "BackColor",
+    "ForeColor",
+    "FontName",
+    "FontSize",
+    "FontBold",
+    "FontItalic",
+    "FontUnderline",
+    "ToolTip",
+    "Tag",
+    "TabIndex",
+    "Style",
+    "Radius",
+    "AccentColor"
+   ],
+   "events": [
+    "Click"
+   ],
+   "methods": [
+    "SetFocus",
+    "Refresh",
+    "Move",
+    "ZOrder",
+    "BringToFront",
+    "SendToBack",
+    "Show",
+    "Hide",
+    "PerformClick"
+   ]
+  }
+ ]
+}

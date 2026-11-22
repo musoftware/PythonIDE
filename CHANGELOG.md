@@ -23,6 +23,9 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   built-in control packages were not bundled).
 - View menu: choosing a tool window (Properties, Toolbox, ...) always shows it and brings it to the front, like
   Visual Studio (a window covered by another tab was hidden instead); off-screen floating windows come back.
+- Build > Publish: C, C++ and Fortran GUI programs become one small native exe (C ~80 KB) on radforms, a new
+  C runtime (Win32, themes Light / Dark / Office / Metro, owner-drawn control classes, stable C ABI usable from
+  any language, static libradforms.a and radforms.lib); existing projects build unchanged.
 - Build > Publish: C# and PowerShell programs become native WinForms exes without Python - standalone single
   file (default), framework-dependent, or a tiny .NET Framework 4.8 exe; Java becomes Swing with a trimmed
   runtime (jlink + jpackage). Unsupported controls fall back to the previous build with the reasons listed.

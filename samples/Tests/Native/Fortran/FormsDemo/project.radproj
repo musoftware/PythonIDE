@@ -1,0 +1,9 @@
+{
+  "name": "FormsDemo",
+  "language": "fortran-bridge",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1"
+}
