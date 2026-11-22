@@ -293,41 +293,25 @@ class GameDesigner:
                                 "Problems:\n\n" + "\n".join(f"- {p}" for p in probs))
 
     # ---------------------------------------------------------------- wrapping the window
+    # DocumentProvider (radide/extension_points.py): File > Open, Solution Explorer, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        return Path(path).suffix.lower() == ".scene"
+
+    def open_document(self, path: Path) -> SceneEditor | None:
+        return self.open_scene(Path(path))
+
+    def save_documents(self) -> None:
+        self.save_scenes()
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(e) and e.is_modified() for e in self.editors.values())
+
     def _wrap(self) -> None:
         win = self.win
-        orig_open_module = win.open_module
-        orig_open_any = win.open_any_file
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
+        win.extension_points.add_document_provider(self)
+        win.extension_points.add_solution_contributor(self._add_tree_scenes, "game designer")
         orig_open_project = win.open_project
         orig_activate = win.activate_project
-
-        def open_module(filename, *a, **k):
-            if str(filename).lower().endswith(".scene") and win.project is not None:
-                return self.open_scene(Path(win.project.folder) / filename)
-            return orig_open_module(filename, *a, **k)
-
-        def open_any_file(path, *a, **k):
-            if Path(path).suffix.lower() == ".scene":
-                return self.open_scene(Path(path))
-            return orig_open_any(path, *a, **k)
-
-        def save_all(*a, **k):
-            self.save_scenes()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(self._alive(e) and e.is_modified() for e in self.editors.values()) or \
-                orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self._add_tree_scenes()
-            except Exception as e:  # noqa: BLE001
-                win.log(f"[game designer] {e}")
-            return r
 
         def open_project(*a, **k):
             r = orig_open_project(*a, **k)
@@ -343,11 +327,6 @@ class GameDesigner:
             self.update_visibility()
             return r
 
-        win.open_module = open_module
-        win.open_any_file = open_any_file
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
         win.open_project = open_project
         win.activate_project = activate_project
         win.open_scene = self.open_scene

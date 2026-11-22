@@ -119,6 +119,15 @@ def _after_save_report(proj: Path) -> bool:
     return (proj / "radreport.py").is_file()
 
 
+def _make_scene(path: Path) -> None:
+    from radide.games.model import Scene
+    Scene.new("Level1").save(path)
+
+
+def _edit_scene(ed) -> None:
+    ed.change("Resize", lambda: setattr(ed.scene, "width", ed.scene.width + 32))
+
+
 # name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
 # file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
@@ -127,6 +136,9 @@ EDITORS = [
     dict(name="report designer", feature="reports", file="Sales.rpt.json", make=_make_report,
          cls="radide.reports.designer.ReportDesigner", edit=_edit_report, tree=_report_tree, module=True,
          before_save=_before_save_report, after_save=_after_save_report),
+    # (its Solution Explorer scenes are shown for game projects only: not this Python Tk project)
+    dict(name="game scene designer", feature="game_designer", file="Level1.scene", make=_make_scene,
+         cls="radide.games.scene_editor.SceneEditor", edit=_edit_scene, module=True),
 ]
 
 # ------------------------------------------------------------------ the IDE
