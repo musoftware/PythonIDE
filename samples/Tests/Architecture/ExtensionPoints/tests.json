@@ -1,5 +1,34 @@
-{"defaults": {"area": "architecture"},
- "tests": {"test_extension_points.py": {"tier": "fast", "timeout": 120,
-                                        "note": "radide/extension_points.py unit checks + ratchet: replacements of MainWindow methods by features may only go down (window_patches_baseline.json)"},
-           "test_document_providers.py": {"tier": "fast", "timeout": 300, "needs": ["qt"], "args": ["{scratch}"],
-                                          "note": "characterization of the editors that open their own files (image editor ...): File > Open, reuse of the tab, unsaved state, Save All, closing question, Solution Explorer nodes, registration with extension_points"}}}
+{
+ "defaults": {
+  "area": "architecture"
+ },
+ "tests": {
+  "test_extension_points.py": {
+   "tier": "fast",
+   "timeout": 120,
+   "note": "radide/extension_points.py unit checks + ratchet: replacements of MainWindow methods by features may only go down (window_patches_baseline.json)"
+  },
+  "test_document_providers.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "characterization of the editors that open their own files (image editor ...): File > Open, reuse of the tab, unsaved state, Save All, closing question, Solution Explorer nodes, registration with extension_points"
+  },
+  "test_save_participants.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "characterization of Save All / closing-question participants without File > Open (firmware workbench, map editor, PE workbench: not saved by Save All)"
+  }
+ }
+}

@@ -53,25 +53,9 @@ class FirmwareIde:
     # ================================================================== window glue
     def _wrap(self) -> None:
         win = self.win
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
-
-        def save_all(*a, **k):
-            self.save_documents()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(self._alive(d) and d.is_modified() for d in self.docs.values()) or orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            QTimer.singleShot(0, self._maybe_auto_open)
-            return r
-
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
+        # Save All / closing question (radide/extension_points.py); workbenches open by their own commands
+        win.extension_points.add_document_provider(self)
+        win.extension_points.add_solution_contributor(self._schedule_auto_open, "firmware workbench")
         win.firmware_ide = self
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo"), ("a_copy", "copy"), ("a_select_all", "select_all")):
             act = getattr(win, attr, None)
@@ -130,6 +114,19 @@ class FirmwareIde:
         wb = self.current()
         if wb is not None and wb.is_modified():
             wb.save()
+
+    # DocumentProvider (radide/extension_points.py) ------------------------------------------------------
+    def can_open(self, path: Path) -> bool:
+        return False                      # firmware files open by the workbench's own commands
+
+    def open_document(self, path: Path):
+        return None
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(d) and d.is_modified() for d in self.docs.values())
+
+    def _schedule_auto_open(self) -> None:
+        QTimer.singleShot(0, lambda: self._maybe_auto_open())     # after Solution Explorer is filled
 
     def save_documents(self) -> None:
         for wb in list(self.docs.values()):
