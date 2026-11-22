@@ -43,40 +43,38 @@ class RetroGfx:
         m.addAction("Script Dump / Insert", lambda: self.open_script())
 
     # ------------------------------------------------------------ window wrapping
+    # DocumentProvider (radide/extension_points.py, priority EDITOR - before the hex views): .chr / .tbl /
+    # .rtmap / .rtpf from File > Open, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        return Path(path).suffix.lower() in OPEN_EXTS
+
+    def open_document(self, path: Path):
+        return self.open_path(Path(path), OPEN_EXTS[Path(path).suffix.lower()])
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(d) and d.is_modified() for d in self.docs)
+
+    def save_documents(self) -> bool:
+        ok = True
+        for d in list(self.docs):
+            if self._alive(d) and d.is_modified() and d.retro_path is not None:
+                try:
+                    d.save()
+                except Exception as e:  # noqa: BLE001 - reported; the other documents still save
+                    self.win.log(f"[retro graphics] saving {d.title()} failed: {e}")
+                    ok = False
+        return ok
+
     def _wrap(self) -> None:
-        win = self.win
-        orig_open_any = win.open_any_file
-        orig_any_modified = win._any_modified
-        orig_save_all = win.save_all
-
-        def open_any_file(path, *a, **k):
-            kind = OPEN_EXTS.get(Path(path).suffix.lower())
-            if kind is not None:
-                return self.open_path(Path(path), kind)
-            return orig_open_any(path, *a, **k)
-
-        def any_modified(*a, **k):
-            return any(self._alive(d) and d.is_modified() for d in self.docs) or orig_any_modified(*a, **k)
-
-        def save_all(*a, **k):
-            for d in list(self.docs):
-                if self._alive(d) and d.is_modified() and d.retro_path is not None:
-                    try:
-                        d.save()
-                    except Exception as e:  # noqa: BLE001
-                        win.log(f"[retro graphics] saving {d.title()} failed: {e}")
-            return orig_save_all(*a, **k)
-
-        win.open_any_file = open_any_file
-        win._any_modified = any_modified
-        win.save_all = save_all
-        # the hex editor (editor_extras) and web_workspace wrap the openers from a 0 ms timer: wrap again
-        # after them so .chr / .tbl / .rtmap / .rtpf reach these editors first
+        self.win.extension_points.add_document_provider(self)
+        # win.open_file (web_workspace) is wrapped by the hex views from a 0 ms timer: wrap it again after
+        # them so .chr / .tbl / .rtmap / .rtpf reach these editors there too.
+        # TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well.
         QTimer.singleShot(0, self._wrap_late)
 
     def _wrap_late(self) -> None:
         win = self.win
-        for name in ("open_any_file", "open_file"):
+        for name in ("open_file",):
             orig = getattr(win, name, None)
             if not callable(orig) or getattr(orig, "_retro_gfx", False):
                 continue

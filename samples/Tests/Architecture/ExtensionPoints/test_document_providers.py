@@ -188,6 +188,30 @@ def _make_cur(path: Path) -> None:
     doc.save()
 
 
+def _make_gbmap(path: Path) -> None:
+    from radide.retro.design.game import new_design
+    new_design("gb", path.stem).save(path)
+
+
+def _edit_design(ed) -> None:
+    ed._begin()
+    ed.doc.settings["edited_by_test"] = 1
+    ed._commit("Test edit")
+
+
+def _make_tbl(path: Path) -> None:
+    from radide.retro.gfx.textable import ascii_table
+    ascii_table().save(path)
+
+
+def _edit_tbl(ed) -> None:
+    from radide.retro.gfx.textable import TextTable
+    t = TextTable(name=ed.retro_path.name)
+    t.entries[b"\x41"] = "Z"
+    ed.set_table(t)
+    ed.set_modified(True)
+
+
 # name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
 # file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
@@ -206,6 +230,10 @@ EDITORS = [
          open=_open_design_view, cls="radide.web_site.design.DesignView", edit=_edit_page),
     dict(name="text-mode designer", feature="dos_designer", file="Main.tform", make=_make_tform,
          cls="radide.retro.design.textmode.designer.TuiDesigner", edit=_edit_tform, module=True),
+    dict(name="retro game designer (.gbmap)", feature="retro_designs", file="Map1.gbmap", make=_make_gbmap,
+         cls="radide.retro.design.game.ui.GameDesigner", edit=_edit_design),
+    dict(name="retro text table (.tbl)", feature="retro_gfx", file="game.tbl", make=_make_tbl,
+         cls="radide.retro.gfx.ui_text.TableEditor", edit=_edit_tbl),
     # viewers of binary files: opened (and reused), no Save All part to check (a source ROM is read-only)
     dict(name="ROM workbench (.nes)", feature="rom_workbench", file="game.nes", make=_make_nes,
          cls="radide.retro.rom.hexdoc.HexDocument", module=True, readonly=True),

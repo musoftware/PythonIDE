@@ -1,6 +1,6 @@
 {
  "_all_breakpoints": 2,
- "_any_modified": 7,
+ "_any_modified": 5,
  "_codeview": 1,
  "_confirm_close_project": 1,
  "_designer_menu": 4,
@@ -18,7 +18,7 @@
  "activate_project": 4,
  "closeEvent": 10,
  "log": 1,
- "open_any_file": 4,
+ "open_any_file": 2,
  "open_code": 1,
  "open_designer": 6,
  "open_module": 2,
@@ -26,6 +26,6 @@
  "project_properties": 1,
  "restoreState": 2,
  "run_project": 5,
- "save_all": 10,
+ "save_all": 8,
  "save_current": 1
 }
