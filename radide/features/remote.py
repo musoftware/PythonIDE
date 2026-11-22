@@ -1484,6 +1484,30 @@ def _reload_current(win):
         w.reload()
 
 
+class RemoteDocuments:
+    """DocumentProvider (radide/extension_points.py): Save All also saves the modified remote files. Remote
+    files open from the Remote Explorer, and closing the IDE asks about them in its own question (the remote
+    closeEvent below), so they do not count for the IDE's closing question."""
+
+    def __init__(self, win):
+        self.win = win
+
+    def can_open(self, path) -> bool:
+        return False
+
+    def open_document(self, path):
+        return None
+
+    def save_documents(self) -> None:
+        for s in list(sessions(self.win).values()):
+            for v in list(s.views.values()):
+                if v.editor.isModified():
+                    v.save()
+
+    def has_modified_documents(self) -> bool:
+        return False
+
+
 def install(win) -> None:
     win.remote_explorer = RemoteExplorer(win)
     d = QDockWidget("Remote Explorer", win)
@@ -1540,17 +1564,7 @@ def install(win) -> None:
     except Exception as e:  # noqa: BLE001
         win.log(f"[remote] workbench view: {e}")
 
-    orig_save_all = win.save_all
-
-    def save_all(*a, **k):
-        r = orig_save_all(*a, **k)
-        n = 0
-        for s in list(sessions(win).values()):
-            for v in list(s.views.values()):
-                if v.editor.isModified() and v.save():
-                    n += 1
-        return r or n > 0
-    win.save_all = save_all
+    win.extension_points.add_document_provider(RemoteDocuments(win))       # Save All (radide/extension_points.py)
 
     orig_close = win.closeEvent
 
