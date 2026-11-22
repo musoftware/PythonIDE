@@ -439,17 +439,9 @@ def install_tools(win) -> None:
     a.setShortcut(QKeySequence("Ctrl+Shift+B"))
     proj_menu.addAction("&Build EXE...", lambda: build_exe(win))
 
-    # check after every save
-    original_save = win.save_all
-
-    def save_and_check():
-        ok = original_save()
-        if ok:
-            QTimer.singleShot(0, lambda: run_checks(win))
-        return ok
-    win.save_all = save_and_check
-    win.a_save.triggered.disconnect()
-    win.a_save.triggered.connect(save_and_check)
+    # check after every successful save (Save All, Ctrl+S, saving before a run ...: radide/extension_points.py)
+    win.extension_points.add_save_listener(
+        lambda ok: ok and QTimer.singleShot(0, lambda: run_checks(win)), "checks after save")
 
     # debugger hover values
     win._hover_pending = []
