@@ -95,35 +95,9 @@ class ImageFeature:
     # ---------------------------------------------------------------- window wrapping
     def _wrap(self) -> None:
         win = self.win
-        orig_open_any = win.open_any_file
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
-
-        def open_any_file(path, *a, **k):
-            if Path(path).suffix.lower() in IMAGE_EXTS:
-                return self.open_image(Path(path))
-            return orig_open_any(path, *a, **k)
-
-        def save_all(*a, **k):
-            self.save_documents()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(self._alive(e) and e.is_modified() for e in self._docs()) or orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self._add_tree_nodes()
-            except Exception as e:  # noqa: BLE001
-                win.log(f"[image editor] {e}")
-            return r
-
-        win.open_any_file = open_any_file
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
+        # File > Open / Save All / the closing question / Solution Explorer: radide/extension_points.py
+        win.extension_points.add_document_provider(self)
+        win.extension_points.add_solution_contributor(self._add_tree_nodes, "image editor")
         win.open_image = self.open_image
         win.image_editor = self
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo"), ("a_cut", "cut"), ("a_copy", "copy"),
@@ -203,6 +177,16 @@ class ImageFeature:
         if ed is None or isinstance(QApplication.focusWidget(), (QLineEdit, QPlainTextEdit)):
             return
         ed.edit_op(op)
+
+    # DocumentProvider (radide/extension_points.py) ------------------------------------------------
+    def can_open(self, path: Path) -> bool:
+        return Path(path).suffix.lower() in IMAGE_EXTS
+
+    def open_document(self, path: Path) -> IconEditor | None:
+        return self.open_image(Path(path))
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(e) and e.is_modified() for e in self._docs())
 
     def save_documents(self) -> None:
         for d in self._docs():

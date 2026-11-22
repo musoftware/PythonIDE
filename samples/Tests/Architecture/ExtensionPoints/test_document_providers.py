@@ -1,0 +1,175 @@
+"""Characterization test of the editors that open their own files in the IDE (image editor, ...): what the
+user sees must stay the same while they move from wrapping MainWindow's methods to the extension points
+(radide/extension_points.py).
+
+Per editor (one row of EDITORS), in the real MainWindow (offscreen) with a Python project open:
+  * File > Open of its file type opens its editor as the current tab; opening it again reuses that tab
+  * a .py file still opens in the code editor (the editor does not take files that are not its own)
+  * after an edit the IDE knows there are unsaved changes (_any_modified); Save All writes the file and
+    clears that state; the closing question then has nothing to ask
+  * its Solution Explorer nodes are there (when it adds any)
+  * when the editor is migrated: it is registered with win.extension_points (and no longer wraps the window)
+
+Run:  .venv\\Scripts\\python samples\\Tests\\Architecture\\ExtensionPoints\\test_document_providers.py [scratch]
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
+os.environ["RADIDE_NO_BROWSER"] = "1"
+os.environ["RADIDE_TEST_NO_DIALOGS"] = "1"
+ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT))
+SCRATCH = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(tempfile.gettempdir()) / "radide-docproviders"
+shutil.rmtree(SCRATCH, ignore_errors=True)
+SCRATCH.mkdir(parents=True, exist_ok=True)
+
+__import__("PyQt6.QtWebEngineWidgets")          # must come before the QApplication
+from PyQt6.QtCore import QCoreApplication, QSettings  # noqa: E402
+from PyQt6.QtGui import QColor, QImage  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+
+QCoreApplication.setOrganizationName("RADIDE-TEST")
+QCoreApplication.setApplicationName("RADIDE-TEST")
+app = QApplication(sys.argv[:1])
+QSettings().clear()
+ASKED: list[str] = []
+
+
+def _question(*a, **k):
+    ASKED.append(str(a[2] if len(a) > 2 else k.get("text", "")))
+    return QMessageBox.StandardButton.Discard
+
+
+QMessageBox.question = staticmethod(_question)
+for _n in ("warning", "critical", "information"):
+    setattr(QMessageBox, _n, staticmethod(lambda *a, **k: QMessageBox.StandardButton.Ok))
+
+results: list[tuple[str, bool]] = []
+
+
+def ok(name: str, cond, detail="") -> bool:
+    results.append((name, bool(cond)))
+    print(("PASS " if cond else "FAIL ") + name + ("" if cond else f"  [{str(detail)[:800]}]"), flush=True)
+    return bool(cond)
+
+
+def pump(n: int = 5) -> None:
+    for _ in range(n):
+        app.processEvents()
+
+
+# ------------------------------------------------------------------ the editors
+def _make_png(path: Path) -> None:
+    img = QImage(16, 16, QImage.Format.Format_ARGB32)
+    img.fill(QColor("white"))
+    img.save(str(path))
+
+
+def _edit_image(ed) -> None:
+    ed.doc.checkpoint()
+    ed.doc.set_pixel(3, 3, QColor("red"))
+    ed.doc.set_modified(True)
+
+
+def _image_tree(win) -> bool:
+    tree = win.solution
+    stack = [tree.topLevelItem(i) for i in range(tree.topLevelItemCount())]
+    while stack:
+        it = stack.pop()
+        if it.text(0) == "Resources":
+            return True
+        stack.extend(it.child(i) for i in range(it.childCount()))
+    return False
+
+
+EDITORS = [
+    # name, feature attribute on win, file name, make(path), editor class path, edit(ed), tree check | None
+    ("image editor", "image_feature", "logo.png", _make_png, "radide.imaging.editor.IconEditor", _edit_image,
+     _image_tree),
+]
+
+# ------------------------------------------------------------------ the IDE
+from radide import workspace  # noqa: E402
+from radide.app import MainWindow  # noqa: E402
+
+proj = SCRATCH / "DocProv"
+workspace.create_project(proj, "DocProv", "python-tk")
+win = MainWindow()
+win.resize(1200, 800)
+win.show()
+pump()
+win.open_project(proj, ask=False)
+pump()
+ok("a fresh project has no unsaved changes", not win._any_modified())
+
+for name, feat_attr, fname, make, cls_path, edit, tree_check in EDITORS:
+    try:
+        mod, _, cls_name = cls_path.rpartition(".")
+        cls = getattr(__import__(mod, fromlist=[cls_name]), cls_name)
+        path = proj / fname
+        make(path)
+        before = path.read_bytes()
+        ed = win.open_any_file(path)
+        pump()
+        ok(f"{name}: File > Open opens its editor", isinstance(ed, cls), type(ed))
+        ok(f"{name}: ... as the current tab", win.tabs.currentWidget() is ed)
+        tabs = win.tabs.count()
+        again = win.open_any_file(path)
+        pump()
+        ok(f"{name}: opening it again reuses the tab", again is ed and win.tabs.count() == tabs,
+           (again is ed, tabs, win.tabs.count()))
+        ok(f"{name}: no unsaved changes before an edit", not win._any_modified())
+        edit(ed)
+        pump()
+        ok(f"{name}: after an edit the IDE has unsaved changes", win._any_modified())
+        saved = win.save_all()
+        pump()
+        ok(f"{name}: Save All succeeds", saved is True, saved)
+        ok(f"{name}: Save All wrote the file", path.read_bytes() != before)
+        ok(f"{name}: no unsaved changes after Save All", not win._any_modified())
+        ASKED.clear()
+        ok(f"{name}: closing asks nothing after Save All", win._confirm_close_inner() and not ASKED, ASKED)
+        if tree_check is not None:
+            win._fill_solution()
+            pump()
+            ok(f"{name}: its Solution Explorer nodes are there", tree_check(win))
+        feature = getattr(win, feat_attr, None)
+        points = getattr(win, "extension_points", None)
+        if points is not None and feature is not None and feature in points.document_providers():
+            ok(f"{name}: registered as a document provider", True)
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        ok(f"{name}: part", False, e)
+
+# a file that is nobody's: the code editor
+try:
+    py = proj / "helper.py"
+    py.write_text("x = 1\n", encoding="utf-8")
+    ed = win.open_any_file(py)
+    pump()
+    ok("a .py file still opens in the code editor", ed is not None and hasattr(ed, "text") and "x = 1" in ed.text(),
+       type(ed))
+except Exception as e:  # noqa: BLE001
+    ok("code editor part", False, e)
+
+try:
+    for i in range(win.tabs.count()):
+        w = win.tabs.widget(i)
+        e = getattr(w, "editor", None)
+        if e is not None and hasattr(e, "setModified"):
+            e.setModified(False)
+    win.close()
+except Exception:  # noqa: BLE001
+    pass
+QSettings().clear()
+fails = sum(1 for _n, c in results if not c)
+print(f"\n{len(results) - fails}/{len(results)} passed", flush=True)
+os._exit(fails)

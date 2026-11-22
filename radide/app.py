@@ -21,6 +21,7 @@ from .designer import DesignerView
 from .dialogs import AddItemDialog, NewProjectDialog
 from .document import FormDocument
 from .editor import CodeView
+from .extension_points import ExtensionPoints
 from .languages import code_extensions, get_plugin, language_label
 from .languages import plugin_for_form as _form_plugin
 from .languages import plugin_for_module as _module_plugin
@@ -411,8 +412,10 @@ class MainWindow(QMainWindow):
         self.breakpoints: dict[str, set[int]] = {}      # code file name -> 0-based lines
         self.session: Session | None = None
         self.stopped_at: tuple[str, int] | None = None
+        # how features take part in File > Open / Save All / Solution Explorer ... (radide/extension_points.py)
+        self.extension_points = ExtensionPoints(lambda text: self.log(text))
 
-        from . import screenfit          # every window and dialog stays on small screens / high scaling
+        from . import screenfit         # every window and dialog stays on small screens / high scaling
         screenfit.install()
         self.resize(1280, 800)
         self.setStyleSheet(STYLE)
@@ -849,6 +852,9 @@ class MainWindow(QMainWindow):
             self.open_any_file(Path(f))
 
     def open_any_file(self, path: Path):
+        handled, editor = self.extension_points.open_document(Path(path))    # image editor, designers ...
+        if handled:
+            return editor
         path = Path(path).resolve()
         from .safeio import SaveError, check_open_size
         try:
@@ -1165,7 +1171,9 @@ class MainWindow(QMainWindow):
         return True
 
     def _any_modified(self) -> bool:
-        states = self._pstates.values() or [{"docs": self.docs, "codeviews": self.codeviews,
+        if self.extension_points.any_modified():
+            return True
+        states =self._pstates.values() or [{"docs": self.docs, "codeviews": self.codeviews,
                                               "modviews": self.modviews}]
         return any(any(d.modified for d in st["docs"].values()) or
                    any(cv.editor.isModified() for cv in st["codeviews"].values()) or
@@ -1196,6 +1204,7 @@ class MainWindow(QMainWindow):
         (radide/features/solution_ui.py)."""
         from .features.solution_ui import fill_tree
         fill_tree(self)
+        self.extension_points.fill_solution()
 
     def _on_solution_dclick(self, item, _col):
         from .features.solution_ui import PROJECT_ROLE
@@ -1998,6 +2007,7 @@ class MainWindow(QMainWindow):
     # ================================================================ save
     def save_all(self) -> bool:
         """Save every open document of every project of the solution."""
+        providers_ok = self.extension_points.save_documents()     # image editor, designers ... (any project)
         if not self.project:
             return False
         active = self.project
@@ -2021,6 +2031,9 @@ class MainWindow(QMainWindow):
             snapshot(self)
         except Exception:  # noqa: BLE001
             pass
+        if not providers_ok:
+            self.statusBar().showMessage("Some files were not saved - see the Output window", 8000)
+            return False
         self.statusBar().showMessage("All files saved", 3000)
         return True
 
