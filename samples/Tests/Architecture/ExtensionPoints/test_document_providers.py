@@ -327,6 +327,11 @@ for row in EDITORS:
         ok(f"{name}: no unsaved changes after Save All", not win._any_modified())
         ASKED.clear()
         ok(f"{name}: closing asks nothing after Save All", win._confirm_close_inner() and not ASKED, ASKED)
+        edit(ed)                                   # the user's way: the Save All command / Ctrl+S
+        pump()
+        win.a_save.trigger()
+        pump()
+        ok(f"{name}: Ctrl+S (Save All command) saves it too", not win._any_modified())
         if tree_check is not None:
             win._fill_solution()
             pump()

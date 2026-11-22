@@ -155,6 +155,48 @@ for name, attr, saved_by_save_all in (("firmware workbench", "firmware_ide", Tru
         traceback.print_exc()
         ok(f"{name}: part", False, e)
 
+# ------------------------------------------------------------------ every way of saving: the same steps
+try:
+    ep = win.extension_points
+    names = [n for n, _ in ep._after_save]
+    for want in ("checks after save", "components", "mobile", "reports"):
+        ok(f"save listener registered: {want}", want in names, names)
+    ok("remote files take part in Save All (RemoteDocuments)",
+       any(type(p).__name__ == "RemoteDocuments" for p in ep.document_providers()))
+    seen: list = []
+    ep.add_save_listener(lambda okv: seen.append(("after", okv)), "test", before=lambda: seen.append("before"))
+    win.save_all()
+    pump()
+    ok("Save All from code: before / after listeners with the result", seen == ["before", ("after", True)], seen)
+    seen.clear()
+    win.a_save.trigger()                                 # the Save All command / Ctrl+S
+    pump()
+    ok("the Save All command (Ctrl+S) goes through the same steps", seen == ["before", ("after", True)], seen)
+    fw = getattr(win, "firmware_ide", None)
+    if fw is not None:
+        doc = FakeDoc()
+        put(fw, doc, "fake-ctrl-s")
+        doc.modified = True
+        win.a_save.trigger()
+        pump()
+        ok("Ctrl+S saves a document of a feature too (firmware workbench)", doc.saves >= 1 and not doc.modified,
+           doc.saves)
+        take(fw, doc, "fake-ctrl-s")
+    calls = []
+    import radide.tools as _tools
+    orig_checks = _tools.run_checks
+    _tools.run_checks = lambda w: calls.append(1)
+    try:
+        win.a_save.trigger()
+        pump(10)
+    finally:
+        _tools.run_checks = orig_checks
+    ok("the checks run after a successful Save All (once)", calls == [1], calls)
+except Exception as e:  # noqa: BLE001
+    import traceback
+    traceback.print_exc()
+    ok("save steps part", False, e)
+
 try:
     win.close()
 except Exception:  # noqa: BLE001
