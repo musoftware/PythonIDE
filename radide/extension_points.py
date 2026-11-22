@@ -9,8 +9,9 @@ the extension points at fixed places:
 ====================  =====================================  ==========================================
 extension point       MainWindow calls it in                 replaces wrapping of
 ====================  =====================================  ==========================================
-DocumentProvider      open_any_file, save_all,               open_any_file, save_all, _any_modified
-                      _any_modified
+DocumentProvider      open_any_file, open_module, save_all,  open_any_file, open_module, save_all,
+                      _any_modified                          _any_modified
+save listener         save_all (at the end, always)          save_all (work after the save)
 solution contributor  _fill_solution (after the tree)        _fill_solution
 ====================  =====================================  ==========================================
 
@@ -51,6 +52,7 @@ class ExtensionPoints:
         self._log = log or print
         self._documents: list[DocumentProvider] = []
         self._solution: list[tuple[str, Callable[[], None]]] = []
+        self._after_save: list[tuple[str, Callable[[], None]]] = []
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider) -> None:
@@ -71,6 +73,11 @@ class ExtensionPoints:
     def add_solution_contributor(self, fn: Callable[[], None], name: str = "") -> None:
         """*fn()* adds nodes to Solution Explorer after MainWindow filled it (called on every refill)."""
         self._solution.append((name or getattr(fn, "__qualname__", "solution contributor"), fn))
+
+    def add_save_listener(self, fn: Callable[[], None], name: str = "") -> None:
+        """*fn()* runs at the end of every File > Save All, also when the save failed or there is no project
+        (e.g. copy a runtime file into the projects that now need it)."""
+        self._after_save.append((name or getattr(fn, "__qualname__", "save listener"), fn))
 
     # ------------------------------------------------------------ what MainWindow calls
     def open_document(self, path: Path) -> tuple[bool, object]:
@@ -111,11 +118,17 @@ class ExtensionPoints:
         return False
 
     def fill_solution(self) -> None:
-        for name, fn in self._solution:
+        self._run_all(self._solution, "Solution Explorer nodes")    # one feature must not empty the tree
+
+    def after_save_all(self) -> None:
+        self._run_all(self._after_save, "after Save All")
+
+    def _run_all(self, fns: list[tuple[str, Callable[[], None]]], what: str) -> None:
+        for name, fn in fns:
             try:
                 fn()
-            except Exception:  # noqa: BLE001 - one feature's nodes must not empty Solution Explorer
-                self._log(f"[{name}] Solution Explorer nodes failed:\n{traceback.format_exc()}")
+            except Exception:  # noqa: BLE001 - logged; the other features still run
+                self._log(f"[{name}] {what} failed:\n{traceback.format_exc()}")
 
     def _report(self, provider, method: str) -> None:
         self._log(f"[{type(provider).__name__}.{method}] failed:\n{traceback.format_exc()}")

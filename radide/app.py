@@ -1631,6 +1631,10 @@ class MainWindow(QMainWindow):
         return any(plugin_for_form(project, f).code_file(f).lower() == base for f in project.forms)
 
     def open_module(self, filename: str):
+        if self.project is not None:          # a report / scene ... listed as a project file: its own editor
+            handled, editor = self.extension_points.open_document(Path(self.project.folder) / filename)
+            if handled:
+                return editor
         if filename not in self.modviews:
             path = self.project.folder / filename
             mv = ModuleView(self.plugin_for_file(filename), path)
@@ -2006,8 +2010,15 @@ class MainWindow(QMainWindow):
 
     # ================================================================ save
     def save_all(self) -> bool:
-        """Save every open document of every project of the solution."""
+        """Save every open document of every project of the solution (and of every DocumentProvider);
+        the extension points' save listeners run afterwards, whatever the result."""
         providers_ok = self.extension_points.save_documents()     # image editor, designers ... (any project)
+        try:
+            return self._save_projects(providers_ok)
+        finally:
+            self.extension_points.after_save_all()
+
+    def _save_projects(self, providers_ok: bool) -> bool:
         if not self.project:
             return False
         active = self.project

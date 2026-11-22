@@ -89,10 +89,44 @@ def _image_tree(win) -> bool:
     return False
 
 
+def _make_report(path: Path) -> None:
+    from radide.reports import new_report_file
+    new_report_file(path.parent, path.name[:-len(".rpt.json")])
+
+
+def _edit_report(ed) -> None:
+    ed.push_undo()
+    ed.defn["title"] = "Edited by the test"
+    ed.set_modified(True)
+
+
+def _report_tree(win) -> bool:
+    tree = win.solution
+    stack = [tree.topLevelItem(i) for i in range(tree.topLevelItemCount())]
+    while stack:
+        it = stack.pop()
+        if (it.data(0, 0x0100) or ("",))[0] == "reports":
+            return True
+        stack.extend(it.child(i) for i in range(it.childCount()))
+    return False
+
+
+def _before_save_report(proj: Path) -> None:
+    (proj / "radreport.py").unlink(missing_ok=True)       # Save All puts the report runtime back
+
+
+def _after_save_report(proj: Path) -> bool:
+    return (proj / "radreport.py").is_file()
+
+
+# name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
+# file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
-    # name, feature attribute on win, file name, make(path), editor class path, edit(ed), tree check | None
-    ("image editor", "image_feature", "logo.png", _make_png, "radide.imaging.editor.IconEditor", _edit_image,
-     _image_tree),
+    dict(name="image editor", feature="image_feature", file="logo.png", make=_make_png,
+         cls="radide.imaging.editor.IconEditor", edit=_edit_image, tree=_image_tree),
+    dict(name="report designer", feature="reports", file="Sales.rpt.json", make=_make_report,
+         cls="radide.reports.designer.ReportDesigner", edit=_edit_report, tree=_report_tree, module=True,
+         before_save=_before_save_report, after_save=_after_save_report),
 ]
 
 # ------------------------------------------------------------------ the IDE
@@ -109,7 +143,10 @@ win.open_project(proj, ask=False)
 pump()
 ok("a fresh project has no unsaved changes", not win._any_modified())
 
-for name, feat_attr, fname, make, cls_path, edit, tree_check in EDITORS:
+for row in EDITORS:
+    name, feat_attr, fname, make, cls_path, edit = (row[k] for k in ("name", "feature", "file", "make",
+                                                                     "cls", "edit"))
+    tree_check = row.get("tree")
     try:
         mod, _, cls_name = cls_path.rpartition(".")
         cls = getattr(__import__(mod, fromlist=[cls_name]), cls_name)
@@ -125,14 +162,22 @@ for name, feat_attr, fname, make, cls_path, edit, tree_check in EDITORS:
         pump()
         ok(f"{name}: opening it again reuses the tab", again is ed and win.tabs.count() == tabs,
            (again is ed, tabs, win.tabs.count()))
+        if row.get("module"):
+            via = win.open_module(fname)
+            pump()
+            ok(f"{name}: opened from Solution Explorer (open_module) in the same tab", via is ed, type(via))
         ok(f"{name}: no unsaved changes before an edit", not win._any_modified())
         edit(ed)
         pump()
         ok(f"{name}: after an edit the IDE has unsaved changes", win._any_modified())
+        if row.get("before_save"):
+            row["before_save"](proj)
         saved = win.save_all()
         pump()
         ok(f"{name}: Save All succeeds", saved is True, saved)
         ok(f"{name}: Save All wrote the file", path.read_bytes() != before)
+        if row.get("after_save"):
+            ok(f"{name}: its work after Save All was done", row["after_save"](proj))
         ok(f"{name}: no unsaved changes after Save All", not win._any_modified())
         ASKED.clear()
         ok(f"{name}: closing asks nothing after Save All", win._confirm_close_inner() and not ASKED, ASKED)

@@ -230,47 +230,24 @@ class ReportManager:
         if data and data[0] == "report":
             self.open_report(Path(data[1]))
 
-    # wrapping the window
+    # DocumentProvider (radide/extension_points.py): File > Open, Solution Explorer, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        return str(path).lower().endswith(REPORT_EXT)
+
+    def open_document(self, path: Path):
+        return self.open_report(Path(path))
+
+    def save_documents(self) -> None:
+        self.save_reports()
+
+    def has_modified_documents(self) -> bool:
+        return self.any_modified()
+
     def wrap(self):
         win = self.win
-        orig_open_any = win.open_any_file
-        orig_open_module = win.open_module
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
-
-        def open_any_file(path, *a, **k):
-            if str(path).lower().endswith(REPORT_EXT):
-                return self.open_report(Path(path))
-            return orig_open_any(path, *a, **k)
-
-        def open_module(filename, *a, **k):
-            if str(filename).lower().endswith(REPORT_EXT) and win.project is not None:
-                return self.open_report(Path(win.project.folder) / filename)
-            return orig_open_module(filename, *a, **k)
-
-        def save_all(*a, **k):
-            self.save_reports()
-            r = orig_save_all(*a, **k)
-            self.sync_runtime()
-            return r
-
-        def any_modified(*a, **k):
-            return self.any_modified() or orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self.add_tree_nodes()
-            except Exception as e:  # noqa: BLE001
-                win.log(f"[reports] {e}")
-            return r
-
-        win.open_any_file = open_any_file
-        win.open_module = open_module
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
+        win.extension_points.add_document_provider(self)
+        win.extension_points.add_save_listener(self.sync_runtime, "reports")         # radreport.py where needed
+        win.extension_points.add_solution_contributor(self.add_tree_nodes, "reports")
         win.open_report = self.open_report
         win.add_report = self.add_report
         win.report_editors = self.editors
