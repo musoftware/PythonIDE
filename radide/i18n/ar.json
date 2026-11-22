@@ -1,5 +1,7 @@
 {
  "strings": {
+  "native Win32 exe (MinGW-w64 + radforms)": "ملف exe أصلي لويندوز (MinGW-w64 + radforms)",
+  "Native exe: {} KB ({} bytes) - no Python, no extra DLLs": "ملف exe أصلي: {} ك.ب ({} بايت) - بدون بايثون وبدون مكتبات DLL إضافية",
   "Horizontal Spacing": "التباعد الأفقي",
   "Vertical Spacing": "التباعد الرأسي",
   "Make Equal": "مساواة التباعد",
@@ -6879,7 +6881,12 @@
   "Icons (*.ico);;Cursors (*.cur);;Bitmaps (*.bmp);;All files (*.*)": "أيقونات (*.ico);;مؤشرات (*.cur);;صور نقطية (*.bmp);;كل الملفات (*.*)",
   "Sections:": "الأقسام:",
   "PE32 (32-bit)": "PE32 (‏32 بت)",
-  "PE32+ (64-bit)": "PE32+ (‏64 بت)"
+  "PE32+ (64-bit)": "PE32+ (‏64 بت)",
+  "Standalone - one exe, nothing to install (largest)": "مستقل - ملف exe واحد، لا يحتاج تثبيت أي شيء (الأكبر حجمًا)",
+  "Small - needs the .NET Desktop Runtime": "صغير - يحتاج .NET Desktop Runtime",
+  "Tiny - for the .NET Framework 4.8 of Windows": "صغير جدًا - يعمل على .NET Framework 4.8 الموجود في ويندوز",
+  "How a C# program is published by the native build (no Python inside)": "طريقة نشر برنامج C# بالبناء الأصلي (بدون بايثون بداخله)",
+  "C# program:": "برنامج C#:"
  },
  "patterns": {
   "Faults read: {}": "الأعطال المقروءة: {}",

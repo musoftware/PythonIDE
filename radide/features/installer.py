@@ -99,6 +99,13 @@ class PublishDialog(QDialog):
         self.kind.setCurrentIndex(max(0, self.kind.findData(cfg.build_kind)))
         self.console = QCheckBox("Show a console window (command-line programs)")
         self.console.setChecked(cfg.console)
+        self.dotnet = QComboBox()           # native C# builds (deploy/native/dotnet_winforms.py)
+        for k, label in (("standalone", "Standalone - one exe, nothing to install (largest)"),
+                         ("framework", "Small - needs the .NET Desktop Runtime"),
+                         ("netfx", "Tiny - for the .NET Framework 4.8 of Windows")):
+            self.dotnet.addItem(label, k)
+        self.dotnet.setCurrentIndex(max(0, self.dotnet.findData(getattr(cfg, "dotnet_target", "standalone"))))
+        self.dotnet.setToolTip("How a C# program is published by the native build (no Python inside)")
         self.e_prebuilt = QLineEdit(cfg.prebuilt_dir)
         self.e_prebuilt_exe = QLineEdit(cfg.prebuilt_exe)
         f.addRow("Application &name:", self.e_name)
@@ -109,6 +116,7 @@ class PublishDialog(QDialog):
         f.addRow("&Icon:", _browse_row(self.e_icon, self.folder, "Icon", "Icons (*.ico *.png *.jpg *.bmp)"))
         f.addRow("&Build as:", self.kind)
         f.addRow("", self.console)
+        f.addRow("C# program:", self.dotnet)
         self.prebuilt_rows = [_browse_row(self.e_prebuilt, self.folder, "Program folder", "", directory=True),
                               self.e_prebuilt_exe]
         f.addRow("Program folder:", self.prebuilt_rows[0])
@@ -244,6 +252,7 @@ class PublishDialog(QDialog):
         c.publisher, c.url = self.e_publisher.text().strip(), self.e_url.text().strip()
         c.exe_name, c.icon = self.e_exe.text().strip(), self.e_icon.text().strip()
         c.build_kind, c.console = self.kind.currentData(), self.console.isChecked()
+        c.dotnet_target = self.dotnet.currentData()
         c.prebuilt_dir, c.prebuilt_exe = self.e_prebuilt.text().strip(), self.e_prebuilt_exe.text().strip()
         c.per_user = bool(self.per_user.currentData())
         c.desktop_icon, c.start_menu = self.desktop.isChecked(), self.start_menu.isChecked()

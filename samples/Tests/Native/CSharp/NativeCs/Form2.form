@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form2",
+    "Text": "Second form",
+    "Width": 300,
+    "Height": 160,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "FixedSingle",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblMsg",
+        "Text": "This is Form2",
+        "Left": 12,
+        "Top": 12,
+        "Width": 260,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnBack",
+        "Text": "Back",
+        "Left": 12,
+        "Top": 50,
+        "Width": 100,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    }
+  ]
+}

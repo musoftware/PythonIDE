@@ -594,6 +594,7 @@ class MainWindow(QMainWindow):
         for d in (self.dock_toolbox, self.dock_solution, self.dock_props, self.dock_output,
                   self.dock_locals, self.dock_stack, self.dock_immediate):
             m.addAction(d.toggleViewAction())
+        m.aboutToShow.connect(lambda m_=m: _vs_view_menu(m_))
         m = mb.addMenu("&Project")
         m.addAction(self.a_add_form)
         m.addAction("Add &Module...", self.add_module)
@@ -2300,6 +2301,51 @@ class MainWindow(QMainWindow):
         self.stop_project()
         self._stop_hub()
         e.accept()
+
+
+def _dock_on_top(d) -> bool:
+    """Is the tool window really visible (not hidden behind another tab of its group, not zero-sized)?"""
+    return d.isVisible() and not d.visibleRegion().isEmpty()
+
+
+def _show_tool_window(d) -> None:
+    """View > <tool window> like Visual Studio: always show it, bring its tab to the front, focus it."""
+    d.show()
+    if d.width() < 60 or d.height() < 60:          # collapsed to nothing by an old layout
+        d.resize(max(d.width(), 280), max(d.height(), 220))
+    if d.isFloating():
+        from PyQt6.QtGui import QGuiApplication
+        if not any(s.availableGeometry().intersects(d.frameGeometry()) for s in QGuiApplication.screens()):
+            mw = d.parentWidget()
+            c = (mw.frameGeometry().center() if mw is not None
+                 else QGuiApplication.primaryScreen().availableGeometry().center())
+            d.move(c.x() - d.width() // 2, c.y() - d.height() // 2)
+    d.raise_()
+    if d.isFloating():
+        d.activateWindow()
+    w = d.widget()
+    if w is not None:
+        w.setFocus(Qt.FocusReason.OtherFocusReason)
+
+
+def _vs_view_menu(menu) -> None:
+    """Every dock toggle action of the View menu (and its submenus, also those features add later):
+    a click shows + raises the window instead of toggling (Qt's toggleViewAction hid a window that was
+    'visible' but covered by another tab), and the check mark means 'really on screen'."""
+    from PyQt6.QtWidgets import QDockWidget
+    for a in menu.actions():
+        if a.menu() is not None and a.menu() is not menu:
+            _vs_view_menu(a.menu())
+            continue
+        d = a.parent()
+        if not isinstance(d, QDockWidget) or a is not d.toggleViewAction():
+            continue
+        if not a.property("vsShow"):
+            a.setProperty("vsShow", True)
+            a.triggered.connect(lambda _c=False, d_=d: QTimer.singleShot(0, lambda: _show_tool_window(d_)))
+        a.blockSignals(True)
+        a.setChecked(_dock_on_top(d))
+        a.blockSignals(False)
 
 
 def parse_command_line(args: list[str]):

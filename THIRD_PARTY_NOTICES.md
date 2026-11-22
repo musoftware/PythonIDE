@@ -32,3 +32,12 @@ Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0); see `p
 `NOTICE` in the installed package. RAD IDE does not copy Ghidra files into this repository. The C166 and RL78
 SLEIGH modules in `third_party/ghidra-processors/` keep their MIT `LICENSE` files and a README with source and
 commit; they are compiled on first use with pypcode's SLEIGH compiler.
+
+## Native .NET / Java builds (tools only, nothing vendored)
+
+`radide/deploy/native/dotnet_winforms.py` and `java_native.py` contain no third-party code. They run tools of the
+user's machine: the .NET SDK / Roslyn compiler (MIT, .NET Foundation) - or, without an SDK, the
+`Microsoft.Net.Compilers.Toolset` NuGet package (MIT) downloaded from nuget.org into
+`%LOCALAPPDATA%\RADIDE\tools\roslyn` - and the JDK tools javac / jdeps / jlink / jpackage (OpenJDK, GPL v2 with the
+Classpath Exception). A standalone C# program contains the .NET runtime (MIT); a Java program contains a
+jlink-made OpenJDK runtime with its `legal` folder. See docs/NATIVE_BUILD.md.

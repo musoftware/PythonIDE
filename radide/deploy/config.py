@@ -46,6 +46,9 @@ class PublishConfig:
     output_dir: str = "Publish"         # relative to the project
     build_kind: str = "auto"            # auto | native | pyinstaller | ring2exe | vbrun | bridge | flutter | folder
     prefer_native: bool = True          # auto: a small native exe without Python when the language has one
+    # native C# builds (deploy/native/dotnet_winforms.py): standalone = one self-contained exe (nothing to install),
+    # framework = small exe that needs the .NET Desktop Runtime, netfx = tiny exe for the .NET Framework 4.8 of Windows
+    dotnet_target: str = "standalone"
     prebuilt_dir: str = ""              # build_kind == folder: a folder with an already built program
     prebuilt_exe: str = ""              # ... and its main exe (relative to that folder)
     console: bool = False               # PyInstaller: keep a console window

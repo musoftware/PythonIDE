@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "RAD IDE native WinForms build: .form control type -> .NET type (radide/deploy/native/dotnet_winforms.py).",
+    "More maps are merged from radide/deploy/native/dotnet/*.controls.json and <project>/dotnet.controls.json,",
+    "so a control library (e.g. RadIDE.Controls) adds its controls without editing the generator:",
+    "  \"Ribbon\": {\"type\": \"RadIDE.Controls.Ribbon\", \"reference\": \"RadIDE.Controls\", \"container\": true,",
+    "             \"props\": {\"Text\": \"Text\", \"Theme\": \"Theme:enum:RadIDE.Controls.RibbonTheme\", \"Accent\": \"AccentColor:color\"},",
+    "             \"events\": [\"Click\", \"TabChanged\"]}",
+    "  and in \"references\": {\"RadIDE.Controls\": {\"project\": \"<repo-relative .csproj>\", \"dll\": \"<prebuilt dll for net48>\"}}",
+    "codegen: the built-in emitter for the IDE's standard controls; entries without it get the generic emitter",
+    "(new T(), Name/Location/Size/Font/Colors/Anchor/Dock/Enabled/Visible/ToolTip + the mapped props, events by",
+    "reflection). nonvisual: a component (no Location/Size), registered by name."
+  ],
+  "controls": {
+    "Button": {"type": "System.Windows.Forms.Button", "codegen": "Button"},
+    "Label": {"type": "System.Windows.Forms.Label", "codegen": "Label"},
+    "TextBox": {"type": "System.Windows.Forms.TextBox", "codegen": "TextBox"},
+    "CheckBox": {"type": "System.Windows.Forms.CheckBox", "codegen": "CheckBox"},
+    "RadioButton": {"type": "System.Windows.Forms.RadioButton", "codegen": "RadioButton"},
+    "ListBox": {"type": "System.Windows.Forms.ListBox", "codegen": "ListBox"},
+    "ComboBox": {"type": "System.Windows.Forms.ComboBox", "codegen": "ComboBox"},
+    "PictureBox": {"type": "System.Windows.Forms.PictureBox", "codegen": "PictureBox"},
+    "ProgressBar": {"type": "System.Windows.Forms.ProgressBar", "codegen": "ProgressBar"},
+    "NumericUpDown": {"type": "System.Windows.Forms.NumericUpDown", "codegen": "NumericUpDown"},
+    "TrackBar": {"type": "System.Windows.Forms.TrackBar", "codegen": "TrackBar"},
+    "Panel": {"type": "System.Windows.Forms.Panel", "codegen": "Panel", "container": true},
+    "GroupBox": {"type": "System.Windows.Forms.GroupBox", "codegen": "GroupBox", "container": true},
+    "TabControl": {"type": "System.Windows.Forms.TabControl", "codegen": "TabControl", "container": true},
+    "DateTimePicker": {"type": "System.Windows.Forms.DateTimePicker", "codegen": "DateTimePicker"},
+    "LinkLabel": {"type": "System.Windows.Forms.LinkLabel", "codegen": "LinkLabel"},
+    "StatusBar": {"type": "System.Windows.Forms.Label", "codegen": "StatusBar"},
+    "Timer": {"type": "System.Windows.Forms.Timer", "codegen": "Timer", "nonvisual": true},
+    "MenuStrip": {"type": "System.Windows.Forms.MenuStrip", "codegen": "MenuStrip", "nonvisual": true},
+    "OpenFileDialog": {"type": "RadNative.RadDialog", "codegen": "Dialog", "nonvisual": true},
+    "SaveFileDialog": {"type": "RadNative.RadDialog", "codegen": "Dialog", "nonvisual": true},
+    "ColorDialog": {"type": "RadNative.RadDialog", "codegen": "Dialog", "nonvisual": true},
+    "FontDialog": {"type": "RadNative.RadDialog", "codegen": "Dialog", "nonvisual": true},
+    "FolderBrowserDialog": {"type": "RadNative.RadDialog", "codegen": "Dialog", "nonvisual": true}
+  },
+  "references": {}
+}

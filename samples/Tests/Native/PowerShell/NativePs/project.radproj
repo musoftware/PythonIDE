@@ -1,0 +1,12 @@
+{
+  "name": "NativePs",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Helper.ps1"
+  ]
+}

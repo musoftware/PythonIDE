@@ -21,6 +21,11 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   "Arrange / align / sort / رتب" requests tick only positions and sizes.
 - Build EXE of VB6 / GUI Bridge programs: the published exe stopped at start with KeyError: 'DataGridView' (the
   built-in control packages were not bundled).
+- View menu: choosing a tool window (Properties, Toolbox, ...) always shows it and brings it to the front, like
+  Visual Studio (a window covered by another tab was hidden instead); off-screen floating windows come back.
+- Build > Publish: C# and PowerShell programs become native WinForms exes without Python - standalone single
+  file (default), framework-dependent, or a tiny .NET Framework 4.8 exe; Java becomes Swing with a trimmed
+  runtime (jlink + jpackage). Unsupported controls fall back to the previous build with the reasons listed.
 - Form designer: Visual Studio parity pass (116 checks) - Format > Align to Grid, Size to Grid, Horizontal /
   Vertical Spacing, Order submenu, menu items greyed like VS; group drag/resize keep spacing; snaplines; Esc
   selects the parent / cancels a drag; Tab cycles; Ctrl/Shift+arrows; rubber band; paste into containers with
