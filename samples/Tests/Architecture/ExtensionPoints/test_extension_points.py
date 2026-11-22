@@ -131,6 +131,19 @@ ok("priority: an editor beats the ROM viewer (.bin art -> tform)", pe.open_docum
 pe.remove_document_provider(tform)
 ok("remove_document_provider with priorities", pe.open_document(Path("x.bin")) == (True, "rom:x.bin"))
 
+seq: list = []
+logged.clear()
+se = ExtensionPoints(logged.append)
+se.add_save_listener(lambda ok: seq.append(("after1", ok)), "one", before=lambda: seq.append("before1"))
+se.add_save_listener(lambda ok: 1 / 0, "broken")
+se.add_save_listener(lambda ok: seq.append(("after3", ok)), "three")
+se.before_save_all()
+se.after_save_all(True)
+se.after_save_all(False)
+ok("save listeners: before() first, then fn(ok) in order with the result; a failing one is logged",
+   seq == ["before1", ("after1", True), ("after3", True), ("after1", False), ("after3", False)]
+   and sum("[broken]" in m for m in logged) == 2, (seq, logged))
+
 order: list[str] = []
 logged.clear()
 ep.add_solution_contributor(lambda: order.append("first"), "first")

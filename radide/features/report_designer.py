@@ -246,7 +246,7 @@ class ReportManager:
     def wrap(self):
         win = self.win
         win.extension_points.add_document_provider(self)
-        win.extension_points.add_save_listener(self.sync_runtime, "reports")         # radreport.py where needed
+        win.extension_points.add_save_listener(lambda _ok: self.sync_runtime(), "reports")         # radreport.py where needed
         win.extension_points.add_solution_contributor(self.add_tree_nodes, "reports")
         win.open_report = self.open_report
         win.add_report = self.add_report

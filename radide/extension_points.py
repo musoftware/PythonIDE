@@ -59,7 +59,8 @@ class ExtensionPoints:
         self._log = log or print
         self._documents: list[tuple[int, DocumentProvider]] = []
         self._solution: list[tuple[str, Callable[[], None]]] = []
-        self._after_save: list[tuple[str, Callable[[], None]]] = []
+        self._after_save: list[tuple[str, Callable[[bool], None]]] = []
+        self._before_save: list[tuple[str, Callable[[], None]]] = []
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
@@ -82,10 +83,16 @@ class ExtensionPoints:
         """*fn()* adds nodes to Solution Explorer after MainWindow filled it (called on every refill)."""
         self._solution.append((name or getattr(fn, "__qualname__", "solution contributor"), fn))
 
-    def add_save_listener(self, fn: Callable[[], None], name: str = "") -> None:
-        """*fn()* runs at the end of every File > Save All, also when the save failed or there is no project
-        (e.g. copy a runtime file into the projects that now need it)."""
-        self._after_save.append((name or getattr(fn, "__qualname__", "save listener"), fn))
+    def add_save_listener(self, fn: Callable[[bool], None], name: str = "",
+                          before: Callable[[], None] | None = None) -> None:
+        """*fn(ok)* runs at the end of every File > Save All (the Save All command, Ctrl+S and every caller of
+        MainWindow.save_all), also when the save failed (ok False) or there is no project - e.g. copy a runtime
+        file into the projects that now need it, run the checks after a successful save. *before()* runs
+        before anything is saved (e.g. remember the designer state to compare afterwards)."""
+        label = name or getattr(fn, "__qualname__", "save listener")
+        self._after_save.append((label, fn))
+        if before is not None:
+            self._before_save.append((label, before))
 
     # ------------------------------------------------------------ what MainWindow calls
     def open_document(self, path: Path) -> tuple[bool, object]:
@@ -128,13 +135,16 @@ class ExtensionPoints:
     def fill_solution(self) -> None:
         self._run_all(self._solution, "Solution Explorer nodes")    # one feature must not empty the tree
 
-    def after_save_all(self) -> None:
-        self._run_all(self._after_save, "after Save All")
+    def before_save_all(self) -> None:
+        self._run_all(self._before_save, "before Save All")
 
-    def _run_all(self, fns: list[tuple[str, Callable[[], None]]], what: str) -> None:
+    def after_save_all(self, ok: bool) -> None:
+        self._run_all(self._after_save, "after Save All", ok)
+
+    def _run_all(self, fns: list, what: str, *args) -> None:
         for name, fn in fns:
             try:
-                fn()
+                fn(*args)
             except Exception:  # noqa: BLE001 - logged; the other features still run
                 self._log(f"[{name}] {what} failed:\n{traceback.format_exc()}")
 

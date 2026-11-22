@@ -2011,12 +2011,17 @@ class MainWindow(QMainWindow):
     # ================================================================ save
     def save_all(self) -> bool:
         """Save every open document of every project of the solution (and of every DocumentProvider);
-        the extension points' save listeners run afterwards, whatever the result."""
-        providers_ok = self.extension_points.save_documents()     # image editor, designers ... (any project)
+        the extension points' save listeners run before and afterwards, whatever the result. The Save All
+        command and Ctrl+S call this method too: every way of saving goes through the same steps."""
+        ep = self.extension_points
+        ep.before_save_all()
+        ok = False
         try:
-            return self._save_projects(providers_ok)
+            providers_ok = ep.save_documents()     # image editor, designers ... (any project)
+            ok = self._save_projects(providers_ok)
+            return ok
         finally:
-            self.extension_points.after_save_all()
+            ep.after_save_all(ok)
 
     def _save_projects(self, providers_ok: bool) -> bool:
         if not self.project:
