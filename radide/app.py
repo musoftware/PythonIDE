@@ -2528,7 +2528,8 @@ class MainWindow(QMainWindow):
         self._update_actions()
 
     def closeEvent(self, e):
-        if not self._confirm_close_project():
+        # features first (agent tasks running, remote files ...: radide/extension_points.py), then the save question
+        if not self.extension_points.confirm_close() or not self._confirm_close_project():
             e.ignore()
             return
         active = self.project
@@ -2540,6 +2541,7 @@ class MainWindow(QMainWindow):
         self.stop_project()
         self._stop_hub()
         e.accept()
+        self.extension_points.shutdown()      # language servers, terminal, layout ... (in registration order)
 
 
 def _dock_on_top(d) -> bool:

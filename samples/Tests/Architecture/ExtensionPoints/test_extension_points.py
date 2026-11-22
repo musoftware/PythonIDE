@@ -144,6 +144,25 @@ ok("save listeners: before() first, then fn(ok) in order with the result; a fail
    seq == ["before1", ("after1", True), ("after3", True), ("after1", False), ("after3", False)]
    and sum("[broken]" in m for m in logged) == 2, (seq, logged))
 
+cg: list = []
+logged.clear()
+ce = ExtensionPoints(logged.append)
+ce.add_close_guard(lambda: cg.append("first") or True, "first")
+ce.add_close_guard(lambda: 1 / 0, "broken")
+ce.add_close_guard(lambda: cg.append("last") or True, "last")
+ok("close guards: latest registered asked first; a raising guard is logged and does not block",
+   ce.confirm_close() is True and cg == ["last", "first"] and any("[broken]" in m for m in logged), (cg, logged))
+cg.clear()
+ce.add_close_guard(lambda: cg.append("no") or False, "no")
+ok("close guards: the first False stops the close (earlier guards are not asked)",
+   ce.confirm_close() is False and cg == ["no"], cg)
+sd: list = []
+ce.add_shutdown_step(lambda: sd.append(1), "one")
+ce.add_shutdown_step(lambda: 1 / 0, "broken")
+ce.add_shutdown_step(lambda: sd.append(3), "three")
+ce.shutdown()
+ok("shutdown steps run in registration order, a failing one is logged", sd == [1, 3])
+
 order: list[str] = []
 logged.clear()
 ep.add_solution_contributor(lambda: order.append("first"), "first")

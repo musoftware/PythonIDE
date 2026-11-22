@@ -61,6 +61,8 @@ class ExtensionPoints:
         self._solution: list[tuple[str, Callable[[], None]]] = []
         self._after_save: list[tuple[str, Callable[[bool], None]]] = []
         self._before_save: list[tuple[str, Callable[[], None]]] = []
+        self._close_guards: list[tuple[str, Callable[[], bool]]] = []
+        self._shutdown: list[tuple[str, Callable[[], None]]] = []
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
@@ -94,7 +96,29 @@ class ExtensionPoints:
         if before is not None:
             self._before_save.append((label, before))
 
+    def add_close_guard(self, fn: Callable[[], bool], name: str = "") -> None:
+        """*fn()* is asked when the IDE is about to close, before the save question; False keeps the IDE
+        open (e.g. "agent tasks are still running - stop them and close?"). The latest registered guard is
+        asked first; the first False stops the close. A guard that raises is logged and does not block it."""
+        self._close_guards.append((name or getattr(fn, "__qualname__", "close guard"), fn))
+
+    def add_shutdown_step(self, fn: Callable[[], None], name: str = "") -> None:
+        """*fn()* runs once the IDE has accepted to close (stop servers, save layout ...), in registration order."""
+        self._shutdown.append((name or getattr(fn, "__qualname__", "shutdown step"), fn))
+
     # ------------------------------------------------------------ what MainWindow calls
+    def confirm_close(self) -> bool:
+        for name, fn in reversed(self._close_guards):
+            try:
+                if fn() is False:
+                    return False
+            except Exception:  # noqa: BLE001 - a broken guard must not make the IDE impossible to close
+                self._log(f"[{name}] close guard failed:\n{traceback.format_exc()}")
+        return True
+
+    def shutdown(self) -> None:
+        self._run_all(self._shutdown, "shutdown")
+
     def open_document(self, path: Path) -> tuple[bool, object]:
         """(True, editor) when a provider took *path*; (False, None) when it is nobody's."""
         for p in self.document_providers():
