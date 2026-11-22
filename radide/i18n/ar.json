@@ -7106,7 +7106,14 @@
   "Installing web language servers": "جارٍ تثبيت خوادم لغات الويب",
   "Installing Prettier": "جارٍ تثبيت Prettier",
   "Installing rust-analyzer": "جارٍ تثبيت rust-analyzer",
-  "Downloading GitHub CLI": "جارٍ تنزيل GitHub CLI"
+  "Downloading GitHub CLI": "جارٍ تنزيل GitHub CLI",
+  "Quick Fixes": "إصلاحات سريعة",
+  "Refactorings": "إعادة الهيكلة",
+  "Source Actions": "إجراءات المصدر",
+  "Actions": "إجراءات",
+  "No quick fixes or refactorings here (select code to extract it)": "لا توجد إصلاحات سريعة أو إعادة هيكلة هنا (حدد كوداً لاستخراجه)",
+  "the language server did not answer": "لم يستجب خادم اللغة",
+  "Install NuGet Package": "تثبيت حزمة NuGet"
  },
  "patterns": {
   "{} settings": "{} إعداد",
@@ -8045,6 +8052,30 @@
   "Creating {}": "جارٍ إنشاء {}",
   "dotnet new {}: {}": "dotnet new {}: {}",
   "Importing {}": "جارٍ استيراد {}",
-  "Installing {}": "جارٍ تثبيت {}"
+  "Installing {}": "جارٍ تثبيت {}",
+  "Install '{}' with pip": "تثبيت '{}' باستخدام pip",
+  "Install '{}' with pip and add '{}'": "تثبيت '{}' باستخدام pip وإضافة '{}'",
+  "Install '{}' with npm": "تثبيت '{}' باستخدام npm",
+  "Install '{}' with npm (dev)": "تثبيت '{}' باستخدام npm (للتطوير)",
+  "Install '{}' and '{}' (dev) with npm": "تثبيت '{}' و'{}' (للتطوير) باستخدام npm",
+  "Install '{}' with Composer": "تثبيت '{}' باستخدام Composer",
+  "Add crate '{}' (cargo add)": "إضافة الحزمة '{}' (cargo add)",
+  "Add import from '{}'": "إضافة استيراد من '{}'",
+  "Create method '{}'": "إنشاء الدالة '{}'",
+  "Create function '{}'": "إنشاء الدالة '{}'",
+  "Change '{}' to '{}'": "تغيير '{}' إلى '{}'",
+  "Use the RAD helper {}(...) instead of {}": "استخدم دالة RAD المساعدة {}(...) بدلاً من {}",
+  "Use the RAD helper {}(...) instead of {} (text only)": "استخدم دالة RAD المساعدة {}(...) بدلاً من {} (النص فقط)",
+  "Use the RAD helper {} instead of {}": "استخدم دالة RAD المساعدة {} بدلاً من {}",
+  "using {}; - not available: a RAD C# form runs as a console process (the IDE draws the form)": "using {}; - غير متاح: نموذج RAD C# يعمل كعملية طرفية (بيئة التطوير ترسم النموذج)",
+  "using {}; - not available in a RAD C# project": "using {}; - غير متاح في مشروع RAD C#",
+  "{} is not referenced by RAD C# projects (_build/csharp/RadApp.csproj); use the RAD helpers (MsgBox, InputBox, Set/Get/Call, Show, End)": "مشاريع RAD C# لا تشير إلى {} (_build/csharp/RadApp.csproj)؛ استخدم دوال RAD المساعدة (MsgBox وInputBox وSet/Get/Call وShow وEnd)",
+  "{} needs Windows Forms / WPF, which RAD C# projects do not reference": "{} يحتاج إلى Windows Forms / WPF، ومشاريع RAD C# لا تشير إليهما",
+  "Install package '{}' from NuGet and add 'using {};'": "تثبيت الحزمة '{}' من NuGet وإضافة 'using {};'",
+  "Search NuGet.org for '{}'...": "البحث في NuGet.org عن '{}'...",
+  "Searching NuGet.org for '{}'": "جارٍ البحث في NuGet.org عن '{}'",
+  "NuGet.org has no package for '{}'": "لا توجد حزمة في NuGet.org لـ '{}'",
+  "Packages for '{}':": "حزم '{}':",
+  "{}: failed - see the Output window": "{}: فشل - راجع نافذة المخرجات"
  }
 }

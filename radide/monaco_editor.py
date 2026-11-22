@@ -328,6 +328,7 @@ class MonacoEditor(QWebEngineView):
         new = self.language_id()
         if self.language() == "custom":
             self._register_custom(self._js)
+        self._diagnostics = []
         self._js(f"radSetMarkers([]); radSetLanguage({json.dumps(new)});")
         self.languageChanged.emit(new)
 
@@ -841,7 +842,9 @@ class MonacoEditor(QWebEngineView):
         self._js("radEditor.trigger('rad', 'editor.action.triggerParameterHints', {});")
 
     def set_diagnostics(self, diags: list[dict]) -> None:
-        """diags: [{line, col, endLine, endCol, message, severity: 'error'|'warning'|'info'}] (0-based)."""
+        """diags: [{line, col, endLine, endCol, message, severity: 'error'|'warning'|'info'}] (0-based).
+        Kept in ``_diagnostics``: the quick fixes (radide/quickfix) read which names are unresolved."""
+        self._diagnostics = list(diags or [])
         self._js(f"radSetMarkers({json.dumps(diags)});")
 
     # ------------------------------------------------------------ context menu

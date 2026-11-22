@@ -307,7 +307,10 @@ project (F5 passes the ones the IDE knows as `RADIDE_DB_<CONNECTION>_PASSWORD`).
   the language server; one Ctrl+Z undoes the whole format. Tools > Options > Formatting chooses per language.
   Code: `radide/features/formatting.py`, `radide/editkit.py`.
 - **Refactor** (Edit > Refactor, editor right-click): **Rename (F2)** with a preview of every change in every file,
-  **Quick Actions (Ctrl+.)** - quick fixes, refactorings, organize imports from the language server,
+  **Quick Actions (Alt+Enter / Ctrl+. / light bulb)** - quick fixes, refactorings, organize imports from the
+  language server merged with built-in fixes that need no server (missing `using` / `import`, pip / npm / NuGet /
+  cargo / go get / composer installs with progress, RAD helpers like `MessageBox.Show` -> `MsgBox`, Create method),
+  with a preview of each edit - see [docs/QUICK_FIXES.md](docs/QUICK_FIXES.md),
   **Extract Method / Variable** (pylsp-rope, typescript, rust-analyzer ...), **Find All References (Shift+F12)**
   dock. Code: `radide/features/refactor.py`.
 - Samples: `samples/Tests/Testing/` (one project per framework, each with a test that fails on purpose).

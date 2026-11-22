@@ -1,7 +1,8 @@
 """Refactoring on top of the Language Servers (radide/lsp.py): Edit > Refactor.
 
   Rename Symbol (F2)            textDocument/rename -> preview of every change in every file -> Apply
-  Quick Actions (Ctrl+.)        textDocument/codeAction: quick fixes, refactorings, organize imports
+  Quick Actions (Ctrl+. / Alt+Enter, light bulb)  textDocument/codeAction (quick fixes, refactorings, organize
+                                imports) merged with the built-in fixes of radide/quickfix (work without a server)
   Extract Method / Variable     the server's refactor.extract actions (pylsp-rope, typescript, rust-analyzer...)
                                 then the new name is asked and renamed in place
   Find All References (Shift+F12)  textDocument/references -> "Find All References" dock (double-click = go)
@@ -19,7 +20,7 @@ from pathlib import Path
 from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QDockWidget, QHBoxLayout, QInputDialog, QLabel,
-                             QMenu, QPlainTextEdit, QPushButton, QSplitter, QTreeWidget, QTreeWidgetItem,
+                             QPlainTextEdit, QPushButton, QSplitter, QTreeWidget, QTreeWidgetItem,
                              QVBoxLayout, QWidget)
 
 from .. import editkit
@@ -406,64 +407,12 @@ def _extra_actions(win, ed, line, col) -> list:
     return out
 
 
-def _add_extra(menu, extras) -> bool:
-    if not extras:
-        return False
-    for title, cb in extras:
-        act = menu.addAction("    " + title)
-        act.triggered.connect(lambda _=False, cb=cb: cb())
-    menu.addSeparator()
-    return True
-
-
 def quick_actions(win, ed, line=None, col=None):
-    if ed is None:
-        return
-    if line is None:
-        line, col = ed.getCursorPosition()
-    if _client(ed) is None:
-        menu = QMenu(win)
-        win._refactor_menu = menu
-        _add_extra(menu, _extra_actions(win, ed, line, col))
-        menu.addAction("Rename...", lambda: rename_symbol(win, ed, line, col))
-        menu.addAction("Find All References", lambda: find_references(win, ed, line, col))
-        _caret_global(ed, lambda p: menu.exec(p) if not getattr(win, "_refactor_no_exec", False) else None)
-        return
-
-    def got(actions, err):
-        menu = QMenu(win)
-        win._refactor_menu = menu
-        extras = _extra_actions(win, ed, line, col)
-        _add_extra(menu, extras)
-        groups = {"quickfix": [], "refactor": [], "source": [], "": []}
-        for a in actions:
-            kind = a.get("kind", "") if isinstance(a, dict) else ""
-            key = next((k for k in ("quickfix", "refactor", "source") if kind.startswith(k)), "")
-            groups[key].append(a)
-        titles = {"quickfix": "Quick Fixes", "refactor": "Refactorings", "source": "Source Actions", "": "Actions"}
-        any_ = False
-        for key in ("quickfix", "refactor", "source", ""):
-            if not groups[key]:
-                continue
-            if any_:
-                menu.addSeparator()
-            sec = menu.addAction(titles[key])
-            sec.setEnabled(False)
-            for a in groups[key]:
-                act = menu.addAction(("★ " if a.get("isPreferred") else "    ") + a.get("title", "?"))
-                if a.get("disabled"):
-                    act.setEnabled(False)
-                    act.setToolTip(a["disabled"].get("reason", ""))
-                act.triggered.connect(lambda _=False, a=a: run_code_action(win, ed, a))
-            any_ = True
-        if any_:
-            menu.addSeparator()
-        menu.addAction("Rename Symbol...\tF2", lambda: rename_symbol(win, ed, line, col))
-        menu.addAction("Find All References\tShift+F12", lambda: find_references(win, ed, line, col))
-        if not actions and not extras:
-            _status(win, err or "No quick fixes or refactorings here (select code to extract it)")
-        _caret_global(ed, lambda p: menu.exec(p) if not getattr(win, "_refactor_no_exec", False) else None)
-    request_code_actions(win, ed, line, col, got)
+    """Ctrl+. / Alt+Enter / the light bulb: the built-in quick fixes (radide/quickfix: imports, usings, package
+    installs, RAD helpers ...) merged with the language server's code actions and EXTRA_QUICK_ACTIONS, in one menu
+    with a preview of each edit (radide/quickfix/ui.py)."""
+    from ..quickfix import ui as qf_ui
+    qf_ui.quick_actions(win, ed, line, col)
 
 
 def extract(win, ed, what: str, name: str | None = None):
@@ -687,8 +636,11 @@ def install(win) -> None:
     editkit.COMMANDS["extractVariable"] = lambda ed, l, c: extract(win, ed, "variable")
     K = "monaco.KeyMod"
     editkit.add_action("radx.rename", "Rename Symbol...", "[monaco.KeyCode.F2]", "rename", "1_modification")
+    # Ctrl+. here; Alt+Enter and the light bulb come from radide/quickfix/ui.py (not while the find widget is open)
     editkit.add_action("radx.quickActions", "Quick Actions and Refactorings...",
                        f"[{K}.CtrlCmd | monaco.KeyCode.Period]", "codeActions", "1_modification")
+    from ..quickfix import ui as qf_ui
+    qf_ui.install(win)
     editkit.add_action("radx.references", "Find All References", f"[{K}.Shift | monaco.KeyCode.F12]",
                        "references", "navigation")
     editkit.add_action("radx.extractMethod", "Extract Method...", f"[{K}.CtrlCmd | {K}.Shift | monaco.KeyCode.KeyM]",
@@ -700,7 +652,7 @@ def install(win) -> None:
         sub = edit.addMenu("Re&factor")
         win.refactor_menu = sub
         for text, fn in (("&Rename...\tF2", lambda: rename_symbol(win, _current_editor(win))),
-                         ("&Quick Actions and Refactorings...\tCtrl+.", lambda: quick_actions(win, _current_editor(win))),
+                         ("&Quick Actions and Refactorings...\tCtrl+., Alt+Enter", lambda: quick_actions(win, _current_editor(win))),
                          (None, None),
                          ("Extract &Method...\tCtrl+Shift+M", lambda: extract(win, _current_editor(win), "method")),
                          ("Extract &Variable...", lambda: extract(win, _current_editor(win), "variable")),
@@ -719,7 +671,7 @@ def install(win) -> None:
     # editor right-click menu: Rename / Quick Actions / References (built-in and Monaco editors)
     def on_menu(menu, ed):
         first = menu.actions()[0] if menu.actions() else None
-        acts = [QAction("Rename...\tF2", menu), QAction("Quick Actions and Refactorings...\tCtrl+.", menu),
+        acts = [QAction("Rename...\tF2", menu), QAction("Quick Actions and Refactorings...\tCtrl+., Alt+Enter", menu),
                 QAction("Find All References\tShift+F12", menu)]
         acts[0].triggered.connect(lambda: rename_symbol(win, ed))
         acts[1].triggered.connect(lambda: quick_actions(win, ed))

@@ -347,6 +347,8 @@ require(['vs/editor/editor.main'], function () {
     editor.onDidChangeCursorSelection(e => { const s = e.selection;
       rad.jsSelection(s.startLineNumber - 1, s.startColumn - 1, s.endLineNumber - 1, s.endColumn - 1); });
     editor.onMouseDown(e => {
+      const el = e.target.element;      // the quick-fix light bulb (radide/quickfix/ui.py) opens its menu instead
+      if (el && el.classList && el.classList.contains('rad-bulb')) return;
       if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
           e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS && e.event.leftButton && e.event.altKey)
         rad.jsToggleBreakpoint(e.target.position.lineNumber - 1);

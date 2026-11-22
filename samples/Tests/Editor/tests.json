@@ -1,0 +1,8 @@
+{"defaults": {"area": "editor", "args": ["{scratch}"]},
+ "tests": {"test_quickfix_providers.py": {"tier": "fast", "timeout": 300,
+                                          "note": "quick-fix provider registry, LSP merge, per-language providers (Python, C#/RAD C#, VB, JS/TS, Rust, Go, Java, PHP) - no window, dry-run installs"},
+           "test_quick_fixes.py": {"tier": "full", "timeout": 1200, "needs": ["qt"],
+                                   "note": "Alt+Enter / Ctrl+. Quick Actions in the real IDE (Monaco): RAD C# MessageBox -> MsgBox, using / import fixes, pip / npm actions (dry run), light bulb, preview, dedup with a mocked language server"},
+           "test_quick_fixes.py@network": {"tier": "network", "timeout": 1800, "needs": ["qt", "pypi.org"],
+                                           "args": ["{scratch}", "--network"],
+                                           "note": "as above + a real 'pip install PyYAML' into a scratch venv through the quick fix"}}}
