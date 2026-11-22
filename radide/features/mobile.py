@@ -1162,13 +1162,7 @@ def install_hinge_watch(win) -> None:
                 watch_hinge(win, doc)
             except (AttributeError, RuntimeError):
                 pass
-    orig_open = win.open_designer
-
-    def open_designer(name, *a, **kw):
-        r = orig_open(name, *a, **kw)
-        hook()
-        return r
-    win.open_designer = open_designer
+    win.extension_points.on("designer_opened", lambda _name: hook(), "mobile")
     try:
         win.tabs.currentChanged.connect(hook)
     except AttributeError:

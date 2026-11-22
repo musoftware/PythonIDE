@@ -512,35 +512,32 @@ def install(win) -> None:
     # then saved again when the formatter changed something.
     def enabled():
         return win.settings.value("format/on_save", False) in (True, "true")
-    busy = {"on": False}
-    orig_sap = getattr(win, "_save_active_project", None)
-    if orig_sap is not None:
-        def save_active_project(*a, **k):
-            if enabled() and not busy["on"]:
-                busy["on"] = True
-                try:
-                    format_before_save(win, [v.editor for v in list(win.codeviews.values()) +
-                                             list(win.modviews.values())])
-                except Exception as e:  # noqa: BLE001 - saving must still happen
-                    win.log(f"[format on save] {e}")
-                finally:
-                    busy["on"] = False
+    busy = {"on": False}              # a project save formats every editor once: not again per form
+
+    def before_project_save() -> None:
+        if enabled() and not busy["on"]:
             busy["on"] = True
             try:
-                return orig_sap(*a, **k)
+                format_before_save(win, [v.editor for v in list(win.codeviews.values()) +
+                                         list(win.modviews.values())])
+            except Exception as e:  # noqa: BLE001 - saving must still happen
+                win.log(f"[format on save] {e}")
             finally:
                 busy["on"] = False
-        win._save_active_project = save_active_project
-    orig_sf = getattr(win, "_save_form", None)
-    if orig_sf is not None:
-        def save_form(name, *a, **k):
-            if enabled() and not busy["on"] and name in win.codeviews:
-                try:
-                    format_before_save(win, [win.codeviews[name].editor])
-                except Exception as e:  # noqa: BLE001
-                    win.log(f"[format on save] {e}")
-            return orig_sf(name, *a, **k)
-        win._save_form = save_form
+        busy["on"] = True
+
+    def after_project_save(_completed) -> None:
+        busy["on"] = False
+
+    def before_form_save(name) -> None:
+        if enabled() and not busy["on"] and name in win.codeviews:
+            try:
+                format_before_save(win, [win.codeviews[name].editor])
+            except Exception as e:  # noqa: BLE001
+                win.log(f"[format on save] {e}")
+    win.extension_points.on("project_saving", before_project_save, "format on save")
+    win.extension_points.on("project_saved", after_project_save, "format on save")
+    win.extension_points.on("form_saving", before_form_save, "format on save")
 
     def after_save_current(*_a):
         if not enabled() or busy["on"]:

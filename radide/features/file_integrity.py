@@ -20,10 +20,10 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from ..document import FormDocument
-from ..model import Form, ProjectFileError
+from ..model import FORM_LOAD_ERRORS, Form, ProjectFileError
 
 POLL_MS = 2500
-LOAD_ERRORS = (ProjectFileError, OSError, UnicodeError, ValueError, KeyError, TypeError)
+LOAD_ERRORS = FORM_LOAD_ERRORS          # radide/model.py: what a damaged .form raises
 
 
 def _stamp(path: Path):
@@ -228,32 +228,17 @@ def install(win) -> None:
     feat = FileIntegrity(win)
     win.file_integrity = feat
 
-    def guarded(orig):
-        def run(name, *a, **kw):
-            known = name in win.docs
-            try:
-                r = orig(name, *a, **kw)
-            except LOAD_ERRORS as e:
-                path = win.project.form_path(name) if win.project is not None else Path(f"{name}.form")
-                reason = str(e) if isinstance(e, ProjectFileError) else f"{path.name}: {type(e).__name__}: {e}"
-                feat.error("Cannot open form", f"The form '{name}' cannot be opened.\n\n{reason}\n\n"
-                                               f"The file was not changed.")
-                return None
-            if not known and name in win.docs:
-                feat.loaded(name)
-            elif name in win.codeviews:
-                feat.remember(name)
-            return r
-        return run
+    def load_failed(name, e) -> None:          # MainWindow catches LOAD_ERRORS and asks us to report them
+        path = win.project.form_path(name) if win.project is not None else Path(f"{name}.form")
+        reason = str(e) if isinstance(e, ProjectFileError) else f"{path.name}: {type(e).__name__}: {e}"
+        feat.error("Cannot open form", f"The form '{name}' cannot be opened.\n\n{reason}\n\n"
+                                       f"The file was not changed.")
 
-    win.open_designer = guarded(win.open_designer)
-    win.open_code = guarded(win.open_code)
-
-    orig_save = win._save_form
-
-    def save_form(name, *a, **kw):
-        try:
-            return orig_save(name, *a, **kw)
-        finally:
+    def opened(name, newly_loaded) -> None:
+        if newly_loaded:
+            feat.loaded(name)
+        elif name in win.codeviews:
             feat.remember(name)
-    win._save_form = save_form
+    win.extension_points.on("form_load_failed", load_failed, "file integrity")
+    win.extension_points.on("form_opened", opened, "file integrity")
+    win.extension_points.on("form_saved", lambda name, _completed: feat.remember(name), "file integrity")

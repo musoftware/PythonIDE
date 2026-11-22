@@ -62,6 +62,17 @@
     "{scratch}"
    ],
    "note": "project lifecycle events: template before open; after open / activate / reset / _update_actions each feature step runs the measured number of times; a failing step is logged"
+  },
+  "test_editor_events.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "designer / code editor / saving events: designer open steps, damaged form reported, form + project save steps, menus, language servers for new editors, VB6 properties, title, layout, no save question for a foreign project"
   }
  }
 }

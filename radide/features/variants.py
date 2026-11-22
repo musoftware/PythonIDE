@@ -1337,13 +1337,7 @@ def install(win) -> None:
                 except Exception as e:  # noqa: BLE001 - never break the designer
                     win.log(f"[variants] {e}")
 
-    orig_open = win.open_designer
-
-    def open_designer(name, *a, **kw):
-        r = orig_open(name, *a, **kw)
-        hook_open()
-        return r
-    win.open_designer = open_designer
+    win.extension_points.on("designer_opened", lambda _name: hook_open(), "variants")
 
     panel = SizesPanel(win)
     win.sizes_panel = panel
@@ -1355,8 +1349,7 @@ def install(win) -> None:
     except Exception as e:  # noqa: BLE001
         win.log(f"[variants] Sizes window: {e}")
 
-    def designer_menu(form_name, m, c, _orig=win._designer_menu):
-        _orig(form_name, m, c)
+    def designer_menu(form_name, m, c):          # after the window's own items
         v = win._current_designer() if hasattr(win, "_current_designer") else None
         if v is None:
             return
@@ -1381,4 +1374,4 @@ def install(win) -> None:
             m.addAction(tr("Show on this size") if hidden else tr("Hide on this size"),
                         lambda: vp.set_hidden([x for x in v.doc.selection if not x.ctype.nonvisual] or [c],
                                               not hidden))
-    win._designer_menu = designer_menu
+    win.extension_points.on("designer_menu", designer_menu, "variants")

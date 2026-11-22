@@ -83,15 +83,7 @@ def _window(out: _Out):
     QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.No)
     from .app import MainWindow
     win = MainWindow()
-    orig = win.log
-
-    def log(text, _orig=orig):
-        out(text)
-        try:
-            _orig(text)
-        except Exception:  # noqa: BLE001
-            pass
-    win.log = log
+    win.extension_points.on("output_logged", out, "agent CLI")       # the Output window on the terminal too
     return app, win
 
 

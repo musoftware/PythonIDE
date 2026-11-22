@@ -65,12 +65,6 @@ def schedule(win) -> None:
 
 
 def install(win) -> None:
-    orig = win.restoreState
-
-    def restore_state(*args, **kw):
-        ok = orig(*args, **kw)
-        schedule(win)
-        return ok
-    win.restoreState = restore_state
+    win.extension_points.on("layout_restored", lambda: schedule(win), "dock tab bars")
     win._dock_tabbar_watcher = _ShowWatcher(win)
     win.installEventFilter(win._dock_tabbar_watcher)

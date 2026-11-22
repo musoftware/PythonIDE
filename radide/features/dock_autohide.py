@@ -1194,16 +1194,7 @@ def install(win) -> None:
     mgr = AutoHide(win)
     win.autohide = mgr
     _add_menu(win, mgr)
-    orig = win.restoreState
-
-    def restore_state(*args, **kw):
-        ok = orig(*args, **kw)
-        try:
-            mgr.after_restore_state()
-        except Exception:  # noqa: BLE001
-            pass
-        return ok
-    win.restoreState = restore_state
+    win.extension_points.on("layout_restored", lambda: mgr.after_restore_state(), "auto-hide docks")
     QTimer.singleShot(0, mgr.start)       # after every feature (the workbench restores its layout first)
 
 

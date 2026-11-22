@@ -84,24 +84,11 @@ def install(win) -> None:
     except ImportError:                      # QtWebEngine missing: the built-in editor has no LSP
         pass
 
-    # wrap the IDE's editor factories so new editors get a server
-    orig_codeview = win._codeview
-
-    def codeview(name):
-        cv = orig_codeview(name)
-        QTimer.singleShot(0, lambda: attach(cv.editor))
-        return cv
-    win._codeview = codeview
-
-    orig_open_module = win.open_module
-
-    def open_module(filename):
-        result = orig_open_module(filename)     # the editor of a report / scene ... opened below: keep it
-        mv = win.modviews.get(filename)
-        if mv is not None:
-            QTimer.singleShot(0, lambda: attach(mv.editor))
-        return result
-    win.open_module = open_module
+    # the IDE's code / module editors get a server (attach again when one was not available before)
+    win.extension_points.on("code_view_requested", lambda _n, cv: QTimer.singleShot(0, lambda: attach(cv.editor)),
+                            "language servers")
+    win.extension_points.on("module_view_shown", lambda _f, mv: QTimer.singleShot(0, lambda: attach(mv.editor)),
+                            "language servers")
 
     def stop_servers() -> None:
         win.lsp_manager.stop_all()

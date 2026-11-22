@@ -1551,19 +1551,12 @@ def install(win) -> None:
         win.log(f"[Agent] workbench: {e}")
 
     # follow the open project (folder + saved task history)
-    orig = getattr(win, "_update_title", None)
-    if callable(orig):
-        def update_title(*a, _orig=orig, **k):
-            r = _orig(*a, **k)
-            try:
-                f = w.default_folder()
-                if f and f != getattr(w, "_last_folder", None):
-                    w._last_folder = f
-                    w.project_opened()
-            except Exception:  # noqa: BLE001
-                pass
-            return r
-        win._update_title = update_title
+    def follow_folder() -> None:
+        f = w.default_folder()
+        if f and f != getattr(w, "_last_folder", None):
+            w._last_folder = f
+            w.project_opened()
+    win.extension_points.on("title_updated", follow_folder, "agents")
 
     closing: list = []                 # the agent tasks to stop once the IDE closes
 

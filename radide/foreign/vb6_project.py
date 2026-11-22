@@ -686,28 +686,18 @@ def install_hooks(win) -> None:
     if getattr(win, "_vb6_hooks", False):
         return
     win._vb6_hooks = True
-    orig_save_proj = win._save_active_project
-    orig_save_current = win.save_current
-    orig_props = win.project_properties
 
-    def save_active():
-        wrote = orig_save_proj()
-        sync_project_of(win, win.project)
-        return wrote
+    def mirror_properties(project) -> bool:
+        if project is not None and is_mirror(project.folder):
+            project_properties_dialog(win)
+            return True
+        return False
 
-    def save_current():
-        ok = orig_save_current()
-        sync_project_of(win, win.project)
-        return ok
-
-    def props():
-        if win.project is not None and is_mirror(win.project.folder):
-            return project_properties_dialog(win)
-        return orig_props()
-    win._save_active_project = save_active
-    win.save_current = save_current
+    ep = win.extension_points          # write the VB6 files back after each save (radide/extension_points.py)
+    ep.on("project_saved", lambda completed: completed and sync_project_of(win, win.project), "VB6")
+    ep.on("file_saved", lambda _ok: sync_project_of(win, win.project), "VB6")
+    ep.add_properties_dialog(mirror_properties, "VB6")
     win.extension_points.add_solution_contributor(lambda: decorate_tree(win), "VB6")
-    win.project_properties = props
     try:
         win.solution.customContextMenuRequested.disconnect(win._solution_menu)
     except (TypeError, RuntimeError):

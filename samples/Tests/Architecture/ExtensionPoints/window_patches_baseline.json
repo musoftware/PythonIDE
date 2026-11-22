@@ -1,22 +1,8 @@
 {
  "_all_breakpoints": 2,
- "_codeview": 1,
- "_confirm_close_project": 1,
- "_designer_menu": 4,
- "_editor_menu": 1,
  "_make_session": 3,
  "_on_finished": 2,
  "_on_resumed": 3,
  "_on_stopped": 4,
- "_save_active_project": 2,
- "_save_form": 4,
- "_update_title": 1,
- "log": 1,
- "open_code": 1,
- "open_designer": 6,
- "open_module": 1,
- "project_properties": 1,
- "restoreState": 2,
- "run_project": 5,
- "save_current": 1
+ "run_project": 5
 }

@@ -1475,16 +1475,9 @@ def install(win) -> None:
     win.tabs.currentChanged.connect(follow)
     follow()
 
-    orig_open = win.open_designer
+    win.extension_points.on("designer_opened", lambda _name: follow(), "animations")
 
-    def open_designer(name, *a, **kw):
-        r = orig_open(name, *a, **kw)
-        follow()
-        return r
-    win.open_designer = open_designer
-
-    def designer_menu(form_name, m, c, _orig=win._designer_menu):
-        _orig(form_name, m, c)
+    def designer_menu(form_name, m, c):          # after the window's own items
         try:
             if c is not None and c.ctype.nonvisual:
                 return
@@ -1502,7 +1495,7 @@ def install(win) -> None:
             m.addMenu(sub)
         except Exception as e:  # noqa: BLE001 - never break the designer menu
             win.log(f"[animations] {e}")
-    win._designer_menu = designer_menu
+    win.extension_points.on("designer_menu", designer_menu, "animations")
 
 
 def _show_dock(win) -> None:

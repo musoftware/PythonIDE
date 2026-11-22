@@ -474,36 +474,30 @@ def install(win) -> None:
     win.extension_points.on("project_activated", lambda: QTimer.singleShot(0, feat.refresh_toolbox),
                             "user controls")
 
-    orig_open = win.open_designer
-
-    def open_designer(name, *a, **kw):
+    def before_open(_name) -> None:          # the project's user controls before the form loads
         if win.project is not None:
             uc.register_folder(win.project.folder)
-        r = orig_open(name, *a, **kw)
+
+    def after_open(name) -> None:
         v = win.designers.get(name)
         if v is not None:
             feat.watch(v)
         feat.refresh_toolbox()
-        return r
-    win.open_designer = open_designer
 
-    orig_save = win._save_form
-
-    def save_form(name, *a, **kw):
-        r = orig_save(name, *a, **kw)
+    def after_save(name, completed) -> None:
         doc = win.docs.get(name)
-        if doc is not None and uc.is_usercontrol(doc.form):
+        if completed and doc is not None and uc.is_usercontrol(doc.form):
             uc.register(name, doc.form.to_dict(), doc.path)
-        return r
-    win._save_form = save_form
+    win.extension_points.on("designer_opening", before_open, "user controls")
+    win.extension_points.on("designer_opened", after_open, "user controls")
+    win.extension_points.on("form_saved", after_save, "user controls")
 
-    def designer_menu(form_name, m, c, _orig=win._designer_menu):
-        _orig(form_name, m, c)
+    def designer_menu(form_name, m, c):          # after the window's own items
         v = win.designers.get(form_name)
         if v is not None and uc.is_usercontrol(v.doc.form) and c is None:
             m.addSeparator()
             m.addAction(a_if)
-    win._designer_menu = designer_menu
+    win.extension_points.on("designer_menu", designer_menu, "user controls")
 
     from ..toolbox import TOOL_STATE
     TOOL_STATE.modeChanged.connect(feat._on_mode)

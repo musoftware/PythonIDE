@@ -136,8 +136,8 @@ def _settings(ctx, keys: list | None = None, values: dict | None = None):
 @command("quit", doc="close the IDE (force: no 'save changes?' questions)")
 def _quit(ctx, force: bool = True, delay_ms: int = 100):
     def go():
-        if force:                         # no "save changes?" question
-            ctx.win._confirm_close_project = lambda: True
+        if force:                         # no "save changes?" question (the IDE closes right after)
+            ctx.win._no_save_questions += 1
         ctx.win.close()
         QTimer.singleShot(3000, QApplication.quit)
     QTimer.singleShot(int(delay_ms), go)

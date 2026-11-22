@@ -34,6 +34,7 @@ Hooks for foreign projects (all optional, looked up with getattr):
 * ``register_form_binding(kind, factory)`` - native form files in the designer (see below)."""
 from __future__ import annotations
 
+import contextlib
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -144,11 +145,9 @@ def open_foreign(win, path, ask: bool = True) -> bool:
             cands = [hit]
     else:
         cands = [(f, p) for f in _FORMATS if f.matches(p)]
-    patched = False
-    if not ask and win is not None and "_confirm_close_project" not in vars(win):
-        win._confirm_close_project = lambda: True
-        patched = True
-    try:
+    skip = (win.no_save_questions() if not ask and callable(getattr(win, "no_save_questions", None))
+            else contextlib.nullcontext())              # opened without asking: no "Save changes?" either
+    with skip:
         for fmt, target in cands:
             try:
                 if fmt.opener(win, target):
@@ -159,9 +158,6 @@ def open_foreign(win, path, ask: bool = True) -> bool:
                     win.log(msg)
                 except Exception:  # noqa: BLE001
                     print(msg)
-    finally:
-        if patched:
-            del win._confirm_close_project
     return False
 
 

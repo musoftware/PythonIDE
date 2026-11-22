@@ -1675,16 +1675,10 @@ def install(win) -> None:
     _register_providers()
 
     # editor right-click: send the selection to the web chat
-    orig_menu = getattr(win, "_editor_menu", None)
-    if callable(orig_menu):
-        def editor_menu(m, form_name, _orig=orig_menu):
-            _orig(m, form_name)
-            try:
-                m.addSeparator()
-                m.addAction("Send Selection to AI Web Chat", lambda: _send_selection(win))
-            except Exception:  # noqa: BLE001
-                pass
-        win._editor_menu = editor_menu
+    def editor_menu(m, _form_name) -> None:
+        m.addSeparator()
+        m.addAction("Send Selection to AI Web Chat", lambda: _send_selection(win))
+    win.extension_points.on("editor_menu", editor_menu, "AI web")
 
     win.extension_points.add_shutdown_step(lambda: p.shutdown(), "AI web")
     app = QCoreApplication.instance()

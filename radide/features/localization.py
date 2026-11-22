@@ -932,18 +932,11 @@ def install(win) -> None:
                 except Exception as e:  # noqa: BLE001 - never break the designer
                     win.log(f"[localization] {e}")
 
-    orig_open = win.open_designer
+    win.extension_points.on("designer_opened", lambda _name: hook_open(), "localization")
 
-    def open_designer(name, *a, **kw):
-        r = orig_open(name, *a, **kw)
-        hook_open()
-        return r
-    win.open_designer = open_designer
-
-    orig_save = win._save_form
-
-    def save_form(name, *a, **kw):
-        r = orig_save(name, *a, **kw)
+    def after_save(name, completed) -> None:
+        if not completed:
+            return
         try:
             doc = win.docs.get(name)
             if doc is not None and (doc.form.props.get("Localizable") or
@@ -951,8 +944,7 @@ def install(win) -> None:
                 write_resx(doc.form, doc.path.parent)
         except Exception as e:  # noqa: BLE001
             win.log(f"[localization] could not write the resource files: {e}")
-        return r
-    win._save_form = save_form
+    win.extension_points.on("form_saved", after_save, "localization")
 
     def open_editor():
         v = win._current_designer()
@@ -971,9 +963,8 @@ def install(win) -> None:
         menu.addSeparator()
         menu.addAction(act)
 
-    def designer_menu(form_name, m, c, _orig=win._designer_menu):
-        _orig(form_name, m, c)
+    def designer_menu(form_name, m, c):          # after the window's own items
         if c is None:
             m.addSeparator()
             m.addAction(act)
-    win._designer_menu = designer_menu
+    win.extension_points.on("designer_menu", designer_menu, "localization")
