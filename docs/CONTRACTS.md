@@ -535,7 +535,7 @@ notice in the wizard).
 | game-designer | radide/games/model.py, radide/games/scene_editor.py, tilemap/animation/asset editors, radide/features/game_designer.py |
 | game-runtime | radide/languages/pygame_game.py, godot.py, radide/games/runtime/radgame.py, codegen, Godot export, templates, samples/HelloGame |
 | exe-core | radide/importers/exe/base.py, native.py, pe_resources.py, radide/features/exe_import.py (wizard + report) |
-| exe-managed | radide/importers/exe/dotnet.py, vb6.py, pyexe.py, java.py, electron.py |
+| exe-managed | radide/importers/exe/dotnet/ (package), vb6.py, pyexe.py, java.py, electron.py |
 
 ### 10.6 Advanced Flutter designer (widget trees, FlutterFlow style)
 Screens as real widget trees in `<Screen>.fscreen.json` (Scaffold/Container/BoxDecoration/Stack/Positioned/...,
