@@ -591,25 +591,49 @@ class MonacoEditor(QWebEngineView):
             return
         try:
             if self.lsp is not None and self.lsp.running():
-                self.lsp.completion(self.path, self._text, line, col,
-                                    lambda res: self._js(f"radResolve({req}, "
-                                                         f"{json.dumps(self._merge_completions(extra, res))});"))
+                def got(res, req=req, line=line, col=col):
+                    if isinstance(res, dict):                 # a raw CompletionList
+                        res = res.get("items") or []
+                    res = [i for i in (res or []) if isinstance(i, dict) and i.get("label")]
+                    try:
+                        if not res:
+                            # the server is still indexing (rust-analyzer, ...) or found nothing: the language's
+                            # own completions instead of an empty list
+                            res = self._plugin_items(line, col)
+                        else:
+                            # the IDE's own API of the language (GUI Bridge helpers like msgbox / set / get,
+                            # control names) next to the server's items
+                            have = {i.get("label") for i in res}
+                            res += [i for i in self._plugin_items(line, col, ("function", "control", "snippet"))
+                                    if i["label"] not in have]
+                    except Exception as e:  # noqa: BLE001 - completion must never break typing
+                        print(f"[monaco] plugin completions failed: {e}")
+                    self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, res))});")
+                self.lsp.completion(self.path, self._text, line, col, got)
                 return
-            for c in self.plugin.completions(self._text, line, col, self.path, self.names)[:400]:
-                item = {"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind}
-                # optional fields (radide/asm_intel AsmCompletion): docs, snippets, sort key, extra edits
-                for attr, key in (("doc", "documentation"), ("insert", "insertText"), ("sort", "sortText")):
-                    val = getattr(c, attr, None)
-                    if val:
-                        item[key] = val
-                if getattr(c, "snippet", False):
-                    item["snippet"] = True
-                if getattr(c, "edits", None):
-                    item["additionalTextEdits"] = c.edits
-                items.append(item)
+            items = self._plugin_items(line, col)
         except Exception:  # noqa: BLE001 - completion must never break typing
             items = []
         self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
+
+    def _plugin_items(self, line: int, col: int, kinds: tuple | None = None) -> list[dict]:
+        """The language plugin's completions as Monaco items (kinds: only these Completion kinds)."""
+        items = []
+        for c in self.plugin.completions(self._text, line, col, self.path, self.names)[:400]:
+            if kinds is not None and c.kind not in kinds:
+                continue
+            item = {"label": c.name, "kind": KIND.get(c.kind, 18), "detail": c.detail or c.kind}
+            # optional fields (radide/asm_intel AsmCompletion): docs, snippets, sort key, extra edits
+            for attr, key in (("doc", "documentation"), ("insert", "insertText"), ("sort", "sortText")):
+                val = getattr(c, attr, None)
+                if val:
+                    item[key] = val
+            if getattr(c, "snippet", False):
+                item["snippet"] = True
+            if getattr(c, "edits", None):
+                item["additionalTextEdits"] = c.edits
+            items.append(item)
+        return items
 
     def _extra_completions(self, line: int, col: int) -> list[dict]:
         out: list[dict] = []

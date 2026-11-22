@@ -259,11 +259,28 @@ class Rust(Provider):
     def c(self, ctx, *args, **kw):
         return ctx.run_cli([cargo(), *args], title="cargo " + " ".join(args[:3]), **kw)
 
+    @staticmethod
+    def _winforms(ctx) -> bool:
+        """A RAD IDE Rust WinForms (GUI Bridge) project: its radapp.exe only talks to the IDE, which draws the
+        forms - `cargo run` alone shows no window."""
+        return getattr(ctx.project, "language", "") == "rust-bridge"
+
+    def _run_ide(self, ctx):
+        """Run like F5 (the forms are drawn); a standalone exe comes from Build > Publish."""
+        ctx.win.run_project(debug=False)
+
     def actions(self, ctx):
-        return [Action("run", "Run (cargo run)", lambda c: self.c(c, "run"), toolbar=True, opens="none",
-                       icon="SP_MediaPlay"),
-                Action("build", "Build (cargo build)", lambda c: self.c(c, "build"), opens="none", toolbar=True,
-                       icon="SP_DialogApplyButton"),
+        if self._winforms(ctx):
+            first = [Action("run", "Run (with forms)", self._run_ide, toolbar=True, opens="none",
+                            icon="SP_MediaPlay"),
+                     Action("build", "Build (cargo build)", lambda c: self.c(c, "build"), opens="none", toolbar=True,
+                            icon="SP_DialogApplyButton")]
+        else:
+            first = [Action("run", "Run (cargo run)", lambda c: self.c(c, "run"), toolbar=True, opens="none",
+                            icon="SP_MediaPlay"),
+                     Action("build", "Build (cargo build)", lambda c: self.c(c, "build"), opens="none", toolbar=True,
+                            icon="SP_DialogApplyButton")]
+        return first + [
                 Action("build-release", "Build Release", lambda c: self.c(c, "build", "--release"), opens="none"),
                 Action("check", "Check (cargo check)", lambda c: self.c(c, "check"), opens="none"),
                 Action("test", "Test (cargo test)", lambda c: self.c(c, "test"), opens="none"),

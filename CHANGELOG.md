@@ -21,6 +21,10 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   "Arrange / align / sort / رتب" requests tick only positions and sizes.
 - Build EXE of VB6 / GUI Bridge programs: the published exe stopped at start with KeyError: 'DataGridView' (the
   built-in control packages were not bundled).
+- Rust WinForms projects: the toolbar's Run no longer runs `cargo run` (which shows no window - the forms are
+  drawn through the IDE); it runs the project with its forms like F5. Code completion no longer comes back empty
+  while rust-analyzer (or any language server) is still indexing, and the IDE's own helpers (msgbox, set, get,
+  control names) are listed next to the server's items.
 - View menu: choosing a tool window (Properties, Toolbox, ...) always shows it and brings it to the front, like
   Visual Studio (a window covered by another tab was hidden instead); off-screen floating windows come back.
 - Build > Publish: C, C++ and Fortran GUI programs become one small native exe (C ~80 KB) on radforms, a new

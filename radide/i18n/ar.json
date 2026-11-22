@@ -1,6 +1,11 @@
 {
  "strings": {
+  "Auto Hide": "إخفاء تلقائي",
+  "Auto Hide All": "إخفاء الكل تلقائيًا",
+  "Dock": "إرساء",
   "native Win32 exe (MinGW-w64 + radforms)": "ملف exe أصلي لويندوز (MinGW-w64 + radforms)",
+  "native Win32 exe (VB6 -> FreeBASIC)": "ملف exe أصلي لويندوز (VB6 ← FreeBASIC)",
+  "Native exe without Python ({} KB).": "ملف exe أصلي بدون بايثون ({} ك.ب).",
   "Native exe: {} KB ({} bytes) - no Python, no extra DLLs": "ملف exe أصلي: {} ك.ب ({} بايت) - بدون بايثون وبدون مكتبات DLL إضافية",
   "Horizontal Spacing": "التباعد الأفقي",
   "Vertical Spacing": "التباعد الرأسي",
@@ -6886,7 +6891,8 @@
   "Small - needs the .NET Desktop Runtime": "صغير - يحتاج .NET Desktop Runtime",
   "Tiny - for the .NET Framework 4.8 of Windows": "صغير جدًا - يعمل على .NET Framework 4.8 الموجود في ويندوز",
   "How a C# program is published by the native build (no Python inside)": "طريقة نشر برنامج C# بالبناء الأصلي (بدون بايثون بداخله)",
-  "C# program:": "برنامج C#:"
+  "C# program:": "برنامج C#:",
+  "Run (with forms)": "تشغيل (مع الفورمز)"
  },
  "patterns": {
   "Faults read: {}": "الأعطال المقروءة: {}",
