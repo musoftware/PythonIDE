@@ -829,7 +829,7 @@ class MobileFeature(QObject):
     # ---------------------------------------------------------------- wrapping the main window
     def _wrap(self):
         win = self.win
-        orig_run, orig_save = win.run_project, win.save_all
+        orig_run = win.run_project
         orig_update = win._update_actions
 
         def run_project(debug: bool = True):
@@ -839,16 +839,8 @@ class MobileFeature(QObject):
                 self._write_files()
             return orig_run(debug)
 
-        def save_all():
-            before = designer_state(win) if is_flutter(win) else None
-            ok = orig_save()
-            if ok and is_mobile(win):
-                self._write_files()
-                if before is not None and designer_state(win) != before:
-                    self.hot_restart()          # initial values of controls changed: State must be rebuilt
-                else:
-                    self.hot_reload(manual=False)
-            return ok
+        # after every successful save: project files + hot reload (radide/extension_points.py)
+        win.extension_points.add_save_listener(self._after_save, "mobile", before=self._before_save)
 
         def update_actions():
             orig_update()
@@ -857,8 +849,19 @@ class MobileFeature(QObject):
             except Exception:  # noqa: BLE001 - never break the IDE
                 pass
         win.run_project = run_project
-        win.save_all = save_all
         win._update_actions = update_actions
+
+    def _before_save(self) -> None:
+        self._designer_before = designer_state(self.win) if is_flutter(self.win) else None
+
+    def _after_save(self, ok: bool) -> None:
+        before, self._designer_before = getattr(self, "_designer_before", None), None
+        if ok and is_mobile(self.win):
+            self._write_files()
+            if before is not None and designer_state(self.win) != before:
+                self.hot_restart()          # initial values of controls changed: State must be rebuilt
+            else:
+                self.hot_reload(manual=False)
 
     def _write_files(self):
         proj = self.win.project
