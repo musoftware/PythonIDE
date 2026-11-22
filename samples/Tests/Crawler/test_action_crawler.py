@@ -49,6 +49,7 @@ sys.path.insert(0, str(HERE))
 import crawl_common as C  # noqa: E402
 
 FREEZE = 8.0          # seconds the UI thread may be blocked by one action before it counts as unresponsive
+# "slow" = still busy in a nested event loop (the UI responds) when the time limit ends: reported, not a failure
 BAD = ("exception", "hang", "crash", "modal-left", "unresponsive")
 
 # (regex on "path > text", reason) - matched case-insensitively against the full label
@@ -71,6 +72,8 @@ SKIP_RULES = [
     (r"shell integration|file association|register .*(explorer|context menu)|unregister", "changes Windows settings"),
     (r"sign in|log ?in to|sign out|live share|start collaboration|share session", "signs in to an online service"),
     (r"report (a )?(bug|issue)|send feedback", "opens the internet"),
+    (r"start local (postgresql|mariadb|mysql|sql server)", "initializes / starts a database server in the user's "
+     "data folder (minutes; outside the sandbox)"),
 ]
 SKIP_RE = [(re.compile(p, re.I), why) for p, why in SKIP_RULES]
 
@@ -247,7 +250,7 @@ class Worker:
                 continue
             if isinstance(wd, QLineEdit) and isinstance(wd.parentWidget(), (QComboBox, QAbstractSpinBox)):
                 continue
-            if type(wd).__name__ == "QScrollBar":
+            if type(wd).__name__ in ("QScrollBar", "QHeaderView"):     # parts of a scroll area / item view
                 continue                                  # the editor inside a combo / spin box
             name = wd.accessibleName().strip()
             if not name and isinstance(wd, QAbstractButton):
@@ -387,7 +390,7 @@ class Worker:
             el = time.time() - self.cur_start
             if el > limit:
                 blocked = time.time() - self.beat > 2.0
-                msg = {"key": cur["key"], "result": "hang",
+                msg = {"key": cur["key"], "result": "hang" if blocked else "slow",
                        "error": ("event loop blocked" if blocked else "still running in a nested event loop")
                        + f" after {el:.0f}s", "time": round(el, 2)}
                 try:
@@ -449,6 +452,11 @@ class Worker:
     def restore(self):
         w = self.w
         notes = []
+        if os.environ.get("RADIDE_CRAWL_BUILTIN_EDITOR") == "1":   # an action may reset the settings
+            try:
+                w.settings.setValue("editor/engine", "builtin")
+            except Exception:  # noqa: BLE001
+                pass
         try:
             if not w.isVisible():
                 notes.append("main window was hidden")
@@ -502,7 +510,13 @@ class Worker:
             fresh = C._menu_entries(menus, e["path"], "context")
             for f in fresh:
                 f["key"] = C.entry_key(f)
-            target = self.find_entry(e, fresh) or e
+            target = self.find_entry(e, fresh)
+            if target is None:                       # the widget behind the menu was re-created: find it again
+                try:
+                    target = self.find_entry(e, [dict(f, key=C.entry_key(f)) for f in C.context_entries(w)])
+                except Exception:  # noqa: BLE001
+                    target = None
+            target = target or e
         act, btn, cmd = target.get("_action"), target.get("_button"), target.get("_command")
         try:
             (act or btn).objectName() if (act or btn) is not None else None
@@ -899,7 +913,8 @@ def write_report(out: Path, results: list, jobs: list, started: float) -> dict:
     for j in jobs:
         lines.append(f"| {j['context']} / {j['mode']} | {j['scope']} | {j['harvested']} | {j['restarts']}"
                      f"{' (' + j['error'] + ')' if j.get('error') else ''} |")
-    order = {"crash": 0, "hang": 1, "exception": 2, "modal-left": 3, "unresponsive": 4, "ok": 5, "skipped": 6,
+    order = {"crash": 0, "hang": 1, "exception": 2, "modal-left": 3, "unresponsive": 4, "harness-error": 4.5,
+             "slow": 4.8, "ok": 5, "skipped": 6,
              "disabled": 7, "stale": 8}
     lines += ["", "| Action | Context | Result | Dialog | Time (s) | Error |", "|---|---|---|---|---|---|"]
 
@@ -914,8 +929,9 @@ def write_report(out: Path, results: list, jobs: list, started: float) -> dict:
     a11y = {}
     for r in results:
         for d in r.get("dialogs", []) or []:
-            if d.get("a11y_missing"):
-                a11y.setdefault(f"{d['title']} [{d['class']}]", set()).update(d["a11y_missing"])
+            miss = [m for m in d.get("a11y_missing") or [] if not m.startswith("QHeaderView")]
+            if miss:
+                a11y.setdefault(f"{d['title']} [{d['class']}]", set()).update(miss)
     if a11y:
         lines += ["", "## Dialogs with interactive controls that have no accessible name", ""]
         for k, v in sorted(a11y.items()):
@@ -979,13 +995,16 @@ def main() -> int:
     results: list = []
     jobs: list = []
     seen: set = set()
-    clear_test_org()
+    full_run = not (a.only or a.limit)       # debugging runs leave the org alone (a full crawl may be running)
+    if full_run:
+        clear_test_org()
     for ctx, mode, scope in plan:
         say(f"=== {ctx} / {mode} ({scope})")
         jobs.append(run_job(ctx, mode, scope, a, out, seen, results, jobs, started))
         write_report(out, results, jobs, started)
     counts = write_report(out, results, jobs, started)
-    clear_test_org()
+    if full_run:
+        clear_test_org()
     bad = sum(counts.get(k, 0) for k in BAD)
     for r in results:
         if r["result"] in BAD:

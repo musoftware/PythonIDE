@@ -11,7 +11,7 @@ and everything it starts run on a separate hidden Win32 desktop, the IDE itself 
 | `radcli.py` | keep one IDE running and send commands by hand (writing new journeys) |
 | `e2e_common.py` | portable copy of the build, IDE start, the per-language "hello app" flow, native / installer steps |
 | `run_e2e.py` | the runner + J1 / J2 |
-| `journeys_more.py` | J3 existing projects, J5 debugger, J7 Arabic / dark theme, J8 designer under load |
+| `journeys_more.py` | J3 existing projects, J5 debugger, J7 Arabic / dark theme, J8 designer under load, J10 two IDE processes at once |
 | `journey_claude.py` | J4 Claude Code extension (cached .vsix, fake CLI; no real conversation) |
 | `journey_install.py` | J6 installer: per-user install, Check for Updates -> Update Now, Install Another Version, setup while the IDE runs, uninstall |
 | `journey_fullapp.py` | J9 "Customer Manager": a complete 3-form Python Tk app with menu, status bar, SQLite, validation, search, CSV export, settings; run, debug, Error List, publish, install, uninstall |

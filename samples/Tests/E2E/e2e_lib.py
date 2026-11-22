@@ -571,6 +571,17 @@ class Journey:
         line = f"{rec['status']} {name}" + (f"  [{rec['detail'][:900]}]" if rec["detail"] else "")
         print(line, flush=True)
 
+    def selected(self, name: str | None = None) -> bool:
+        """False when E2E_ONLY (comma separated step names) is set and does not list this step."""
+        only = [s.strip() for s in os.environ.get("E2E_ONLY", "").split(",") if s.strip()]
+        name = name or (self._cur or {}).get("step", "")
+        return not only or name in only
+
+    def gate(self) -> None:
+        """First line of a step: SKIP it when E2E_ONLY does not select it (re-running one step of a journey)."""
+        if not self.selected():
+            raise Skip("not selected (E2E_ONLY)")
+
     def note(self, text: str) -> None:
         """Add text to the current step's detail (shown for PASS too)."""
         if self._cur is not None:

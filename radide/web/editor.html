@@ -152,7 +152,13 @@ require(['vs/editor/editor.main'], function () {
       const origReg = monaco.languages.registerCompletionItemProvider;
       monaco.languages.registerCompletionItemProvider = function (lang, prov) {
         (emmetProviders[lang] = emmetProviders[lang] || []).push(prov);
-        return origReg.call(monaco.languages, lang, prov);
+        // emmet-monaco reads Monaco's private tokenizer state, which is null until the model's background
+        // tokenizer exists (right after setValue / a new model): it threw a TypeError into the console on the
+        // first suggestion request - no Emmet item for that request instead
+        const safe = Object.assign({}, prov, { provideCompletionItems: function () {
+          try { return prov.provideCompletionItems.apply(prov, arguments); } catch (e) { return undefined; }
+        } });
+        return origReg.call(monaco.languages, lang, safe);
       };
       try {
         emmetMonaco.emmetHTML(monaco, ['html', 'php']);

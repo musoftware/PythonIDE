@@ -350,9 +350,7 @@ def main() -> int:
         data = {c: json.loads((scratch / f"inv-{c}.json").read_text(encoding="utf-8")) for c in contexts
                 if (scratch / f"inv-{c}.json").exists()}
     else:
-        C.clear_test_org()
-        data = run_workers(contexts, modes, scratch, a.timeout)
-        C.clear_test_org()
+        data = run_workers(contexts, modes, scratch, a.timeout)     # each worker clears its own settings
     inv = merge(data)
     inv["summary"] = summary(inv)
     OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -58,7 +58,8 @@ def portable_copy(env: Env, fresh: bool = False) -> Path:
 
 # message boxes a user simply confirms (the journeys check their effect, not the box)
 AUTO_RULES = [{"match": "save changes to", "button": "Save"},
-              {"match": "publish succeeded", "button": "Close"}]
+              {"match": "publish succeeded", "button": "Close"},
+              {"match": "publish failed", "button": "OK"}]     # the step already failed: do not block the next
 
 
 def launch(env: Env, name: str, extra_env: dict | None = None, exe=None, offscreen: bool = True) -> IDE:
@@ -155,7 +156,7 @@ def window_texts(ide: IDE, hwnd: int) -> list[str]:
     return [k["text"] for k in find_kids(ide, hwnd)] + [ide.call("win32_text", hwnd=hwnd)["text"]]
 
 
-def drive_hello(ide: IDE, rep: Report, w: dict, value: str, label: str) -> str:
+def drive_hello(ide: IDE, rep: Report, w: dict, value: str, label: str, breakpoint: bool = False) -> str:
     """Type *value* into the program's first text box, click its first button; *label* = expected label text."""
     hwnd = w["hwnd"]
     kids = find_kids(ide, hwnd)
@@ -165,12 +166,13 @@ def drive_hello(ide: IDE, rep: Report, w: dict, value: str, label: str) -> str:
         ide.call("win32_click", hwnd=e)
         ide.call("win32_key", hwnd=e, keys="Home, Shift+End, Delete")
         ide.call("win32_type", hwnd=e, value=value)
-        ide.call("win32_click", hwnd=bts[0]["hwnd"])
+        ide.call("win32_click", hwnd=bts[0]["hwnd"], post_release=breakpoint)   # the handler may stop the program
     else:                                    # one HWND (Qt, owner-drawn): click by the designer coordinates
         r = w["rect"]
         ide.call("win32_click", hwnd=hwnd, x=24 + 8 + 37, y=24 + 31 + 11)
     time.sleep(1.0)
-    rep.shot("program after click", hwnd=hwnd)
+    if not breakpoint:                  # a program stopped at a breakpoint cannot paint (PrintWindow would wait)
+        rep.shot("program after click", hwnd=hwnd)
     return f"{len(eds)} edits, {len(bts)} buttons"
 
 
@@ -209,7 +211,7 @@ def published_exe_from_output(text: str) -> Path | None:
 
 def hello_journey(env: Env, ide: IDE, rep: Report, L: Lang, root: Path) -> None:
     """The whole user flow for one desktop language (steps are reported one by one)."""
-    name = "E2E" + re.sub(r"\W", "", L.title)
+    name = "E2E" + re.sub(r"\W", "", L.title.replace("+", "p").replace("#", "Sharp"))   # C++ != C
     title = f"E2E {L.title}"
     st: dict = {}
     missing = [t for t in L.needs if not have_tool(t)]

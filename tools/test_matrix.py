@@ -61,11 +61,11 @@ STR_RE = re.compile(r"""(?:[rRbBuUfF]{0,2})("(?:[^"\\\n]|\\.){1,200}"|'(?:[^'\\\
 
 
 class Corpus:
-    def __init__(self):
+    def __init__(self, exclude: tuple[str, ...] = ()):
         self.files: dict[str, dict] = {}
         for p in sorted(TESTS.rglob("*.py")):
             rel = p.relative_to(TESTS)
-            if SKIP_DIRS & set(rel.parts[:-1]):
+            if SKIP_DIRS & set(rel.parts[:-1]) or any(rel.as_posix().startswith(x) for x in exclude):
                 continue
             try:
                 text = p.read_text(encoding="utf-8", errors="replace")
@@ -172,10 +172,10 @@ def load_crawl(path: Path | None) -> dict[str, str]:
     return {}
 
 
-def build(crawl_path: Path | None) -> dict:
+def build(crawl_path: Path | None, exclude: tuple[str, ...] = (), use_crawl: bool = True) -> dict:
     inv = json.loads((DOCS / "inventory.json").read_text(encoding="utf-8"))
-    cor = Corpus()
-    crawl = load_crawl(crawl_path)
+    cor = Corpus(exclude)
+    crawl = load_crawl(crawl_path) if use_crawl else {}
     n_ctx = len(inv.get("contexts", {}))
     rows = []
     for e in inv["entries"]:
@@ -294,7 +294,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--crawl", default="", help="crawl_results.json of the action crawler")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--baseline", action="store_true",
+                    help="only print the totals without samples/Tests/Coverage and without the crawler (no files written)")
     a = ap.parse_args()
+    if a.baseline:
+        b = build(None, exclude=("Coverage/",), use_crawl=False)
+        print("baseline (no Coverage tests, no crawler):", json.dumps(b["totals"]), f"({len(b['rows'])} items)")
+        return 0
     m = build(Path(a.crawl) if a.crawl else None)
     (DOCS / "test_matrix.json").write_text(json.dumps(m, indent=0, ensure_ascii=False), encoding="utf-8")
     write_md(m, DOCS / "TEST_MATRIX.md")

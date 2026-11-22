@@ -87,6 +87,19 @@ srv = None
 
 # ============================================================================ 1. new project
 with j.step("new project"):
+    old = next((j.work / S.NAME).glob("*.radsln"), None) if (j.work / S.NAME).is_dir() else None
+    if not j.selected() and old is not None:     # E2E_ONLY without "new project": reuse the last run's project
+        win.open_project(old)
+        E.pump(1.5)
+        project = win.project
+        folder = Path(project.folder)
+        for hook_ctx in (getattr(S, "CTX", None),):
+            if isinstance(hook_ctx, dict):
+                hook_ctx["folder"] = str(folder)
+        if isinstance(getattr(S, "CTX_FOLDER", None), list):
+            S.CTX_FOLDER[:] = [str(folder)]
+        CTX["folder"] = folder
+        raise E.Skip(f"not selected (E2E_ONLY): reusing {old}")
     shutil.rmtree(j.work / S.NAME, ignore_errors=True)
     shutil.rmtree(j.work / (S.NAME + "Solution"), ignore_errors=True)
     prj = j.new_project(S.LANG, S.TEMPLATE, S.NAME)
@@ -109,6 +122,7 @@ def need_project():
 
 # ============================================================================ 2. code
 with j.step("code"):
+    j.gate()
     need_project()
     files = S.files() if callable(getattr(S, "files", None)) else {}
     written = j.write_files(folder, files)
@@ -133,6 +147,7 @@ def db_rows(sql: str):
 
 
 with j.step("database"):
+    j.gate()
     need_project()
     if not FEATURES.get("db", True) or not getattr(S, "DB_FILE", None):
         raise E.Skip("this stack has no database (static site)")
@@ -173,6 +188,7 @@ HERO = ('<section class="hero" id="hero"><h1 id="hero-title">Welcome to RAD Stor
         '<a class="btn" href="PRODUCTS_URL">Browse products</a></section>')
 
 with j.step("design"):
+    j.gate()
     need_project()
     page = getattr(S, "DESIGN", None)
     if not page:
@@ -217,6 +233,7 @@ with j.step("design"):
 # ============================================================================ 5. run
 B = None
 with j.step("run"):
+    j.gate()
     need_project()
     pre = getattr(S, "before_run", None)
     if callable(pre):
@@ -247,6 +264,7 @@ def need_server():
 
 # ============================================================================ 6. pages
 with j.step("pages"):
+    j.gate()
     need_server()
     r = B.get(ROUTES["home"])
     j.check(r.status == 200, f"home {r.status}")
@@ -265,9 +283,10 @@ with j.step("pages"):
             r = B.get(ROUTES[key])
             j.check(r.status == 200 and want in r.ctype, f"{key} {r.status} {r.ctype}")
             notes.append(f"{key} {r.status} {r.ctype.split(';')[0]}")
-    r = B.get(getattr(S, "MISSING", "/no-such-page-404"))
-    j.check(r.status == 404, f"missing page gives {r.status}")
-    notes.append("missing 404")
+    if getattr(S, "MISSING", "/no-such-page-404"):
+        r = B.get(getattr(S, "MISSING", "/no-such-page-404"))
+        j.check(r.status == 404, f"missing page gives {r.status}")
+        notes.append("missing 404")
     j.note(", ".join(notes))
 
 
@@ -278,6 +297,7 @@ def login(user="admin", password="secret"):
 
 
 with j.step("login"):
+    j.gate()
     need_server()
     if not FEATURES.get("auth", True):
         raise E.Skip(FEATURES.get("auth_skip", "no server-side login in this stack"))
@@ -309,6 +329,7 @@ def find_id(name):
 
 
 with j.step("crud"):
+    j.gate()
     need_server()
     if not FEATURES.get("crud", True):
         raise E.Skip(FEATURES.get("crud_skip", "no server-side CRUD in this stack"))
@@ -337,6 +358,7 @@ with j.step("crud"):
 
 # ============================================================================ 9. API
 with j.step("api"):
+    j.gate()
     need_server()
     if not FEATURES.get("api", True):
         raise E.Skip(FEATURES.get("api_skip", "no JSON API in this stack"))
@@ -350,6 +372,7 @@ with j.step("api"):
 
 # ============================================================================ 10. Arabic RTL
 with j.step("arabic"):
+    j.gate()
     need_server()
     r = B.get(ROUTES["ar"])
     j.check(r.status == 200, f"ar page {r.status}")
@@ -370,6 +393,7 @@ with j.step("arabic"):
 
 # ============================================================================ 11. Preview DOM + devices
 with j.step("preview"):
+    j.gate()
     need_server()
     view = win.web_preview.view
     path = ROUTES.get("products", ROUTES["home"])
@@ -403,6 +427,7 @@ with j.step("preview"):
 
 # ============================================================================ 12. debug
 with j.step("debug"):
+    j.gate()
     need_server()
     dbg = getattr(S, "DEBUG", None)
     if not dbg or not FEATURES.get("debug", True):
@@ -421,6 +446,17 @@ with j.step("debug"):
     E.pump(0.3)
     key = next((k for k, v in win.breakpoints.items() if ln in v), None)
     j.check(key is not None, f"F9 did not register a breakpoint: {win.breakpoints}")
+    trace = []
+    if os.environ.get("E2E_DAP_TRACE") == "1":     # every DAP event of the session(s) -> work/dap_trace.log
+        from radide import dap as _dap
+        _orig = _dap.DapSession._dispatch
+
+        def _traced(self, msg, _orig=_orig):
+            if msg.get("type") == "event" and msg.get("event") not in ("output", "module", "loadedSource"):
+                trace.append(f"{time.time():.2f} {type(self).__name__}@{id(self):x} {msg.get('event')} "
+                             f"{json.dumps(msg.get('body'))[:200]}")
+            return _orig(self, msg)
+        _dap.DapSession._dispatch = _traced
     win.a_run.trigger()                            # F5 = Start Debugging
     tmo = getattr(S, "DEBUG_TIMEOUT", 180)
     ok = E.wait(lambda: getattr(win, "web_server", None) is not None and win.web_server.is_ready()
@@ -451,6 +487,8 @@ with j.step("debug"):
     j.shot(win, "debug_paused")
     j.check(paused, f"the request did not pause at {dbg['file']}:{ln + 1}; output: {j.output_text()[-1200:]}")
     j.check(Path(dbg["file"]).name in loc or not loc, f"paused in {loc}")
+    pre = {"a_run_enabled": win.a_run.isEnabled(), "paused": getattr(sess, "paused", None),
+           "same_session": win.session is sess, "stopped_at": win.stopped_at is not None}
     win.a_run.trigger()                            # F5 = Continue
     if preview:
         view = win.web_preview.view
@@ -459,17 +497,27 @@ with j.step("debug"):
         j.check(ok, "the page did not finish its script after Continue")
     else:
         again = []
+        # never th.join() here: the GUI thread must keep running its event loop, or the DAP "continue" request
+        # stays in the QTcpSocket's write buffer (debugpy, js-debug) and the paused request never finishes
         for _ in range(4):           # another request (e.g. the Preview reloading the page) may stop there too
-            th.join(15)
+            E.wait(lambda: not th.is_alive(), 15, 0.1)
             if not th.is_alive():
                 break
             if getattr(sess, "paused", False):
                 again.append(win.callstack.item(0).text() if win.callstack.count() else "?")
                 win.a_run.trigger()
-        th.join(30)
+        E.wait(lambda: not th.is_alive(), 30, 0.1)
         r = box.get("r")
+        if trace:
+            (j.work / "dap_trace.log").write_text(
+                "\n".join(trace) + f"\nsess={type(sess).__name__}@{id(sess):x} win.session="
+                f"{type(win.session).__name__}@{id(win.session):x} stopped_at={win.stopped_at} loc={loc!r}\n",
+                encoding="utf-8")
         j.check(r is not None and r.status == 200,
-                f"request after Continue: {box}; paused={getattr(sess, 'paused', None)}; stopped again at {again}")
+                f"request after Continue: {box}; before F5 {pre}; paused={getattr(sess, 'paused', None)}; "
+                f"stopped again at {again}; "
+                f"server requests: {[(q.get('method'), q.get('path'), q.get('status')) for q in list(getattr(win.web_server, 'requests', []) or [])[-6:]]}; "
+                f"output: {j.output_text()[-700:]}")
         if again:
             j.note(f"stopped {len(again)} more time(s) before the request finished (other requests): {again[:2]}")
     ed.toggle_breakpoint(ln)
@@ -536,6 +584,7 @@ def labels(items):
 
 
 with j.step("intellisense"):
+    j.gate()
     need_project()
     spec = getattr(S, "INTELLI", None)
     if not spec:
@@ -652,6 +701,7 @@ def publish_dialog(kind: str, **fields):
 
 
 with j.step("publish folder"):
+    j.gate()
     need_project()
     shutil.rmtree(PUB, ignore_errors=True)
     pre = getattr(S, "before_publish", None)
@@ -669,6 +719,7 @@ with j.step("publish folder"):
 
 # ============================================================================ 15. publish (FTP)
 with j.step("publish ftp"):
+    j.gate()
     need_project()
     libs = Path(os.environ.get("E2E_PYLIBS") or (j.out.parent / "_pylibs"))
     if not (libs / "pyftpdlib").exists():
@@ -706,6 +757,7 @@ with j.step("publish ftp"):
 
 # ============================================================================ 16. run the published copy
 with j.step("published run"):
+    j.gate()
     need_project()
     if not PUB.exists():
         raise E.Skip("nothing published")

@@ -215,10 +215,16 @@ def j6_install_update(env: C.Env, rep: Report):
                     time.sleep(0.5)
                     rep.shot("install another version", sel={"dialog": d["title"]})
                     ide.call("press", button="Install", dialog=d["title"])
-                    u = ide.wait_dialog(text="0.0.9", timeout=60)
-                    if any("install this version" in b.lower() for b in u["buttons"]):
-                        ide.call("press", button="Install This Version", dialog=u["title"])
-                        u = ide.wait_dialog(text="downloaded and checked", timeout=180)
+
+                    def question():           # an "Install This Version" dialog may come first, then the download
+                        for x in ide.call("dialogs"):
+                            if any("install this version" in b.lower() for b in x["buttons"]):
+                                ide.call("press", button="Install This Version", dialog=x["title"])
+                                return None
+                            if "downloaded and checked" in (x.get("text") or ""):
+                                return x
+                        return None
+                    u = ide.wait_for(question, 300, step=1, desc="'downloaded and checked' question")
                     ide.call("press", button="Yes", dialog=u["title"])
                     ide.close()
                     time.sleep(5)

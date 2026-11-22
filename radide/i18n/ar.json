@@ -7067,7 +7067,15 @@
   "Windows Contrast": "تباين ويندوز",
   "Open the active HTML / PHP page in Split view (design + code) (Ctrl+Shift+Alt+D)": "فتح صفحة HTML / PHP النشطة في العرض المقسوم (تصميم + كود) (Ctrl+Shift+Alt+D)",
   "Events grid": "شبكة الأحداث",
-  "More menus": "قوائم إضافية"
+  "More menus": "قوائم إضافية",
+  "Add Form...": "إضافة نموذج...",
+  "Check for Updates...": "البحث عن تحديثات...",
+  "Check for Updates Automatically": "البحث عن تحديثات تلقائيًا",
+  "Restore Previous Version": "استعادة الإصدار السابق",
+  "Update Now": "تحديث الآن",
+  "Skip This Version": "تخطي هذا الإصدار",
+  "Release Page": "صفحة الإصدار",
+  "Update Available": "يتوفر تحديث"
  },
  "patterns": {
   "{} settings": "{} إعداد",

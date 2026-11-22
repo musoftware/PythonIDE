@@ -27,7 +27,7 @@ from .base import Completion, LanguagePlugin, RunSpec
 
 from ..paths import python_root as _python_root  # noqa: E402
 IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
-CLIENTS = Path(__file__).resolve().parent.parent / "runtimes" / "clients"
+CLIENTS = IDE_ROOT / "radide" / "runtimes" / "clients"   # through IDE_ROOT: a real Python must not see _internal
 
 
 def toolchains_root() -> Path:

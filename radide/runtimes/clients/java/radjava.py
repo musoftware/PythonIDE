@@ -9,7 +9,9 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+# absolute(), not resolve(): in a release build this script is reached through the pyroot junction, and the
+# resolved _internal folder holds extension modules of the IDE's own Python (another version would fail)
+sys.path.insert(0, str(Path(__file__).absolute().parents[4]))
 
 from radide.languages.java_bridge import cli  # noqa: E402
 

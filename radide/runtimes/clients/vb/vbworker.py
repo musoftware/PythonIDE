@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).absolute().parent      # not resolve(): the pyroot junction, never _internal (release build)
 IDE_ROOT = HERE.parent.parent.parent.parent
 sys.path.insert(0, str(HERE.parent / "python"))
 if str(IDE_ROOT) not in sys.path:

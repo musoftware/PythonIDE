@@ -7,7 +7,8 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+# absolute(), not resolve(): reached through the pyroot junction in a release build (never _internal)
+sys.path.insert(0, str(Path(__file__).absolute().parents[4]))
 
 from radide.languages.csharp_bridge import cli  # noqa: E402
 

@@ -516,7 +516,7 @@ def j9_customer_manager(env: C.Env, rep: Report):
         w = C.wait_window(ide, "Customer Manager", timeout=240)
         eds = _kids_sorted(ide, w["hwnd"], "edit")
         _type_into(ide, eds[0]["hwnd"], "Ahmed")
-        ide.call("win32_click", hwnd=_kids_sorted(ide, w["hwnd"], "button")[0]["hwnd"])
+        ide.call("win32_click", hwnd=_kids_sorted(ide, w["hwnd"], "button")[0]["hwnd"], post_release=True)
         d = ide.wait_for(lambda: (lambda s: s if s.get("paused") else None)(ide.call("debug_state")), 60,
                          desc="breakpoint hit")
         rep.shot(P + "debugger paused")

@@ -21,6 +21,9 @@ Journeys
       fake release server, rollback (Install Another Version), setup while an old IDE runs, uninstall
   J7  UI language Arabic <-> English + dark theme (screenshots, leftover English strings)
   J8  designer under load: 400 controls, undo / redo, Auto Hide tool windows, View menu
+  J9  "Customer Manager": a complete 3-form Python Tk app (menu, status bar, SQLite, validation, search, CSV,
+      settings) built in the UI, run, debugged, Error List, published, installed, used, uninstalled
+  J10 two IDE processes of one installation at once (File > New Window)
 Exit code = number of failed steps.
 """
 from __future__ import annotations

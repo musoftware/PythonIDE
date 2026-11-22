@@ -172,7 +172,7 @@ def j5_debugger(env: C.Env, rep: Report):
             ide.call("key", keys="F5", sel="@tabs", async_=True)
             w = C.wait_window(ide, f"DBG {title}", timeout=180)
             st["w"] = w
-            C.drive_hello(ide, rep, w, "Bob", "")
+            C.drive_hello(ide, rep, w, "Bob", "", breakpoint=True)
             d = ide.wait_for(lambda: (lambda s: s if s.get("paused") else None)(ide.call("debug_state")), 60,
                              desc="paused at the breakpoint")
             rep.shot(P + "paused")

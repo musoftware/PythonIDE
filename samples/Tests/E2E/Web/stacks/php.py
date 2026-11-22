@@ -14,6 +14,8 @@ ROUTES = {
 DEBUG = {"file": "products.php", "match": "$rows = db()", "path": "/products.php", "var": "$q"}
 INTELLI = {"file": "products.php", "after": "<?php", "type": "str_rep", "expect": "str_replace",
            "html_file": "index.php", "css_file": "assets/site.css"}
+# php -S answers unknown paths with the docroot index.php (PHP 8.3+: also a missing .php file): no 404 to check
+MISSING = None
 PUBLISH_EXPECT = ["index.php", "products.php", "lib.php", "api/products.php", "assets/site.css", "ar.php"]
 PUBLISH_FORBID = ["data/store.db"]
 

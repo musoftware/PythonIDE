@@ -207,6 +207,8 @@ def _grab(ctx, hwnd: int, path: str):
     x, y, w, hh = _rect(h)
     if w <= 0 or hh <= 0:
         raise AutomationError(f"window {hwnd} has no size")
+    if not responsive(int(hwnd)):        # PrintWindow waits for the window's thread forever (no timeout)
+        raise AutomationError(f"window {hwnd} is not responding (stopped at a breakpoint?): no screenshot")
     wdc = user32.GetWindowDC(h)
     mdc = gdi32.CreateCompatibleDC(wdc)
     bmp = gdi32.CreateCompatibleBitmap(wdc, w, hh)
@@ -233,6 +235,13 @@ def _grab(ctx, hwnd: int, path: str):
     img.save(path)
     blank = len(set(buf.raw[i:i + 4] for i in range(0, min(len(buf.raw), 400000), 4 * 97))) <= 2
     return {"path": path, "size": [w, hh], "printwindow": bool(ok), "blank": blank}
+
+
+def responsive(hwnd: int, timeout_ms: int = 1500) -> bool:
+    """Does the window's thread answer (WM_NULL within timeout_ms)? A debuggee stopped at a breakpoint does not."""
+    res = ctypes.c_size_t()
+    return bool(user32.SendMessageTimeoutW(wintypes.HWND(int(hwnd)), 0, 0, 0, 0x0002, int(timeout_ms),
+                                           ctypes.byref(res)))
 
 
 def _lparam(x: int, y: int) -> int:

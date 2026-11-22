@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 BUILTIN = ("commands_core", "commands_widgets", "commands_ide", "commands_designer", "commands_editor",
-           "commands_win32")
+           "commands_win32", "commands_web")
 SERVER = None
 
 

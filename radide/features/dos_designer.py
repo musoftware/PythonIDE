@@ -30,6 +30,14 @@ def _alive(w) -> bool:
         return False
 
 
+
+def _has_screen(d) -> bool:
+    """A text-mode screen designer (TuiDesigner.screen is a TScreen). Not hasattr(d, "screen"): every QWidget has
+    a screen() METHOD, so other documents (ANSI art ...) passed that test and d.screen.path raised
+    AttributeError (Tools > Retro > Text-Mode > Generate Code / View Code / Build & Run - action crawler)."""
+    s = getattr(d, "screen", None)
+    return s is not None and not callable(s)
+
 class DosDesignerFeature:
     def __init__(self, win):
         self.win = win
@@ -321,14 +329,14 @@ class DosDesignerFeature:
     def generate(self, ask: bool = False) -> None:
         d = self.current()
         from ..retro.design.textmode import project as tp
-        if d is not None and hasattr(d, "screen") and d.is_modified():
+        if d is not None and _has_screen(d) and d.is_modified():
             d.save()
-        path = d.screen.path if d is not None and hasattr(d, "screen") else None
+        path = d.screen.path if d is not None and _has_screen(d) else None
         if self._regenerate(path):
             folder = self.project_folder(path)
             self.win.log(f"[text-mode designer] generated {tp.main_file(folder).name}")
             return
-        if d is None or not hasattr(d, "screen"):
+        if d is None or not _has_screen(d):
             QMessageBox.information(self.win, "Generate Code", "Open a text-mode screen (.tform) first.")
             return
         # a screen outside a forms project: write <name>.<ext> next to it
@@ -379,7 +387,7 @@ class DosDesignerFeature:
     def view_code(self) -> None:
         from ..retro.design.textmode import project as tp
         d = self.current()
-        folder = self.project_folder(d.screen.path if d is not None and hasattr(d, "screen") else None)
+        folder = self.project_folder(d.screen.path if d is not None and _has_screen(d) else None)
         if folder is None:
             QMessageBox.information(self.win, "View Code", "Open a DOS Text-Mode Forms App project first.")
             return
@@ -405,7 +413,7 @@ class DosDesignerFeature:
     # ------------------------------------------------------------ build && run
     def build_run(self) -> None:
         d = self.current()
-        folder = self.project_folder(d.screen.path if d is not None and hasattr(d, "screen") else None)
+        folder = self.project_folder(d.screen.path if d is not None and _has_screen(d) else None)
         if folder is None:
             QMessageBox.information(self.win, "Build && Run", "Open a DOS Text-Mode Forms App project first "
                                                              "(New Project > DOS > DOS Text-Mode Forms App).")
