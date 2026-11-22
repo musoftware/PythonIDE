@@ -54,6 +54,46 @@ def install_dir() -> Path:
     return Path(ide_exe()).resolve().parent if frozen() else resource_root()
 
 
+_PY_ROOT: Path | None = None
+
+
+def python_root() -> Path:
+    """The folder a REAL Python (the user's, another version than the frozen IDE) puts on sys.path to
+    import the radide package: the repository in a source checkout. In a release build NOT _internal - it
+    also holds the frozen IDE's own extension modules (_sqlite3.pyd, _ssl.pyd ... built for its Python),
+    which another Python version would load ("Module use of python312.dll conflicts with this version of
+    Python"). Instead <user data>\\pyroot holds only a junction radide -> _internal\\radide."""
+    global _PY_ROOT
+    if _PY_ROOT is not None:
+        return _PY_ROOT
+    if not frozen():
+        _PY_ROOT = resource_root()
+        return _PY_ROOT
+    target = package_dir()
+    root = user_data_dir() / "pyroot"
+    link = root / "radide"
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        ok = False
+        if os.path.lexists(link):
+            try:
+                ok = os.path.normcase(os.path.realpath(link)) == os.path.normcase(os.path.realpath(target))
+            except OSError:
+                ok = False
+            if not ok:
+                try:
+                    os.rmdir(link)          # a junction: removes the link only, never the target
+                except OSError:
+                    shutil.rmtree(link, ignore_errors=True) if not os.path.islink(link) else os.unlink(link)
+        if not ok:
+            import _winapi
+            _winapi.CreateJunction(str(target), str(link))
+        _PY_ROOT = root if (link / "__init__.py").is_file() else resource_root()
+    except Exception:  # noqa: BLE001 - no junction possible: the old behaviour (works when the versions match)
+        _PY_ROOT = resource_root()
+    return _PY_ROOT
+
+
 def portable() -> bool:
     return frozen() and (install_dir() / PORTABLE_FLAG).is_file()
 

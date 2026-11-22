@@ -101,7 +101,8 @@ class FirmwareAnalysisPlugin(LanguagePlugin):
         return module_command("radide.firmware.analysis", "build", Path(folder))
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
-        root = Path(__file__).resolve().parents[2]
+        from ..paths import python_root
+        root = python_root()
         env = dict(os.environ)
         env["PYTHONPATH"] = str(root) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
         return RunSpec(sys.executable, ["-u", "-m", "radide.firmware.analysis", "build", str(Path(folder))],

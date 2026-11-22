@@ -17,6 +17,7 @@ keyring>=25              # AI keys in the Windows credential store
 pygments>=2.17           # AI chat code colours
 pefile>=2023.2           # File > Import > Program (.exe / .dll)
 capstone>=5.0            # disassembler of the exe importer
+numpy>=1.26              # firmware workbench: map finder / editor, checksums, entropy
 Pillow>=10.0             # icon / image editor, resources
 python-barcode>=0.15     # reports: barcodes
 qrcode>=7.4              # reports: QR codes

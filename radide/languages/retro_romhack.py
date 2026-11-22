@@ -127,7 +127,8 @@ class RomHackPlugin(LanguagePlugin):
         return module_command("radide.retro.rom", "build", Path(folder))
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
-        root = Path(__file__).resolve().parents[2]
+        from ..paths import python_root
+        root = python_root()
         import os
         env = dict(os.environ)
         env["PYTHONPATH"] = str(root) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")

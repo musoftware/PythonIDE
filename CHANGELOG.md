@@ -4,7 +4,25 @@ All notable changes to RAD IDE. Releases are published on GitHub
 (https://github.com/musoftware/PythonIDE/releases) for every tag `vX.Y.Z`; the release notes are the
 section of this file whose heading starts with `## [X.Y.Z]`.
 
-## [0.2.0] - 2026-11-22
+## [0.2.1] - 2026-11-22
+
+### Fixed
+- Running or debugging a project with a Python of another version than the IDE's own (e.g. Python 3.14)
+  failed in the installed IDE with "Module use of python312.dll conflicts with this version of Python": the
+  child Python got the IDE's `_internal` folder (with its compiled modules) on its path. It now imports the
+  IDE's helper package through `%LOCALAPPDATA%\RADIDE\pyroot` (a junction to the package only).
+- The Events tab of the Properties window was empty for VB6 projects in the installed IDE (the event names
+  were read from a module that needs tkinter, which the IDE does not bundle).
+- The firmware workbench (map finder / editor, checksums, entropy) needs numpy: now bundled.
+- Build > Publish never stops because of a broken native builder module.
+- Redesign Form with AI no longer replaces the whole form: the answer is merged into the current form (controls
+  matched by name, properties the AI leaves out are kept) and every kind of change can be ticked - positions
+  and sizes, texts, other properties, new controls; removing controls or changing their type only when ticked.
+  "Arrange / align / sort / رتب" requests tick only positions and sizes.
+- Format > Center in Form moves the selected controls as one group (they were each centred and ended up on
+  top of each other); per container, docked controls stay.
+
+ - 2026-11-22
 
 ### Updating
 - **Help > Check for Updates** now installs the update: it downloads the setup (or the portable zip),

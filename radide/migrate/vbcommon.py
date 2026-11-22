@@ -103,7 +103,7 @@ def strip_suffix(name: str) -> str:
 # ----------------------------------------------------------------------------- events
 # neutral (RAD IDE / WinForms) event names for VB6 events, per neutral control type
 def vb_event_to_neutral(ctype: str, vb_event: str) -> str | None:
-    from ..runtimes.vbrun import VB_EVENT
+    from ..runtimes.vbevents import VB_EVENT
     ev = vb_event.lower()
     if ctype == "Form":
         return {"load": "Load", "activate": "Activated", "deactivate": "Deactivate", "resize": "Resize",

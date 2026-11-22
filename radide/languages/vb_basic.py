@@ -10,7 +10,8 @@ from ..controls import CONTROL_TYPES, FORM_EVENTS, menu_leaves
 from ..model import Form
 from .base import Completion, LanguagePlugin, RunSpec
 
-IDE_ROOT = Path(__file__).resolve().parent.parent.parent
+from ..paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
 
 VB_CLASS = {"Button": "CommandButton", "Label": "Label", "TextBox": "TextBox", "CheckBox": "CheckBox",
             "RadioButton": "OptionButton", "ListBox": "ListBox", "ComboBox": "ComboBox",
@@ -97,7 +98,7 @@ ARGS = {"KeyPress": "KeyAscii As Integer", "KeyDown": "KeyCode As Integer, Shift
 
 
 def _vb_event(ctype, ev):
-    from ..runtimes.vbrun import vb_event_name
+    from ..runtimes.vbevents import vb_event_name
     return vb_event_name(ctype, ev)
 
 

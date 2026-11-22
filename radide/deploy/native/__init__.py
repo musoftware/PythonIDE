@@ -35,7 +35,7 @@ def _modules():
     for name in MODULES:
         try:
             yield importlib.import_module(f"{__name__}.{name}")
-        except ImportError:
+        except Exception:  # noqa: BLE001 - a missing or broken builder must never stop Publish
             continue
 
 

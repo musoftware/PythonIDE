@@ -751,7 +751,7 @@ class VbNetToVb6:
 
 def vbnet_form_to_vb6(cls: VbClass, form_dict: dict, wiring: dict, file: str, notes: Notes) -> tuple[str, dict]:
     """The VB6 code module of a VB.NET form: (text, {vb6 line -> original line})."""
-    from ..runtimes.vbrun import vb_event_name
+    from ..runtimes.vbevents import vb_event_name
     controls = {c["props"]["Name"]: c["type"] for c in form_dict["controls"]}
     conv = VbNetToVb6(controls, cls.name, file, notes, {m.name for m in cls.methods})
     lines: list[tuple[int, str]] = [(0, "Option Explicit"), (0, "")]

@@ -27,7 +27,7 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, QPoint, Qt, QTimer
 from PyQt6.QtGui import QAction, QColor, QFont, QKeySequence, QShortcut, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFrame,
-                             QHBoxLayout, QLabel, QLineEdit, QListWidget, QMenu, QMessageBox, QPlainTextEdit,
+                             QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox, QPlainTextEdit,
                              QPushButton, QTextBrowser, QToolButton, QVBoxLayout)
 
 from .. import ai, theme
@@ -1450,7 +1450,9 @@ def form_prompt(description: str, current_json: str = "") -> tuple[str, str]:
             "separated by ';'. Menu Items are nested objects with Text, Name and optional Items.\n\n"
             f"Example:\n```json\n{json.dumps(FORM_EXAMPLE, ensure_ascii=False)}\n```\n\n")
     if current_json:
-        user += f"The current form (redesign it, keep the names of controls that stay):\n```json\n{current_json}\n```\n\n"
+        user += ("The current form. Change ONLY what the request asks for: keep every control, its type, its Name "
+                 "and all its properties unless the request says otherwise (to arrange / align controls change only "
+                 f"Left, Top, Width, Height):\n```json\n{current_json}\n```\n\n")
     user += f"The form to design:\n{description.strip()}"
     return system, user
 
@@ -1717,6 +1719,19 @@ class GenerateFormDialog(QDialog):
         lay.addLayout(go)
         self.out = QListWidget()
         lay.addWidget(self.out, 1)
+        # Redesign: the AI's form is MERGED into the current one; each kind of change can be (un)ticked
+        self.cat_boxes = {}
+        if replace_form:
+            from PyQt6.QtWidgets import QCheckBox, QGridLayout
+            from ..ai import form_merge as FM
+            grid = QGridLayout()
+            for i, cat in enumerate(FM.CATEGORIES):
+                cb = QCheckBox(FM.CATEGORY_TITLES[cat])
+                cb.setEnabled(False)
+                cb.toggled.connect(self._cats_changed)
+                grid.addWidget(cb, i // 3, i % 3)
+                self.cat_boxes[cat] = cb
+            lay.addLayout(grid)
         self.raw = QPlainTextEdit()
         self.raw.setReadOnly(True)
         self.raw.setFont(QFont("Consolas", 8))
@@ -1786,6 +1801,9 @@ class GenerateFormDialog(QDialog):
             self.status.setText(f"{e}  Try Generate again or describe the form differently.")
             return
         f = self.form
+        if self.replace_form:
+            self._show_plan(warnings)
+            return
         self.out.addItem(f"Form {f.name}: \"{f.props.get('Text')}\"  {f.props['Width']} x {f.props['Height']}")
         for c in f.controls:
             pos = "" if c.ctype.nonvisual else f"  at {c.props['Left']},{c.props['Top']}  " \
@@ -1800,6 +1818,46 @@ class GenerateFormDialog(QDialog):
                             f"{'Apply to Form' if self.replace_form else 'Create Form'}.")
         self.b_ok.setEnabled(bool(f.controls))
 
+    def _accepted(self) -> set:
+        return {c for c, cb in self.cat_boxes.items() if cb.isChecked() and cb.isEnabled()}
+
+    def _show_plan(self, warnings):
+        from ..ai import form_merge as FM
+        doc = self.win._doc(self.replace_form)
+        self._plan = FM.plan(doc.form, self.form)
+        n = FM.counts(self._plan)
+        only_layout = FM.layout_request(self.desc.toPlainText())
+        default = {"layout"} if only_layout else FM.SAFE_DEFAULT
+        for cat, cb in self.cat_boxes.items():
+            cb.blockSignals(True)
+            cb.setText(f"{FM.CATEGORY_TITLES[cat]} ({n[cat]})")
+            cb.setEnabled(n[cat] > 0)
+            cb.setChecked(n[cat] > 0 and cat in default)
+            cb.blockSignals(False)
+        self._cats_changed()
+        for w in warnings:
+            self.out.addItem(f"   note: {w}")
+        theme.role(self.status, "success")
+        msg = ("Only positions and sizes are ticked (the request is about arranging). " if only_layout else "")
+        if n["removed"] or n["retyped"]:
+            msg += (f"The AI left out {n['removed']} control(s) and changed the type of {n['retyped']}: "
+                    "not applied unless you tick them. ")
+        self.status.setText(msg + "Tick what to keep and press Apply to Form (Ctrl+Z undoes it).")
+
+    def _cats_changed(self, *_a):
+        from ..ai import form_merge as FM
+        plan = getattr(self, "_plan", None)
+        if plan is None:
+            return
+        acc = self._accepted()
+        self.out.clear()
+        for cat, line in FM.describe(plan, 200):
+            it = QListWidgetItem(("[x] " if cat in acc else "[ ] ") + line)
+            if cat not in acc:
+                it.setForeground(QColor("#888888"))
+            self.out.addItem(it)
+        self.b_ok.setEnabled(bool(acc))
+
     def _fail(self, msg: str):
         self.job = None
         self.b_gen.setText("Generate")
@@ -1810,8 +1868,12 @@ class GenerateFormDialog(QDialog):
     def create(self):
         if self.form is None:
             return
+        form = self.form
+        if self.replace_form:
+            from ..ai import form_merge as FM
+            form = FM.merge(self.win._doc(self.replace_form).form, self.form, self._accepted())
         try:
-            name = apply_generated_form(self.win, self.form, self.replace_form,
+            name = apply_generated_form(self.win, form, self.replace_form,
                                         self.lang.currentData() if self.lang is not None else None)
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "AI", str(e))

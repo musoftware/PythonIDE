@@ -25,7 +25,8 @@ from ..controls import FORM_EVENTS
 from ..model import Form, Project
 from .base import Completion, LanguagePlugin, RunSpec
 
-IDE_ROOT = Path(__file__).resolve().parent.parent.parent
+from ..paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
 CLIENTS = Path(__file__).resolve().parent.parent / "runtimes" / "clients"
 
 

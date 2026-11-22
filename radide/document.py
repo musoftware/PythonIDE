@@ -365,16 +365,33 @@ class FormDocument(QObject):
         if mode.startswith("center_form"):
             if not sel:
                 return
-            self.checkpoint()
+            # like Visual Studio: the selection moves as ONE group (the spaces between the controls stay);
+            # controls in different containers are centred per container; docked controls do not move
+            groups: dict[str, list] = {}
             for c in sel:
-                parent = self.form.find(c.parent) if c.parent else None
+                if c.props.get("Dock") not in (None, "", "None"):
+                    continue
+                groups.setdefault(c.parent or "", []).append(c)
+            if not groups:
+                return
+            self.checkpoint()
+            for parent_name, items in groups.items():
+                parent = self.form.find(parent_name) if parent_name else None
                 pw = p(parent, "Width") if parent else int(self.form.props["Width"])
                 ph = p(parent, "Height") if parent else int(self.form.props["Height"])
                 if mode == "center_form_h":
-                    c.props["Left"] = (pw - p(c, "Width")) // 2
+                    lo = min(p(c, "Left") for c in items)
+                    hi = max(p(c, "Left") + p(c, "Width") for c in items)
+                    delta = (pw - (hi - lo)) // 2 - lo
+                    key = "Left"
                 else:
-                    c.props["Top"] = (ph - p(c, "Height")) // 2
-                self.controlChanged.emit(c)
+                    lo = min(p(c, "Top") for c in items)
+                    hi = max(p(c, "Top") + p(c, "Height") for c in items)
+                    delta = (ph - (hi - lo)) // 2 - lo
+                    key = "Top"
+                for c in items:
+                    c.props[key] = p(c, key) + delta
+                    self.controlChanged.emit(c)
             self.set_modified()
             return
         if len(sel) < 2:

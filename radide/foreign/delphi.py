@@ -522,7 +522,8 @@ def _plugin_class():
             proj = _PROJECTS.get(os.path.normcase(str(Path(folder).resolve())))
             target = str(proj.native_file) if proj is not None else str(folder)
             env = dict(os.environ)
-            repo = str(Path(__file__).resolve().parents[2])
+            from ..paths import python_root
+            repo = str(python_root())
             env["PYTHONPATH"] = repo + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
             env["PYTHONIOENCODING"] = "utf-8"
             py = sys.executable
@@ -699,7 +700,8 @@ def _proc(win, args: list[str], done=None):
     from PyQt6.QtCore import QProcess, QProcessEnvironment
     proc = QProcess(win)
     env = QProcessEnvironment.systemEnvironment()
-    repo = str(Path(__file__).resolve().parents[2])
+    from ..paths import python_root
+    repo = str(python_root())
     env.insert("PYTHONPATH", repo)
     env.insert("PYTHONIOENCODING", "utf-8")
     proc.setProcessEnvironment(env)

@@ -46,7 +46,8 @@ F5 starts it in DOSBox-X with the settings of project.radproj ("dos": cycles, me
 Do not put games you do not own here.
 """
 SOURCES = {"dos_asm": ("HELLO.ASM", ASM)}
-IDE_ROOT = str(Path(__file__).resolve().parents[2])
+from ..paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = str(_python_root())   # a real Python imports radide from here (not _internal in a release build)
 
 
 class RetroDosPlugin(LanguagePlugin):

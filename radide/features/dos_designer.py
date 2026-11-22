@@ -419,7 +419,8 @@ class DosDesignerFeature:
             QMessageBox.information(self.win, "Build && Run", "The program is still running.")
             return
         import os
-        root = str(Path(__file__).resolve().parents[2])
+        from ..paths import python_root
+        root = str(python_root())
         self.proc = QProcess(self.win)
         env = QProcessEnvironment.systemEnvironment()
         env.insert("PYTHONPATH", root + os.pathsep + env.value("PYTHONPATH", ""))

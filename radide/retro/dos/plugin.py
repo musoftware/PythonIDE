@@ -15,7 +15,8 @@ from pathlib import Path
 from ...languages.base import Completion, LanguagePlugin, RunSpec
 from ...model import Project
 
-IDE_ROOT = Path(__file__).resolve().parents[3]
+from ...paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
 
 
 class DosPluginBase(LanguagePlugin):

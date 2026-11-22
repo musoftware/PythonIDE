@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from pathlib import Path
 
-IDE_ROOT = Path(__file__).resolve().parents[2]
+from ..paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
 
 
 def module_argv(module: str, *args) -> list[str]:

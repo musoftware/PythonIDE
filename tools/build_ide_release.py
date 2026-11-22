@@ -15,7 +15,7 @@ How it is put together
     found by scanning - web/monaco, tutorials, i18n, runtimes, templates, ... - and the .py sources) is copied
     to _internal/radide, so ``Path(__file__).parent`` lookups work unchanged and the helper scripts that the
     IDE runs with a real Python (runtimes, language bridges) exist on disk. docs/ goes to _internal/docs.
-  * Packages only user programs need (pygame, kivy, ursina/panda3d, PySide6, numpy, tkinter, pylsp,
+  * Packages only user programs need (pygame, kivy, ursina/panda3d, PySide6, tkinter, pylsp,
     debugpy, ipykernel, black/ruff, PyInstaller...) are excluded: the frozen IDE runs user projects, language
     servers, debug adapters and kernels with a real Python found at start-up (radide/paths.py).
   * Inno Setup: ISCC from radide/deploy/tools.py (portable copy in %LOCALAPPDATA%\\RADIDE\\tools, a normal
@@ -46,10 +46,11 @@ ICON = PKG / "assets" / "radide.ico"
 ENTRY = REPO / "tools" / "radide_frozen_main.py"
 TOP_FILES = ["LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "CHANGELOG.md"]
 
-# never bundled into the frozen IDE (user programs get them from the real Python)
+# never bundled into the frozen IDE (user programs get them from the real Python); numpy IS bundled: the
+# firmware workbench (map finder / editor, checksums, entropy) uses it inside the IDE
 EXCLUDES = ["tkinter", "_tkinter", "turtle", "turtledemo", "idlelib", "kivy", "kivy_deps", "kivy_garden",
             "ursina", "panda3d", "direct", "simplepbr", "gltf", "pygame", "pymunk", "arcade", "pyglet",
-            "PySide6", "shiboken6", "PyQt5", "PySide2", "numpy", "pandas", "matplotlib", "scipy", "cv2",
+            "PySide6", "shiboken6", "PyQt5", "PySide2", "pandas", "matplotlib", "scipy", "cv2",
             "IPython", "ipykernel", "ipywidgets", "notebook", "jupyterlab", "pylsp", "pylsp_rope", "rope",
             "debugpy", "black", "ruff", "pytest", "_pytest", "PyInstaller", "pyftpdlib", "pypdf", "torch",
             "tensorflow", "sympy", "decompyle3", "uncompyle6", "lib2to3", "test", "unittest.test"]

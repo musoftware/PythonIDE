@@ -26,7 +26,8 @@ from ..model import Project
 from . import tools
 from .config import PublishConfig, resolve
 
-IDE_ROOT = Path(__file__).resolve().parents[2]
+from ..paths import python_root as _python_root  # noqa: E402
+IDE_ROOT = _python_root()   # a real Python imports radide from here (not _internal in a release build)
 
 SKIP_DIRS = {".venv", "venv", "env", "__pycache__", ".git", ".hg", ".svn", ".radide", ".radide_backup", "build",
              "dist", "node_modules", ".dart_tool", "target", "bin", "obj", ".idea", ".vscode", ".pytest_cache"}
