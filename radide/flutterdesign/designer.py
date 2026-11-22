@@ -1,4 +1,4 @@
-﻿"""The Flutter screen designer (FlutterFlow style): widget tree + palette + device canvas + properties inspector.
+"""The Flutter screen designer (FlutterFlow style): widget tree + palette + device canvas + properties inspector.
 
 ``FlutterDesigner(path)`` edits one ``*.fscreen.json`` (docs/FLUTTER_DESIGNER.md). Every edit is a model patch
 (model.py) pushed on a QUndoStack; the canvas shows the real Flutter rendering from the preview host (live.py,
@@ -40,7 +40,7 @@ DEVICE_IDS = list(D.DEVICES) + ["desktop"]
 
 
 def _device_label(name: str) -> str:
-    """A device name of DEVICES in the IDE language ("Small phone" -> "Ù‡Ø§ØªÙ ØµØºÙŠØ±")."""
+    """A device name of DEVICES in the IDE language ("Small phone" -> "هاتف صغير")."""
     try:
         from ..i18n import tr
         return tr(name)
