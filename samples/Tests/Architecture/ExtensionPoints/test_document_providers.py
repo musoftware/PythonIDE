@@ -163,6 +163,31 @@ def _design_provider(win):
                  if type(p).__name__ == "DesignViewDocuments"), None)
 
 
+def _make_tform(path: Path) -> None:
+    from radide.retro.design.textmode.model import new_screen
+    new_screen(path.stem).save(path)
+
+
+def _edit_tform(d) -> None:
+    d.screen.props["title"] = "Edited by the test"
+
+
+def _make_nes(path: Path) -> None:
+    path.write_bytes(b"NES\x1a\x01\x01\x00\x00" + bytes(8) + bytes(16384 + 8192))
+
+
+def _make_blob(path: Path) -> None:
+    path.write_bytes(bytes(range(256)) * 8)
+
+
+def _make_cur(path: Path) -> None:
+    from radide.imaging.document import ImageDocument
+    doc = ImageDocument.new_icon()
+    doc.cursor = True
+    doc.path = path
+    doc.save()
+
+
 # name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
 # file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
@@ -179,6 +204,16 @@ EDITORS = [
     # web page Design View: opened by its own command (a .html file from File > Open is code), saved by Save All
     dict(name="web Design View", feature=_design_provider, file="index.html", make=_make_page,
          open=_open_design_view, cls="radide.web_site.design.DesignView", edit=_edit_page),
+    dict(name="text-mode designer", feature="dos_designer", file="Main.tform", make=_make_tform,
+         cls="radide.retro.design.textmode.designer.TuiDesigner", edit=_edit_tform, module=True),
+    # viewers of binary files: opened (and reused), no Save All part to check (a source ROM is read-only)
+    dict(name="ROM workbench (.nes)", feature="rom_workbench", file="game.nes", make=_make_nes,
+         cls="radide.retro.rom.hexdoc.HexDocument", module=True, readonly=True),
+    dict(name="hex view (unknown binary)", feature=None, file="blob.xyz", make=_make_blob,
+         cls="radide.features.editor_extras.HexEditorView", readonly=True, returns_none=True),
+    # a cursor is an image: the image editor, not the hex view (.cur is binary and not in NOT_HEX_EXT)
+    dict(name="cursor file (.cur)", feature="image_feature", file="arrow.cur", make=_make_cur,
+         cls="radide.imaging.editor.IconEditor", readonly=True),
 ]
 
 # ------------------------------------------------------------------ the IDE
@@ -196,8 +231,8 @@ pump()
 ok("a fresh project has no unsaved changes", not win._any_modified())
 
 for row in EDITORS:
-    name, feat_attr, fname, make, cls_path, edit = (row[k] for k in ("name", "feature", "file", "make",
-                                                                     "cls", "edit"))
+    name, feat_attr, fname, make, cls_path, edit = (row.get(k) for k in ("name", "feature", "file", "make",
+                                                                         "cls", "edit"))
     tree_check = row.get("tree")
     try:
         mod, _, cls_name = cls_path.rpartition(".")
@@ -207,19 +242,26 @@ for row in EDITORS:
         before, before_mtime = path.read_bytes(), path.stat().st_mtime_ns
         opener = row.get("open") or win.open_any_file        # an editor with its own way in (Design View)
         how = "its own command" if row.get("open") else "File > Open"
-        ed = opener(path)
+        got = opener(path)
         pump()
-        ok(f"{name}: {how} opens its editor", isinstance(ed, cls), type(ed))
-        ok(f"{name}: ... as the current tab", win.tabs.currentWidget() is ed)
+        ed = win.tabs.currentWidget()
+        ok(f"{name}: {how} opens its editor as the current tab", isinstance(ed, cls),
+           f"current tab: {type(ed).__name__}")
+        if row.get("returns_none"):            # the hex view's API: opens the tab, returns None
+            ok(f"{name}: ... and returns None (its API)", got is None, type(got))
+        else:
+            ok(f"{name}: ... and returns that editor", got is ed, type(got))
         tabs = win.tabs.count()
         again = opener(path)
         pump()
-        ok(f"{name}: opening it again reuses the tab", again is ed and win.tabs.count() == tabs,
-           (again is ed, tabs, win.tabs.count()))
+        ok(f"{name}: opening it again reuses the tab", win.tabs.currentWidget() is ed and win.tabs.count() == tabs
+           and (again is ed or (again is None and row.get("returns_none"))), (type(again), tabs, win.tabs.count()))
         if row.get("module"):
             via = win.open_module(fname)
             pump()
             ok(f"{name}: opened from Solution Explorer (open_module) in the same tab", via is ed, type(via))
+        if row.get("readonly"):
+            continue
         ok(f"{name}: no unsaved changes before an edit", not win._any_modified())
         edit(ed)
         pump()

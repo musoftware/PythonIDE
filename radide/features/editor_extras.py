@@ -2115,22 +2115,37 @@ def _find_menu(win, name: str):
     return None
 
 
+class HexFallback:
+    """DocumentProvider (radide/extension_points.py, priority FALLBACK): a binary file nobody else opens
+    (File > Open, Solution Explorer) goes to the hex editor. Every file type's own editor is asked first -
+    a .cur cursor is the image editor's. Like before, the hex editor returns None (the tab is opened)."""
+
+    def __init__(self, win):
+        self.win = win
+
+    def can_open(self, path: Path) -> bool:
+        try:
+            return should_open_hex(path)
+        except OSError:
+            return False
+
+    def open_document(self, path: Path):
+        open_hex(self.win, Path(path))
+        return None
+
+    def save_documents(self) -> None:
+        return None
+
+    def has_modified_documents(self) -> bool:
+        return False
+
+
 def _wrap_open(win):
-    """Binary files opened from Solution Explorer / File > Open go to the hex editor."""
+    """win.open_file (web_workspace, installed later) of binary files goes to the hex editor too.
+    TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well."""
     if getattr(win, "_hex_open_wrapped", False):
         return
     win._hex_open_wrapped = True
-    orig_any = win.open_any_file
-
-    def open_any_file(path, *a, **k):
-        try:
-            if should_open_hex(path):
-                open_hex(win, Path(path))
-                return None
-        except OSError:
-            pass
-        return orig_any(path, *a, **k)
-    win.open_any_file = open_any_file
     orig_file = getattr(win, "open_file", None)
     if callable(orig_file):
         def open_file(path, *a, **k):
@@ -2240,6 +2255,8 @@ def install(win) -> None:
             for kid, act in grp:
                 act.setChecked(kid == ext.keymap)
         kmm.aboutToShow.connect(sync)
+    from ..extension_points import FALLBACK
+    win.extension_points.add_document_provider(HexFallback(win), FALLBACK)
     QTimer.singleShot(0, lambda: _wrap_open(win))   # after web_workspace installed win.open_file
 
 

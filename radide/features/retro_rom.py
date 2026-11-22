@@ -67,39 +67,22 @@ class RomFeature:
             pass
 
     # ================================================================== window glue
+    # DocumentProvider (radide/extension_points.py, priority BINARY_VIEWER): ROMs / patches / binaries from
+    # File > Open and Solution Explorer - a file type's own editor (text-mode art .bin ...) is asked first
+    def can_open(self, path: Path) -> bool:
+        return wants_hex(path)
+
+    def open_document(self, path: Path):
+        return self.open_hex(path)
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(d) and d.is_modified() for d in self.docs.values())
+
     def _wrap(self) -> None:
         win = self.win
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
-        orig_open_module = getattr(win, "open_module", None)
-
-        def save_all(*a, **k):
-            self.save_documents()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(self._alive(d) and d.is_modified() for d in self.docs.values()) or orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self._add_tree_nodes()
-            except Exception as e:  # noqa: BLE001 - never break Solution Explorer
-                win.log(f"[rom workbench] {e}")
-            return r
-
-        def open_module(filename, *a, **k):
-            p = Path(win.project.folder) / filename if win.project is not None else Path(filename)
-            if wants_hex(p) and p.is_file():
-                return self.open_hex(p)
-            return orig_open_module(filename, *a, **k)
-
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
-        if callable(orig_open_module):
-            win.open_module = open_module
+        from ..extension_points import BINARY_VIEWER
+        win.extension_points.add_document_provider(self, BINARY_VIEWER)
+        win.extension_points.add_solution_contributor(self._add_tree_nodes, "rom workbench")
         win.open_hex = self.open_hex
         win.rom_workbench = self
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo"), ("a_cut", "cut"), ("a_copy", "copy"),
@@ -113,15 +96,9 @@ class RomFeature:
         QTimer.singleShot(0, self._wrap_open_file)
 
     def _wrap_open_file(self) -> None:
+        """win.open_file (web_workspace) of ROM files goes to the hex editor too.
+        TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well."""
         win = self.win
-        orig_any = win.open_any_file
-        if not getattr(orig_any, "_rad_rom", False):
-            def open_any_file(path, *a, **k):
-                if wants_hex(path):
-                    return self.open_hex(path)
-                return orig_any(path, *a, **k)
-            open_any_file._rad_rom = True
-            win.open_any_file = open_any_file
         orig = getattr(win, "open_file", None)
         if not callable(orig) or getattr(orig, "_rad_rom", False):
             return

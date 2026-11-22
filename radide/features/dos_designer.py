@@ -69,39 +69,25 @@ class DosDesignerFeature:
         m.addAction("Use Current Art as &Splash Screen", lambda: self.use_as_splash(None))
 
     # ------------------------------------------------------------ window wrapping
+    # DocumentProvider (radide/extension_points.py, priority EDITOR): .tform screens and text-mode art are
+    # asked before the ROM workbench / hex view (art .bin files are binary) - no re-wrapping needed for that
+    def can_open(self, path: Path) -> bool:
+        return self.handles(path)
+
+    def open_document(self, path: Path):
+        return self.open(Path(path))
+
+    def has_modified_documents(self) -> bool:
+        return any(d.is_modified() for d in self._docs())
+
     def _wrap(self) -> None:
         win = self.win
-        orig_open_any = win.open_any_file
-        orig_open_module = getattr(win, "open_module", None)
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-
-        def open_any_file(path, *a, **k):
-            if self.handles(path):
-                return self.open(Path(path))
-            return orig_open_any(path, *a, **k)
-
-        def open_module(filename, *a, **k):
-            if win.project is not None and self.handles(Path(win.project.folder) / filename):
-                return self.open(Path(win.project.folder) / filename)
-            return orig_open_module(filename, *a, **k)
-
-        def save_all(*a, **k):
-            self.save_documents()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(d.is_modified() for d in self._docs()) or orig_any_modified(*a, **k)
-
-        win.open_any_file = open_any_file
-        # editor_extras (generic hex view) and retro_rom wrap the openers after this feature is installed (and
-        # retro_rom one event-loop turn later): wrap again, outermost, so .tform / art files reach their editors
+        win.extension_points.add_document_provider(self)
+        # win.open_file (web_workspace) is wrapped by editor_extras / retro_rom one turn later for their hex
+        # views: wrap it again, outermost, so .tform / art files reach their editors there too.
+        # TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well.
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, self._wrap_outer))
-        if orig_open_module is not None:
-            win.open_module = open_module
-        win.save_all = save_all
-        win._any_modified = any_modified
         win.dos_designer = self
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo"), ("a_cut", "cut"), ("a_copy", "copy"),
                          ("a_paste", "paste"), ("a_delete", "delete"), ("a_select_all", "select_all")):
@@ -113,7 +99,7 @@ class DosDesignerFeature:
 
     def _wrap_outer(self) -> None:
         win = self.win
-        for attr in ("open_any_file", "open_file"):
+        for attr in ("open_file",):
             orig = getattr(win, attr, None)
             if not callable(orig) or getattr(orig, "_rad_tui", False):
                 continue
