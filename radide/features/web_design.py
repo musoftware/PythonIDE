@@ -10,6 +10,29 @@ from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QFileDialog, QToolBar
 
 
+class DesignViewDocuments:
+    """DocumentProvider (radide/extension_points.py) of the open Design View tabs: Save All saves them and the
+    closing question asks about them. Pages open in Design View by its own command, never by File > Open
+    (a .html file opened from there is code)."""
+
+    def __init__(self, win):
+        self.win = win
+
+    def can_open(self, path: Path) -> bool:
+        return False
+
+    def open_document(self, path: Path):
+        return None
+
+    def save_documents(self) -> None:
+        from ..web_site import design
+        design.save_design_views(self.win)
+
+    def has_modified_documents(self) -> bool:
+        from ..web_site import design
+        return any(dv.isModified() for dv in design.design_views(self.win))
+
+
 def _active_page(win) -> Path | None:
     """Path of the HTML/PHP file shown by the current code tab (None for other tabs)."""
     from ..web_site.design import DesignView, is_designable
@@ -106,13 +129,4 @@ def install(win) -> None:
 
     # Save All also saves the design views; closing the project asks about them
     win.a_save.triggered.connect(lambda: design.save_design_views(win))
-    orig_any, orig_save_all = win._any_modified, win.save_all
-
-    def any_modified():
-        return orig_any() or any(dv.isModified() for dv in design.design_views(win))
-
-    def save_all():
-        design.save_design_views(win)
-        return orig_save_all()
-    win._any_modified = any_modified
-    win.save_all = save_all
+    win.extension_points.add_document_provider(DesignViewDocuments(win))

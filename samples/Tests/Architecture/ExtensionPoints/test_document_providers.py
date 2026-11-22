@@ -128,6 +128,41 @@ def _edit_scene(ed) -> None:
     ed.change("Resize", lambda: setattr(ed.scene, "width", ed.scene.width + 32))
 
 
+def _make_scene3d(path: Path) -> None:
+    from radide.games3d.model import default_scene
+    default_scene(path.stem).save(path)
+
+
+def _edit_scene3d(ed) -> None:
+    ed.scene.sky = "#102030"
+    ed.record()
+
+
+def _make_page(path: Path) -> None:
+    path.write_text("<!DOCTYPE html>\n<html><head><title>T</title></head><body><h1>Hello</h1></body></html>\n",
+                    encoding="utf-8")
+
+
+def _open_design_view(path: Path):
+    from radide.web_site import design
+    dv = design.open_design_view(win, path)
+    import time
+    t0 = time.time()                      # the page is in the browser engine: let it load before editing
+    while time.time() - t0 < 20 and not getattr(dv, "_ready", True):
+        pump()
+    pump(20)
+    return dv
+
+
+def _edit_page(dv) -> None:
+    dv._set_modified(True)
+
+
+def _design_provider(win):
+    return next((p for p in win.extension_points.document_providers()
+                 if type(p).__name__ == "DesignViewDocuments"), None)
+
+
 # name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
 # file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
@@ -139,6 +174,11 @@ EDITORS = [
     # (its Solution Explorer scenes are shown for game projects only: not this Python Tk project)
     dict(name="game scene designer", feature="game_designer", file="Level1.scene", make=_make_scene,
          cls="radide.games.scene_editor.SceneEditor", edit=_edit_scene, module=True),
+    dict(name="3D scene editor", feature="scenes3d", file="World.scene3d", make=_make_scene3d,
+         cls="radide.games3d.editor.Scene3DEditor", edit=_edit_scene3d, module=True),
+    # web page Design View: opened by its own command (a .html file from File > Open is code), saved by Save All
+    dict(name="web Design View", feature=_design_provider, file="index.html", make=_make_page,
+         open=_open_design_view, cls="radide.web_site.design.DesignView", edit=_edit_page),
 ]
 
 # ------------------------------------------------------------------ the IDE
@@ -164,13 +204,15 @@ for row in EDITORS:
         cls = getattr(__import__(mod, fromlist=[cls_name]), cls_name)
         path = proj / fname
         make(path)
-        before = path.read_bytes()
-        ed = win.open_any_file(path)
+        before, before_mtime = path.read_bytes(), path.stat().st_mtime_ns
+        opener = row.get("open") or win.open_any_file        # an editor with its own way in (Design View)
+        how = "its own command" if row.get("open") else "File > Open"
+        ed = opener(path)
         pump()
-        ok(f"{name}: File > Open opens its editor", isinstance(ed, cls), type(ed))
+        ok(f"{name}: {how} opens its editor", isinstance(ed, cls), type(ed))
         ok(f"{name}: ... as the current tab", win.tabs.currentWidget() is ed)
         tabs = win.tabs.count()
-        again = win.open_any_file(path)
+        again = opener(path)
         pump()
         ok(f"{name}: opening it again reuses the tab", again is ed and win.tabs.count() == tabs,
            (again is ed, tabs, win.tabs.count()))
@@ -187,7 +229,7 @@ for row in EDITORS:
         saved = win.save_all()
         pump()
         ok(f"{name}: Save All succeeds", saved is True, saved)
-        ok(f"{name}: Save All wrote the file", path.read_bytes() != before)
+        ok(f"{name}: Save All wrote the file", path.read_bytes() != before or path.stat().st_mtime_ns != before_mtime)
         if row.get("after_save"):
             ok(f"{name}: its work after Save All was done", row["after_save"](proj))
         ok(f"{name}: no unsaved changes after Save All", not win._any_modified())
@@ -197,7 +239,7 @@ for row in EDITORS:
             win._fill_solution()
             pump()
             ok(f"{name}: its Solution Explorer nodes are there", tree_check(win))
-        feature = getattr(win, feat_attr, None)
+        feature = feat_attr(win) if callable(feat_attr) else getattr(win, feat_attr, None)
         points = getattr(win, "extension_points", None)
         if points is not None and feature is not None and feature in points.document_providers():
             ok(f"{name}: registered as a document provider", True)
