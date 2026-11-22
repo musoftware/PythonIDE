@@ -21,6 +21,14 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   (Notepad, Calculator, Contacts with a database, charts, games, multi-form apps, web apps, DOS, retro consoles).
 - **Performance**: the forms designer is 10-80x faster on big forms (Undo 5.3 s -> 72 ms, add control 4.6 s ->
   58 ms, tab switch 3.7 s -> 0.2 s, click-select 200 -> 10 ms); IDE start-up 9.3 s -> 4.8 s.
+- **Progress for long operations**: one progress system for the whole IDE - a dialog with status, elapsed time,
+  details and Cancel, and VS-style status-bar tasks (several at once, each cancellable); 35 slow operations use
+  it and 21 of them no longer freeze the window (New Project for web / .NET, debug adapters, Composer, Rails,
+  updates, extension and language-server installs, git network, tests, Godot export, Docker lint ...).
+- **VS Code extensions activate right after the first install** (Claude Code included), no restart.
+- **Tests**: full user journeys on the installed build (desktop, 11 web stacks, Flutter / Expo / Kivy), an action
+  crawler over every menu / toolbar / palette command, and a feature-to-test traceability matrix
+  (docs/features/TEST_MATRIX.md).
 
 ### Fixed
 - Project files: opening and saving without changes keeps the file byte-for-byte (encoding and line endings
@@ -33,6 +41,12 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   helpers are no longer taken for event handlers; Publish of console programs, Cargo projects, assembly, Flutter
   without a windows folder, Godot imports, smaller Python and Ring publishes; FASM debug link; emu8086 / Apollo /
   legacy Fortran runs; code completion waits at most 3 s for a language server; VB `Me.Text`; Ursina / Panda3D.
+- New Project for Flask / Django / FastAPI no longer hangs in the installed IDE; published Python sites no longer
+  include `.venv`; Run and Debug use the same project Python (debugpy installed when missing); the IDE froze
+  switching to the VS Code layout and could crash when background work wrote to the Output window; native
+  Fortran link; the Apollo yaAGC emulator with a 32-bit libwinpthread on PATH; the WebEngine DevTools port is
+  opt-in and no longer leaks to programs you run; portable components folder; `self.` completions list public
+  members first.
 
 ## [0.2.2] - 2026-11-22
 
