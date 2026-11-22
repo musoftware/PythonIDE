@@ -42,32 +42,23 @@ class RetroDesignFeature:
         m.addAction("Open Game Design...", self.open_dialog)
         m.aboutToShow.connect(lambda: self.a_for_project.setEnabled(self.project_system() is not None))
 
+    # DocumentProvider (radide/extension_points.py): File > Open, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        from ..retro.design.game import is_design_file
+        return is_design_file(path)
+
+    def open_document(self, path: Path):
+        return self.open_design(Path(path))
+
+    def save_documents(self) -> None:
+        self.save_all()
+
+    def has_modified_documents(self) -> bool:
+        return any(e.is_modified() for e in self._alive())
+
     def _wrap(self) -> None:
-        win = self.win
-        orig_open_any = getattr(win, "open_any_file", None)
-        orig_save_all = getattr(win, "save_all", None)
-        orig_any_modified = getattr(win, "_any_modified", None)
-
-        def open_any_file(path, *a, **k):
-            from ..retro.design.game import is_design_file
-            if is_design_file(path):
-                return self.open_design(Path(path))
-            return orig_open_any(path, *a, **k) if orig_open_any else None
-
-        def save_all(*a, **k):
-            self.save_all()
-            return orig_save_all(*a, **k) if orig_save_all else None
-
-        def any_modified(*a, **k):
-            return any(e.is_modified() for e in self._alive()) or bool(orig_any_modified and
-                                                                       orig_any_modified(*a, **k))
-        if orig_open_any is not None:
-            win.open_any_file = open_any_file
-        if orig_save_all is not None:
-            win.save_all = save_all
-        if orig_any_modified is not None:
-            win._any_modified = any_modified
-        win.retro_designs = self
+        self.win.extension_points.add_document_provider(self)
+        self.win.retro_designs = self
 
     # ------------------------------------------------------------ documents
     def _alive(self) -> list:
