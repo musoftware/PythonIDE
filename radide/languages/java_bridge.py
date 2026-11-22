@@ -155,7 +155,7 @@ def up_to_date(folder: Path) -> bool:
 
 def build(folder: Path, out=None, force: bool = False) -> int:
     out = out or sys.stdout
-    folder = Path(folder).resolve()
+    folder = Path(os.path.abspath(folder))
     javac = _tool("javac")
     if not javac:
         print("Java: no JDK (javac) was found. Install one (winget install EclipseAdoptium.Temurin.17.JDK) "
@@ -186,7 +186,7 @@ def build(folder: Path, out=None, force: bool = False) -> int:
 
 def java_command(folder: Path, *args: str) -> list[str]:
     return [_tool("java") or "java", "-Dfile.encoding=UTF-8", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC",
-            "-Xshare:auto", "-cp", classpath(Path(folder).resolve()), "RadMain", *args]
+            "-Xshare:auto", "-cp", classpath(Path(os.path.abspath(folder))), "RadMain", *args]
 
 
 # ====================================================================== Maven Central
@@ -441,7 +441,7 @@ def cli(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__, file=sys.stderr)
         return 2
-    cmd, folder = argv[0], Path(argv[1]).resolve()
+    cmd, folder = argv[0], Path(os.path.abspath(argv[1]))
     if cmd == "build":
         return build(folder, sys.stderr if "--quiet" in argv else sys.stdout, force="--force" in argv)
     if cmd == "pkg" and len(argv) >= 3:
@@ -591,13 +591,13 @@ class JavaBridgePlugin(BridgeLanguagePlugin):
         ensure_build_dir(folder)
 
     def build_command(self, folder: Path, project: Project) -> str | None:
-        return f'"{sys.executable}" "{RADJAVA}" build "{Path(folder).resolve()}"'
+        return f'"{sys.executable}" "{RADJAVA}" build "{Path(os.path.abspath(folder))}"'
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
         return java_command(folder)
 
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
-        folder = Path(folder).resolve()
+        folder = Path(os.path.abspath(folder))
         if build(folder, sys.stderr) != 0:
             msg = f"Java worker: compiling {folder.name} failed (see the build output)"
             return [sys.executable, "-c", f"import sys; sys.stderr.write({msg!r} + '\\n'); sys.exit(1)"]

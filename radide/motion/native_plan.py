@@ -259,7 +259,7 @@ def records(form, target: str = "py") -> list[list[str]]:
 
 def notes(form, target: str = "py") -> list[str]:
     """How the native runtime shows what it cannot draw exactly (Error List / build log, never silent)."""
-    out = [msg for _fx, _c, msg in motion_records(form, target)[1]]
+    out = [msg.replace(" on python-tk", " in the native exe") for _fx, _c, msg in motion_records(form, target)[1]]
     for c in form.controls:
         for s, ov in (c.states or {}).items():
             if isinstance(ov, dict) and "Opacity" in ov:

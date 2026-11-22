@@ -501,6 +501,9 @@ class LspClient(QObject):
 
         def done(result):
             items = result.get("items", []) if isinstance(result, dict) else (result or [])
+            # a partial list (csharp-ls, rust-analyzer ... answer "app.Map" with the first N matches): Monaco must
+            # ask again while the user types on, or "app.MapG" never shows MapGet
+            incomplete = bool(isinstance(result, dict) and result.get("isIncomplete")) or len(items) > 500
             out = []
             for it in items[:500]:
                 doc = it.get("documentation", "")
@@ -525,7 +528,8 @@ class LspClient(QObject):
                 out.append({"label": label, "kind": LSP_TO_MONACO.get(it.get("kind", 1), 18),
                             "detail": detail,"documentation": doc, "insertText": ins,
                             "snippet": it.get("insertTextFormat") == 2, "sortText": it.get("sortText"),
-                            "filterText": it.get("filterText"), "range": rng, "additionalTextEdits": extra})
+                            "filterText": it.get("filterText"), "range": rng, "additionalTextEdits": extra,
+                            **({"incomplete": True} if incomplete else {})})
             cb(out)
         self._request("textDocument/completion", self._pos(path, line, col), done)
 

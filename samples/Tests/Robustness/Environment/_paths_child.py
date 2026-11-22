@@ -140,13 +140,22 @@ for lang in langs:
             emit(lang, "publish", False, f"{type(e).__name__}: {e}\n" + "\n".join(log[-25:]), t0)
     if "exe" in steps and exe is not None and exe.is_file():
         t0 = time.time()
-        p = subprocess.Popen([str(exe)], cwd=str(exe.parent), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         try:
-            up = alive_for(p, 5)
-            err = "" if up else (p.stderr.read() or b"").decode("utf-8", "replace")
-            emit(lang, "exe", up, f"exit={p.poll()} {err[-600:]}", t0)
-        finally:
-            kill_tree(p)
+            # a published program in a folder deeper than MAX_PATH: started like the IDE / a shortcut does it,
+            # through the short alias (CreateProcess refuses a longer working directory)
+            run_dir = short_alias(exe.parent, 200)
+            p = subprocess.Popen([str(run_dir / exe.name)], cwd=str(run_dir), stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.PIPE)
+        except OSError:
+            emit(lang, "exe", False, traceback.format_exc(), t0)
+            p = None
+        if p is not None:
+            try:
+                up = alive_for(p, 5)
+                err = "" if up else (p.stderr.read() or b"").decode("utf-8", "replace")
+                emit(lang, "exe", up, f"exit={p.poll()} {err[-600:]}", t0)
+            finally:
+                kill_tree(p)
     if "f5" in steps:
         t0 = time.time()
         try:

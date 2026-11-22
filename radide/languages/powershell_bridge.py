@@ -212,10 +212,10 @@ class PowerShellBridgePlugin(BridgeLanguagePlugin):
         return None             # RadMain.ps1 checks the syntax itself before running
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return ps_command(Path(folder).resolve() / BUILD_DIR / "RadMain.ps1")
+        return ps_command(Path(os.path.abspath(folder)) / BUILD_DIR / "RadMain.ps1")
 
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
-        main = ensure_build_dir(Path(folder).resolve())
+        main = ensure_build_dir(Path(os.path.abspath(folder)))
         return ps_command(main, "-Worker", Path(module_file).stem)
 
     # ------------------------------------------------------------ IntelliSense

@@ -164,6 +164,30 @@ def ansi_safe(path) -> str:
         return s
 
 
+def is_ansi(path) -> bool:
+    s = str(path)
+    if s.isascii() or os.name != "nt":
+        return True
+    try:
+        s.encode("mbcs")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+def ansi_folder(folder) -> Path:
+    """*folder* (an existing folder) under a name every ANSI tool can open: itself, its 8.3 short name, or a
+    junction %LOCALAPPDATA%\\RADIDE\\sp\\<hash> (also shortened) when the volume has no 8.3 names."""
+    folder = Path(folder)
+    if is_ansi(folder):
+        return folder
+    short = Path(ansi_safe(folder))
+    if is_ansi(short):
+        return short
+    link = short_alias(folder, limit=0)
+    return Path(ansi_safe(link))
+
+
 def ansi_env(env=None) -> dict:
     """A copy of *env* (default os.environ) whose TEMP / TMP an ANSI program can use (ansi_safe): gcc writes
     its temporary .s / .o files there and fails with "can't create ...?????.o" otherwise."""

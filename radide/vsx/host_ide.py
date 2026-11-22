@@ -431,7 +431,7 @@ class VsxService(QObject):
             languages = []
         params = {"extensions": [{"id": e.id, "path": str(e.path), "packageJSON": e.package_json} for e in self.extensions],
                   "workspaceFolders": self.folders(), "settings": self.settings(), "storageRoot": self._storage_root(),
-                  "appRoot": str(Path(__file__).resolve().parents[1]), "language": lang, "apiVersion": API_LEVEL,
+                  "appRoot": self._app_root(), "language": lang, "apiVersion": API_LEVEL,
                   "themeKind": kind, "languages": languages, "portable": _portable(),
                   "webviewBase": self.webviews.server.base, "webviewOrigin": self.webviews.server.origin}
         self._synced.clear()
@@ -449,6 +449,42 @@ class VsxService(QObject):
         for ed in list(self._editors):          # documents already open
             self._open_doc(ed)
         return True
+
+    def _app_root(self) -> str:
+        """vscode.env.appRoot. VS Code ships ripgrep at <appRoot>/node_modules/@vscode/ripgrep/bin/rg[.exe] and
+        extensions look for it there (Todo Tree, search extensions): when ripgrep is installed (PATH or a VS Code
+        installation) a small app root in the extensions folder carries a copy; otherwise RAD IDE's folder."""
+        default = str(Path(__file__).resolve().parents[1])
+        try:
+            import shutil as _sh
+            import sys as _sys
+            exe = "rg.exe" if _sys.platform == "win32" else "rg"
+            src = _sh.which("rg")
+            if not src and _sys.platform == "win32":
+                for base in (os.environ.get("LOCALAPPDATA", ""), os.environ.get("ProgramFiles", "")):
+                    for vs in ("Programs/Microsoft VS Code", "Microsoft VS Code"):
+                        c = Path(base) / vs / "resources/app/node_modules/@vscode/ripgrep/bin" / exe
+                        if base and c.is_file():
+                            src = str(c)
+                            break
+            if not src:
+                return default
+            src = str(Path(src).resolve())              # (WinGet's rg is a symbolic link)
+            from .package import vsx_root
+            root = vsx_root() / ".app"
+            dst = root / "node_modules" / "@vscode" / "ripgrep" / "bin" / exe
+            if not dst.is_file() or dst.stat().st_size != Path(src).stat().st_size:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    os.link(src, dst)
+                except OSError:
+                    _sh.copy2(src, dst)
+            (root / "product.json").write_text('{"nameShort": "RAD IDE", "nameLong": "RAD IDE", "applicationName": "radide"}',
+                                               "utf-8")
+            return str(root)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"appRoot: {e}")
+            return default
 
     def _agent_env(self) -> dict:
         """Environment of the extension host - and so of the CLIs extensions start (Claude Code ...): how to

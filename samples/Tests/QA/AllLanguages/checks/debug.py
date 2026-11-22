@@ -52,6 +52,8 @@ EXTRA = {"vb-basic": "qaN = qaN + 1", "python-tk": "qa_n = qa_n + 1", "python-qt
          "rust-bridge": "let _qa_m = _qa_n + 1;", "go-bridge": "qaN = qaN + 1", "fortran-bridge": "qa_n = qa_n + 1",
          "lua-bridge": "qaN = qaN + 1", "ruby-bridge": "qa_n = qa_n + 1", "perl-bridge": "$qaN = $qaN + 1;",
          "dart-bridge": "qaN = qaN + 1;"}
+# the breakpoint goes on this CLICK line (C: line 0 is a declaration without code - the debugger would move it)
+BP_INDEX = {"c-bridge": 1}
 SLOW = ("rust-bridge", "java-bridge", "csharp-bridge", "dart-bridge", "go-bridge", "cpp-bridge", "fortran-bridge",
         "typescript", "c-bridge")
 
@@ -154,14 +156,14 @@ def run(h, r, pl, project, folder) -> None:
         from .ide import editor_for_form
         ed, hline, handler = editor_for_form(h)
         lines = ed.text().split("\n")
-        first = C.CLICK[pl.id][0].strip()[:20]
+        first = C.CLICK[pl.id][BP_INDEX.get(pl.id, 0)].strip()[:20]
         bp = next((i for i in range(hline + 1, min(len(lines), hline + 12)) if first in lines[i]), -1)
         if bp < 0:
             sub[k + "start"] = f"FAIL: handler body not found ({handler})"
             return
         original_text = ed.text()
         if pl.id in EXTRA:
-            after = bp + len(C.CLICK[pl.id])
+            after = bp - BP_INDEX.get(pl.id, 0) + len(C.CLICK[pl.id])
             indent = lines[bp][:len(lines[bp]) - len(lines[bp].lstrip())]
             lines.insert(after, indent + EXTRA[pl.id])
             ed.setText("\n".join(lines))

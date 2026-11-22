@@ -62,7 +62,9 @@ AUTO_RULES = [{"match": "save changes to", "button": "Save"},
 
 
 def launch(env: Env, name: str, extra_env: dict | None = None, exe=None, offscreen: bool = True) -> IDE:
-    e = {"RADIDE_NO_UPDATE_CHECK": "1", "RADIDE_SETTINGS_ORG": "RADIDE-TEST-E2E"}
+    e = {"RADIDE_NO_UPDATE_CHECK": "1"}
+    if env.source:          # a source run would use the user's registry settings; a portable copy keeps its own INI
+        e["RADIDE_SETTINGS_ORG"] = "RADIDE-TEST-E2E"
     if os.environ.get("RADIDE_E2E_LIVE_COMMANDS", "1") != "0":
         # the automation commands of this checkout replace the build's own (radide/automation/__init__.py):
         # harness fixes need no rebuild; the IDE code under test is still the build's

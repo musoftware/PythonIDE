@@ -244,7 +244,12 @@ class DapSession(QObject):
                 return
             here = ((top.get("source") or {}).get("path", ""), top.get("line", 0), len(frames))
             sf = getattr(self, "_step_from", None)
-            if reason == "step" and sf and sf[1] == here and self._step_again < 50:
+            if reason == "step" and sf and sf[0] == "stepOut" and here[0] == sf[1][0] and here[2] >= sf[1][2] \
+                    and self._step_again < 3:      # stopped at the "end" of the method: out once more
+                self._step_again += 1
+                self._request("stepOut", {"threadId": self.thread_id})
+                return
+            if reason == "step" and sf and sf[0] != "stepOut" and sf[1] == here and self._step_again < 50:
                 self._step_again += 1
                 self._request(sf[0], {"threadId": self.thread_id})
                 return
@@ -320,12 +325,15 @@ class DapSession(QObject):
     # adapters that stop at every expression of a line when stepping (Dart): a step that stays on the same line of
     # the same frame steps again, so F10 / F11 move by lines like the other languages
     line_steps = False
+    # adapters whose Step Out stops at the return of the method itself (Ruby's debug gem): step out again
+    step_out_twice = False
 
     def _resume(self, command):
         if self.paused:
             self.paused = False
             last = getattr(self, "_last_stop", None)
-            self._step_from = (command, last) if command in ("next", "stepIn") and self.line_steps and last else None
+            self._step_from = (command, last) if last and (command in ("next", "stepIn") and self.line_steps or
+                                                           command == "stepOut" and self.step_out_twice) else None
             self._step_again = 0
             self._request(command, {"threadId": self.thread_id})
             self.resumed.emit()
@@ -360,7 +368,7 @@ class DapSession(QObject):
 
     def _adapter_hits(self) -> bool:
         """Does the adapter count hit conditions itself? (netcoredbg does not: then this session counts)"""
-        if self.count_hits_here:
+        if self.count_hits_here or self.adapter == "gdb":     # gdb: hitCondition is an ignore count of its own
             return False
         caps = getattr(self, "capabilities", None)
         return caps is None or bool(caps.get("supportsHitConditionalBreakpoints"))

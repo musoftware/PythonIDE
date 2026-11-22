@@ -381,6 +381,27 @@
    ]
   },
   {
+   "path": "Coverage/Edit/test_edit_menu.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Coverage/File/test_file_menu.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
+   "path": "Coverage/Project/test_project_menu.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
    "path": "Coverage/TestView/test_test_view_menu.py",
    "tier": "full",
    "needs": [

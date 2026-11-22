@@ -563,13 +563,13 @@ void main() {
 
   testWidgets('tablet size uses the larger header', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.binding.setSurfaceSize(const Size(800, 1280));
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1280);
     await tester.pumpWidget(const RadMobileApp());
     await settle(tester);
-    final t = tester.widget<Text>(find.text("Today's tasks"));
-    expect(t.style?.fontSize, 34);
-    await tester.binding.setSurfaceSize(const Size(411, 891));
-    await tester.pumpWidget(const RadMobileApp());
+    expect(tester.widget<Text>(find.text("Today's tasks")).style?.fontSize, 34);
+    tester.view.physicalSize = const Size(411, 891);
     await settle(tester);
     expect(tester.widget<Text>(find.text("Today's tasks")).style?.fontSize, 22);
   });

@@ -93,7 +93,7 @@ def for_scen(scen: str) -> list[str]:
 if "long" in scens:
     base = ROOT / "long" / "/".join(f"deep_folder_segment_{i:02d}" for i in range(1, 13))
     base.mkdir(parents=True, exist_ok=True)
-    ok("long: the project folder is deeper than MAX_PATH", len(str(base / "C App" / "Publish")) > 260,
+    ok("long: the project folder is deeper than MAX_PATH", len(str(base / "C App" / "Publish" / "build")) > 260,
        len(str(base)))
     run_child("long", base, for_scen("long"))
 

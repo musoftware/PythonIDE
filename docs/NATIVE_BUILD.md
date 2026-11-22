@@ -87,7 +87,7 @@ files win), so a control library adds its controls without editing the generator
 ### Not translated (falls back to the bridge build, with the reason)
 
 TreeView, ListView, DataGridView, ToolStrip, ActiveX, ReportViewer, mobile controls, user controls and component
-packages (until mapped in a `*.controls.json`), Visual States / storyboards / data bindings, `ScaleMode` other than
+packages (until mapped in a `*.controls.json`), data bindings, `Animate()` from code, `ScaleMode` other than
 Pixel, forms in other languages, references to other projects (RAD Hub).
 
 ## Java (`java_native.py`)
@@ -287,6 +287,20 @@ re-created and the form re-laid out on `WM_DPICHANGED`.
   `#inclib "radforms"` + `Declare Function ... Cdecl`; Java Panama (`Linker.nativeLinker()`, upcall stub for the
   callback) or JNI; Lua / QuickJS / mruby hosts call the C functions from their C glue (or speak the line protocol
   through `rad_command` / `rad_event_line`).
+
+### Animations, visual states and layout variants (every native runtime)
+
+`radide/motion/native_plan.py` turns a form's animations (`motion.expand()`), Blend storyboards, visual states
+and layout sizes (`variants.model.plan()`) into records (`XR X XT K Q V VL VP`, documented in the module). The
+same records are played by `radforms_motion.inc` (radforms: C, C++, Fortran, Rust, Go, Lua, JS), `vbrt_motion.bi`
+(VB6 -> FreeBASIC), `RadMotion` in `RadWinForms.cs` (.NET) and `RadMotion.java` (Swing) with the semantics of the
+IDE's Python runtime: presets with the python-tk fallbacks (fade = colour blend, rotate = wobble, scale = resize),
+8 easings, triggers load / click / hover / timer / after / show / hide / manual, reduced motion, automatic
+MouseOver / Pressed / Focused / Disabled states, `GoToState`, size cascade on resize. Program API:
+`BeginAnimation`, `StopAnimation`, `GoToState`, `ApplySizeVariants`, `CurrentSizes`, `CurrentState`; events
+`<Form>_SizeVariantChanged`, `<Storyboard>_Completed`. `Animate(control, preset)` from code still falls back.
+Parity per feature and target: [features/FEATURE_MATRIX.md](features/FEATURE_MATRIX.md); test:
+`samples/Tests/FeatureMatrix/`.
 
 ### Limits of radforms (today)
 

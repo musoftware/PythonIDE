@@ -288,21 +288,25 @@ def input_click(h: int, x: int, y: int, double: bool = False, right: bool = Fals
     lp = _lparam(x, y)
     down, up, dbl, vk, mk = ((0x0204, 0x0205, 0x0206, 0x02, 2) if right else
                              (WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, 0x01, 1))
+    # the press while attached (the toolkit sees the button down); the release is POSTED after detaching: the
+    # click handler runs then, and if it stops at a breakpoint the debuggee's thread hangs - an attached IDE
+    # thread (shared input queue) or a SendMessage would hang with it
     with attached(h) as a:
         _send(h, WM_MOUSEMOVE, 0, lp)
         a.keys({vk: True})
         _send(h, down, mk, lp)
         _pump(60)
         a.keys({vk: False})
-        _send(h, up, 0, lp)
-        _pump(60)
-        if double:
+    user32.PostMessageW(wintypes.HWND(h), up, 0, lp)
+    _pump(60)
+    if double:
+        with attached(h) as a:
             a.keys({vk: True})
             _send(h, dbl, mk, lp)
             _pump(60)
             a.keys({vk: False})
-            _send(h, up, 0, lp)
-            _pump(60)
+        user32.PostMessageW(wintypes.HWND(h), up, 0, lp)
+        _pump(60)
 
 
 VK = {"return": 0x0D, "enter": 0x0D, "tab": 0x09, "escape": 0x1B, "esc": 0x1B, "back": 0x08, "backspace": 0x08,

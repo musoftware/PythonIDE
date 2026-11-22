@@ -213,21 +213,43 @@ class IDE:
             self._f = None
 
     # ------------------------------------------------------------------ requests
+    timeout = float(os.environ.get("RADIDE_E2E_REQUEST_TIMEOUT", "600"))
+
     def request(self, cmd: str, args: dict | None = None, async_job: bool = False) -> dict:
+        """One request; AutomationError when the IDE does not answer within self.timeout seconds (a hung GUI
+        thread must fail the step, not hang the whole run)."""
+        import threading
         if self._f is None:
             self.connect()
         self._id += 1
         msg = {"id": self._id, "cmd": cmd, "args": args or {}, "token": self.token}
         if async_job:
             msg["async"] = True
-        self._f.write((json.dumps(msg) + "\n").encode("utf-8"))
-        buf = b""
-        while not buf.endswith(b"\n"):
-            chunk = self._f.read(65536)
-            if not chunk:
-                raise AutomationError("the IDE closed the channel")
-            buf += chunk
-        return json.loads(buf.decode("utf-8"))
+        f = self._f
+        box: dict = {}
+
+        def io():
+            try:
+                f.write((json.dumps(msg) + "\n").encode("utf-8"))
+                buf = b""
+                while not buf.endswith(b"\n"):
+                    chunk = f.read(65536)
+                    if not chunk:
+                        raise AutomationError("the IDE closed the channel")
+                    buf += chunk
+                box["reply"] = json.loads(buf.decode("utf-8"))
+            except Exception as e:  # noqa: BLE001
+                box["error"] = e
+        t = threading.Thread(target=io, daemon=True)
+        t.start()
+        t.join(self.timeout)
+        if t.is_alive():
+            self._f = None               # abandon this connection; the next request opens a new one
+            raise AutomationError(f"{cmd}: no answer from the IDE in {self.timeout:.0f}s (GUI thread busy / hung)")
+        if "error" in box:
+            self._f = None
+            raise box["error"]
+        return box["reply"]
 
     def call(self, cmd: str, **args):
         r = self.request(cmd, args)

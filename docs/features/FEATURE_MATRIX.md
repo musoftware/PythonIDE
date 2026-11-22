@@ -77,18 +77,29 @@ python-tk runtime; each one is logged as `Motion: ...` in the build output (and 
 | .NET WinForms | Visual States / storyboards / per-control states fell back; **animations and form-level variants were silently dropped** (published exe without them) | native exe plays all of it, FeatureMatrix 24/24 (C# netfx + .NET 8, PowerShell) |
 | Java Swing | same as .NET (states / storyboards fell back, animations + variants silently dropped) | native exe plays all of it, FeatureMatrix 24/24 |
 
-Counts per target column (rows of the matrix above, 21 features):
+Counts per target column (the 21 feature rows of the matrix above; "default only" before = the feature was
+silently dropped or ignored by the published exe):
 
-| Target | works | works\* | falls back | default only | n.a. / - |
+| Target | works | works\* | falls back | default only | - |
 |---|---|---|---|---|---|
-| radforms before | 11 | 0 | 9 | 1 | 0 |
+| radforms before | 7 | 0 | 12 | 2 | 0 |
 | radforms after | 15 | 2 | 3 | 1 | 0 |
-| VB6 FB before | 10 | 0 | 10 | 1 | 0 |
+| VB6 FB before | 6 | 0 | 12 | 2 | 1 |
 | VB6 FB after | 14 | 2 | 3 | 1 | 1 |
-| .NET before | 11 | 0 | 5 | 5 (silently dropped / default) | 0 |
-| .NET after | 16 | 2 | 3 | 1 | 0 |
-| Java before | 8 | 0 | 6 | 5 | 2 |
+| .NET before | 8 | 0 | 7 | 6 | 0 |
+| .NET after | 15 | 2 | 3 | 1 | 0 |
+| Java before | 4 | 0 | 8 | 7 | 2 |
 | Java after | 12 | 2 | 4 | 1 | 2 |
+
+FeatureMatrix runs (this change): python-tk from source 17/17, inside the frozen IDE 17/17 (0.2.2 build, the
+program run with a real Python as Run does); radforms C 23/23, C++ 23/23, Fortran 23/23, Rust 23/23, Go 23/23,
+Lua 23/23, JS 23/23 (each = check() clean + native kind + 19 runtime checks + 2 reduced-motion checks); VB6 FB
+23/23; .NET C# netfx 24/24, C# .NET 8 24/24, PowerShell 24/24; Java 24/24. Timing-based checks can flake when
+the machine is at 100 % CPU (PrintWindow takes 0.1 - 0.7 s then): re-run before suspecting a runtime.
+
+Frozen-IDE findings: the frozen bundle has no `tkinter`, so when no real Python is installed RADIDE.exe cannot
+stand in for python-tk programs (Run needs a Python with Tk - the IDE's Python search finds one when present);
+`RADIDE.exe` used as Python (`RADIDE_AS_PYTHON=1`) does not exit after an uncaught exception in `-c` code.
 
 ## How it works (one contract, five runtimes)
 

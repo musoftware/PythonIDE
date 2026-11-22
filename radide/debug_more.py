@@ -135,8 +135,10 @@ def make_dap(engine: str, bs):
     """The AttachDap-like object of *engine* for BridgeDebugSession *bs*."""
     cwd, bps = bs.cwd, bs.breakpoints
     if engine == "rdbg":
-        return make_socket_dap()(bs.port, "rdbg", {"request": "attach", "nonstop": True, "localfs": True,
-                                                   "cwd": str(cwd)}, cwd, bps, bs)
+        d = make_socket_dap()(bs.port, "rdbg", {"request": "attach", "nonstop": True, "localfs": True,
+                                                "cwd": str(cwd)}, cwd, bps, bs)
+        d.step_out_twice = True                 # the gem's "finish" stops at the method's own return first
+        return d
     if engine in ("luaagent", "perlagent"):
         ep = _ENDPOINTS.pop(bs.port, None)
         return AgentSession(ep, engine, cwd, bps, bs)
@@ -278,6 +280,15 @@ def make_pses_dap():
         def set_break_on_exception(self, on: bool):
             self.break_on_exception = on
             self._request("setExceptionBreakpoints", {"filters": ["Error"] if on else []})
+
+        def evaluate(self, expr: str):
+            """Immediate: PSES runs a "repl" evaluation as a command in the attached (Debug-Runspace) runspace,
+            which never answers and blocks the next step - evaluate expressions as Watch does."""
+            if not self.paused:
+                return super().evaluate(expr)
+            self._request("evaluate", {"expression": expr, "frameId": self.frame_id, "context": "watch"},
+                          lambda b, m: self.evalResult.emit(b.get("result", "") if m.get("success", True)
+                                                            else m.get("message", "error")))
 
         # PSES changes breakpoints of an attached runspace only while it is stopped, and slowly: a resume sent
         # right after a change would overtake it. Changes made while the program runs apply at its next stop.

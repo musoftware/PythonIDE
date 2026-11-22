@@ -338,11 +338,30 @@ class RustBridgePlugin(BridgeLanguagePlugin):
         m = re.search(r"\b(\w+)\s*\([^()]*$", before)
         return HELPERS.get(m.group(1), "") if m else ""
 
+    def definition(self, code, line, col, path, names=None):
+        """Go to Definition of a GUI Bridge helper (msgbox, set, get ...) or a function of the project's .rs files,
+        while rust-analyzer is still loading the workspace (cargo metadata + sysroot take minutes on a busy PC)."""
+        lines = code.splitlines()
+        text = lines[line] if 0 <= line < len(lines) else ""
+        word = next((m.group() for m in re.finditer(r"\w+", text) if m.start() <= col <= m.end()), "")
+        if not word or not path:
+            return None
+        folder = Path(path).parent
+        rx = re.compile(rf"^\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+{re.escape(word)}\b")
+        for f in [folder / "radgui.rs", Path(path), *sorted(folder.glob("*.rs"))]:
+            try:
+                for i, ln in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines()):
+                    if rx.match(ln):
+                        return str(f), i
+            except OSError:
+                continue
+        return None
+
 
 PLUGIN = RustBridgePlugin()
 
 
 def init_manifest(folder: str | Path) -> None:
     """Create/refresh Cargo.toml (+ generated sources) so `cargo add` works before the first run."""
-    folder = Path(folder).resolve()
+    folder = Path(os.path.abspath(folder))
     PLUGIN.prepare(folder, Project.load(folder))

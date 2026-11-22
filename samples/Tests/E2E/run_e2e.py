@@ -229,6 +229,9 @@ def main(argv=None) -> int:
             rows.append((j, c))
             for k in totals:
                 totals[k] += c[k]
+    import subprocess                         # test settings of source runs / J6 (never the user's RADIDE key)
+    for org in ("RADIDE-TEST-E2E", "RADIDE-TEST-E2E-J6"):
+        subprocess.run(["reg", "delete", rf"HKCU\Software\{org}", "/f"], capture_output=True)
     lines = ["# RAD IDE E2E journeys", "", "| journey | PASS | FAIL | SKIP |", "|---|---|---|---|"]
     lines += [f"| {j} | {c['PASS']} | {c['FAIL']} | {c['SKIP']} |" for j, c in rows]
     lines += [f"| **total** | {totals['PASS']} | {totals['FAIL']} | {totals['SKIP']} |"]

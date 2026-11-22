@@ -169,7 +169,7 @@ def up_to_date(folder: Path) -> bool:
 def build(folder: Path, out=None, force: bool = False) -> int:
     """Build the project if needed; build messages go to *out* (a text stream). Returns the exit code."""
     out = out or sys.stdout
-    folder = Path(folder).resolve()
+    folder = Path(os.path.abspath(folder))
     exe = dotnet()
     if not exe:
         print("C#: the .NET SDK was not found. Install it from https://dotnet.microsoft.com/download "
@@ -212,7 +212,7 @@ def packages(folder: Path, action: str, spec: str = "") -> int:
     if not exe:
         print("NuGet: the .NET SDK (dotnet) was not found.", file=sys.stderr)
         return 1
-    folder = Path(folder).resolve()
+    folder = Path(os.path.abspath(folder))
     proj = ensure_build_dir(folder)
     env = dict(os.environ, DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
     if action == "list":
@@ -380,13 +380,13 @@ class CSharpBridgePlugin(BridgeLanguagePlugin):
         ensure_build_dir(folder)
 
     def build_command(self, folder: Path, project: Project) -> str | None:
-        return f'"{sys.executable}" "{RADCS}" build "{Path(folder).resolve()}"'
+        return f'"{sys.executable}" "{RADCS}" build "{Path(os.path.abspath(folder))}"'
 
     def run_command(self, folder: Path, project: Project) -> list[str]:
-        return [dotnet() or "dotnet", str(program_dll(Path(folder).resolve()))]
+        return [dotnet() or "dotnet", str(program_dll(Path(os.path.abspath(folder))))]
 
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
-        folder = Path(folder).resolve()
+        folder = Path(os.path.abspath(folder))
         if build(folder, sys.stderr) != 0 or not program_dll(folder).exists():
             msg = f"C# worker: building {folder.name} failed (see the build output)"
             return [sys.executable, "-c", f"import sys; sys.stderr.write({msg!r} + '\\n'); sys.exit(1)"]
@@ -423,6 +423,19 @@ class CSharpBridgePlugin(BridgeLanguagePlugin):
                 seen.add(w)
                 out.append(Completion(w, "variable"))
         return out
+
+    def hover(self, code, line, col, path, names=None):
+        """The GUI Bridge helper / control member under the mouse: csharp-ls answers nothing for them while it
+        loads the project (and the editor then asks the plugin)."""
+        lines = code.splitlines()
+        text = lines[line] if 0 <= line < len(lines) else ""
+        for m in re.finditer(r"(?:(\w+)\.)?(\w+)", text):
+            if m.start(2) <= col <= m.end(2):
+                obj, fn = m.group(1), m.group(2)
+                if obj and (obj in (names or {}) or obj == "Me"):
+                    return CONTROL_MEMBERS.get(fn, "")
+                return RAD_HELPERS.get(fn, "")
+        return ""
 
     def calltip(self, code, line, col, path, names=None):
         lines = code.splitlines()

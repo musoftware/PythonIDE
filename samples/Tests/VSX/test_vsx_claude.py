@@ -59,7 +59,7 @@ from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox  # noqa: E402
 
 app = QApplication(sys.argv[:1])
 QCoreApplication.setOrganizationName("RADIDE-TEST-VSX2")
-QCoreApplication.setApplicationName("RADIDE-TEST-VSX2")
+QCoreApplication.setApplicationName("RADIDE-TEST-VSX2-CLAUDE")
 QSettings().clear()
 
 from radide.vsx import agent_context, manager  # noqa: E402

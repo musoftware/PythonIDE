@@ -76,7 +76,7 @@ end = time.monotonic() + 1.2
 while time.monotonic() < end:
     root.update(); tops.append(y(f.btnMove)); time.sleep(0.01)
 check(x(f.btnMove) == 210, "anim click move ends +dx (%s)" % x(f.btnMove))
-check(min(tops) < 55 and y(f.btnMove) == 60, "anim chain bounce after move")
+check(min(tops) < 55 and y(f.btnMove) == 60, "anim chain bounce after move (min %s, end %s)" % (min(tops), y(f.btnMove)))
 before = bg(f.pnlBox)
 f.btnColor.event_generate("<Button-1>"); run(120); mid = bg(f.pnlBox); run(700)
 check(before == "#3399ff" and mid not in ("#3399ff", "#ff7a59") and bg(f.pnlBox) == "#ff7a59",
@@ -114,10 +114,16 @@ def main() -> int:
     (tmp / "Form1_designer.py").write_text(get_plugin("python-tk").generate_designer(form, user), encoding="utf-8")
     (tmp / "child.py").write_text(CHILD.format(folder=str(tmp)), encoding="utf-8")
     fails = 0
+    exe = sys.executable
+    if FROZEN:                  # Run (F5) in the frozen IDE starts the program with a real Python, like the IDE
+        from radide import paths
+        exe = paths.find_python() or sys.executable
+        print(f"frozen IDE: the program runs with {exe}")
     for reduced in ("0", "1"):
         env = dict(os.environ, RADIDE_REDUCED_MOTION=reduced)
-        env.pop("RADIDE_AS_PYTHON", None) if not FROZEN else None
-        r = subprocess.run([sys.executable, str(tmp / "child.py")], env=env, capture_output=True, text=True,
+        if exe != sys.executable:
+            env.pop("RADIDE_AS_PYTHON", None)
+        r = subprocess.run([exe, str(tmp / "child.py")], env=env, capture_output=True, text=True,
                            timeout=120)
         print(r.stdout.strip())
         if r.returncode and "Traceback" in (r.stderr or ""):

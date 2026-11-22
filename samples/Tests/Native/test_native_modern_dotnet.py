@@ -175,14 +175,18 @@ class Driver:
         return self.uia.find(parent, name=name) if parent else None
 
     def invoke(self, control_id: str, name: str) -> bool:
-        el = W.wait(lambda: self.item(control_id, name), 5)
-        if not el:
-            return False
-        pat = el.GetCurrentPattern(self.U.UIA_LegacyIAccessiblePatternId)
-        if not pat:
-            return False
-        pat.QueryInterface(self.U.IUIAutomationLegacyIAccessiblePattern).DoDefaultAction()
-        return True
+        # (a loaded machine: the accessible item can be rebuilt between finding it and invoking it -
+        # UIA_E_ELEMENTNOTAVAILABLE - so find it again and retry for a while)
+        def once():
+            el = self.item(control_id, name)
+            if not el:
+                return False
+            pat = el.GetCurrentPattern(self.U.UIA_LegacyIAccessiblePatternId)
+            if not pat:
+                return False
+            pat.QueryInterface(self.U.IUIAutomationLegacyIAccessiblePattern).DoDefaultAction()
+            return True
+        return bool(W.wait(once, 10))
 
 
 # ---------------------------------------------------------------------- build

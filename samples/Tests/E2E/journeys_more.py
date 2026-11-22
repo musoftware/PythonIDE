@@ -80,12 +80,15 @@ def j3_existing_projects(env: C.Env, rep: Report):
             info = st[key]
             if not info["forms"]:
                 raise Skip("no forms")
-            form = st.get(key + ":moved", (info["forms"][0],))[0]
-            ide.call("open_form", name=form)
-            ctrls = ide.call("designer_controls")["controls"]
-            btn = next((x for x in ctrls if x["type"] in ("Button", "CommandButton")), None)
+            btn = None
+            for form in info["forms"]:                  # the first form with a button (a splash has none)
+                ide.call("open_form", name=form)
+                ctrls = ide.call("designer_controls")["controls"]
+                btn = next((x for x in ctrls if x["type"] in ("Button", "CommandButton")), None)
+                if btn is not None:
+                    break
             if btn is None:
-                raise Skip("no button on the first form")
+                raise Skip("no button on any form")
             rows = ide.call("events_tab", name=btn["name"])
             rep.shot(f"{key} events tab", sel="@properties")
             check(rows and any(r["event"] for r in rows), f"Events tab empty: {rows}")

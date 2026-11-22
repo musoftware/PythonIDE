@@ -625,7 +625,7 @@ class BridgeDebugSession(QObject):
             d.pause_for_bp_changes = True
             d.count_hits_here = True
         elif self.plugin.id == "rust-bridge":   # std's rust_panic exists for debuggers to break on panics
-            d.exception_functions = ("rust_panic",)
+            d.exception_functions = ("rust_panic", "_Unwind_RaiseException")   # (GNU target: panics unwind)
         elif eng == "jdwp":
             d.break_on_caught_user = True
         elif eng == "dart":

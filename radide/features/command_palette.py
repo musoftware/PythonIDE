@@ -258,8 +258,8 @@ def command_items(win) -> list[Item]:
         try:
             if c.visible is not None and not c.visible():
                 continue
-        except Exception:  # noqa: BLE001
-            continue
+        except Exception:  # noqa: BLE001 - a when clause that cannot be evaluated right now: keep it listed
+            pass
         try:
             en = bool(c.enabled()) if c.enabled else True
         except Exception:  # noqa: BLE001

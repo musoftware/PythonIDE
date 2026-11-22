@@ -377,6 +377,14 @@ class StepProcess(QObject):
         if self._cancelled:
             self.finished.emit(1)
             return
+        smoke = self.cwd / "test" / "widget_test.dart"
+        if len(self._cur) > 1 and self._cur[1] == "create" and not getattr(self, "_had_smoke", True)                 and smoke.exists():
+            # flutter create --platforms=... adds its counter-app test (MyApp) to an existing RAD project;
+            # it does not compile against the project and breaks flutter analyze / flutter test
+            try:
+                smoke.unlink()
+            except OSError:
+                pass
         if code != 0:
             if self._cur[-2:] == ["get", "--offline"]:
                 self.steps.insert(0, self._cur[:-1])          # online pub get
@@ -387,6 +395,8 @@ class StepProcess(QObject):
             self.finished.emit(0)
             return
         self._cur = self.steps.pop(0)
+        if len(self._cur) > 1 and self._cur[1] == "create":
+            self._had_smoke = (self.cwd / "test" / "widget_test.dart").exists()
         self.output.emit("> " + " ".join(Path(self._cur[0]).name if i == 0 else a for i, a in enumerate(self._cur))
                          + "\n")
         self.proc = QProcess(self)

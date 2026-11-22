@@ -85,7 +85,7 @@ from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox  # noqa: E402
 
 app = QApplication(sys.argv[:1])
 QCoreApplication.setOrganizationName("RADIDE-TEST-VSX2")
-QCoreApplication.setApplicationName("RADIDE-TEST-VSX2")
+QCoreApplication.setApplicationName("RADIDE-TEST-VSX2-MATRIX")
 QSettings().clear()
 DIALOGS = []
 
@@ -185,6 +185,9 @@ for eid, kind, cmd in MATRIX:
             row["iconThemes"] = str(e)
 
 win.grab().save(str(SCRATCH / "matrix_ide.png"))
+NL = chr(10)
+(SCRATCH / "matrix_output.txt").write_text(NL.join(f"=== {k}{NL}{v[-6000:]}" for k, v in svc.output.texts.items()),
+                                           "utf-8")
 (SCRATCH / "matrix.json").write_text(json.dumps(list(ROWS.values()), indent=1), "utf-8")
 lines = ["| Extension | Version | Activation | Commands registered | Command run | Unsupported |", "|---|---|---|---|---|---|"]
 bad = 0

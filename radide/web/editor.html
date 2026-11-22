@@ -72,7 +72,7 @@ require(['vs/editor/editor.main'], function () {
           if (model !== editor.getModel()) return { suggestions: [] };
           const items = await ask(id => rad.jsComplete(id, pos.lineNumber - 1, pos.column - 1)) || [];
           const w = model.getWordUntilPosition(pos);
-          return { suggestions: items.map(i => {
+          return { incomplete: items.some(i => i.incomplete), suggestions: items.map(i => {
             let range = toRange(i.range, pos, w);
             if (!range.containsPosition(pos) && !(range.getEndPosition().equals(pos))) range = toRange(null, pos, w);
             return { label: i.label, kind: i.kind, detail: i.detail || '',

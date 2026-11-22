@@ -441,7 +441,7 @@ class BridgeRuntime(Runtime):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    folder = Path(argv[0]).resolve()
+    folder = Path(argv[0]).absolute()      # not resolve(): a deep project runs through its short alias
     build = None
     if "--build" in argv:
         build = argv[argv.index("--build") + 1]

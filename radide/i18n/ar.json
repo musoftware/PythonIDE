@@ -7080,7 +7080,7 @@
   "Could not save {}: the path is too long for Windows.": "تعذّر حفظ {}: المسار أطول مما يسمح به Windows.",
   "Could not save {}: {}. The file on disk was not changed.": "تعذّر حفظ {}: {}. لم يتغير الملف الموجود على القرص.",
   "{} is too large to open in the editor ({} MB; the limit is {} MB).": "{} أكبر من أن يُفتح في المحرر ({} ميغابايت؛ الحد الأقصى {} ميغابايت).",
-  "(long path: building through the short alias {} -> {})": "(مسار طويل: البناء عبر الاسم المختصر {} -> {})",
+  "(long / non-ANSI path: building through the short alias {} -> {})": "(مسار طويل: البناء عبر الاسم المختصر {} -> {})",
   "(long path: running through the short alias {})": "(مسار طويل: التشغيل عبر الاسم المختصر {})",
   "Faults read: {}": "الأعطال المقروءة: {}",
   "Pack imported: {}": "تم استيراد الحزمة: {}",

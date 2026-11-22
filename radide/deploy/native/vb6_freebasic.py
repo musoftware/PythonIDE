@@ -230,16 +230,19 @@ def build(folder, project, cfg, work, log):
     gen.mkdir(parents=True, exist_ok=True)
     for bi in RT_DIR.glob("*.bi"):
         shutil.copy2(bi, gen / bi.name)
-    base = re.sub(r"[^\w\-]", "_", cfg.exe_base()) or "app"
+    base = re.sub(r"[^A-Za-z0-9_\-]", "_", cfg.exe_base()).strip("_") or "app"   # fbc / gcc / ld: ASCII names
     main = gen / f"{base}.bas"
     main.write_text(tr.source, encoding="utf-8")
     rc = _resources(folder, cfg, gen, tr.images, log, tr.icon)
     exe = gen / f"{base}.exe"
-    cmd = [fbc, "-s", "gui", "-gen", "gcc", "-O", "2", "-Wc", "-Os", "-x", str(exe), main.name, rc.name]
+    # fbc, its gcc and ld use the ANSI Windows API: an Arabic project folder or user name (on an English
+    # Windows) is passed as 8.3 short names, the output by a relative name (paths.ansi_safe)
+    from ...paths import ansi_env, ansi_safe
+    cmd = [ansi_safe(fbc), "-s", "gui", "-gen", "gcc", "-O", "2", "-Wc", "-Os", "-x", exe.name, main.name, rc.name]
     log("> " + " ".join(f'"{c}"' if " " in str(c) else str(c) for c in cmd))
     try:
-        p = subprocess.run(cmd, cwd=str(gen), capture_output=True, text=True, errors="replace", timeout=600,
-                           creationflags=NO_WINDOW)
+        p = subprocess.run(cmd, cwd=ansi_safe(gen), capture_output=True, text=True, errors="replace", timeout=600,
+                           creationflags=NO_WINDOW, env=ansi_env())
     except (OSError, subprocess.SubprocessError) as e:
         raise NativeUnsupported(f"fbc could not run: {e}") from None
     text = (p.stdout or "") + (p.stderr or "")

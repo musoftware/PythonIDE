@@ -64,8 +64,10 @@ def serve_published(dest, port, php="php", **_):
         code, out = spark(dest, args, php, timeout=300)
         if code != 0:
             return None, f"spark {' '.join(args)} failed on the published copy: {out[-500:]}", None
+    import os
+    env = dict(os.environ, app_baseURL=f"http://127.0.0.1:{port}/")      # the host's own URL (.env app.baseURL)
     return [php, "-S", f"127.0.0.1:{port}", "-t", str(dest / "public"), str(dest / SYSTEM / "rewrite.php")], \
-        str(dest / "public"), None
+        str(dest / "public"), env
 
 
 DB_SQL = """-- RAD Store demo rows (the table comes from the migration)

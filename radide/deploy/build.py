@@ -790,8 +790,22 @@ def short_build_mirror(src: Path, kind: str, skip=FLUTTER_MIRROR_SKIP, log=print
                     os.remove(os.path.join(dirpath, fn))
                 except OSError:
                     pass
+    for dirpath, dirnames, filenames in os.walk(dst, topdown=False):   # folders deleted from the project
+        rel_dir = os.path.relpath(dirpath, dst)
+        if rel_dir == "." or rel_dir.split(os.sep)[0] in skip:
+            continue
+        if not os.path.isdir(os.path.join(src, rel_dir)):
+            try:
+                os.rmdir(dirpath)          # empty now (its files were removed above); a stale windows/ tree of
+            except OSError:                # dirs only would make "flutter build windows" fail
+                pass
     log(f"(long path: building in the short mirror {dst} - {copied} file(s) updated)")
     return dst
+
+
+def _has_windows_runner(folder: Path) -> bool:
+    """windows/ holds a Flutter desktop runner (not just empty folders left by a deleted runner)."""
+    return (Path(folder) / "windows" / "CMakeLists.txt").is_file()
 
 
 def build_flutter(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
@@ -804,18 +818,25 @@ def build_flutter(folder: Path, project: Project, cfg: PublishConfig, work: Path
     if os.name == "nt" and is_long(real):
         # a deep project: build in a short mirror (FTK1011 / CMake path too long); a new windows/ runner made there
         # is copied back so the project keeps it
-        had_runner = (real / "windows").is_dir()
+        had_runner = _has_windows_runner(real)
         folder = short_build_mirror(real, "flutter", log=log)
-        if not (folder / "windows").is_dir():
+        if not _has_windows_runner(folder):
             log("No windows/ folder: adding the Windows desktop runner (flutter create --platforms=windows .)")
             if run([fl, "create", "--platforms=windows", "."], folder, log, shell=fl.lower().endswith(".bat")) != 0:
                 raise BuildError("flutter create --platforms=windows failed")
-        if not had_runner and (folder / "windows").is_dir():
+        if not had_runner and _has_windows_runner(folder):
             shutil.copytree(folder / "windows", real / "windows", dirs_exist_ok=True)
-    if not (folder / "windows").is_dir():      # designer / mobile projects have no Windows runner yet
+    if not _has_windows_runner(folder):         # designer / mobile projects have no Windows runner yet
         log("No windows/ folder: adding the Windows desktop runner (flutter create --platforms=windows .)")
+        smoke = folder / "test" / "widget_test.dart"
+        had_smoke = smoke.exists()
         if run([fl, "create", "--platforms=windows", "."], folder, log, shell=fl.lower().endswith(".bat")) != 0:
             raise BuildError("flutter create --platforms=windows failed")
+        if not had_smoke and smoke.exists():
+            # flutter create adds its counter-app smoke test (MyApp), which does not exist in RAD projects:
+            # flutter analyze / flutter test of the project would fail afterwards
+            smoke.unlink()
+            log("(removed the template test/widget_test.dart that flutter create added - it tests MyApp)")
     if run([fl, "build", "windows", "--release"], folder, log, shell=fl.lower().endswith(".bat")) != 0:
         raise BuildError("flutter build windows failed")
     rel = next((p for p in (folder / "build" / "windows").glob("*/runner/Release") if p.is_dir()), None) \
@@ -930,11 +951,15 @@ BUILDERS = {"native": build_native, "pyinstaller": build_python, "vbrun": build_
 
 
 def build(folder: Path, cfg: PublishConfig, log=print, interpreter: str = "") -> BuildResult:
-    from ..paths import is_long, short_alias
+    from ..paths import ansi_folder, is_ansi, is_long, short_alias
     real = Path(folder).resolve()
     # a project in a deep folder (> 100 characters) builds through a short junction: Windows cannot start a
     # program in a working directory over MAX_PATH and the toolchains fail on long file names (paths.py)
     folder = short_alias(real)
+    if not is_ansi(folder):
+        # an Arabic / Chinese folder name on a Windows whose ANSI code page cannot spell it: MinGW gcc, windres,
+        # fbc and ld cannot open such paths - the build uses the folder's 8.3 name (or a short junction)
+        folder = ansi_folder(folder)
     aliases = [(folder, real)] if folder != real else []
     project = Project.load(folder)
     kind = detect_kind(project, cfg)
@@ -942,13 +967,14 @@ def build(folder: Path, cfg: PublishConfig, log=print, interpreter: str = "") ->
         raise BuildError(f"Unknown build kind: {kind}")
     out = out_root(folder, cfg)
     out.mkdir(parents=True, exist_ok=True)
-    if is_long(out):                    # an output folder of its own in a deep place
-        short = short_alias(out)
+    if is_long(out) or not is_ansi(out):     # an output folder of its own in a deep / non-ANSI place
+        short = short_alias(out) if is_long(out) else out
+        short = short if is_ansi(short) else ansi_folder(short)
         if short != out:
             aliases.append((short, out))
             out = short
     for short, long_ in aliases:
-        log(f"(long path: building through the short alias {short} -> {long_})")
+        log(f"(long / non-ANSI path: building through the short alias {short} -> {long_})")
     work = out / "build"
     net_work = None
     if str(out).startswith("\\\\"):

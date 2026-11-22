@@ -414,6 +414,15 @@ def test_lsp():
         check(f"{pid}: manifest written when the language server starts", wrote and mk(folder).is_file(),
               list(p.name for p in folder.iterdir()))
     check("other languages untouched", prepare_manifest("python", OUT) is False)
+    from radide.languages import get_plugin
+    check("csharp-bridge: plugin hover for MsgBox (while csharp-ls is loading)",
+          "message box" in get_plugin("csharp-bridge").hover('    MsgBox("x");', 0, 6, None))
+    rf = OUT / "lsp_rust-bridge"
+    from radide.languages.rust_bridge import PLUGIN as RB
+    RB.prepare(rf, __import__("radide.model", fromlist=["Project"]).Project.load(rf))
+    loc = get_plugin("rust-bridge").definition('    msgbox("x");', 0, 6, rf / "Form1.rs")
+    check("rust-bridge: plugin Go to Definition of msgbox -> radgui.rs (while rust-analyzer is loading)",
+          loc and Path(loc[0]).name == "radgui.rs", loc)
 
 
 # ====================================================================== publish size
@@ -468,7 +477,6 @@ def test_size():
 def test_slow():
     from radide.deploy.build import build
     from radide.deploy.config import PublishConfig
-    from radide.languages import get_plugin
     from radide.languages.rust_bridge import find_cargo
     deep_root = OUT / ("deep_" + "x" * 70) / ("y" * 70)
     if find_cargo():
@@ -516,7 +524,7 @@ if __name__ == "__main__":
         try:
             {"paths": test_paths, "bridge": test_bridge, "clients": test_clients, "dart": test_dart_publish,
              "lsp": test_lsp, "size": test_size, "slow": test_slow}[g]()
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             import traceback
             check(f"{g}: no exception", False, traceback.format_exc())
     if SLOW and "slow" not in groups:

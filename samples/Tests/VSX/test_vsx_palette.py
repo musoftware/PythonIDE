@@ -69,7 +69,7 @@ from PyQt6.QtWidgets import QApplication, QCheckBox, QDialog, QLabel, QMessageBo
 
 app = QApplication(sys.argv[:1])
 QCoreApplication.setOrganizationName("RADIDE-TEST-VSX2")
-QCoreApplication.setApplicationName("RADIDE-TEST-VSX2")
+QCoreApplication.setApplicationName("RADIDE-TEST-VSX2-PALETTE")
 QSettings().clear()
 
 from radide.vsx import manager  # noqa: E402
