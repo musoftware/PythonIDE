@@ -54,6 +54,7 @@ def find(tool: str) -> str:
     name = {"yayul": "yaYUL", "yaagc": "yaAGC"}.get(tool.lower(), tool)
     p = bin_dir() / (name + EXE)
     if p.is_file():
+        _ensure_runtime(p)
         return str(p)
     w = shutil.which(name)
     if w:
@@ -63,6 +64,30 @@ def find(tool: str) -> str:
         if q.is_file():
             return str(q)
     return ""
+
+
+RUNTIME_DLLS = ("libwinpthread-1.dll",)
+
+
+def _ensure_runtime(exe: Path) -> None:
+    """Older builds of yaYUL/yaAGC link the MinGW pthread DLL dynamically. Windows then takes the first
+    libwinpthread-1.dll on PATH, which is often a 32-bit copy (Android SDK platform-tools, ...), and the
+    exe dies with 0xC000007B. Put the compiler's own copy next to the exe so it always wins."""
+    if os.name != "nt":
+        return
+    missing = [n for n in RUNTIME_DLLS if not (exe.parent / n).is_file()]
+    if not missing:
+        return
+    cc = gcc()
+    if not cc:
+        return
+    for n in missing:
+        src = Path(cc).parent / n
+        if src.is_file():
+            try:
+                shutil.copy2(src, exe.parent / n)
+            except OSError:
+                pass
 
 
 def status() -> dict:
@@ -141,13 +166,16 @@ def build_commands(src: Path, cc: str) -> list[tuple[str, list[str], Path]]:
     out = bin_dir()
     yayul = sorted(p.name for p in (src / "yaYUL").glob("*.c"))
     nver = '-DNVER="rad-ide"'
-    cmds = [("yaYUL", [cc, "-O2", "-w", nver, "-o", str(out / ("yaYUL" + EXE))] + yayul + ["-lm"], src / "yaYUL")]
+    # -static: no MinGW runtime DLLs, so a foreign libwinpthread-1.dll on PATH can't break the exes
+    static = ["-static"] if os.name == "nt" else []
+    cmds = [("yaYUL", [cc, "-O2", "-w", nver, "-o", str(out / ("yaYUL" + EXE))] + yayul + ["-lm"] + static,
+             src / "yaYUL")]
     agc = [cc, "-O2", "-w", "-std=gnu99", "-fcommon", "-DGDBMI", "-DSTDC_HEADERS", nver,
            "-o", str(out / ("yaAGC" + EXE))]
     if os.name == "nt":
         agc.insert(3, "-DWIN32")
     agc += [f for f in YAAGC_SOURCES if os.name == "nt" or f != "regex.c"]
-    agc += ["-lpthread", "-lm"] + (["-lws2_32"] if os.name == "nt" else [])
+    agc += ["-lpthread", "-lm"] + (["-lws2_32"] if os.name == "nt" else []) + static
     cmds.append(("yaAGC", agc, src / "yaAGC"))
     return cmds
 

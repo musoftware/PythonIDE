@@ -156,17 +156,26 @@ def run_yayul(folder: Path):
     return r, toolchain.parse_yayul_output(r.stderr)
 
 
+def free_port() -> int:
+    with socket.socket() as so:
+        so.bind(("127.0.0.1", 0))
+        return so.getsockname()[1]
+
+
 def dsky_session(folder: Path, port: int, keys_list):
     p = subprocess.Popen(toolchain.yaagc_command("MAIN.agc.bin", port, False), cwd=folder,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
     model, s, out = DskyModel(), None, []
     try:
-        for _ in range(60):
+        deadline = time.time() + 45          # a busy machine can take a while to start yaAGC
+        while time.time() < deadline and p.poll() is None:
             try:
                 s = socket.create_connection(("127.0.0.1", port), timeout=1)
                 break
             except OSError:
-                time.sleep(0.2)
+                time.sleep(0.25)
+        if s is None:
+            raise RuntimeError(f"yaAGC did not open port {port} (exit code {p.poll()})")
         s.settimeout(0.2)
         buf = b""
 
@@ -214,7 +223,7 @@ if yayul and yaagc:
         my.run_seconds(2.3)
         check("built-in emulator runs the yaYUL rope", my.dsky.verb == "16" and my.dsky.r3 == "+00200",
               my.dsky.summary())
-        states = dsky_session(work, 19851, [["VERB", "3", "5", "ENTR"], ["VERB", "1", "6", "NOUN", "3", "6",
+        states = dsky_session(work, free_port(), [["VERB", "3", "5", "ENTR"], ["VERB", "1", "6", "NOUN", "3", "6",
                                                                           "ENTR"]])
         check("yaAGC + DSKY socket: V16 N36 at start", states[0]["verb"] == "16" and states[0]["noun"] == "36",
               states[0])
