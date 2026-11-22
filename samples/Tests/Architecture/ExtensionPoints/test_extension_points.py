@@ -142,7 +142,9 @@ se.after_save_all(True)
 se.after_save_all(False)
 ok("save listeners: before() first, then fn(ok) in order with the result; a failing one is logged",
    seq == ["before1", ("after1", True), ("after3", True), ("after1", False), ("after3", False)]
-   and sum("[broken]" in m for m in logged) == 2, (seq, logged))
+   and sum("[broken]" in m for m in logged) >= 1, (seq, logged))
+ok("the same error of the same handler is logged once (actions_updated runs very often)",
+   sum("[broken]" in m for m in logged) == 1, logged)
 
 cg: list = []
 logged.clear()
@@ -162,6 +164,21 @@ ce.add_shutdown_step(lambda: 1 / 0, "broken")
 ce.add_shutdown_step(lambda: sd.append(3), "three")
 ce.shutdown()
 ok("shutdown steps run in registration order, a failing one is logged", sd == [1, 3])
+
+ev: list = []
+logged.clear()
+ee = ExtensionPoints(logged.append)
+ee.on("project_opening", lambda folder: ev.append(("opening", folder)), "a")
+ee.on("project_opening", lambda folder: 1 / 0, "broken")
+ee.on("project_opening", lambda folder: ev.append(("second", folder)), "b")
+ee.emit("project_opening", Path("X"))
+ok("events: handlers in registration order with the arguments; a failing one is logged",
+   ev == [("opening", Path("X")), ("second", Path("X"))] and any("[broken]" in m for m in logged), (ev, logged))
+try:
+    ee.on("project_openned", lambda: None)
+    ok("events: a misspelled event name is refused", False)
+except ValueError as ex:
+    ok("events: a misspelled event name is refused", "project_opening" in str(ex), ex)
 
 order: list[str] = []
 logged.clear()

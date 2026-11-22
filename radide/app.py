@@ -975,7 +975,14 @@ class MainWindow(QMainWindow):
     def open_project(self, folder: Path, ask: bool = True, activate=None):
         """Open a solution (.radsln), a project (project.radproj) or a folder that holds one.
         A bare project opens as a one-project solution. *activate* = folder or name of the
-        project to make active (default: the startup project)."""
+        project to make active (default: the startup project). Emits project_opening / project_opened
+        (radide/extension_points.py)."""
+        self.extension_points.emit("project_opening", Path(folder))
+        result = self._open_project(folder, ask, activate)
+        self.extension_points.emit("project_opened")
+        return result
+
+    def _open_project(self, folder: Path, ask: bool, activate):
         path = Path(folder).resolve()
         try:                     # .sln / .csproj / .vbp / .dpr / pom.xml ... opened in place (foreign_projects.py)
             from .features.foreign_projects import is_foreign, open_foreign
@@ -1033,6 +1040,7 @@ class MainWindow(QMainWindow):
         offer_restore(self)
 
     def _reset(self):
+        self.extension_points.emit("projects_reset")      # language servers, diagnostics ... first
         self.properties.set_document(None, None)
         while self.tabs.count():
             w = self.tabs.widget(0)
@@ -1067,7 +1075,12 @@ class MainWindow(QMainWindow):
     def activate_project(self, project) -> bool:
         """Make *project* (a Project, or a project name of the solution) the active project:
         self.project, self.plugin, docs, designers, codeviews, modviews and breakpoints then
-        belong to it. Returns False when it is not part of the open solution."""
+        belong to it. Returns False when it is not part of the open solution. Emits project_activated."""
+        result = self._activate_project(project)
+        self.extension_points.emit("project_activated")
+        return result
+
+    def _activate_project(self, project) -> bool:
         if isinstance(project, str):
             project = self.sln.project(project) if self.sln is not None else None
         if project is None:
@@ -1470,6 +1483,8 @@ class MainWindow(QMainWindow):
         self.a_select_all.setEnabled(d is not None or cv is not None)
         self.format_menu.setEnabled(d is not None)
         self._update_title()
+        if hasattr(self, "extension_points"):
+            self.extension_points.emit("actions_updated")     # features' own commands / Edit commands
 
     # ================================================================ edit
     @staticmethod

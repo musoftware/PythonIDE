@@ -49,6 +49,15 @@ class DocumentProvider(Protocol):
 
 _PROVIDER_METHODS = ("can_open", "open_document", "save_documents", "has_modified_documents")
 
+# named events of the window's lifecycle: ExtensionPoints.on(name, fn) / MainWindow emits them
+EVENTS = {
+    "project_opening": "open_project(folder) starts, before anything is loaded - fn(folder: Path)",
+    "project_opened": "open_project returned (also when it was cancelled or the folder is a foreign project)",
+    "project_activated": "activate_project returned: self.project may be another project of the solution",
+    "projects_reset": "_reset starts: the documents / state of the open solution are about to be dropped",
+    "actions_updated": "_update_actions finished: features set the state of their own / the Edit commands",
+}
+
 EDITOR = 0            # the editor of a file type (.png, .rpt.json, .scene, .tform ...)
 BINARY_VIEWER = -10   # a viewer for a family of binary files (ROM workbench: .nes, .gb, patches ...)
 FALLBACK = -20        # takes whatever binary file nobody else wants (generic hex view)
@@ -63,6 +72,8 @@ class ExtensionPoints:
         self._before_save: list[tuple[str, Callable[[], None]]] = []
         self._close_guards: list[tuple[str, Callable[[], bool]]] = []
         self._shutdown: list[tuple[str, Callable[[], None]]] = []
+        self._events: dict[str, list[tuple[str, Callable]]] = {name: [] for name in EVENTS}
+        self._logged: set[tuple] = set()           # (handler, step, error) already in the Output window
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
@@ -106,7 +117,17 @@ class ExtensionPoints:
         """*fn()* runs once the IDE has accepted to close (stop servers, save layout ...), in registration order."""
         self._shutdown.append((name or getattr(fn, "__qualname__", "shutdown step"), fn))
 
+    def on(self, event: str, fn: Callable, name: str = "") -> None:
+        """Run *fn* (with the event's arguments, see EVENTS) every time MainWindow emits *event*; handlers
+        run in registration order and one that raises is logged. An unknown event name is a ValueError."""
+        if event not in EVENTS:
+            raise ValueError(f"unknown event '{event}' - one of: {', '.join(EVENTS)}")
+        self._events[event].append((name or getattr(fn, "__qualname__", event), fn))
+
     # ------------------------------------------------------------ what MainWindow calls
+    def emit(self, event: str, *args) -> None:
+        self._run_all(self._events[event], event, *args)
+
     def confirm_close(self) -> bool:
         for name, fn in reversed(self._close_guards):
             try:
@@ -169,7 +190,11 @@ class ExtensionPoints:
         for name, fn in fns:
             try:
                 fn(*args)
-            except Exception:  # noqa: BLE001 - logged; the other features still run
+            except Exception as e:  # noqa: BLE001 - logged; the other features still run
+                key = (name, what, type(e).__name__, str(e))
+                if key in self._logged:           # actions_updated runs very often: the same error once
+                    continue
+                self._logged.add(key)
                 self._log(f"[{name}] {what} failed:\n{traceback.format_exc()}")
 
     def _report(self, provider, method: str) -> None:
