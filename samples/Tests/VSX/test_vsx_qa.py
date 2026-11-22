@@ -405,7 +405,11 @@ shot(win.solution, "08_solution_explorer_icons.png")
 # --------------------------------------------------------------------- 6. command extension (Install from VSIX)
 svc = getattr(win, "vsx_host", None)
 check(svc is not None, "extension host service present")
-check(svc is not None and not svc.host.running(), "no host running while only declarative extensions are installed")
+# an installed extension with code (e.g. a marketplace one with a "main") starts the host at once, like VS Code;
+# with only declarative extensions no host runs
+code_exts = [e.id for e in svc.code_extensions()] if svc is not None else []
+check(svc is not None and wait(lambda: svc.host.running() == bool(code_exts), 30),
+      "extension host runs exactly when an installed extension has code", (code_exts, svc and svc.host.running()))
 QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: (str(HELLO_VSIX), ""))
 win.a_vsx_install_vsix.trigger()
 check(wait(lambda: vsx.get("radide-test.hello-commands") is not None, 30), "Install from VSIX (hello-commands)",
