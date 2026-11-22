@@ -1,0 +1,8 @@
+{"defaults": {"tier": "full", "area": "robustness", "timeout": 1800, "args": ["{scratch}"],
+              "note": "environment robustness: long / Unicode / Arabic-user / UNC / junction / read-only paths, atomic saves + crash recovery, High DPI, locales, install layout"},
+ "tests": {"test_env_paths.py": {"tier": "toolchain:all", "timeout": 7200,
+                                 "note": "6 path scenarios x 7 languages (1-2 h); the @quick variant runs C, VB6 and Python Tk only"},
+           "test_env_paths.py@quick": {"args": ["{scratch}", "--quick"], "tier": "toolchain:mingw", "timeout": 2400},
+           "test_env_save_crash.py": {"timeout": 1200},
+           "test_env_display_locale.py": {"timeout": 1200},
+           "test_env_install.py": {"timeout": 900}}}
