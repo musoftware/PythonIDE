@@ -205,16 +205,7 @@ def install(win) -> None:
         return r
     win.activate_project = activate_project
 
-    orig_save_all = win.save_all
-
-    def save_all(*a, **kw):
-        r = orig_save_all(*a, **kw)
-        try:
-            feat.after_save()
-        except Exception as e:  # noqa: BLE001
-            win.log(f"[components] {e}")
-        return r
-    win.save_all = save_all
+    win.extension_points.add_save_listener(lambda _ok: feat.after_save(), "components")   # errors are logged
 
     m = _tools_menu(win).addMenu("Component &Packages")
     win.menu_components = m
