@@ -41,3 +41,33 @@ user's machine: the .NET SDK / Roslyn compiler (MIT, .NET Foundation) - or, with
 `%LOCALAPPDATA%\RADIDE\tools\roslyn` - and the JDK tools javac / jdeps / jlink / jpackage (OpenJDK, GPL v2 with the
 Classpath Exception). A standalone C# program contains the .NET runtime (MIT); a Java program contains a
 jlink-made OpenJDK runtime with its `legal` folder. See docs/NATIVE_BUILD.md.
+
+## FreeBASIC (VB6 native build, tool downloaded on use)
+
+`radide/deploy/native/vb6_freebasic.py` translates VB6 projects to FreeBASIC and compiles them with the FreeBASIC
+compiler 1.10.1 for Windows (https://www.freebasic.net, https://sourceforge.net/projects/fbc/), downloaded from the
+official SourceForge page into `%LOCALAPPDATA%\RADIDE\tools\freebasic-win` on first use (SHA-256 checked); nothing of
+it is copied into this repository. The compiler is GPL v2 or later; the FreeBASIC runtime library (libfb) that is
+statically linked into a published program is LGPL v2.1 or later **with a static-linking exception** ("you may link
+this library with independent modules to produce an executable, regardless of the license terms of these
+independent modules"), so programs may be distributed under any licence. The bundled MinGW-w64 / GCC runtime
+pieces linked by the compiler (crt, libgcc) carry the GCC Runtime Library Exception. The VB runtime the generated
+code includes (`radide/deploy/native/vb6fb/rt/*.bi`) is RAD IDE's own code (MIT). MyFbFramework
+(https://github.com/XusinboyBekchanov/MyFbFramework, LGPL with a static-link exception) was evaluated but is not
+used or vendored.
+
+## Lua 5.4 (Lua native build, source downloaded on use)
+
+`radide/deploy/native/script_embed.py` builds Lua projects as one exe that embeds the Lua 5.4.9 interpreter
+(https://www.lua.org, Copyright (C) 1994-2026 Lua.org, PUC-Rio, **MIT License**). The official source tarball
+`https://www.lua.org/ftp/lua-5.4.9.tar.gz` (SHA-256 `2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6`)
+is downloaded on first use into `%LOCALAPPDATA%\RADIDE\toolchains\lua-src` and compiled there; nothing of it is
+copied into this repository. A published Lua program contains the compiled Lua library: its MIT notice (in
+`lua.h`) must be kept with the program's documentation when it is distributed.
+
+## Native Rust / Go builds (tools only, nothing vendored)
+
+`radide/deploy/native/rust_native.py` and `go_native.py` contain no third-party code; they run the user's Rust
+toolchain (cargo / rustc, MIT or Apache 2.0; the Rust standard library linked into a program is MIT / Apache 2.0)
+and Go toolchain (BSD-3-Clause; the Go runtime linked into a program is BSD-3-Clause), with MinGW-w64 gcc (GCC
+Runtime Library Exception) or Visual C++ as the linker.

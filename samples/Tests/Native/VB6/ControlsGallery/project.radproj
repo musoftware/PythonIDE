@@ -1,0 +1,9 @@
+{
+  "name": "ControlsGallery",
+  "language": "vb-basic",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

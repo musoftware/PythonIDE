@@ -6892,7 +6892,20 @@
   "Tiny - for the .NET Framework 4.8 of Windows": "صغير جدًا - يعمل على .NET Framework 4.8 الموجود في ويندوز",
   "How a C# program is published by the native build (no Python inside)": "طريقة نشر برنامج C# بالبناء الأصلي (بدون بايثون بداخله)",
   "C# program:": "برنامج C#:",
-  "Run (with forms)": "تشغيل (مع الفورمز)"
+  "Run (with forms)": "تشغيل (مع الفورمز)",
+  "native Rust exe (cargo + radforms)": "ملف exe أصلي بلغة Rust (cargo + radforms)",
+  "native Go exe (cgo + radforms)": "ملف exe أصلي بلغة Go (cgo + radforms)",
+  "native exe with embedded Lua 5.4 (radforms)": "ملف exe أصلي مع Lua 5.4 مدمجة (radforms)",
+  "Build &Native Exe": "بناء ملف exe &أصلي",
+  "Build Native Exe": "بناء ملف exe أصلي",
+  "Build: Build Native Exe": "بناء: بناء ملف exe أصلي",
+  "Build the program as one standalone exe with its forms inside (no IDE, no Python) into the project's Publish\\build\\dist folder": "بناء البرنامج كملف exe واحد مستقل يحتوي نماذجه (بدون بيئة التطوير وبدون بايثون) في المجلد Publish\\build\\dist للمشروع",
+  "Building the native exe... (see the Output window)": "جارٍ بناء ملف exe الأصلي... (راجع نافذة المخرجات)",
+  "Build Native Exe failed": "فشل بناء ملف exe الأصلي",
+  "A build is already running - see the Output window.": "هناك عملية بناء قيد التشغيل - راجع نافذة المخرجات.",
+  "Note: this build is a GUI Bridge program - its forms are drawn by RAD IDE, so the exe shows nothing when started alone. Run it with F5.": "ملاحظة: هذا البناء برنامج GUI Bridge - نماذجه ترسمها بيئة RAD IDE، لذلك لا يُظهر ملف exe شيئًا عند تشغيله وحده. شغّله بالمفتاح F5.",
+  "For one standalone exe with the forms inside use Build > Build Native Exe (or Build > Publish).": "للحصول على ملف exe واحد مستقل يحتوي النماذج استخدم بناء > بناء ملف exe أصلي (أو بناء > نشر).",
+  "Use Build > Publish to make a program that runs without the IDE.": "استخدم بناء > نشر لإنشاء برنامج يعمل بدون بيئة التطوير."
  },
  "patterns": {
   "Faults read: {}": "الأعطال المقروءة: {}",
@@ -7804,6 +7817,12 @@
   "{}: {} {}, {} resources, {} MFC message maps": "{}: {} {}، {} موردًا، {} جدول رسائل MFC",
   "Cannot decode {} {} ({}); hex view": "تعذر فك {} {} ({})؛ عرض سداسي عشري",
   "{} {} - {} bytes (hex editor)": "{} {} - {} بايت (محرر سداسي عشري)",
-  "base: {}": "الأساس: {}"
+  "base: {}": "الأساس: {}",
+  "Built: {}": "تم البناء: {}",
+  "========== Build Native Exe failed: {} ==========": "========== فشل بناء ملف exe الأصلي: {} ==========",
+  "========== Build Native Exe succeeded: {} ==========": "========== نجح بناء ملف exe الأصلي: {} ==========",
+  "There is no native build for this project's language ({}). Use Build > Publish / Create Installer.": "لا يوجد بناء أصلي للغة هذا المشروع ({}). استخدم بناء > نشر / إنشاء برنامج تثبيت.",
+  "Note: a native build was not possible (reasons above): the program needs the files of its folder ({}).": "ملاحظة: تعذّر البناء الأصلي (الأسباب أعلاه): يحتاج البرنامج إلى ملفات مجلده ({}).",
+  "Embedded scripts: {}": "السكربتات المدمجة: {}"
  }
 }

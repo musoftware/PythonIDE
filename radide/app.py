@@ -2309,7 +2309,12 @@ def _dock_on_top(d) -> bool:
 
 
 def _show_tool_window(d) -> None:
-    """View > <tool window> like Visual Studio: always show it, bring its tab to the front, focus it."""
+    """View > <tool window> like Visual Studio: always show it, bring its tab to the front, focus it.
+    An auto-hidden window (features/dock_autohide) slides out of its edge instead."""
+    ah = getattr(d.parentWidget(), "autohide", None)
+    if ah is not None and ah.is_auto_hidden(d):
+        ah.show_dock(d)
+        return
     d.show()
     if d.width() < 60 or d.height() < 60:          # collapsed to nothing by an old layout
         d.resize(max(d.width(), 280), max(d.height(), 220))

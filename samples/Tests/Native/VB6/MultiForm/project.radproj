@@ -1,0 +1,12 @@
+{
+  "name": "MultiForm",
+  "language": "vb-basic",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Module1.bas"
+  ]
+}

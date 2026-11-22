@@ -1,0 +1,332 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "frmGreeter",
+    "Text": "Greeter",
+    "Width": 360,
+    "Height": 260,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "FixedSingle",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblYourName",
+        "Text": "Your name:",
+        "Left": 10,
+        "Top": 15,
+        "Width": 75,
+        "Height": 13,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtYourName",
+        "Text": "",
+        "Left": 90,
+        "Top": 11,
+        "Width": 165,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 1,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnGreet",
+        "Text": "Greet",
+        "Left": 267,
+        "Top": 10,
+        "Width": 82,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 2,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "CheckBox",
+      "props": {
+        "Name": "chkUpperCase",
+        "Text": "Upper case",
+        "Left": 90,
+        "Top": 42,
+        "Width": 120,
+        "Height": 16,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 3,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "GroupBox",
+      "props": {
+        "Name": "grpColour",
+        "Text": "Colour",
+        "Left": 10,
+        "Top": 68,
+        "Width": 165,
+        "Height": 65,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 4,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optRed",
+        "Text": "Red",
+        "Left": 12,
+        "Top": 20,
+        "Width": 60,
+        "Height": 16,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 5,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": "grpColour"
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optBlue",
+        "Text": "Blue",
+        "Left": 12,
+        "Top": 39,
+        "Width": 60,
+        "Height": 16,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 6,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": "grpColour"
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "lst1005",
+        "Left": 188,
+        "Top": 68,
+        "Width": 162,
+        "Height": 98,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 7,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lbl1003",
+        "Text": "",
+        "Left": 10,
+        "Top": 179,
+        "Width": 339,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 8,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ProgressBar",
+      "props": {
+        "Name": "prg1",
+        "Left": 10,
+        "Top": 208,
+        "Width": 339,
+        "Height": 16,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 9,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnClose",
+        "Text": "Close",
+        "Left": 267,
+        "Top": 228,
+        "Width": 82,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 10,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "Clear",
+                "Name": "mnuFileClear",
+                "Shortcut": "Ctrl+L"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "About...",
+                "Name": "mnuHelpAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    }
+  ]
+}

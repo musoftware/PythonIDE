@@ -1,0 +1,10 @@
+{
+  "name": "Greeter",
+  "language": "vb-basic",
+  "forms": [
+    "frmGreeter",
+    "frmAboutGreeter"
+  ],
+  "startup": "frmGreeter",
+  "modules": []
+}

@@ -21,6 +21,11 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   "Arrange / align / sort / رتب" requests tick only positions and sizes.
 - Build EXE of VB6 / GUI Bridge programs: the published exe stopped at start with KeyError: 'DataGridView' (the
   built-in control packages were not bundled).
+- Build > Publish of VB6 (BASIC) projects: translated to FreeBASIC with native Win32 forms - one exe of
+  28-150 KB without Python (layout identical to the designer, events with their arguments, control arrays,
+  classes, error handling, files, Format); untranslatable code falls back to the VB runtime with file(line) reasons.
+- Tool windows: Visual Studio Auto Hide (pin button, edge tabs, slide-out over the editor, Window > Auto Hide All,
+  kept across restarts).
 - Rust WinForms projects: the toolbar's Run no longer runs `cargo run` (which shows no window - the forms are
   drawn through the IDE); it runs the project with its forms like F5. Code completion no longer comes back empty
   while rust-analyzer (or any language server) is still indexing, and the IDE's own helpers (msgbox, set, get,
