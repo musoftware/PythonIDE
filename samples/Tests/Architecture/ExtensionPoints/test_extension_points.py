@@ -180,6 +180,22 @@ try:
 except ValueError as ex:
     ok("events: a misspelled event name is refused", "project_opening" in str(ex), ex)
 
+pd: list = []
+logged.clear()
+pe2 = ExtensionPoints(logged.append)
+pe2.add_properties_dialog(lambda prj: pd.append(("first", prj)) or prj == "vb6", "first")
+pe2.add_properties_dialog(lambda prj: 1 / 0, "broken")
+ok("properties dialogs: latest first, a broken one logged, the one that handles it wins",
+   pe2.show_properties("vb6") is True and pd == [("first", "vb6")] and any("[broken]" in m for m in logged), pd)
+ok("properties dialogs: nobody handles it -> False (the window's own dialog)", pe2.show_properties("tk") is False)
+sink: list = []
+pe2.on("output_logged", lambda t: sink.append(t), "sink")
+pe2.on("output_logged", lambda t: 1 / 0, "broken sink")
+logged.clear()
+pe2.emit("output_logged", "hello")
+ok("output_logged: sinks get the text; a failing sink is NOT logged to the Output (no endless loop)",
+   sink == ["hello"] and not logged, (sink, logged))
+
 order: list[str] = []
 logged.clear()
 ep.add_solution_contributor(lambda: order.append("first"), "first")

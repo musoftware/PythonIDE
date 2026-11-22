@@ -29,6 +29,10 @@ class ProjectFileError(ValueError):
         super().__init__(f"{self.path.name} {reason}")
 
 
+# what opening a damaged / unreadable .form can raise (MainWindow.open_designer / open_code report these)
+FORM_LOAD_ERRORS = (ProjectFileError, OSError, UnicodeError, ValueError, KeyError, TypeError)
+
+
 _CONFLICT_RE = re.compile(r"^(<{7}|>{7})(?: |$)", re.M)
 
 

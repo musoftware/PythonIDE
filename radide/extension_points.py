@@ -56,6 +56,22 @@ EVENTS = {
     "project_activated": "activate_project returned: self.project may be another project of the solution",
     "projects_reset": "_reset starts: the documents / state of the open solution are about to be dropped",
     "actions_updated": "_update_actions finished: features set the state of their own / the Edit commands",
+    "designer_opening": "open_designer(name) starts - fn(name)",
+    "designer_opened": "the designer of a form is open (not after a load error) - fn(name)",
+    "form_opened": "open_designer / open_code succeeded - fn(name, newly_loaded: bool)",
+    "form_load_failed": "a .form could not be loaded - fn(name, error); without a handler the error is raised",
+    "form_saving": "_save_form(name) is about to write the form - fn(name)",
+    "form_saved": "_save_form finished - fn(name, completed: bool) (False: it raised, e.g. disk full)",
+    "project_saving": "_save_active_project is about to write the active project",
+    "project_saved": "_save_active_project finished - fn(completed: bool)",
+    "file_saved": "save_current (File > Save <file>) finished - fn(ok: bool)",
+    "designer_menu": "the designer's right-click menu is built - fn(form_name, menu, control or None)",
+    "editor_menu": "a code editor's right-click menu is built - fn(menu, form_name or None)",
+    "code_view_requested": "_codeview(name) returned the code editor (new or cached) - fn(name, codeview)",
+    "module_view_shown": "open_module showed a module editor - fn(filename, moduleview)",
+    "title_updated": "_update_title finished",
+    "layout_restored": "restoreState (the dock layout) was applied",
+    "output_logged": "a line went to the Output window - fn(text); errors here go to stderr, not the Output",
 }
 
 EDITOR = 0            # the editor of a file type (.png, .rpt.json, .scene, .tform ...)
@@ -74,6 +90,7 @@ class ExtensionPoints:
         self._shutdown: list[tuple[str, Callable[[], None]]] = []
         self._events: dict[str, list[tuple[str, Callable]]] = {name: [] for name in EVENTS}
         self._logged: set[tuple] = set()           # (handler, step, error) already in the Output window
+        self._properties: list[tuple[str, Callable[[object], bool]]] = []
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
@@ -124,9 +141,34 @@ class ExtensionPoints:
             raise ValueError(f"unknown event '{event}' - one of: {', '.join(EVENTS)}")
         self._events[event].append((name or getattr(fn, "__qualname__", event), fn))
 
+    def has_handlers(self, event: str) -> bool:
+        return bool(self._events[event])
+
+    def add_properties_dialog(self, fn: Callable[[object], bool], name: str = "") -> None:
+        """*fn(project)* may show its own Project > Properties for that project and return True (a VB6 mirror
+        project shows the VB6 dialog); False lets the next one / the window's dialog show. Latest first."""
+        self._properties.append((name or getattr(fn, "__qualname__", "properties dialog"), fn))
+
     # ------------------------------------------------------------ what MainWindow calls
     def emit(self, event: str, *args) -> None:
+        if event == "output_logged":            # its errors must not go back to the Output (endless loop)
+            for _name, fn in self._events[event]:
+                try:
+                    fn(*args)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+            return
         self._run_all(self._events[event], event, *args)
+
+    def show_properties(self, project) -> bool:
+        """True when a feature showed its own Project > Properties for *project*."""
+        for name, fn in reversed(self._properties):
+            try:
+                if fn(project):
+                    return True
+            except Exception:  # noqa: BLE001 - the window's own dialog still shows
+                self._log(f"[{name}] properties dialog failed:\n{traceback.format_exc()}")
+        return False
 
     def confirm_close(self) -> bool:
         for name, fn in reversed(self._close_guards):

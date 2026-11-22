@@ -3,6 +3,7 @@ Properties, Output, Locals, Call Stack, Immediate), designer/code tabs,
 run and debug."""
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import sys
@@ -25,7 +26,7 @@ from .extension_points import ExtensionPoints
 from .languages import code_extensions, get_plugin, language_label
 from .languages import plugin_for_form as _form_plugin
 from .languages import plugin_for_module as _module_plugin
-from .model import Form, Project, write_text_safe
+from .model import FORM_LOAD_ERRORS, Form, Project, write_text_safe
 from .properties import PropertiesPanel, valid_identifier
 from .solution import EXT as SOLUTION_EXT
 from .solution import Solution
@@ -412,6 +413,7 @@ class MainWindow(QMainWindow):
         self.breakpoints: dict[str, set[int]] = {}      # code file name -> 0-based lines
         self.session: Session | None = None
         self.stopped_at: tuple[str, int] | None = None
+        self._no_save_questions = 0      # > 0: no "Save changes?" question (see no_save_questions)
         # how features take part in File > Open / Save All / Solution Explorer ... (radide/extension_points.py)
         self.extension_points = ExtensionPoints(lambda text: self.log(text))
 
@@ -441,6 +443,12 @@ class MainWindow(QMainWindow):
         install_tools(self)
         from .features import install_all
         install_all(self)
+
+    def restoreState(self, state, version: int = 0) -> bool:  # noqa: N802 - Qt API
+        ok = super().restoreState(state, version)
+        if hasattr(self, "extension_points"):
+            self.extension_points.emit("layout_restored")      # auto-hide docks, dock tab bars ...
+        return ok
 
     def option(self, name: str, default=None):
         """A Tools > Options value ("options/<name>"), bools and ints converted."""
@@ -895,10 +903,12 @@ class MainWindow(QMainWindow):
         locked by another program) shows why and keeps the document modified; the file on disk is unchanged
         (radide/safeio.py)."""
         try:
-            return self._save_current()
+            ok = self._save_current()
         except OSError as e:
             self.show_save_error(e)
-            return False
+            ok = False
+        self.extension_points.emit("file_saved", ok)
+        return ok
 
     def show_save_error(self, e: OSError) -> None:
         from .safeio import SaveError, describe
@@ -1159,7 +1169,19 @@ class MainWindow(QMainWindow):
         ids |= {self.plugin_for_file(m).id for m in self.project.modules}
         return len(ids) > 1
 
+    @contextlib.contextmanager
+    def no_save_questions(self):
+        """Inside this block the IDE does not ask "Save changes?" (a project opened in place without asking,
+        the automation channel's forced quit)."""
+        self._no_save_questions += 1
+        try:
+            yield
+        finally:
+            self._no_save_questions -= 1
+
     def _confirm_close_project(self) -> bool:
+        if self._no_save_questions:
+            return True
         ok = self._confirm_close_inner()
         if ok:              # saved or discarded on purpose: the crash recovery snapshot is not needed any more
             try:
@@ -1282,6 +1304,29 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(idx)
 
     def open_designer(self, name: str):
+        """Open (or show) the designer of a form. Emits designer_opening, then form_opened + designer_opened;
+        a damaged .form goes to the form_load_failed handlers (radide/extension_points.py)."""
+        self.extension_points.emit("designer_opening", name)
+        opened, result = self._open_form_view(self._open_designer, name)
+        if opened:
+            self.extension_points.emit("designer_opened", name)
+        return result
+
+    def _open_form_view(self, opener, name: str):
+        """(opened, result) of opener(name); a damaged .form is reported, not raised, when a feature
+        handles form_load_failed (file_integrity: "Cannot open form ... the file was not changed")."""
+        known = name in self.docs
+        try:
+            result = opener(name)
+        except FORM_LOAD_ERRORS as e:
+            if not self.extension_points.has_handlers("form_load_failed"):
+                raise
+            self.extension_points.emit("form_load_failed", name, e)
+            return False, None
+        self.extension_points.emit("form_opened", name, not known and name in self.docs)
+        return True, result
+
+    def _open_designer(self, name: str):
         if name not in self.docs and self.project is not None and not self.project.form_path(name).is_file():
             self.log(f"*** The form file was not found: {self.project.form_path(name)}")
             self.statusBar().showMessage(f"{name}.form is missing", 5000)
@@ -1310,9 +1355,15 @@ class MainWindow(QMainWindow):
             cv.editor.modificationChanged.connect(lambda _m, n=name: self._update_tab_titles(n))
             cv.editor.breakpointToggled.connect(lambda line, on, f=fname: self._on_bp_toggled(f, line, on))
             self.codeviews[name] = cv
-        return self.codeviews[name]
+        cv = self.codeviews[name]
+        self.extension_points.emit("code_view_requested", name, cv)      # language servers ...
+        return cv
 
     def open_code(self, name: str):
+        """Open (or show) the code of a form (emits form_opened; a damaged .form: form_load_failed)."""
+        return self._open_form_view(self._open_code, name)[1]
+
+    def _open_code(self, name: str):
         if name not in self.docs and self.project is not None and not self.project.form_path(name).is_file():
             self.log(f"*** The form file was not found: {self.project.form_path(name)}")
             return
@@ -1446,6 +1497,11 @@ class MainWindow(QMainWindow):
                                      ("*" if cv.editor.isModified() else ""))
 
     def _update_title(self):
+        self._set_title()
+        if hasattr(self, "extension_points"):
+            self.extension_points.emit("title_updated")
+
+    def _set_title(self):
         title = f"{self.project.name} - {APP_NAME}" if self.project else APP_NAME
         if self.project and self.sln is not None and (len(self.sln.projects) > 1 or not self.sln.implicit) \
                 and self.sln.name != self.project.name:
@@ -1666,6 +1722,7 @@ class MainWindow(QMainWindow):
         self._show_tab(self.modviews[filename], filename)
         self._update_module_title(filename)
         self.modviews[filename].editor.setFocus()
+        self.extension_points.emit("module_view_shown", filename, self.modviews[filename])
 
     def _hover(self, editor, word, pos):
         from .tools import hover_value
@@ -1796,6 +1853,8 @@ class MainWindow(QMainWindow):
 
     def project_properties(self):
         if not self.project:
+            return
+        if self.extension_points.show_properties(self.project):    # e.g. a VB6 mirror project's own dialog
             return
         if getattr(self.project, "kind", "") == "website":
             from .features.web_workspace import site_settings
@@ -1938,6 +1997,7 @@ class MainWindow(QMainWindow):
             m.addAction("Select All", lambda: doc.select_many(doc.form.ordered()))
         m.addAction("Properties", lambda: (self.dock_props.show(), self.dock_props.raise_(),
                                            self.properties.tabs.setCurrentIndex(0)))
+        self.extension_points.emit("designer_menu", form_name, m, c)     # animations, variants ...
 
     def _editor_menu(self, m, form_name):
         first = m.actions()[0] if m.actions() else None
@@ -1953,6 +2013,7 @@ class MainWindow(QMainWindow):
             m.insertAction(first, a)
         if first is not None:
             m.insertSeparator(first)
+        self.extension_points.emit("editor_menu", m, form_name)
 
     # ================================================================ import
     def _ask_import_target(self, src: Path, suffix: str) -> Path | None:
@@ -2069,7 +2130,18 @@ class MainWindow(QMainWindow):
         return True
 
     def _save_form(self, name: str) -> bool:
-        """Save one form (code file, .form and generated designer code); True when code was written."""
+        """Save one form (code file, .form and generated designer code); True when code was written.
+        Emits form_saving before and form_saved(name, completed) after (format on save, resources ...)."""
+        self.extension_points.emit("form_saving", name)
+        completed = False
+        try:
+            result = self._write_form(name)
+            completed = True
+            return result
+        finally:
+            self.extension_points.emit("form_saved", name, completed)
+
+    def _write_form(self, name: str) -> bool:
         wrote = False
         doc = self._doc(name)
         fp = self.plugin_for_form(name)
@@ -2103,7 +2175,18 @@ class MainWindow(QMainWindow):
         return wrote
 
     def _save_active_project(self) -> bool:
-        """Save the active project's documents; True when a code file was written."""
+        """Save the active project's documents; True when a code file was written. Emits project_saving
+        before and project_saved(completed) after (format on save, VB6 mirror write-back ...)."""
+        self.extension_points.emit("project_saving")
+        completed = False
+        try:
+            result = self._write_active_project()
+            completed = True
+            return result
+        finally:
+            self.extension_points.emit("project_saved", completed)
+
+    def _write_active_project(self) -> bool:
         wrote = False
         names = set(self.docs) | set(self.codeviews)
         for name in names:
@@ -2131,6 +2214,7 @@ class MainWindow(QMainWindow):
             return
         self.output.appendPlainText(text)
         self._output_after_log = True        # program output starts on a new line
+        self.extension_points.emit("output_logged", text)
 
     # ================================================================ breakpoints
     def _bp_key(self) -> str:
