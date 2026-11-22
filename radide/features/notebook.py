@@ -101,26 +101,22 @@ class NotebookFeature:
             (other or vm).addAction("Notebook &Variables", self.show_variables)
 
     # ------------------------------------------------------------------ window wrapping
+    # DocumentProvider (radide/extension_points.py): File > Open, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        return _is_nb(path)
+
+    def open_document(self, path: Path):
+        return self.open_notebook(Path(path))
+
+    def save_documents(self) -> None:
+        self.save_all()
+
+    def has_modified_documents(self) -> bool:
+        return any(v.is_modified() for v in self._views())
+
     def _wrap(self) -> None:
         win = self.win
-        orig_any = win.open_any_file
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-
-        def open_any_file(path, *a, **k):
-            if _is_nb(path):
-                return self.open_notebook(Path(path))
-            return orig_any(path, *a, **k)
-        win.open_any_file = open_any_file
-
-        def save_all(*a, **k):
-            self.save_all()
-            return orig_save_all(*a, **k)
-        win.save_all = save_all
-
-        def any_modified(*a, **k):
-            return any(v.is_modified() for v in self._views()) or orig_any_modified(*a, **k)
-        win._any_modified = any_modified
+        win.extension_points.add_document_provider(self)
 
         orig_close = win.closeEvent
 
