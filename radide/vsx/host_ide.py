@@ -587,6 +587,12 @@ class VsxService(QObject):
             ed._rad_def_hook = True
             ed.definitionRequested.connect(lambda line, col, e=ed: self._definition(e, line, col))
         self._open_doc(ed)
+        try:                                     # what the editor loaded: later changes on disk are external
+            st = Path(ed.path).resolve().stat()
+            self.__dict__.setdefault("_disk_stamps", {})[os.path.normcase(str(Path(ed.path).resolve()))] = \
+                (st.st_mtime_ns, st.st_size)
+        except (OSError, TypeError):
+            pass
         self._apply_lang_config(ed)
         self._render_diags(_key(ed.path))
         self._wrap(ed)

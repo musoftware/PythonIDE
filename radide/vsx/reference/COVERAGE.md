@@ -783,9 +783,9 @@ Status words: *implemented* - does what VS Code does; *implemented (Monaco)* - a
 | `viewsWelcome` | 37 | implemented | shown while the tree view is empty; buttons for command links |
 | `configurationDefaults` | 36 | implemented | language-specific defaults merged into getConfiguration |
 | `jsonValidation` | 33 | missing | no JSON schema validation in the editor |
-| `submenus` | 29 | implemented | nested in editor/context, editor/title, view/title, view/item/context |
-| `icons` | 29 | partial | codicons render; contributed icon fonts are not loaded |
 | `debuggers` | 29 | implemented | debug adapters through the host |
+| `icons` | 29 | partial | codicons render; contributed icon fonts are not loaded |
+| `submenus` | 29 | implemented | nested in editor/context, editor/title, view/title, view/item/context |
 | `walkthroughs` | 27 | partial | opened as a Markdown page (no Welcome page) |
 | `breakpoints` | 22 | implemented |  |
 | `snippets` | 21 | implemented |  |
@@ -797,37 +797,37 @@ Status words: *implemented* - does what VS Code does; *implemented (Monaco)* - a
 | `problemMatchers` | 11 | missing |  |
 | `semanticTokenTypes` | 10 | missing |  |
 | `mcpServerDefinitionProviders` | 9 | missing | no chat UI |
-| `notebookRenderer` | 8 | missing | no notebook editor |
 | `localizations` | 8 | missing | RAD IDE has its own UI translation |
-| `notebooks` | 7 | partial | serializers run (executeDataToNotebook / NotebookToData); no notebook editor |
+| `notebookRenderer` | 8 | missing | no notebook editor |
 | `themes` | 7 | implemented |  |
+| `notebooks` | 7 | partial | serializers run (executeDataToNotebook / NotebookToData); no notebook editor |
 | `authentication` | 6 | implemented | authentication.registerAuthenticationProvider / getSession |
-| `chatParticipants` | 6 | missing | no chat UI |
 | `semanticTokenModifiers` | 6 | missing |  |
+| `chatParticipants` | 6 | missing | no chat UI |
 | `resourceLabelFormatters` | 5 | missing |  |
 | `iconThemes` | 3 | implemented |  |
 | `terminal` | 3 | implemented | terminal profiles (Extensions > New Extension Terminal from Profile...) |
-| `notebookPreload` | 2 | missing | no notebook editor |
 | `problemPatterns` | 2 | missing |  |
-| `chatSessions` | 1 | missing | no chat UI |
-| `chatContext` | 1 | missing | no chat UI |
-| `terminalQuickFixes` | 1 | missing |  |
+| `notebookPreload` | 2 | missing | no notebook editor |
 | `debugVisualizers` | 1 | missing |  |
-| `remoteHelp` | 0 | missing |  |
-| `chatViewsWelcome` | 0 | missing | no chat UI |
-| `languageModelToolSets` | 0 | missing | no chat UI |
-| `languageModelChatProviders` | 0 | missing | no chat UI |
+| `terminalQuickFixes` | 1 | missing |  |
+| `chatContext` | 1 | missing | no chat UI |
+| `chatSessions` | 1 | missing | no chat UI |
+| `linkPresentationProviders` | 0 | missing |  |
 | `chatOutputRenderers` | 0 | missing | no chat UI |
-| `remoteCodingAgents` | 0 | missing | no chat UI |
-| `chatResources` | 0 | missing | no chat UI |
-| `speechProviders` | 0 | missing |  |
-| `css` | 0 | missing |  |
+| `languageModelChatProviders` | 0 | missing | no chat UI |
+| `continueEditSession` | 0 | missing |  |
+| `jsonValidationRegistry` | 0 | missing |  |
 | `productIconThemes` | 0 | missing | RAD IDE uses its own icons |
 | `chatPlugins` | 0 | missing | no chat UI |
+| `languageModelToolSets` | 0 | missing | no chat UI |
+| `chatResources` | 0 | missing | no chat UI |
+| `speechProviders` | 0 | missing |  |
+| `chatViewsWelcome` | 0 | missing | no chat UI |
+| `remoteCodingAgents` | 0 | missing | no chat UI |
+| `remoteHelp` | 0 | missing |  |
+| `css` | 0 | missing |  |
 | `statusBarItems` | 0 | missing | declarative status bar items |
-| `jsonValidationRegistry` | 0 | missing |  |
-| `linkPresentationProviders` | 0 | missing |  |
-| `continueEditSession` | 0 | missing |  |
 
 | Menu id | Extensions | Status | Note |
 |---|---|---|---|

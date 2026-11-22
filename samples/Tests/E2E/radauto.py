@@ -196,6 +196,8 @@ class IDE:
         raise AutomationError("the automation channel did not open in time; log:\n" + ide.log_tail())
 
     def log_tail(self, n: int = 4000) -> str:
+        if not self.log_path:
+            return ""
         try:
             return Path(self.log_path).read_text(encoding="utf-8", errors="replace")[-n:]
         except OSError:

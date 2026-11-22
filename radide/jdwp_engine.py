@@ -214,7 +214,9 @@ class JdwpSession(QObject):
         self._jobs: queue.Queue = queue.Queue()
         self._alive = False
         self._closed = False
-        self._req_ids: dict[tuple, int] = {}               # (file, line) -> breakpoint request ids
+        # (file, line) -> {class id: breakpoint request id}: a source file can have several loaded classes with
+        # that line (a breakpoint re-added while running must go to every one, not only the first found)
+        self._req_ids: dict[tuple, dict] = {}
         self._bp_of_req: dict[int, tuple] = {}
         self._classes: dict[str, list[int]] = {}           # source file (lower) -> loaded class ids
         self._step_req = 0
@@ -359,7 +361,7 @@ class JdwpSession(QObject):
     def _install_bps(self, cid, name):
         for line, _cond in self.bps.get(name, {}).items():
             key = (name, line)
-            if self._req_ids.get(key):
+            if cid in self._req_ids.get(key, {}):
                 continue
             loc = self._location_for_line(cid, line)
             if loc is None:
@@ -367,12 +369,11 @@ class JdwpSession(QObject):
             w = self.wire
             data = bytes([BREAKPOINT, SUSPEND_ALL]) + struct.pack(">i", 1) + b"\x07" + self._enc_location(loc)
             rid = struct.unpack(">i", w.request(15, 1, data)[:4])[0]
-            self._req_ids[key] = rid
+            self._req_ids.setdefault(key, {})[cid] = rid
             self._bp_of_req[rid] = key
 
     def _clear_bp(self, key):
-        rid = self._req_ids.pop(key, 0)
-        if rid:
+        for rid in self._req_ids.pop(key, {}).values():
             self._bp_of_req.pop(rid, None)
             self.wire.request(15, 2, bytes([BREAKPOINT]) + struct.pack(">i", rid))
 
@@ -383,7 +384,11 @@ class JdwpSession(QObject):
             self._exc_req = 0
         if on:
             caught = b"\x01" if self.break_on_caught_user else b"\x00"
-            data = bytes([EXCEPTION, SUSPEND_ALL]) + struct.pack(">i", 1) + b"\x08" + w.id("ref", 0) + caught + b"\x01"
+            mods = b"\x08" + w.id("ref", 0) + caught + b"\x01"           # ExceptionOnly (any type)
+            excl = ("java.*", "javax.*", "sun.*", "jdk.*", "com.sun.*") if self.break_on_caught_user else ()
+            for pat in excl:                     # ClassExclude: exceptions the JDK throws and catches itself
+                mods += b"\x06" + w.string(pat)
+            data = bytes([EXCEPTION, SUSPEND_ALL]) + struct.pack(">i", 1 + len(excl)) + mods
             self._exc_req = struct.unpack(">i", w.request(15, 1, data)[:4])[0]
 
     # ------------------------------------------------------------ type information (cached)
@@ -600,11 +605,13 @@ class JdwpSession(QObject):
 
     def _user_class(self, cid) -> bool:
         """The class is compiled from one of the program's own .java files (not the JDK, not the bridge client)."""
-        try:
-            src = self._source_file(cid)
-        except JdwpError:
-            return False
-        return bool(src) and src.lower() not in self._CLIENT and Path(self._path_of(cid)).exists()
+        def get():
+            try:
+                src = self._source_file(cid)
+            except JdwpError:
+                return False
+            return bool(src) and src.lower() not in self._CLIENT and Path(self._path_of(cid)).exists()
+        return self._cached(("user", cid), get)
 
     def _path_of(self, cid) -> str:
         src = self._source_file(cid)

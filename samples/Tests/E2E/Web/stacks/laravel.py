@@ -29,7 +29,6 @@ PUBLISHED_TIMEOUT = 180
 
 
 def toolchain_check():
-    from radide.web_site.frameworks.laravel import pick_php
     from radide.web_site import php_toolchain as tc
     ok = [i for i in tc.detect_installs() if i.bits == 64 and tc.vtuple(i.version)[:2] >= (8, 3)]
     return "" if ok else "Laravel needs PHP >= 8.3 (none installed; the IDE would download PHP 8.4)"

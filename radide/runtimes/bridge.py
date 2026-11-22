@@ -454,7 +454,13 @@ def main(argv=None):
         console = False
     if build:
         print(f"------ Build: {build}", flush=True)
-        r = subprocess.run(build if os.name == "nt" else shlex.split(build), cwd=str(folder), shell=os.name == "nt",
+        cwd, cmd = str(folder), build
+        if os.name == "nt" and cwd.startswith("\\\\"):
+            # a project on a network share: cmd.exe refuses a UNC working folder (it builds in C:\Windows) -
+            # pushd maps a temporary drive letter for the build, popd removes it (success / failure kept)
+            cmd = f'pushd "{cwd}" && ({build}) && (popd & exit /b 0) || (popd & exit /b 1)'
+            cwd = os.environ.get("SystemRoot", r"C:\Windows")
+        r = subprocess.run(cmd if os.name == "nt" else shlex.split(cmd), cwd=cwd, shell=os.name == "nt",
                            capture_output=True)
         # bytes: a compiler may answer in UTF-8, the OEM (cp720 ...) or the ANSI code page (cp1256 ...) -
         # text=True would decode with the ANSI code page and crash on bytes it does not define

@@ -74,13 +74,18 @@ def j4_claude(env: C.Env, rep: Report, vsix: Path = VSIX_DEFAULT):
                        "fake CLI openDiff", "Accept -> saved"], "not installed")
         return
 
-    def activated():
+    def activated(timeout=120):
         state = ide.wait_for(lambda: (lambda a: a if a == "active" else None)(ide.py(
             "svc = getattr(win, 'vsx_host', None)\n"
-            "result = svc.activation.get('anthropic.claude-code') if svc is not None else None")), 180,
-            step=2, desc="Claude Code active")
+            "result = svc.activation.get('anthropic.claude-code') if svc is not None else None")), timeout,
+            step=2, desc="Claude Code active (VS Code activates a newly installed extension without a restart)")
         return state
-    rep.step("Claude Code activates in the extension host", activated)
+    if not rep.step("Claude Code activates right after the install (no restart)", activated):
+        ide.quit()                                   # what a user does next: restart the IDE
+        ide = C.launch(env, "J4b", extra_env={"CLAUDE_CONFIG_DIR": str(cfg), "RADIDE_VSX_ROOT": str(vsx_root)})
+        rep.ide = ide
+        ide.call("auto_dialogs", rules=C.AUTO_RULES + [{"match": "CLAUDE.md", "button": "Yes"}])
+        rep.step("after restarting the IDE, Claude Code activates", lambda: activated(180))
 
     def workspace():
         ide.call("open_project", path=str(proj))

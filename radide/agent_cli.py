@@ -41,8 +41,9 @@ def _parse(argv: list[str]):
 
 def cli_hint() -> str:
     """How to call these commands from a shell (the frozen exe, or this interpreter with -m radide)."""
-    if getattr(sys, "frozen", False):
-        return f'"{sys.executable}"'
+    if getattr(sys, "frozen", False):        # RADIDE.exe: sys.executable is the REAL Python here (paths.prepare_frozen)
+        from .paths import ide_exe
+        return f'"{ide_exe()}"'
     exe = Path(sys.executable)
     py = exe.with_name("python.exe") if exe.name.lower() == "pythonw.exe" else exe
     return f'"{py}" -m radide'

@@ -36,9 +36,11 @@ CHILD = str(HERE / "_display_child.py")
 
 
 def child(mode: str, **env) -> dict:
-    rep, text = E.run_report([E.PY, CHILD, mode], E.child_env(**env), 900)
-    if not rep:
-        print(text[-3000:])
+    for attempt in (1, 2):              # one retry: an offscreen Qt child can die at start on a loaded machine
+        rep, text = E.run_report([E.PY, CHILD, mode], E.child_env(**env), 900)
+        if rep:
+            return rep
+        print(f"(attempt {attempt}: no report)\n" + text[-3000:])
     return rep
 
 

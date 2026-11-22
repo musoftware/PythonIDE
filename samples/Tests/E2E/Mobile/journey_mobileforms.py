@@ -110,27 +110,24 @@ with j.step("design"):
     # double-click the button: the Click handler in the code editor
     win.save_all()
     code_before = (folder / f"lib/{re.sub(r'(?<!^)(?=[A-Z])', '_', ST['form']).lower()}.dart")
-    if hasattr(v, "controlDoubleClicked"):
-        v.controlDoubleClicked.emit(made["btnAdd"])
-    elif hasattr(win, "_on_control_dclick"):
-        win._on_control_dclick(made["btnAdd"])
-    else:
-        doc.select(made["btnAdd"])
-        win.view_code()
+    from radide.controls import CONTROL_TYPES
+    ev = CONTROL_TYPES[made["btnAdd"].type].default_event
+    doc.eventRequested.emit(made["btnAdd"], ev)        # what a double-click on the button does
     E.pump(0.8)
-    ed = win._editor_for_file(Path(win.plugin.code_file(ST["form"])).name) if hasattr(win, "_editor_for_file") else None
+    ed = win._current_code() if hasattr(win, "_current_code") else None
+    ed = getattr(ed, "editor", ed)
     text = ed.text() if ed is not None else ""
-    if "btnAdd_Click" not in text and ed is not None:
-        code, line = win.plugin.add_handler(text, "btnAdd_Click", doc.form)
-        ed.setText(code)
-        text = code
     j.check("btnAdd_Click" in text, f"no btnAdd_Click handler in the code editor: {text[:400]}")
     lines = text.split("\n")
     k = next(i for i, ln in enumerate(lines) if "btnAdd_Click" in ln)
     while k < len(lines) and "{" not in lines[k]:
         k += 1
     lines.insert(k + 1, HANDLER_BODY["flutter"])
-    ed.setText("\n".join(lines))
+    text = "\n".join(lines)
+    # the template's handlers use the sample controls deleted above: the user removes them from the code too
+    for h in ("MainScreen_Load", "btnHello_Click", "lstGreetings_Tap"):
+        text = re.sub(r"\n  void " + h + r"\([^)]*\) \{.*?\n  \}\n", "\n", text, flags=re.S)
+    ed.setText(text)
     win.save_all()
     E.pump(0.5)
     j.shot(win, "ide_click_handler")
@@ -237,7 +234,7 @@ with j.step("generate kivy"):
     need()
     from radide.mobile import codegen_kivy as KV
     form = ST["view"].doc.form
-    src = KV.generate_designer(form, f"{form.props['Name']}.py") if hasattr(KV, "generate_designer") else ""
+    src = KV.generate_designer(form)
     j.check(src and "lstItems" in src, "Kivy code not generated")
     (j.work / "kivy_designer.py").write_text(src, encoding="utf-8")
     j.check(re.search(r"radsizes|RadSize|sizes", src), "Kivy code has no per-size layout")
@@ -293,6 +290,7 @@ with j.step("flutter test"):
     pkg = re.search(r"^name:\s*(\S+)", (folder / "pubspec.yaml").read_text(encoding="utf-8"), re.M).group(1)
     test = test.replace("package:phone_forms/", f"package:{pkg}/")
     j.edit(folder / "test" / "form_test.dart", test)
+    E.run([FL, "pub", "get"], cwd=folder, timeout=600)
     for old in (folder / "test").glob("*.dart"):
         if old.name != "form_test.dart":
             old.unlink()

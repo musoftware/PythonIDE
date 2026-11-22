@@ -181,6 +181,11 @@ JOURNEYS = {"J9": j9_customer_manager, "J6": j6_install_update, "J4": j4_claude,
 
 
 def main(argv=None) -> int:
+    for stream in (sys.stdout, sys.stderr):        # Arabic step details in a redirected (cp1252) console
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser()
     ap.add_argument("scratch")
     ap.add_argument("--onedir", default="")

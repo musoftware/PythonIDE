@@ -300,6 +300,8 @@ def make_pses_dap():
                 self.conditions[(path, line)] = cond
             else:
                 self.conditions.pop((path, line), None)
+            # a changed breakpoint counts its hits again (_check_stop's key)
+            getattr(self, "_hits", {}).pop((os.path.normcase(os.path.normpath(path)), line), None)
             self._bp_pending = getattr(self, "_bp_pending", 0) + 1
 
             def done(_b, _m):

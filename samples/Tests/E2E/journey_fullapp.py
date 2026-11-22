@@ -243,8 +243,12 @@ def exercise_program(ide, rep: Report, P: str, data: Path, pid=None, prefix="F5"
         btns = _kids_sorted(ide, W, "button")              # Search, Add (row 1), Export, About (row 2)
         ide.call("win32_click", hwnd=btns[1]["hwnd"])
         ew = edit_window()
-        eds = _kids_sorted(ide, ew["hwnd"], "edit")
-        check(len(eds) >= 3, f"edit form fields: {len(eds)}")
+        try:                                  # the window exists before all its fields do
+            eds = ide.wait_for(lambda: (lambda k: k if len(k) >= 3 else None)(_kids_sorted(ide, ew["hwnd"], "edit")),
+                               15, step=0.3, desc="3 fields on the edit form")
+        except Exception:
+            ide.try_call("win32_close", hwnd=ew["hwnd"])       # never leave the modal form open
+            raise
         for h, v in zip(eds, (name, phone, city)):
             _type_into(ide, h["hwnd"], v)
         rep.shot(f"{P}{prefix} edit form {name or 'empty'}", hwnd=ew["hwnd"])

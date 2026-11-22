@@ -53,7 +53,6 @@ def before_database(j, win, project, folder):
 
 def serve_published(dest, port, php="php", **_):
     """The host: spark migrate + db:seed, then php -S public/ with CodeIgniter's rewrite.php router."""
-    import subprocess
     from pathlib import Path
     from radide.web_site.frameworks.codeigniter import SYSTEM, spark
     php = _php(DEV[0]) if DEV else php

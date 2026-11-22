@@ -120,7 +120,17 @@ def j6_install_update(env: C.Env, rep: Report):
         subprocess.run([str(inst / "unins000.exe"), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], timeout=300)
     shutil.rmtree(inst, ignore_errors=True)
     local.mkdir(parents=True, exist_ok=True)
-    gh = FakeGitHub(env.scratch / "j6-serve", [p for p in (old_setup, new_setup) if p and p.is_file()])
+    # "an older release" for Install Another Version: the N build published as 0.0.x (the N+1 package reports the
+    # same internal version as N, so N itself is not offered as "another" version by the dialog)
+    serve = env.scratch / "j6-serve"
+    serve.mkdir(parents=True, exist_ok=True)
+    older = serve / "RADIDE-0.0.9-setup-win64.exe"
+    if not older.exists():
+        try:
+            os.link(old_setup, older)
+        except OSError:
+            shutil.copy2(old_setup, older)
+    gh = FakeGitHub(serve, [p for p in (old_setup, new_setup, older) if p and p.is_file()])
     base_env = {"LOCALAPPDATA": str(local), "RADIDE_SETTINGS_ORG": ORG, "RADIDE_UPDATE_API": gh.api,
                 "RADIDE_PYTHON": C.real_python()}
     st: dict = {}
@@ -198,14 +208,14 @@ def j6_install_update(env: C.Env, rep: Report):
                     ide = st["ide"]
                     ide.call("trigger", path="Help/Install Another Version...")
                     d = ide.wait_dialog("Version", timeout=60)
-                    tree = ide.wait_for(lambda: (lambda w: w if any(vN in x for x in w.get("items", [])) else None)(
+                    tree = ide.wait_for(lambda: (lambda w: w if any("0.0.9" in x for x in w.get("items", [])) else None)(
                         ide.call("widget", sel={"cls": "QTreeWidget", "title": d["title"]})), 60,
                         desc="release list")
-                    ide.call("select_item", sel={"cls": "QTreeWidget", "title": d["title"]}, text=vN, async_=False)
+                    ide.call("select_item", sel={"cls": "QTreeWidget", "title": d["title"]}, text="0.0.9", async_=False)
+                    time.sleep(0.5)
                     rep.shot("install another version", sel={"dialog": d["title"]})
-                    btn = next((b for b in d["buttons"] if "install" in b.lower()), "Install")
-                    ide.call("press", button=btn, dialog=d["title"])
-                    u = ide.wait_dialog(text=vN, timeout=60)
+                    ide.call("press", button="Install", dialog=d["title"])
+                    u = ide.wait_dialog(text="0.0.9", timeout=60)
                     if any("install this version" in b.lower() for b in u["buttons"]):
                         ide.call("press", button="Install This Version", dialog=u["title"])
                         u = ide.wait_dialog(text="downloaded and checked", timeout=180)
@@ -219,7 +229,7 @@ def j6_install_update(env: C.Env, rep: Report):
                     st["ide"] = ide3
                     rep.ide = ide3
                     return f"items {tree.get('items', [])[:3]}; VERSION.txt {ver}"
-                rep.step(f"Help > Install Another Version -> {vN} (rollback)", rollback)
+                rep.step("Help > Install Another Version -> an older release (rollback: N+1 -> N files)", rollback)
 
         def while_running():
             ide = st.get("ide")
