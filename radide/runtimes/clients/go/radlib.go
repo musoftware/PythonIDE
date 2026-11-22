@@ -297,9 +297,16 @@ func radRun(handlers map[string]func(RadEvent)) {
 		radIn.ReadString('\n')
 		os.Exit(0)
 	}
+	failed := 0
 	for {
 		line, err := radIn.ReadString('\n')
 		if err != nil && line == "" {
+			// under the IDE debugger (RAD_BRIDGE_DEBUG) Delve halts the process to change breakpoints, which
+			// aborts the pending read of stdin on Windows: read again (only the end of stdin ends the program)
+			if err != io.EOF && os.Getenv("RAD_BRIDGE_DEBUG") != "" && failed < 1000 {
+				failed++
+				continue
+			}
 			break
 		}
 		line = strings.TrimRight(line, "\r\n")

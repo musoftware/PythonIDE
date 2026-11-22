@@ -35,10 +35,18 @@ fn send(line: &str) {
 }
 
 fn read_line() -> Option<String> {
-    let mut s = String::new();
-    match io::stdin().lock().read_line(&mut s) {
-        Ok(0) | Err(_) => None,
-        Ok(_) => Some(s.trim_end_matches(['\r', '\n']).to_string()),
+    // under the IDE debugger (RAD_BRIDGE_DEBUG) gdb halts the process to change breakpoints, which aborts the
+    // pending read of stdin on Windows: read again (only the end of stdin ends the program)
+    let debugged = std::env::var_os("RAD_BRIDGE_DEBUG").is_some();
+    let mut failed = 0;
+    loop {
+        let mut s = String::new();
+        match io::stdin().lock().read_line(&mut s) {
+            Ok(0) => return None,
+            Err(_) if debugged && failed < 1000 => failed += 1,
+            Err(_) => return None,
+            Ok(_) => return Some(s.trim_end_matches(['\r', '\n']).to_string()),
+        }
     }
 }
 

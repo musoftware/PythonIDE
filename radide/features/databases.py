@@ -1691,10 +1691,12 @@ KIND_CONN, KIND_TABLE, KIND_VIEW, KIND_FOLDER, KIND_DETECTED, KIND_PROJECT, KIND
 
 class DatabasesPanel(QWidget):
     """The Databases dock."""
+    _log_line = pyqtSignal(str)              # log() from worker threads -> the UI thread
 
     def __init__(self, win):
         super().__init__()
         self.win = win
+        self._log_line.connect(self._log_now)
         settings = getattr(win, "settings", None)
         self.passwords = D.PasswordStore(settings if settings is not None else _MemSettings())
         self.open_dbs: dict[str, D.Database] = {}         # conn id -> connected adapter
@@ -1758,6 +1760,17 @@ class DatabasesPanel(QWidget):
 
     # ------------------------------------------------------------------ helpers
     def log(self, text: str):
+        # the local database servers (web_site/dbservers.py) log from run_in_thread's worker thread: writing
+        # the Output widget from there crashed the IDE (access violation, found by the action crawler)
+        if threading.current_thread() is not threading.main_thread():
+            try:
+                self._log_line.emit(text)
+            except RuntimeError:             # the panel is gone
+                pass
+            return
+        self._log_now(text)
+
+    def _log_now(self, text: str):
         try:
             self.win.log(text)
         except Exception:  # noqa: BLE001

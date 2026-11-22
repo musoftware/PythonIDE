@@ -21,7 +21,6 @@ Steps:
 """
 from __future__ import annotations
 
-import os
 import re
 import shutil
 import sys
@@ -100,6 +99,8 @@ with j.step("design"):
         if text is not None and "Text" in c.props:
             doc.set_prop(c, "Text", text)
         made[name] = c
+    if "Items" in made["lstItems"].props:          # the list starts empty (the Toolbox adds 3 sample rows)
+        doc.set_prop(made["lstItems"], "Items", "")
     if "Hint" in made["txtItem"].props:
         doc.set_prop(made["txtItem"], "Hint", "New item")
     ab = next((c for c in doc.form.controls if c.type == "AppBar"), None)
@@ -238,7 +239,7 @@ with j.step("generate kivy"):
     j.check(src and "lstItems" in src, "Kivy code not generated")
     (j.work / "kivy_designer.py").write_text(src, encoding="utf-8")
     j.check(re.search(r"radsizes|RadSize|sizes", src), "Kivy code has no per-size layout")
-    kv = re.search(r'KV\s*=\s*(?:r)?"""(.*?)"""', src, re.S) or re.search(r"Builder\.load_string\((?:r)?'''(.*?)'''", src, re.S)
+    kv = re.search(r"KV\s*=\s*(?:r)?'''(.*?)'''", src, re.S) or re.search(r'KV\s*=\s*(?:r)?"""(.*?)"""', src, re.S) or re.search(r"Builder\.load_string\((?:r)?'''(.*?)'''", src, re.S)
     if kv:
         chk = j.work / "kv_check.py"
         chk.write_text("import os,sys\nos.environ['KIVY_NO_ARGS']='1'\nos.environ['KIVY_NO_CONSOLELOG']='1'\n"
@@ -260,7 +261,9 @@ import 'package:phone_forms/main.dart';
 
 void main() {
   testWidgets('phone: add an item', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(412, 915));
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(412, 915);
     await tester.pumpWidget(const RadMobileApp());
     await tester.pumpAndSettle();
     expect(find.text('Items: 0'), findsOneWidget);
@@ -272,7 +275,9 @@ void main() {
   });
 
   testWidgets('tablet: the size override applies', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1000);
     await tester.pumpWidget(const RadMobileApp());
     await tester.pumpAndSettle();
     expect(find.text('Items (tablet): 0'), findsOneWidget);

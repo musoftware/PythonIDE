@@ -65,9 +65,11 @@ def serve_published(dest, port, **_):
     from radide.web_site.frameworks.rails import ruby_env, ruby_exe
     env = dict(os.environ)
     env.update(ruby_env(Path(dest)))
-    if DEV:
-        env["BUNDLE_PATH"] = str(Path(DEV[0]) / "vendor" / "bundle")
     ruby = ruby_exe()
+    if DEV:      # the host's gems: point the copy's bundle at an installed gem folder (.bundle/config wins over ENV)
+        gems = str(Path(DEV[0]) / "vendor" / "bundle")
+        subprocess.run([ruby, "-S", "bundle", "config", "set", "--local", "path", gems], cwd=str(dest), env=env,
+                       capture_output=True, timeout=120)
     r = subprocess.run([ruby, "bin/rails", "db:prepare"], cwd=str(dest), env=env, capture_output=True, text=True,
                        timeout=600)
     if r.returncode != 0:

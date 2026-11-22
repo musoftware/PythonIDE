@@ -75,6 +75,8 @@ def launch(env: Env, name: str, extra_env: dict | None = None, exe=None, offscre
     ide = IDE.launch(exe or env.exe(), desktop=env.desktop, env_extra=e, scratch=env.scratch / "ide",
                      log_path=logs / f"{name}-{int(time.time())}.log", offscreen=offscreen, timeout=240)
     ide.call("auto_dialogs", rules=AUTO_RULES)
+    # the IDE itself is offscreen; the programs it starts (Qt ones too) get real windows on the hidden desktop
+    ide.call("set_env", unset=["QT_QPA_PLATFORM"])
     return ide
 
 

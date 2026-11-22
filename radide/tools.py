@@ -787,7 +787,9 @@ def goto_definition(win):
     if plugin.id.startswith("python"):
         try:
             import jedi
-            script = jedi.Script(ed.text(), path=str(ed.path), project=jedi.Project(str(win.project.folder)))
+            from .languages.python_tk import jedi_environment       # in-process in a release build
+            script = jedi.Script(ed.text(), path=str(ed.path), project=jedi.Project(str(win.project.folder)),
+                                 environment=jedi_environment())
             names = script.goto(line + 1, col, follow_imports=True)
             for n in names:
                 if n.module_path and n.line:

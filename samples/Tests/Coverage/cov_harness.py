@@ -82,6 +82,8 @@ def clear_modal_handlers() -> None:
 def start(name: str):
     """Boot the IDE offscreen; returns the MainWindow."""
     APP_NAME[0] = "cov-" + name
+    if os.environ.get("COV_MONACO") != "1":      # the built-in editor: synchronous text/cursor, no Monaco warm-up
+        os.environ["RADIDE_CRAWL_BUILTIN_EDITOR"] = "1"
     C.boot(APP_NAME[0])
     from PyQt6.QtCore import QTimer
     t = QTimer()

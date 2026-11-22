@@ -149,7 +149,12 @@ class Worker:
             pass
 
         def excepthook(t, v, tb):
-            w.exc.append("".join(traceback.format_exception(t, v, tb))[-3000:])
+            text = "".join(traceback.format_exception(t, v, tb))
+            w.exc.append(text[-3000:])
+            try:
+                sys.__stderr__.write("[crawl] uncaught: " + text[-3000:] + chr(10))
+            except Exception:  # noqa: BLE001
+                pass
         sys.excepthook = excepthook
         threading.excepthook = lambda args: excepthook(args.exc_type, args.exc_value, args.exc_traceback)
 
@@ -467,10 +472,13 @@ class Worker:
                 notes.append("layout restored")
             from PyQt6.QtWidgets import QApplication
             for t in QApplication.topLevelWidgets():
-                if t is w or not t.isVisible() or id(t) in self.baseline_tops:
+                try:
+                    if t is w or not t.isVisible() or id(t) in self.baseline_tops:
+                        continue
+                    if t.inherits("QMenu") or t.inherits("QTipLabel"):
+                        t.hide()
+                except RuntimeError:
                     continue
-                if t.windowType() in (0x8, 0xc, 0x13) or t.inherits("QMenu") or t.inherits("QToolTip"):
-                    t.hide()
         except Exception as e:  # noqa: BLE001
             notes.append(f"restore failed: {e!r}")
         return notes
@@ -554,7 +562,10 @@ class Worker:
             time.sleep(0.01)
         # windows that opened without being modal
         for t in QApplication.topLevelWidgets():
-            if id(t) in tops_before or t is w or not t.isVisible():
+            try:
+                if id(t) in tops_before or t is w or not t.isVisible():
+                    continue
+            except RuntimeError:                         # deleted by closing an earlier window (DeleteOnClose)
                 continue
             if t.inherits("QMenu") or t.inherits("QTipLabel") or t.inherits("QComboBoxPrivateContainer"):
                 t.hide()
@@ -651,6 +662,7 @@ def emit(tag: str, obj: dict) -> None:
 
 
 def worker_main(a) -> int:
+    faulthandler.enable(file=sys.__stderr__, all_threads=False)     # native crashes: the Python stack in the log
     W = Worker(a)
     W.start()
     done = set()
@@ -687,7 +699,16 @@ def worker_main(a) -> int:
             emit("END", {"key": k, "label": label_of(e), "source": e["source"], "context": W.ctx, "mode": W.mode,
                          "result": "skipped", "dialog": "", "time": 0, "error": why})
             continue
-        rec = W.run(e)
+        try:
+            rec = W.run(e)
+        except Exception:  # noqa: BLE001 - a harness error must not end the crawl
+            W.cur = None
+            rec = {"key": k, "label": label_of(e), "source": e["source"], "context": W.ctx, "mode": W.mode,
+                   "result": "harness-error", "dialog": "", "time": 0, "error": traceback.format_exc()[-2500:]}
+            try:
+                W.restore()
+            except Exception:  # noqa: BLE001
+                pass
         emit("END", rec)
     emit("DONE", {"exceptions_outside_actions": W.exc[:3]})
     try:
@@ -899,6 +920,17 @@ def write_report(out: Path, results: list, jobs: list, started: float) -> dict:
         lines += ["", "## Dialogs with interactive controls that have no accessible name", ""]
         for k, v in sorted(a11y.items()):
             lines.append(f"* **{cell(k)}**: {', '.join(sorted(v)[:12])}{' ...' if len(v) > 12 else ''}")
+    helps = [r for r in results if r.get("opened") and (r.get("label", "").startswith("Help")
+                                                        or "help" in r.get("label", "").lower())]
+    if helps:
+        lines += ["", "## Help / documentation targets (recorded, never opened)", "",
+                  "| Action | Would open | Target exists |", "|---|---|---|"]
+        for r in sorted(helps, key=lambda r: r["label"]):
+            for kind, target in r["opened"][:3]:
+                t = str(target)
+                m = re.search(r"([A-Za-z]:[\\/][^\"'|]+?\.(chm|html?|pdf|md))", t, re.I)
+                exists = "" if t.startswith("http") or not m else ("yes" if Path(m.group(1)).exists() else "NO")
+                lines.append(f"| {cell(r['label'])} | {kind}: `{cell(t)[:150]}` | {exists} |")
     outside = [(r["label"], x) for r in results for x in r.get("writes_outside", [])]
     if outside:
         lines += ["", "## Files written outside the sandbox", ""] + [f"* {cell(a)}: `{b}`" for a, b in outside[:200]]
@@ -925,11 +957,15 @@ def main() -> int:
     ap.add_argument("--only", default="", help="regex: only entries whose label matches (debugging)")
     ap.add_argument("--max-restarts", type=int, default=40)
     ap.add_argument("--app-name", default="crawl")
+    ap.add_argument("--builtin-editor", action="store_true",
+                    help="the built-in code editor instead of Monaco (machines where QtWebEngine cannot start)")
     a = ap.parse_args()
     if a.worker:
         return worker_main(a)
     out = Path(a.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    if a.builtin_editor:
+        os.environ["RADIDE_CRAWL_BUILTIN_EDITOR"] = "1"
     if a.quick:
         plan = [("python-tk", "vs", "all")]
     elif a.contexts or a.modes:

@@ -181,6 +181,10 @@ def boot(app_name: str = "crawl", clear: bool = True):
         QSettings(ORG, ORG + "-" + app_name).clear()
     no_external_programs()
     capture_menus()
+    if os.environ.get("RADIDE_CRAWL_BUILTIN_EDITOR") == "1":
+        # the built-in code editor instead of Monaco (QtWebEngine): no Monaco warm-up at start-up, for machines
+        # where QtWebEngine cannot start (features that need QtWebEngine still use it when triggered)
+        QSettings().setValue("editor/engine", "builtin")
     return APP
 
 

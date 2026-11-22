@@ -374,6 +374,13 @@
    "smoke": true
   },
   {
+   "path": "Coverage/Build/test_build_menu.py",
+   "tier": "full",
+   "needs": [
+    "qt"
+   ]
+  },
+  {
    "path": "Coverage/Debug/test_debug_menu.py",
    "tier": "full",
    "needs": [
@@ -407,6 +414,15 @@
    "needs": [
     "qt"
    ]
+  },
+  {
+   "path": "Crawler/test_action_crawler.py",
+   "tier": "manual",
+   "timeout": 28800,
+   "needs": [
+    "qt"
+   ],
+   "note": "triggers every menu / tool bar / palette / context-menu action in 14 contexts (hours); --quick = python-tk / VS only"
   },
   {
    "path": "Designer/VSParity/test_vs_parity.py",

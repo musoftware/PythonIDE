@@ -186,7 +186,7 @@ def j6_install_update(env: C.Env, rep: Report):
             ide.call("press", button="Yes", dialog=q["title"])
             ide.close()
             ide.proc.wait(120)
-            return f"{q['text'][:80]}; old IDE exited"
+            return f"{q.get('text', q.get('title', ''))[:80]}; old IDE exited"
         if rep.step(f"Help > Check for Updates -> {vN1} -> Update Now -> Yes: the IDE closes", update):
             def relaunched():
                 ide = st["ide"]

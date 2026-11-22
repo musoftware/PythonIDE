@@ -409,6 +409,9 @@ with j.step("debug"):
         raise E.Skip(getattr(S, "DEBUG_SKIP", "no debugger for this stack"))
     from radide.features import web_workspace as ww
     ww.stop_website(win)
+    if dbg.get("trigger") != "preview":          # only our own request should reach the breakpoint
+        from PyQt6.QtCore import QUrl
+        win.web_preview.view.setUrl(QUrl("about:blank"))
     E.pump(1.0)
     path = folder / dbg["file"]
     ed = ww.open_file(win, path)
@@ -455,9 +458,20 @@ with j.step("debug"):
                     >= 2, 30, 0.3)
         j.check(ok, "the page did not finish its script after Continue")
     else:
-        th.join(60)
+        again = []
+        for _ in range(4):           # another request (e.g. the Preview reloading the page) may stop there too
+            th.join(15)
+            if not th.is_alive():
+                break
+            if getattr(sess, "paused", False):
+                again.append(win.callstack.item(0).text() if win.callstack.count() else "?")
+                win.a_run.trigger()
+        th.join(30)
         r = box.get("r")
-        j.check(r is not None and r.status == 200, f"request after Continue: {box}")
+        j.check(r is not None and r.status == 200,
+                f"request after Continue: {box}; paused={getattr(sess, 'paused', None)}; stopped again at {again}")
+        if again:
+            j.note(f"stopped {len(again)} more time(s) before the request finished (other requests): {again[:2]}")
     ed.toggle_breakpoint(ln)
     win.a_stop.trigger()
     E.pump(1.5)
@@ -541,10 +555,10 @@ with j.step("intellisense"):
     lines.insert(at, indent + spec["type"])
     ed.setText("\n".join(lines))
     E.pump(spec.get("settle", 1.0))
-    col = len(indent) + len(spec["type"]) + 1
+    col = len(indent) + len(spec["type"])          # 0-based column after the typed text (what Monaco sends)
     items = labels(capture(ed, "_complete", 9101, at, col, timeout=spec.get("timeout", 30)))
     if not any(spec["expect"].lower() in x.lower() for x in items):
-        rows = suggest_rows(ed, at + 1, col - 1, spec["type"][-1:])
+        rows = suggest_rows(ed, at + 1, col + 1, "")   # cursor at the end, Ctrl+Space
         items += rows
     ok = any(spec["expect"].lower() in x.lower() for x in items)
     j.shot(ed, "intellisense_language")

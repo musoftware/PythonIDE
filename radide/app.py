@@ -319,11 +319,13 @@ class ModuleView(QWidget):
 
 class MainWindow(QMainWindow):
     _hub_log = pyqtSignal(str)          # RAD Hub output (emitted from its threads)
+    _log_from_thread = pyqtSignal(str)  # log() called from a worker thread -> appended on the UI thread
 
     def __init__(self):
         super().__init__()
         self.hub = None                  # radide.runtimes.radhub.RadHub while a program runs
         self._hub_log.connect(self._append_output)
+        self._log_from_thread.connect(self.log)
         self.settings = ide_settings()
         try:        # the theme's application style sheet before any widget exists: each widget is polished once
             from . import theme as _theme    # (Tools > Options applies it again at the end: then a no-op)
@@ -2008,6 +2010,12 @@ class MainWindow(QMainWindow):
         return wrote
 
     def log(self, text: str):
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            # Qt widgets only from the UI thread: features log from worker threads (e.g. the local database
+            # servers) and appendPlainText there crashed the IDE (access violation - action crawler)
+            self._log_from_thread.emit(text)
+            return
         self.output.appendPlainText(text)
         self._output_after_log = True        # program output starts on a new line
 

@@ -284,29 +284,33 @@ def _send(h, msg, wp, lp):
     user32.SendMessageTimeoutW(wintypes.HWND(h), msg, wp, lp, 2, 5000, ctypes.byref(res))
 
 
-def input_click(h: int, x: int, y: int, double: bool = False, right: bool = False) -> None:
+def input_click(h: int, x: int, y: int, double: bool = False, right: bool = False, post_release: bool = False) -> None:
+    """A click with the input state shared with the window's thread. post_release=True posts the button-up
+    after detaching: use it when the click handler is expected to stop at a breakpoint (a debuggee that hangs
+    in its handler would otherwise hang the attached IDE thread / a SendMessage with it)."""
     lp = _lparam(x, y)
     down, up, dbl, vk, mk = ((0x0204, 0x0205, 0x0206, 0x02, 2) if right else
                              (WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, 0x01, 1))
-    # the press while attached (the toolkit sees the button down); the release is POSTED after detaching: the
-    # click handler runs then, and if it stops at a breakpoint the debuggee's thread hangs - an attached IDE
-    # thread (shared input queue) or a SendMessage would hang with it
     with attached(h) as a:
         _send(h, WM_MOUSEMOVE, 0, lp)
         a.keys({vk: True})
         _send(h, down, mk, lp)
         _pump(60)
         a.keys({vk: False})
-    user32.PostMessageW(wintypes.HWND(h), up, 0, lp)
-    _pump(60)
+        if not post_release:
+            _send(h, up, 0, lp)
+            _pump(60)
+    if post_release:
+        user32.PostMessageW(wintypes.HWND(h), up, 0, lp)
+        _pump(60)
     if double:
         with attached(h) as a:
             a.keys({vk: True})
             _send(h, dbl, mk, lp)
             _pump(60)
             a.keys({vk: False})
-        user32.PostMessageW(wintypes.HWND(h), up, 0, lp)
-        _pump(60)
+            _send(h, up, 0, lp)
+            _pump(60)
 
 
 VK = {"return": 0x0D, "enter": 0x0D, "tab": 0x09, "escape": 0x1B, "esc": 0x1B, "back": 0x08, "backspace": 0x08,
@@ -357,7 +361,8 @@ def input_text(h: int, text: str) -> None:
                             "works for Tk / Qt / Win32): hwnd + optional child text/cls, client x/y; "
                             "how='bm_click' for BM_CLICK on a native button")
 def _click(ctx, hwnd: int, text: str = "", cls: str = "", x: int | None = None, y: int | None = None,
-           double: bool = False, right: bool = False, index: int = 0, how: str = "input"):
+           double: bool = False, right: bool = False, index: int = 0, how: str = "input",
+           post_release: bool = False):
     target = find_child(int(hwnd), text, cls, index) if (text or cls) else int(hwnd)
     h = wintypes.HWND(target)
     if how == "bm_click":
@@ -367,7 +372,7 @@ def _click(ctx, hwnd: int, text: str = "", cls: str = "", x: int | None = None, 
         r = wintypes.RECT()
         user32.GetClientRect(h, ctypes.byref(r))
         x, y = r.right // 2, r.bottom // 2
-    input_click(target, int(x), int(y), double, right)
+    input_click(target, int(x), int(y), double, right, post_release)
     return {"hwnd": target, "how": "input", "x": x, "y": y}
 
 

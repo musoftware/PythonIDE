@@ -654,6 +654,17 @@ DIALOG_PROPS = {"OpenFileDialog": ("Title", "Filter", "FileName", "InitialDirect
 JUSTIFY = {"Left": "left", "Center": "center", "Right": "right"}
 
 
+def jedi_environment():
+    """None = jedi's default (it starts sys.executable as its inference subprocess). In a release build
+    sys.executable is the user's real Python (paths.prepare_frozen), which cannot run the IDE's bundled jedi
+    (another version: the subprocess crashes and IntelliSense shows nothing): infer in-process instead."""
+    import sys
+    if getattr(sys, "frozen", False):
+        import jedi
+        return jedi.InterpreterEnvironment()
+    return None
+
+
 class PythonTkPlugin(LanguagePlugin):
     id = "python-tk"
     display_name = "Python (Tkinter)"
@@ -1194,7 +1205,8 @@ class PythonTkPlugin(LanguagePlugin):
         if not PythonTkPlugin._jedi_warm:
             PythonTkPlugin._jedi_warm = True
             jedi.settings.case_insensitive_completion = True
-        return jedi.Script(code, path=str(path), project=jedi.Project(str(path.parent)))
+        return jedi.Script(code, path=str(path), project=jedi.Project(str(path.parent)),
+                           environment=jedi_environment())
 
     def completions(self, code, line, col, path, names=None):
         from .base import Completion
