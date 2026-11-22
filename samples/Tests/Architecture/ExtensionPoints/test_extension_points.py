@@ -112,6 +112,25 @@ try:
 except TypeError as ex:
     ok("an object without the four methods is refused", "can_open" in str(ex), ex)
 
+from radide.extension_points import BINARY_VIEWER, FALLBACK  # noqa: E402
+pe = ExtensionPoints(logged.append)
+hexv = Prov("hex", {".cur", ".bin", ".nes"}, [])
+rom = Prov("rom", {".nes", ".bin"}, [])
+icon = Prov("icon", {".cur"}, [])
+tform = Prov("tform", {".bin"}, [])
+pe.add_document_provider(icon)
+pe.add_document_provider(hexv, FALLBACK)          # registered after the editors, still asked last
+pe.add_document_provider(rom, BINARY_VIEWER)
+pe.add_document_provider(tform)
+ok("priority: editors first (latest first), then binary viewers, then the fallback",
+   pe.document_providers() == [tform, icon, rom, hexv], [p.name for p in pe.document_providers()])
+ok("priority: a file's editor beats the hex fallback registered later (.cur -> icon)",
+   pe.open_document(Path("a.cur")) == (True, "icon:a.cur"))
+ok("priority: the ROM viewer beats the hex fallback (.nes -> rom)", pe.open_document(Path("g.nes")) == (True, "rom:g.nes"))
+ok("priority: an editor beats the ROM viewer (.bin art -> tform)", pe.open_document(Path("x.bin")) == (True, "tform:x.bin"))
+pe.remove_document_provider(tform)
+ok("remove_document_provider with priorities", pe.open_document(Path("x.bin")) == (True, "rom:x.bin"))
+
 order: list[str] = []
 logged.clear()
 ep.add_solution_contributor(lambda: order.append("first"), "first")

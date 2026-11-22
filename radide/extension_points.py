@@ -15,7 +15,10 @@ save listener         save_all (at the end, always)          save_all (work afte
 solution contributor  _fill_solution (after the tree)        _fill_solution
 ====================  =====================================  ==========================================
 
-Order: providers are asked **latest registered first**, like the outermost wrapper used to be; solution
+Order: providers are asked by **priority** (EDITOR, then BINARY_VIEWER, then FALLBACK), and within one
+priority **latest registered first**, like the outermost wrapper used to be. A file's own editor (image
+editor, text-mode designer ...) always wins over a viewer that takes any binary file (ROM workbench, hex
+view) - that order used to be forced with QTimer.singleShot re-wrapping. Solution
 contributors run in registration order (the order their wrappers added nodes). A provider that raises is
 logged to the Output window and never stops the IDE or the other providers.
 """
@@ -46,29 +49,34 @@ class DocumentProvider(Protocol):
 
 _PROVIDER_METHODS = ("can_open", "open_document", "save_documents", "has_modified_documents")
 
+EDITOR = 0            # the editor of a file type (.png, .rpt.json, .scene, .tform ...)
+BINARY_VIEWER = -10   # a viewer for a family of binary files (ROM workbench: .nes, .gb, patches ...)
+FALLBACK = -20        # takes whatever binary file nobody else wants (generic hex view)
+
 
 class ExtensionPoints:
     def __init__(self, log: Callable[[str], None] | None = None):
         self._log = log or print
-        self._documents: list[DocumentProvider] = []
+        self._documents: list[tuple[int, DocumentProvider]] = []
         self._solution: list[tuple[str, Callable[[], None]]] = []
         self._after_save: list[tuple[str, Callable[[], None]]] = []
 
     # ------------------------------------------------------------ registration
-    def add_document_provider(self, provider: DocumentProvider) -> None:
+    def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
         missing = [m for m in _PROVIDER_METHODS if not callable(getattr(provider, m, None))]
         if missing:
             raise TypeError(f"{type(provider).__name__} is not a DocumentProvider: missing {', '.join(missing)}")
-        if provider not in self._documents:
-            self._documents.append(provider)
+        if all(p is not provider for _, p in self._documents):
+            self._documents.append((priority, provider))
 
     def remove_document_provider(self, provider: DocumentProvider) -> None:
-        if provider in self._documents:
-            self._documents.remove(provider)
+        self._documents = [(pr, p) for pr, p in self._documents if p is not provider]
 
     def document_providers(self) -> list[DocumentProvider]:
-        """Latest registered first (the order they are asked in)."""
-        return list(reversed(self._documents))
+        """The order they are asked in: higher priority first, then latest registered first."""
+        indexed = list(enumerate(self._documents))
+        indexed.sort(key=lambda t: (-t[1][0], -t[0]))
+        return [p for _, (_, p) in indexed]
 
     def add_solution_contributor(self, fn: Callable[[], None], name: str = "") -> None:
         """*fn()* adds nodes to Solution Explorer after MainWindow filled it (called on every refill)."""
