@@ -731,6 +731,16 @@ def _xa(s) -> str:
     return _xml_attr(_XML_BAD.sub("?", str(s)))
 
 
+def _log_tail(log, n: int = 40) -> list[str]:
+    """The last non-empty lines of a test's log (shown when a test exits non-zero without a FAIL line)."""
+    try:
+        lines = [x.rstrip() for x in Path(log).read_text(encoding="utf-8", errors="replace").splitlines()
+                 if x.strip()]
+    except (OSError, TypeError):
+        return []
+    return [x[:400] for x in lines[-n:]]
+
+
 def write_junit(results: list[dict], meta: dict, path: Path) -> None:
     c = meta["totals"]
     out = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -751,10 +761,13 @@ def write_junit(results: list[dict], meta: dict, path: Path) -> None:
             if r["status"] == "flaky":
                 out.append('      <properties><property name="flaky" value="true"/></properties>')
             if r["status"] in ("failed", "timeout"):
-                msg = (r.get("fail_messages") or [f"exit code {r.get('returncode')}"])[0]
+                fails = r.get("fail_messages") or []
+                tail = _log_tail(r.get("log"))
+                msg = fails[0] if fails else f"exit code {r.get('returncode')}: " + (tail[-1] if tail else "")
                 if r["status"] == "timeout":
                     msg = f"timed out after {r['timeout']}s"
-                body = "\n".join(r.get("fail_messages") or [])
+                # no FAIL line (a crash / traceback): the end of the log says why
+                body = "\n".join(fails if fails else ["--- end of log ---", *tail])
                 out.append(f'      <failure message={_xa(msg)} type="{r["status"]}">{_x(body)}</failure>')
             elif r["status"] == "error":
                 out.append(f'      <error message={_xa(r.get("error", "error"))}/>')
