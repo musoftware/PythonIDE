@@ -1,0 +1,14 @@
+{
+  "name": "NotesApp",
+  "language": "expo",
+  "forms": [
+    "MainScreen",
+    "DetailsScreen",
+    "AboutScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [],
+  "expo": {
+    "device": "web"
+  }
+}

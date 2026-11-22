@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<h1>Products</h1>
+<form method="get" class="search"><input name="q" value="{{ q }}" placeholder="Search"><button>Search</button></form>
+{% if user %}<p><a class="btn" href="{{ url_for('main.add') }}">Add product</a></p>{% endif %}
+<table id="products"><thead><tr><th>Name</th><th>Price</th><th></th></tr></thead><tbody>
+{% for p in products %}
+<tr data-id="{{ p.id }}"><td class="name">{{ p.name }}</td><td>{{ '%.2f'|format(p.price) }}</td>
+<td>{% if user %}<a href="{{ url_for('main.edit', pid=p.id) }}">Edit</a>{% endif %}</td></tr>
+{% endfor %}
+</tbody></table>
+<p class="count">{{ products|length }} products</p>
+{% endblock %}

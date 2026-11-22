@@ -26,7 +26,6 @@ import html.parser
 import http.cookiejar
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys

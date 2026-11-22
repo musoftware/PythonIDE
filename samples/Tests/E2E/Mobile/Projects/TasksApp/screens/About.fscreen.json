@@ -1,0 +1,74 @@
+{
+ "version": 1,
+ "name": "About",
+ "route": "/about",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w3",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w4",
+      "type": "Text",
+      "props": {
+       "data": "حول"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w7",
+    "type": "Directionality",
+    "props": {
+     "textDirection": "TextDirection.rtl"
+    },
+    "slots": {
+     "child": {
+      "id": "w8",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "all": 24
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w9",
+        "type": "Column",
+        "props": {
+         "crossAxisAlignment": "CrossAxisAlignment.start"
+        },
+        "children": [
+         {
+          "id": "w10",
+          "type": "Text",
+          "props": {
+           "data": "تطبيق المهام",
+           "style": {
+            "fontSize": 26,
+            "fontWeight": "FontWeight.bold"
+           }
+          }
+         },
+         {
+          "id": "w11",
+          "type": "Text",
+          "props": {
+           "data": "صُمم بالكامل في مصمم فلاتر المرئي"
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

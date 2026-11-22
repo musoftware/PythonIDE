@@ -621,7 +621,7 @@ class MonacoEditor(QWebEngineView):
                         items = self._plugin_items(line, col)
                     except Exception:  # noqa: BLE001 - completion must never break typing
                         items = []
-                    self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
+                    self._js(f"radResolve({req}, {json.dumps(self._final_items(extra, items))});")
                 from PyQt6.QtCore import QTimer
                 QTimer.singleShot(self.LSP_COMPLETION_WAIT_MS, late)
 
@@ -645,13 +645,13 @@ class MonacoEditor(QWebEngineView):
                                     if i["label"] not in have]
                     except Exception as e:  # noqa: BLE001 - completion must never break typing
                         print(f"[monaco] plugin completions failed: {e}")
-                    self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, res))});")
+                    self._js(f"radResolve({req}, {json.dumps(self._final_items(extra, res))});")
                 self.lsp.completion(self.path, self._text, line, col, got)
                 return
             items = self._plugin_items(line, col)
         except Exception:  # noqa: BLE001 - completion must never break typing
             items = []
-        self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
+        self._js(f"radResolve({req}, {json.dumps(self._final_items(extra, items))});")
 
     def _plugin_items(self, line: int, col: int, kinds: tuple | None = None) -> list[dict]:
         """The language plugin's completions as Monaco items (kinds: only these Completion kinds)."""
@@ -680,6 +680,33 @@ class MonacoEditor(QWebEngineView):
             except Exception as e:  # noqa: BLE001 - completion must never break typing
                 print(f"[monaco] completion provider failed: {e}")
         return out
+
+    def _final_items(self, extra: list[dict], items) -> list[dict]:
+        merged = self._merge_completions(extra, items)
+        try:
+            if self.language() == "python":
+                merged = self.rank_private_last(merged)
+        except Exception:  # noqa: BLE001 - completion must never break typing
+            pass
+        return merged
+
+    @staticmethod
+    def rank_private_last(items: list[dict]) -> list[dict]:
+        """Python: after "self." the form's controls / members come first, then _private names, dunders last
+        (Monaco orders by sortText - "_" sorts before lower-case letters, so __annotations__ ... led the list).
+        Every item gets a sortText (Monaco falls back to the label when only some have one); the order inside each
+        group stays the server's / plugin's."""
+        for it in items or []:
+            label = it.get("label")
+            name = (label.get("label") if isinstance(label, dict) else str(label or "")).strip()
+            if name.startswith("__") and name.endswith("__") and len(name) > 4:
+                group = "2"
+            elif name.startswith("_"):
+                group = "1"
+            else:
+                group = "0"
+            it["sortText"] = group + str(it.get("sortText") or name)
+        return items
 
     @staticmethod
     def _merge_completions(extra: list[dict], items) -> list[dict]:

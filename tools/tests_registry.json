@@ -908,6 +908,28 @@
    ]
   },
   {
+   "path": "Native/test_native_fortran_template.py",
+   "tier": "toolchain:mingw",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1200,
+   "needs": [
+    "mingw",
+    "gfortran"
+   ],
+   "note": "Fortran GUI Bridge template -> native exe after F5 / Error List (stale radgui.mod)"
+  },
+  {
+   "path": "Web/test_webengine_devtools_port.py",
+   "tier": "full",
+   "timeout": 600,
+   "needs": [
+    "qt"
+   ],
+   "note": "QtWebEngine DevTools port opt-in, never inherited by child processes"
+  },
+  {
    "path": "Native/test_native_dotnet.py",
    "tier": "toolchain:dotnet",
    "timeout": 2400,

@@ -322,13 +322,15 @@ def _options_page(dlg):
     lay = QVBoxLayout(w)
     s = dlg.win.settings if hasattr(dlg, "win") else _WIN.settings
     cb = QCheckBox("Debug JavaScript in the Preview (F9 in .js files of a web site)")
-    cb.setChecked(s.value("web/js_debug", True) not in (False, "false", "0", 0))
+    cb.setChecked(s.value("web/js_debug", False) in (True, "true", "1", 1))
     lay.addWidget(cb)
     from ..web_site.browser_debug import devtools_port
     port = devtools_port()
-    info = QLabel("The IDE's browser engine opens a DevTools port on 127.0.0.1 only "
+    info = QLabel("When on, the IDE's browser engine opens a DevTools port on 127.0.0.1 "
                   f"({'now: port ' + str(port) if port else 'now: off'}); the vscode-js-debug adapter attaches "
-                  "to the Preview through it. Changes take effect after restarting RAD IDE.")
+                  "to the Preview through it. Other programs on this computer could use the port too, so it is "
+                  "off by default; programs started from the IDE never inherit it. Changes take effect after "
+                  "restarting RAD IDE.")
     info.setWordWrap(True)
     theme.role(info, "muted")
     lay.addWidget(info)

@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav class="top" th:fragment="nav"><a href="/">Home</a> <a href="/products">Products</a> <a href="/ar.html">العربية</a>
+<span th:if="${user}"><span class="user" th:text="${user}">admin</span> <a href="/logout">Log out</a></span>
+<a th:unless="${user}" href="/login">Log in</a></nav>
+</body>
+</html>

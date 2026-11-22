@@ -1,0 +1,173 @@
+{
+ "version": 1,
+ "name": "TaskList",
+ "route": "/",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "imports": [
+  "package:shared_preferences/shared_preferences.dart"
+ ],
+ "code": {
+  "members": "List<String> tasks = [];"
+ },
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w3",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w4",
+      "type": "Text",
+      "props": {
+       "data": "My Tasks"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w7",
+    "type": "Column",
+    "props": {
+     "crossAxisAlignment": "CrossAxisAlignment.stretch"
+    },
+    "children": [
+     {
+      "id": "w8",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "all": 16
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w9",
+        "type": "Text",
+        "name": "lblHeader",
+        "props": {
+         "data": "Today's tasks",
+         "style": {
+          "fontSize": 22,
+          "fontWeight": "FontWeight.bold"
+         }
+        },
+        "vprops": {
+         "medium": {
+          "style": {
+           "fontSize": 34,
+           "fontWeight": "FontWeight.bold"
+          }
+         }
+        }
+       }
+      },
+      "anim": {
+       "type": "fadeInDown",
+       "delayMs": 100,
+       "durationMs": 600
+      }
+     },
+     {
+      "id": "w10",
+      "type": "Expanded",
+      "slots": {
+       "child": {
+        "id": "w11",
+        "type": "ListView",
+        "ctor": "builder",
+        "name": "lstTasks",
+        "props": {
+         "itemCount": {
+          "$code": "tasks.length"
+         }
+        },
+        "slots": {
+         "itemBuilder": {
+          "id": "w16",
+          "type": "Code",
+          "props": {
+           "code": "ListTile(leading: const Icon(Icons.check_circle_outline), title: Text(tasks[index]), onTap: () => openTask(index))"
+          }
+         }
+        }
+       }
+      }
+     },
+     {
+      "id": "w17",
+      "type": "TextButton",
+      "slots": {
+       "child": {
+        "id": "w18",
+        "type": "Text",
+        "props": {
+         "data": "عن التطبيق"
+        }
+       }
+      },
+      "events": {
+       "onPressed": "nav:/about"
+      }
+     }
+    ]
+   },
+   "floatingActionButton": {
+    "id": "w19",
+    "type": "FloatingActionButton",
+    "name": "btnAdd",
+    "slots": {
+     "child": {
+      "id": "w20",
+      "type": "Icon",
+      "props": {
+       "icon": "Icons.add"
+      }
+     }
+    },
+    "events": {
+     "onPressed": "onAdd"
+    }
+   }
+  }
+ },
+ "variants": [
+  {
+   "id": "compact",
+   "label": "Phone",
+   "when": {
+    "maxWidth": 599
+   },
+   "preview": {
+    "width": 412,
+    "height": 915
+   }
+  },
+  {
+   "id": "medium",
+   "label": "Tablet",
+   "when": {
+    "minWidth": 600,
+    "maxWidth": 1023
+   },
+   "preview": {
+    "width": 800,
+    "height": 1280
+   }
+  },
+  {
+   "id": "expanded",
+   "label": "Desktop",
+   "when": {
+    "minWidth": 1024
+   },
+   "preview": {
+    "width": 1280,
+    "height": 800
+   }
+  }
+ ]
+}

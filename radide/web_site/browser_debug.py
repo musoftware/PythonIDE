@@ -1,7 +1,10 @@
 """Client-side JavaScript debugging of the pages shown in the Preview dock.
 
-The IDE's own Chromium (QtWebEngine) is started with a DevTools port on 127.0.0.1
-(``QTWEBENGINE_REMOTE_DEBUGGING``, set by :func:`enable_remote_debugging` before QApplication exists). On F5
+When the user turned it on (Tools > Options > Web "Debug JavaScript in the Preview", off by default: any local
+program could drive the IDE's pages through the port), the IDE's own Chromium (QtWebEngine) is started with a
+DevTools port on 127.0.0.1 (``QTWEBENGINE_REMOTE_DEBUGGING``, set by :func:`enable_remote_debugging` before
+QApplication exists; :func:`seal_child_environment` then removes it from the environment so programs started
+from the IDE do not inherit it). On F5
 the **vscode-js-debug** adapter attaches to it in ``pwa-chrome`` *attach* mode, limited by ``urlFilter`` to
 the site's DevServer URL (the IDE's own pages - Monaco editors, designer, AI chats - are never touched).
 F9 breakpoints in ``.js`` files (and in ``<script>`` blocks of .html pages) of a static, PHP or Node.js site then
@@ -11,8 +14,8 @@ pause when the Preview runs them: Locals / Call Stack / Watch / Immediate, F10 /
 - PHP / Node.js sites: :class:`CompositeDebugSession` joins the server-side session (Xdebug / node) and the
   browser session - whichever pauses is the one that F10 / F5 / Immediate drive.
 
-Turn it off with Tools > Options > Web "Debug JavaScript in the Preview" (QSettings ``web/js_debug``,
-read at start-up) or the environment variable ``RADIDE_NO_JS_DEBUG=1``.
+Turn it on with Tools > Options > Web "Debug JavaScript in the Preview" (QSettings ``web/js_debug``, default off,
+read at start-up) or ``RADIDE_JS_DEBUG=1``; ``RADIDE_NO_JS_DEBUG=1`` always keeps it off.
 """
 from __future__ import annotations
 
@@ -30,32 +33,72 @@ BROWSER_SKIP_FILES = ["**/node_modules/**", "**/__radide/**"]
 
 
 # ============================================================================ the DevTools port
+_PORT = 0                       # this process' DevTools port (the environment variable is removed after start-up)
+
+
+def js_debug_enabled(settings=None) -> bool:
+    """The user's choice (Tools > Options > Web): off unless turned on (or RADIDE_JS_DEBUG=1)."""
+    if os.environ.get("RADIDE_NO_JS_DEBUG"):
+        return False
+    if os.environ.get("RADIDE_JS_DEBUG", "") not in ("", "0"):
+        return True
+    if settings is None:
+        return False
+    try:
+        return settings.value("web/js_debug", False) in (True, "true", "1", 1)
+    except Exception:  # noqa: BLE001 - settings are optional here
+        return False
+
+
 def enable_remote_debugging(settings=None) -> int:
-    """Called by radide.app.main() before QApplication: give QtWebEngine a DevTools port on 127.0.0.1.
-    Returns the port (0 = disabled). An existing QTWEBENGINE_REMOTE_DEBUGGING value is kept."""
+    """Called by radide.app.main() before QApplication with the IDE settings: give QtWebEngine a DevTools port on
+    127.0.0.1 only when the user turned JavaScript debugging in the Preview on. A call without settings (tests that
+    debug the Preview) turns it on. Returns the port (0 = disabled). An existing QTWEBENGINE_REMOTE_DEBUGGING value
+    is kept."""
+    global _PORT
     if os.environ.get("RADIDE_NO_JS_DEBUG"):
         return 0
     cur = os.environ.get(ENV, "")
     if cur:
-        return devtools_port()
-    if settings is not None:
-        try:
-            if settings.value("web/js_debug", True) in (False, "false", "0", 0):
-                return 0
-        except Exception:  # noqa: BLE001 - settings are optional here
-            pass
+        _PORT = _parse_port(cur)
+        return _PORT
+    if settings is not None and not js_debug_enabled(settings):
+        return 0
     port = free_port()
     os.environ[ENV] = f"127.0.0.1:{port}"
+    _PORT = port
     return port
 
 
-def devtools_port() -> int:
-    """The DevTools port of this process' QtWebEngine, 0 when remote debugging is off."""
-    v = os.environ.get(ENV, "")
+def seal_child_environment() -> None:
+    """Right after QApplication: start QtWebEngine's context (it reads QTWEBENGINE_REMOTE_DEBUGGING and the
+    --remote-debugging-* flags of QTWEBENGINE_CHROMIUM_FLAGS once), then remove them from the environment so that
+    programs started from the IDE (a user's PyQt / Electron / Chromium program, terminals, tools) never open a
+    DevTools port of their own or learn the IDE's."""
+    global _PORT
+    from ..paths import clean_webengine_debug_environment, webengine_debug_flags
+    cur = os.environ.get(ENV, "")
+    if cur and not _PORT:
+        _PORT = _parse_port(cur)
+    if cur or webengine_debug_flags(os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")):
+        try:
+            from PyQt6.QtWebEngineCore import QWebEngineProfile
+            QWebEngineProfile.defaultProfile()              # creates the WebEngine context now
+        except Exception:  # noqa: BLE001 - no QtWebEngine: nothing reads the variables anyway
+            pass
+    clean_webengine_debug_environment(os.environ)
+
+
+def _parse_port(v: str) -> int:
     try:
         return int(v.rsplit(":", 1)[-1]) if v else 0
     except ValueError:
         return 0
+
+
+def devtools_port() -> int:
+    """The DevTools port of this process' QtWebEngine, 0 when remote debugging is off."""
+    return _PORT or _parse_port(os.environ.get(ENV, ""))
 
 
 def devtools_targets(port: int | None = None, timeout: float = 2.0) -> list[dict]:
@@ -309,8 +352,9 @@ def start_static(win, project, path=None):
     from ..features import web_workspace as ww
     if not available():
         if not devtools_port():
-            win.log("[debug] JavaScript debugging in the Preview is off (Tools > Options > Web) - running "
-                    "without the debugger.")
+            win.log("[debug] JavaScript debugging in the Preview is off - running without the debugger. Turn on "
+                    "Tools > Options > Web > \"Debug JavaScript in the Preview\" and restart RAD IDE (it opens a "
+                    "DevTools port on 127.0.0.1 for the IDE's browser engine).")
         return None
     if win.session is not None and win.session.running():
         return True
@@ -342,4 +386,5 @@ def start_static(win, project, path=None):
 
 
 __all__ = ["BrowserJsDebugSession", "CompositeDebugSession", "available", "devtools_port", "devtools_targets",
-           "enable_remote_debugging", "start_static", "wrap_server_session"]
+           "enable_remote_debugging", "js_debug_enabled", "seal_child_environment", "start_static",
+           "wrap_server_session"]

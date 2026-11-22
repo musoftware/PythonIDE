@@ -1,0 +1,76 @@
+{
+ "version": 1,
+ "name": "TaskDetail",
+ "route": "/detail",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w3",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w4",
+      "type": "Text",
+      "props": {
+       "data": "Task"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w7",
+    "type": "Center",
+    "slots": {
+     "child": {
+      "id": "w8",
+      "type": "Column",
+      "props": {
+       "mainAxisSize": "MainAxisSize.min"
+      },
+      "children": [
+       {
+        "id": "w9",
+        "type": "Text",
+        "name": "lblTitle",
+        "props": {
+         "data": {
+          "$code": "(ModalRoute.of(context)?.settings.arguments as String?) ?? ''"
+         },
+         "style": {
+          "fontSize": 28
+         }
+        },
+        "anim": {
+         "type": "zoomIn",
+         "delayMs": 0,
+         "durationMs": 500
+        }
+       },
+       {
+        "id": "w10",
+        "type": "TextButton",
+        "slots": {
+         "child": {
+          "id": "w11",
+          "type": "Text",
+          "props": {
+           "data": "Back"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "back"
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

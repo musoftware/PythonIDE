@@ -17,6 +17,7 @@ INTELLI = {"file": "core/views.py", "after": "def products(request):", "type": '
            "expect": "core:products", "html_file": "templates/core/ar.html", "css_file": "static/css/site.css"}
 PUBLISH_EXPECT = ["manage.py", "config/settings.py", "core/models.py", "core/views.py", "templates/core/home.html",
                   "static/css/site.css", "core/migrations/0001_initial.py"]
+PUBLISH_FORBID = [".venv"]
 RUN_TIMEOUT = 600
 CTX: dict = {}
 

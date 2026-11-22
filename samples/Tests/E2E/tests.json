@@ -1,0 +1,6 @@
+{"tests": {"test_user_journeys.py": {"tier": "toolchain:all", "area": "e2e", "timeout": 10800, "args": ["{scratch}"],
+                                     "needs": ["php", "node", "flutter"],
+                                     "note": "web (RAD Store: php, static, node, flask, django, fastapi) + mobile (Flutter, Expo, Kivy, phone forms) user journeys through the real IDE; missing toolchains SKIP"},
+           "test_user_journeys.py@web-all": {"tier": "manual", "area": "e2e", "timeout": 21600,
+                                             "args": ["{scratch}", "web:all"],
+                                             "note": "every web stack incl. ASP.NET, Spring, NestJS, Rails, CodeIgniter, Laravel (rails needs a short scratch path)"}}}

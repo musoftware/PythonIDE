@@ -397,6 +397,33 @@ def clean_child_environment() -> None:
         os.environ["PATH"] = os.pathsep.join(parts)
 
 
+_WEBENGINE_DEBUG_FLAGS = ("--remote-debugging-port", "--remote-debugging-address", "--remote-debugging-pipe",
+                          "--remote-allow-origins", "--auto-open-devtools-for-tabs")
+
+
+def webengine_debug_flags(flags: str) -> list[str]:
+    """The DevTools / remote debugging switches in a QTWEBENGINE_CHROMIUM_FLAGS value."""
+    return [f for f in (flags or "").split() if f.split("=", 1)[0].lower() in _WEBENGINE_DEBUG_FLAGS]
+
+
+def clean_webengine_debug_environment(env) -> None:
+    """Remove the IDE's QtWebEngine DevTools settings from *env* (os.environ or a child's environment dict):
+    QTWEBENGINE_REMOTE_DEBUGGING and the remote debugging switches of QTWEBENGINE_CHROMIUM_FLAGS (other switches,
+    e.g. --disable-gpu, are kept; an empty value is removed)."""
+    env.pop("QTWEBENGINE_REMOTE_DEBUGGING", None)
+    flags = env.get("QTWEBENGINE_CHROMIUM_FLAGS")
+    if flags is None:
+        return
+    bad = webengine_debug_flags(flags)
+    if not bad:
+        return
+    rest = " ".join(f for f in flags.split() if f not in bad)
+    if rest:
+        env["QTWEBENGINE_CHROMIUM_FLAGS"] = rest
+    else:
+        env.pop("QTWEBENGINE_CHROMIUM_FLAGS", None)
+
+
 # ----------------------------------------------------------------------------------- RADIDE.exe as python
 _PY_FLAGS = set("uIEsSBqdOv")
 

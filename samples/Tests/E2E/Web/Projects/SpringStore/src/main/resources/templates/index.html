@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('SpringStore')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main>
+	<p>Welcome to <strong th:text="${title}">SpringStore</strong> - a Spring Boot app made with RAD IDE.</p>
+	<p>Server time: <span id="time">...</span></p>
+</main>
+<script>fetch('/api/time').then(r => r.json()).then(d => document.getElementById('time').textContent = d.time);</script>
+</body>
+</html>

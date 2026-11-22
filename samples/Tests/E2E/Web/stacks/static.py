@@ -98,7 +98,6 @@ PRODUCTS_JSON = """[
 
 def after_create(j, win, project, folder):
     # the RTL Bootstrap build is not in the template: a user would add it next to the LTR one
-    import re
     css = folder / "assets/vendor/bootstrap/css/bootstrap.min.css"
     rtl = folder / "assets/vendor/bootstrap/css/bootstrap.rtl.min.css"
     if css.exists() and not rtl.exists():

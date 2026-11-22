@@ -163,7 +163,7 @@ Tests: `samples/Tests/Mobile/Foldables/check_devices.py`, `test_hinge_ui.py` (qh
 Arabic keys: Posture=الوضعية, Folded=مطوي, Half-open=نصف مفتوح, Flat=مفتوح بالكامل, Hinge=المفصل, Two Pane=لوحتان, Create Foldable Emulator=إنشاء محاكي قابل للطي, Controls cross the hinge=عناصر تعبر المفصل.
 
 ### F - Flutter designer: motion + variants + foldables (`radide/flutterdesign`)
-New files: `flutterdesign/motion.py`, `flutterdesign/variants_fd.py`, `flutterdesign/dart/radfx.dart`, `flutterdesign/dart/radlayout.dart`, samples `samples/Tests/FlutterDesigner/MotionScreens/`, `ResponsiveScreens/`. Then hook edits in model.py, codegen.py, importer.py, inspector.py, designer.py, qtpreview.py, live.py, preview_host fx.dart.
+New files: `flutterdesign/motion.py`, `flutterdesign/variants_fd.py`, `flutterdesign/dart/radfx.dart`, `flutterdesign/dart/radlayout.dart`, samples `samples/Tests/FlutterDesigner/MotionScreens/`, `ResponsiveScreens/`. Then hook edits in model.py, codegen.py, importer.py, inspector.py, designer.py, qtpreview (now the `qtpreview/` package), live.py, preview_host fx.dart.
 1. Schema (additive, SCHEMA_VERSION stays 1; unknown keys already preserved):
 ```json
 "anim": {"type": "shake", "trigger": "tap", "repeat": 0, "reverse": true}

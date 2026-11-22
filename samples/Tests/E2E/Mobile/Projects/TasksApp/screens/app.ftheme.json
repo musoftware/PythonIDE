@@ -1,0 +1,30 @@
+{
+ "version": 1,
+ "seedColor": "#FF5B6CF9",
+ "variant": "tonalSpot",
+ "mode": "system",
+ "colors": {
+  "light": {},
+  "dark": {}
+ },
+ "background": {},
+ "font": {},
+ "buttons": {
+  "radius": 14,
+  "height": 52,
+  "elevation": 0.0
+ },
+ "inputs": {
+  "style": "outline",
+  "radius": 14
+ },
+ "cards": {
+  "radius": 16,
+  "elevation": 1.0
+ },
+ "appBar": {
+  "centerTitle": true,
+  "elevation": 0
+ },
+ "useMaterial3": true
+}

@@ -88,7 +88,10 @@ def check_project(project, plugin, texts: dict[str, str]) -> list[Diag]:
         elif pid == "fortran-bridge":
             gf = plugin.compiler() if hasattr(plugin, "compiler") else ""
             if gf and fname != "radgui.f90":
-                r = subprocess.run([gf, "-fsyntax-only", str(project.folder / "radgui.f90"), str(project.folder / fname)],
+                moddir = project.folder / "_build"           # the .mod files go where F5 keeps them, not next to the sources
+                moddir.mkdir(exist_ok=True)
+                r = subprocess.run([gf, "-fsyntax-only", "-J", str(moddir), str(project.folder / "radgui.f90"),
+                                    str(project.folder / fname)],
                                    cwd=str(project.folder), capture_output=True, text=True)
                 for m in re.finditer(r"([\w.]+):(\d+):\d+:\s*\n(?:.*\n)*?\s*(Error|Warning): ([^\n]+)", r.stderr):
                     out.append(Diag(m.group(3), m.group(4), m.group(1), int(m.group(2))))

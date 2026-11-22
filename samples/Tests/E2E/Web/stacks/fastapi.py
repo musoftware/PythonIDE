@@ -17,7 +17,7 @@ DEBUG = {"file": "app/main.py", "match": "rows = db().execute(\"SELECT id, name,
 INTELLI = {"file": "app/main.py", "after": "def products(request: Request", "type": "request.query_para",
            "expect": "query_params", "html_file": "app/templates/ar.html", "css_file": "app/static/css/site.css"}
 PUBLISH_EXPECT = ["app/main.py", "app/templates/index.html", "app/static/css/site.css", "requirements.txt"]
-PUBLISH_FORBID = ["data/store.db"]
+PUBLISH_FORBID = ["data/store.db", ".venv"]
 RUN_TIMEOUT = 600
 CTX: dict = {}
 
@@ -108,12 +108,12 @@ def save_session(response, session: dict):
     return response
 
 
-def render(request: Request, name: str, status: int = 200, **ctx):
+def render(request: Request, template: str, status: int = 200, **ctx):
     session = load_session(request)
     if "csrf" not in session:
         session["csrf"] = secrets.token_hex(16)
     ctx.update(request=request, user=session.get("user"), csrf=session["csrf"])
-    return save_session(templates.TemplateResponse(request, name, ctx, status_code=status), session)
+    return save_session(templates.TemplateResponse(request, template, ctx, status_code=status), session)
 
 
 def check_csrf(request: Request, token: str):

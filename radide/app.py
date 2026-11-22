@@ -86,6 +86,70 @@ def _has_debugpy() -> bool:
     return importlib.util.find_spec("debugpy") is not None
 
 
+_PY_INFO: dict[str, tuple[str, str]] = {}
+
+
+def python_info(python: str, refresh: bool = False) -> tuple[str, str]:
+    """(Python version, debugpy version or "") of *python* (cached; "" / "" when it cannot be asked)."""
+    key = os.path.normcase(str(python))
+    if refresh or key not in _PY_INFO:
+        ver, dbg = "", ""
+        try:
+            import subprocess
+            from .paths import NO_WINDOW
+            out = subprocess.run([python, "-c", "import sys, importlib.util as u; print(sys.version.split()[0]); "
+                                  "s = u.find_spec('debugpy'); print(__import__('debugpy').__version__ if s else '')"],
+                                 capture_output=True, text=True, timeout=30, creationflags=NO_WINDOW,
+                                 env={k: v for k, v in os.environ.items() if k not in ("PYTHONHOME", "PYTHONPATH")})
+            lines = (out.stdout or "").splitlines()
+            ver = lines[0].strip() if lines else ""
+            dbg = lines[1].strip() if len(lines) > 1 else ""
+        except Exception:  # noqa: BLE001
+            pass
+        _PY_INFO[key] = (ver, dbg)
+    return _PY_INFO[key]
+
+
+def debugpy_adapter_for(python: str, install=None, log=None) -> tuple[list[str] | None, str]:
+    """The debugpy adapter for debugging a program that runs with *python* - the debuggee always runs with *python*
+    (the same interpreter as Run), only the adapter process may differ:
+      1. *python*'s own debugpy;
+      2. the IDE's debugpy (source checkout: its .venv; release build: the real Python of radide/paths.py) - its
+         launcher injects that debugpy into the debuggee, which works for every Python version debugpy supports;
+      3. install(python) -> True: debugpy installed into *python* on demand (pip), then 1.
+    Returns (argv or None, a description for the Output window)."""
+    ver, dbg = python_info(python)
+    if dbg:
+        return [python, "-m", "debugpy.adapter"], f"debugpy {dbg} of this interpreter"
+    ide_py = sys.executable
+    if _has_debugpy() and os.path.normcase(ide_py) != os.path.normcase(str(python)):
+        _iv, idbg = python_info(ide_py)
+        if idbg and _debugpy_supports(idbg, ver):
+            return [ide_py, "-m", "debugpy.adapter"], f"debugpy {idbg} of the IDE ({ide_py})"
+    if install is not None and install(python):
+        _ver, dbg = python_info(python, refresh=True)
+        if dbg:
+            return [python, "-m", "debugpy.adapter"], f"debugpy {dbg} (installed into this interpreter)"
+    return None, ""
+
+
+def _debugpy_supports(debugpy_version: str, python_version: str) -> bool:
+    """debugpy >= 1.8.17 debugs Python 3.14, >= 1.8.0 3.12/3.13; anything older: 3.11 at most."""
+    def key(v):
+        try:
+            return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+        except ValueError:
+            return ()
+    d, p = key(debugpy_version), key(python_version)[:2]
+    if not d or not p:
+        return True                       # unknown: let debugpy decide
+    if p >= (3, 14):
+        return d >= (1, 8, 17)
+    if p >= (3, 12):
+        return d >= (1, 8, 0)
+    return True
+
+
 def project_venv_python(folder: Path) -> str:
     """<folder>/.venv's python (Windows or POSIX layout), or "" when the project has no venv."""
     for rel in ((".venv", "Scripts", "python.exe"), (".venv", "bin", "python")):
@@ -2192,6 +2256,9 @@ class MainWindow(QMainWindow):
         self.dock_output.show()
         self.dock_output.raise_()
         self.log(f"------ {'Debug' if debug else 'Run'}: {spec.program} {' '.join(spec.args)} ------")
+        if rp.id.startswith("python") or getattr(rp, "uses_debugpy", False):
+            ver = python_info(interp)[0]
+            self.log(f"Python interpreter: {interp}" + (f" (Python {ver})" if ver else ""))
         s = self._make_session(spec, debug, rp, interp, startup)
         s.output.connect(self._append_output)
         s.stopped.connect(self._on_stopped)
@@ -2215,13 +2282,24 @@ class MainWindow(QMainWindow):
             s = factory(self, spec, debug)
             if s is not None:
                 return s
+        adapter = None
         if debug and (plugin.id.startswith("python") or getattr(plugin, "uses_debugpy", False)) \
-                and _has_debugpy() \
                 and self.settings.value("debug/python_engine", "debugpy") == "debugpy":
+            # the program runs with the same interpreter as Run (project .venv / configured / found); debugpy
+            # comes from that interpreter, the IDE, or is installed into the interpreter on demand
+            py = real_python(interp)
+            adapter, how = debugpy_adapter_for(py, self._install_debugpy)
+            if adapter:
+                self.log(f"Debugger: {how}")
+            else:
+                self.log("Debugger: the IDE's built-in Python debugger (debugpy is not available for this "
+                         "interpreter)")
+        if adapter:
             from .dap import DapSession
             program = str(self.project.folder / plugin.code_file(self.project.startup if startup is None else startup))
             s = DapSession("debugpy", program, [], self.project.folder.resolve(), spec.env,
                            self._all_breakpoints(), self)
+            s.argv = adapter
             s.launch_args["python"] = [real_python(interp)]
             # the generated *_designer.py is not "my code" (like VS's designer files): stepping skips it, and an
             # error in an event handler called by Qt (C++ calls the designer's wrapper, nothing in Python catches
@@ -2238,6 +2316,39 @@ class MainWindow(QMainWindow):
                                           break_on_exception=self.settings.value(          # Exceptions
                                               "debug/break_on_exception", True) in (True, "true"))
         return Session(spec, debug, self)
+
+    def _install_debugpy(self, python: str) -> bool:
+        """pip install debugpy into *python* (the program's interpreter) - like the IDE does for PyInstaller; the
+        window stays responsive, the pip output goes to the Output window. Tools > Options can turn it off
+        (QSettings debug/install_debugpy)."""
+        if self.settings.value("debug/install_debugpy", True) in (False, "false", "0", 0) \
+                or os.environ.get("RADIDE_NO_DEBUGPY_INSTALL"):
+            return False
+        from PyQt6.QtCore import QElapsedTimer, QEventLoop, QProcess
+        self.log(f"Installing debugpy into {python} (pip install debugpy) ...")
+        self.dock_output.show()
+        proc = QProcess()                        # waited for below: no parent needed
+        proc.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
+        proc.readyReadStandardOutput.connect(
+            lambda: self._append_output(bytes(proc.readAllStandardOutput()).decode("utf-8", "replace")))
+        proc.start(python, ["-m", "pip", "install", "--disable-pip-version-check", "--no-input", "debugpy"])
+        if not proc.waitForStarted(10000):
+            self.log("*** pip could not be started")
+            return False
+        timer = QElapsedTimer()
+        timer.start()
+        while proc.state() != QProcess.ProcessState.NotRunning and timer.elapsed() < 300_000:
+            QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
+            proc.waitForFinished(50)
+        if proc.state() != QProcess.ProcessState.NotRunning:
+            proc.kill()
+            proc.waitForFinished(3000)
+            self.log("*** pip install debugpy timed out")
+            return False
+        ok = proc.exitStatus() == QProcess.ExitStatus.NormalExit and proc.exitCode() == 0
+        if not ok:
+            self.log(f"*** pip install debugpy failed (exit code {proc.exitCode()})")
+        return ok
 
     # ---------------------------------------------------------- RAD Hub (cross-language calls)
     def _start_hub(self, spec):
@@ -2490,6 +2601,11 @@ def main(argv=None):
     except Exception:  # noqa: BLE001 - optional
         pass
     app = QApplication(argv)
+    try:                              # the DevTools port is the IDE's own: programs started from it must not inherit it
+        from .web_site.browser_debug import seal_child_environment
+        seal_child_environment()
+    except Exception:  # noqa: BLE001
+        pass
     if getattr(sys, "frozen", False):  # release build: children must not inherit the bundled Qt's paths
         from .paths import clean_child_environment
         clean_child_environment()

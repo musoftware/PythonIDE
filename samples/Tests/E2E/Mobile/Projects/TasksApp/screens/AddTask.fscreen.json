@@ -1,0 +1,91 @@
+{
+ "version": 1,
+ "name": "AddTask",
+ "route": "/add",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "imports": [
+  "package:shared_preferences/shared_preferences.dart"
+ ],
+ "tree": {
+  "id": "w2",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w3",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w4",
+      "type": "Text",
+      "props": {
+       "data": "New task"
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w7",
+    "type": "Padding",
+    "props": {
+     "padding": {
+      "all": 20
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w8",
+      "type": "Column",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.stretch"
+      },
+      "children": [
+       {
+        "id": "w9",
+        "type": "TextField",
+        "name": "txtTitle",
+        "props": {
+         "decoration": {
+          "hintText": "Task title",
+          "labelText": "Title"
+         }
+        }
+       },
+       {
+        "id": "w10",
+        "type": "SizedBox",
+        "props": {
+         "width": 16,
+         "height": 16
+        }
+       },
+       {
+        "id": "w11",
+        "type": "ElevatedButton",
+        "name": "btnSave",
+        "slots": {
+         "child": {
+          "id": "w12",
+          "type": "Text",
+          "props": {
+           "data": "Save"
+          }
+         }
+        },
+        "events": {
+         "onPressed": "onSave"
+        },
+        "anim": {
+         "type": "fadeInUp",
+         "delayMs": 200,
+         "durationMs": 500
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

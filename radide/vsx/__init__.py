@@ -36,7 +36,7 @@ from .package import Extension, VsixError, get_installed, installed, vsx_root
 
 __all__ = ["API_LEVEL", "Event", "Extension", "VsixError", "on_installed", "on_removed", "on_enabled",
            "on_changed", "on_reload_requested", "root", "list_installed", "list_enabled", "get",
-           "mark_restart", "restart_required", "request_reload", "init_gui"]
+           "mark_restart", "restart_required", "clear_restart", "request_reload", "init_gui"]
 
 API_LEVEL = "1.147.0"         # the VS Code API level RAD IDE emulates (engines.vscode is checked against it):
                               # every stable vscode.d.ts declaration of 1.147 exists (radide/vsx/reference/COVERAGE.md)
@@ -155,6 +155,15 @@ def mark_restart(ext: Extension, reason: str) -> None:
 
 def restart_required() -> dict[str, str]:
     return dict(_pending_restart)
+
+
+def clear_restart(ids) -> None:
+    """The extension host picked these extensions up (it was started after they were installed)."""
+    changed = False
+    for i in ids or ():
+        changed = _pending_restart.pop(i, None) is not None or changed
+    if changed:
+        on_changed.emit()
 
 
 def request_reload() -> None:

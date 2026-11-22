@@ -521,6 +521,38 @@ class VsxService(QObject):
         self.stop()
         self.start()
 
+    def start_if_idle(self) -> bool:
+        """Start the host unless it already runs (the delayed start-up start, and after an install)."""
+        if self.host.running():
+            return False
+        return self.start()
+
+    def extension_added(self, ext, on: bool = True) -> None:
+        """An extension with code was installed / enabled while the IDE runs. VS Code activates it at once: with no
+        extension host running yet (the first code extension of this session) start one now instead of waiting for
+        the next IDE start; a running host keeps the "Reload" banner (restarting it would end the other extensions'
+        sessions)."""
+        if not on or not getattr(ext, "main", None) or self.host.running() or os.environ.get("RADIDE_NO_VSX"):
+            return
+        t = getattr(self, "_added_timer", None)
+        if t is None:
+            t = self._added_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(250)                   # one start for an extension and its dependencies / pack
+            t.timeout.connect(self._start_after_install)
+        t.start()
+
+    def _start_after_install(self) -> None:
+        if self.host.running() or not self.start():
+            return
+        self.log("extension host started for the newly installed extension(s): "
+                 + ", ".join(e.id for e in self.extensions))
+        try:
+            from .. import vsx
+            vsx.clear_restart([e.id for e in self.extensions])
+        except Exception:  # noqa: BLE001
+            pass
+
     def _on_started(self, res):
         if not res:
             self.log("extension host: initialize failed")
@@ -1722,6 +1754,8 @@ def install(win) -> VsxService:
     try:
         from .. import vsx
         vsx.on_reload_requested.connect(lambda: QTimer.singleShot(0, svc.restart))
+        vsx.on_installed.connect(svc.extension_added)       # the first code extension: start the host now
+        vsx.on_enabled.connect(svc.extension_added)
         vsx.on_changed.connect(lambda: QTimer.singleShot(0, svc._register_palette))
     except Exception:  # noqa: BLE001
         pass
@@ -1798,7 +1832,7 @@ def install(win) -> VsxService:
         agent_context.install(win)
     except Exception as e:  # noqa: BLE001
         svc.log(f"agent context: {e}")
-    QTimer.singleShot(1500, svc.start)          # after the IDE is up (extensions do not slow the start)
+    QTimer.singleShot(1500, svc.start_if_idle)  # after the IDE is up (extensions do not slow the start)
     return svc
 
 

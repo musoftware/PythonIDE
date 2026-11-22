@@ -16,13 +16,12 @@ INTELLI = {"file": "app/routes.py", "after": "def products():", "type": "request
            "html_file": "app/templates/ar.html", "css_file": "app/static/css/site.css"}
 PUBLISH_EXPECT = ["app/__init__.py", "app/routes.py", "app/templates/index.html", "app/static/css/site.css",
                   "requirements.txt"]
-PUBLISH_FORBID = ["data/store.db"]
+PUBLISH_FORBID = ["data/store.db", ".venv"]
 RUN_TIMEOUT = 600
 
 
 def serve_published(dest, port, **_):
     import os
-    from pathlib import Path
     from radide.web_site.frameworks.python_web import venv_python
     import e2e_lib as E
     py = venv_python(E.Path(CTX_FOLDER[0])) if CTX_FOLDER else ""

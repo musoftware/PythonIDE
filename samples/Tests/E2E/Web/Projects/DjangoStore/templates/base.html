@@ -1,0 +1,16 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}RAD Store{% endblock %} - RAD Store</title>
+<link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+<nav class="top"><a href="{% url 'core:home' %}">Home</a> <a href="{% url 'core:products' %}">Products</a>
+<a href="{% url 'core:arabic' %}">العربية</a>
+{% if user.is_authenticated %}<span class="user">{{ user.username }}</span>
+<form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit">Log out</button></form>
+{% else %}<a href="{% url 'login' %}">Log in</a>{% endif %}</nav>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

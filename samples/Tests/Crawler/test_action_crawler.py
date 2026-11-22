@@ -505,6 +505,14 @@ class Worker:
                "result": "ok", "dialog": "", "time": 0.0, "error": ""}
         # context menu entries: open the menu again (its actions are built per invocation)
         target = e
+        if e["source"] == "context" and e["path"] and e["path"][0] == "Designer":
+            try:                                     # an earlier action may have shown another tab
+                p = getattr(w, "project", None)
+                if p is not None and getattr(p, "forms", None) and w._current_designer() is None:
+                    w.open_designer(p.forms[0])
+                    C.pump(0.3)
+            except Exception:  # noqa: BLE001
+                pass
         if e["source"] == "context" and e.get("_trigger") is not None:
             menus = C.capture(e["_trigger"])
             fresh = C._menu_entries(menus, e["path"], "context")
@@ -596,7 +604,12 @@ class Worker:
         # ---- checks
         left = QApplication.activeModalWidget()
         out_new = w.output.toPlainText()[out_len:] if len(w.output.toPlainText()) >= out_len else ""
-        tb_out = [ln for ln in out_new.splitlines() if re.search(r"Traceback \(most recent|failed to load", ln)]
+        # tracebacks of the IDE in the Output window (a frame in radide/, or a feature that failed to load) - not
+        # those of the user's own program / tests run from the IDE (they also print to the Output window)
+        tb_out = ["failed to load"] if "failed to load" in out_new else []
+        for m in re.finditer(r"Traceback \(most recent call last\):(.*?)(?:\n\S|\Z)", out_new, re.S):
+            if re.search(r'File "[^"]*[\\/]radide[\\/]', m.group(1)):
+                tb_out.append(m.group(0)[:200])
         err_tb = "Traceback (most recent call last)" in self.err_tee.buf
         errors = []
         if self.exc:

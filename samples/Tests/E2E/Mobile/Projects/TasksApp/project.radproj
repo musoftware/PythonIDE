@@ -1,0 +1,11 @@
+{
+  "name": "TasksApp",
+  "language": "flutter",
+  "forms": [],
+  "startup": "TaskList",
+  "modules": [],
+  "mobile": {
+    "device": "chrome"
+  },
+  "designer": "widget-tree"
+}

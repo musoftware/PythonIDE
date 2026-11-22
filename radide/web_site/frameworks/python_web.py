@@ -86,6 +86,11 @@ def base_python(configured: str = "") -> str:
     """A real Python (not a venv, not the Windows Store stub) to create project venvs with."""
     if configured and Path(configured).is_file() and "WindowsApps" not in configured:
         return configured
+    if getattr(sys, "frozen", False):
+        # the installed IDE: sys.executable / sys._base_executable are RADIDE.exe - "RADIDE.exe -m venv" started a
+        # second IDE window instead of creating the venv (New Project > Flask / Django / FastAPI hung)
+        from ...paths import find_python
+        return find_python(configured) or ""
     base = getattr(sys, "_base_executable", "") or ""
     if base and Path(base).is_file() and "WindowsApps" not in base:
         return base
@@ -126,6 +131,8 @@ def create_venv(folder, log: Log, python: str = "", requirements: str = "require
     py = venv_python(folder)
     if not py:
         base = base_python(python)
+        if not base:
+            raise RuntimeError("Python was not found - install Python 3 (python.org) or set it in Tools > Options")
         log(f"Creating the project's virtual environment (.venv) with {base} ...")
         if run_logged([base, "-m", "venv", str(venv_dir(folder))], folder, log, timeout=300) != 0:
             raise RuntimeError("python -m venv failed (see the log)")

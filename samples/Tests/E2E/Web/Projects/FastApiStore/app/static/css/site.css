@@ -1,0 +1,9 @@
+/* RAD Store */
+body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f2f7f6; color: #222; }
+nav.top { background: #009688; padding: 10px 16px; }
+nav.top a, nav.top .user { color: #fff; margin-inline-end: 14px; text-decoration: none; }
+main { max-width: 900px; margin: 20px auto; padding: 0 16px; }
+table { width: 100%; border-collapse: collapse; background: #fff; }
+th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: start; }
+.error { color: #b00020; font-weight: bold; }
+.hero { padding: 40px 20px; background: linear-gradient(90deg, #00796b, #26a69a); color: #fff; border-radius: 12px; }

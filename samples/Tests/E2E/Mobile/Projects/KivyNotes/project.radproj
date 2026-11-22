@@ -1,0 +1,10 @@
+{
+  "name": "KivyNotes",
+  "language": "kivy",
+  "forms": [
+    "MainScreen",
+    "DetailScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": []
+}

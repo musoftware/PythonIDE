@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}RAD Store{% endblock %} - RAD Store</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body>
+<nav class="top"><a href="{{ url_for('main.index') }}">Home</a> <a href="{{ url_for('main.products') }}">Products</a>
+<a href="{{ url_for('main.arabic') }}">العربية</a>
+{% if user %}<span class="user">{{ user }}</span> <a href="{{ url_for('main.logout') }}">Log out</a>
+{% else %}<a href="{{ url_for('main.login') }}">Log in</a>{% endif %}</nav>
+<main>{% block content %}{% endblock %}</main>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

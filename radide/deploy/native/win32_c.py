@@ -449,7 +449,10 @@ def build(folder, project, cfg, work, log):
         if any("winsock" in _read(Path(s)).lower() or "ws2tcpip" in _read(Path(s)).lower() for s in srcs):
             cmd.append("-lws2_32")
     cmd += ([] if console else WIN_LIBS) + ["-lm"]
-    if _run(cmd, folder, log, env) != 0:
+    # gfortran looks for .mod files in the working directory before -I / -J: a radgui.mod that F5 / the Error List
+    # left in the project folder (the stdin/stdout radgui, without rad_native_handlers) would win over the native
+    # module -> "undefined reference to rad_native_handlers_". The sources are absolute: build from the work folder.
+    if _run(cmd, nat if lang == "fortran-bridge" else folder, log, env) != 0:
         raise BuildError(f"The native {plugin.display_name.split(' (')[0]} build failed (see the output above)")
     if not exe.is_file():
         raise BuildError(f"{exe.name} was not created")

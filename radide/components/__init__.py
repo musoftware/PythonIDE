@@ -15,7 +15,8 @@ Where packages are found (later sources win when two packages have the same name
 
 1. ``builtin``   - ``radide/components/builtin/*`` (the IDE's own controls; ``targets: {"*": {"native": true}}``)
 2. ``extension`` - enabled extensions that contribute ``"components": [{"folder": "..."}]``
-3. ``user``      - ``%APPDATA%\\RADIDE\\components\\*`` (``RADIDE_COMPONENTS_DIR`` overrides it); .radcomp
+3. ``user``      - ``%APPDATA%\\RADIDE\\components\\*`` (``<install>\\settings\\components`` when portable;
+                   ``RADIDE_COMPONENTS_DIR`` overrides it); .radcomp
    installs go here
 4. ``project``   - ``<project>/.radide/components/*`` (components that travel with one project)
 5. ``dev``       - folders listed in ``RADIDE_COMPONENT_PATH`` (packages being developed, hot reloaded)
@@ -68,7 +69,14 @@ class ComponentError(Exception):
 # ============================================================================ locations
 def user_components_dir(create: bool = True) -> Path:
     env = os.environ.get("RADIDE_COMPONENTS_DIR")
-    d = Path(env) if env else Path(os.environ.get("APPDATA") or Path.home() / ".config") / "RADIDE" / "components"
+    if env:
+        d = Path(env)
+    else:
+        try:                       # %APPDATA%\RADIDE, or <install>\settings for a portable build (never the profile)
+            from ..paths import roaming_dir
+            d = roaming_dir() / "components"
+        except Exception:  # noqa: BLE001
+            d = Path(os.environ.get("APPDATA") or Path.home() / ".config") / "RADIDE" / "components"
     if create:
         try:
             d.mkdir(parents=True, exist_ok=True)

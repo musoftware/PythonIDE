@@ -31,6 +31,9 @@ DEFAULT_PORTS = {"ftp": 21, "ftps": 21, "sftp": 22, "folder": 0}
 DEFAULT_EXCLUDES = [".git", ".svn", ".hg", ".radide", ".radide_backup*", "project.radproj", "*.radsln",
                     "__pycache__", "*.pyc", ".vscode", ".idea", "Thumbs.db", ".DS_Store", "*.bak", "*.tmp",
                     "~$*",
+                    # a Python web site's virtual environment (python_web.py keeps it in <project>/.venv): it is
+                    # machine-specific (absolute paths, this Windows' Python) - the host installs requirements.txt
+                    ".venv", ".pytest_cache", ".mypy_cache",
                     # runtime data of the site: never overwrite the live database / sessions on the host
                     "data/*.sqlite", "data/*.sqlite-*", "data/*.db", "data/sessions",
                     # ... also where the frameworks keep them: Laravel (database/database.sqlite, sessions),

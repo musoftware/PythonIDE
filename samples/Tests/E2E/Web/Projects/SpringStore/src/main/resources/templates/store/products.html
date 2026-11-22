@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="'Products - RAD Store'">RAD Store</title><link rel="stylesheet" href="/css/site.css"></head>
+<body>
+<nav th:replace="~{store/nav :: nav}"></nav>
+<main>
+<h1>Products</h1>
+<form method="get" class="search"><input name="q" th:value="${q}" placeholder="Search"><button>Search</button></form>
+<p th:if="${user}"><a class="btn" href="/products/add">Add product</a></p>
+<table id="products"><thead><tr><th>Name</th><th>Price</th><th></th></tr></thead><tbody>
+<tr th:each="p : ${products}" th:attr="data-id=${p.id}"><td class="name" th:text="${p.name}">x</td>
+<td th:text="${#numbers.formatDecimal(p.price, 1, 2, 'POINT')}">0</td>
+<td><a th:if="${user}" th:href="@{/products/{id}/edit(id=${p.id})}">Edit</a></td></tr>
+</tbody></table>
+<p class="count"><span th:text="${#lists.size(products)}">0</span> products</p>
+</main>
+<script src="/js/app.js"></script>
+</body>
+</html>

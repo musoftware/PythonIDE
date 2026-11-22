@@ -23,3 +23,5 @@ set E2E_OUT=%TEMP%\radide-e2e
 Results: `%E2E_OUT%\Mobile-<journey>\results.json` (steps, details, screenshot names), `shots\`, `work\` (the
 created projects). Exit code = number of failed steps. The first Expo run downloads its npm packages (can take many
 minutes); later runs reuse `node_modules`. Toolchains that are missing make their steps SKIP with the reason.
+
+`Projects/` holds the apps the journeys built (TasksApp - Flutter, NotesApp - Expo, KivyNotes - Kivy, PhoneForms - phone-frame forms) without build output, `.dart_tool` or `node_modules`; open one with File > Open Project.

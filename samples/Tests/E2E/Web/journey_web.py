@@ -711,7 +711,7 @@ with j.step("publish folder"):
     j.check(done, "publish did not finish in 10 minutes")
     got = {p.relative_to(PUB).as_posix() for p in PUB.rglob("*") if p.is_file()} if PUB.exists() else set()
     miss = [e for e in getattr(S, "PUBLISH_EXPECT", []) if e not in got]
-    bad = [e for e in getattr(S, "PUBLISH_FORBID", []) if e in got]
+    bad = [e for e in getattr(S, "PUBLISH_FORBID", []) if e in got or any(g.startswith(e + "/") for g in got)]
     j.check(got and not miss, f"missing in the published folder: {miss}; log: {log[-600:]}")
     j.check(not bad, f"published files that must be excluded: {bad}")
     j.note(f"{len(got)} files -> {PUB}")
