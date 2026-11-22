@@ -608,9 +608,13 @@ class PropertiesPanel(QWidget):
         owner = self._owner()
         targets = [owner]
         if owner is not None and name != "Name":
-            targets += [c for c in self.doc.selection if c is not owner and name in c.props]
+            # every other selected control that has the property (also one still at its default value)
+            targets += [c for c in self.doc.selection if c is not owner and c.type in CONTROL_TYPES and
+                        (name in c.props or any(d.name == name for d in CONTROL_TYPES[c.type].prop_defs()))]
         if len(targets) > 1:
-            self.doc.checkpoint()
+            if all(t.props.get(name) == value for t in targets):
+                return                          # nothing changes: no empty undo step
+            self.doc.checkpoint()               # ONE undo step for the whole multi-selection
             for t in targets:
                 self.doc.set_prop(t, name, value, record=False)
             self._refresh_values()             # blank (differing) cells now show the common value

@@ -206,6 +206,16 @@ if CLAUDE_VSIX and CLAUDE_VSIX.is_file():
             cw.dock.resize(480, 760)
             wait(lambda: False, 4)
             cw.web.grab().save(str(SCRATCH / "claude_code.png"))
+    # the Command Palette entries the user clicks: each must show a Claude webview
+    for cmd in ("claude-vscode.sidebar.open", "claude-vscode.editor.open"):
+        before = {h for h, w in svc.webviews.items.items() if w.dock.isVisible()}
+        for w in svc.webviews.items.values():
+            w.dock.hide()
+        reply = {}
+        svc.execute(cmd, [], lambda r, b=reply: b.setdefault("r", r))
+        shown = wait(lambda: any(w.dock.isVisible() for w in svc.webviews.items.values()), 20)
+        check(shown, f"{cmd} shows a Claude webview",
+              (reply.get("r"), [(w.view_type, w.dock.isVisible()) for w in svc.webviews.items.values()], before))
     for ext, api in svc.unsupported:
         if ext == "anthropic.claude-code":
             print("  unsupported:", api)

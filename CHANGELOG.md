@@ -19,6 +19,12 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   matched by name, properties the AI leaves out are kept) and every kind of change can be ticked - positions
   and sizes, texts, other properties, new controls; removing controls or changing their type only when ticked.
   "Arrange / align / sort / رتب" requests tick only positions and sizes.
+- Build EXE of VB6 / GUI Bridge programs: the published exe stopped at start with KeyError: 'DataGridView' (the
+  built-in control packages were not bundled).
+- Form designer: Visual Studio parity pass (116 checks) - Format > Align to Grid, Size to Grid, Horizontal /
+  Vertical Spacing, Order submenu, menu items greyed like VS; group drag/resize keep spacing; snaplines; Esc
+  selects the parent / cancels a drag; Tab cycles; Ctrl/Shift+arrows; rubber band; paste into containers with
+  cascade; click-drag to draw a control; Toolbox double-click; no empty undo steps; Lock Controls blocks edits.
 - Format > Center in Form moves the selected controls as one group (they were each centred and ended up on
   top of each other); per container, docked controls stay.
 

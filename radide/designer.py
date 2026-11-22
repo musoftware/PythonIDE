@@ -9,12 +9,12 @@ ones follow when the form is resized; Lock Controls and a Tab Order mode
 (click controls in sequence to number them) are available."""
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QLine, QPoint, QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QHBoxLayout, QMenu, QScrollArea, QToolButton, QWidget)
 
 from .controls import CONTROL_TYPES, MENU_TYPES, TOOLSTRIP_H
-from .document import FormDocument
+from .document import PASTE_STEP, FormDocument, is_docked
 from .layout import tab_page
 from .mobile.frame import PhoneChrome
 from .model import Control
@@ -29,6 +29,8 @@ MENU_H = 20
 FORM_BACK = "#ECE9D8"      # VB 2005 / Windows XP "Control" colour
 MIN_SIZE = 8
 MARGIN = 10
+SNAP_DIST = 4              # snaplines: an edge this close to another control's edge sticks to it
+SNAPLINE = "#0064FF"       # VS draws edge snaplines blue
 
 
 def design_visible(form, c: Control) -> bool:
@@ -57,6 +59,11 @@ HANDLE_CURSORS = [Qt.CursorShape.SizeFDiagCursor, Qt.CursorShape.SizeVerCursor,
 
 def snap(v: int) -> int:
     return int(round(v / GRID) * GRID)
+
+
+def next_grid(v: int, direction: int) -> int:
+    """The next grid line after *v* going right / down (direction > 0) or left / up (< 0)."""
+    return (v // GRID + 1) * GRID if direction > 0 else ((v - 1) // GRID) * GRID
 
 
 def handle_rects(r: QRect) -> list[QRect]:
@@ -109,6 +116,9 @@ class Overlay(QWidget):
         self.starts: dict[int, QRect] = {}
         self.band = QRect()
         self.recorded = False
+        self.start_abs: dict[int, QRect] = {}   # form coordinates of the dragged controls at the press
+        self.snaplines: list[QLine] = []        # shown while a drag sticks to another control's edge
+        self.create_tool = None                 # click-drag with a Toolbox tool draws the new control
 
     def _on_tool_changed(self, _tool=None):
         self.unsetCursor()
@@ -190,26 +200,79 @@ class Overlay(QWidget):
             self.recorded = True
             self.view.begin_live()      # the drag's steps update geometry only; the rest on release
 
+    # ------------------------------------------------------------------ snaplines
+    def _snap_targets(self, ref: Control, moving: list[Control]) -> list[QRect]:
+        """Rectangles (form coordinates) a drag of *moving* may line up with: the other controls of
+        ref's container and the container's client area (Visual Studio's snaplines)."""
+        banned = set()
+        for c in moving:
+            banned.add(id(c))
+            banned |= {id(d) for d in self.form.descendants(c)}
+        out = [self.abs_rect(c) for c in self.shown() if c.parent == ref.parent and id(c) not in banned]
+        parent = self.form.find(ref.parent) if ref.parent else None
+        if parent is None:
+            fp = self.view.form_props()
+            out.append(QRect(0, 0, int(fp["Width"]), int(fp["Height"])))
+        else:
+            from .layout import client_size
+            ox, oy = self.form.client_origin(parent)
+            cw, ch = client_size(self.form, parent)
+            out.append(QRect(ox, oy, cw, ch))
+        return out
+
+    @staticmethod
+    def _best_edge(edges: list[int], targets: list[int]):
+        """(offset, target) of the closest edge / target pair within SNAP_DIST, else None."""
+        best = None
+        for e in edges:
+            for t in targets:
+                d = t - e
+                if abs(d) <= SNAP_DIST and (best is None or abs(d) < abs(best[0])):
+                    best = (d, t)
+        return best
+
+    def _snap_lines(self, box: QRect, others: list[QRect], xs: list[int], ys: list[int]) -> list[QLine]:
+        lines = []
+        for x in xs:
+            hits = [r for r in others if x in (r.left(), r.left() + r.width())] + [box]
+            lines.append(QLine(x, min(r.top() for r in hits), x, max(r.top() + r.height() for r in hits)))
+        for y in ys:
+            hits = [r for r in others if y in (r.top(), r.top() + r.height())] + [box]
+            lines.append(QLine(min(r.left() for r in hits), y, max(r.left() + r.width() for r in hits), y))
+        return lines
+
     # ------------------------------------------------------------------ mouse
     def mousePressEvent(self, e):
         self.setFocus()
         self.view.end_live()            # a drag whose release never arrived
         pos = e.position().toPoint()
-        ctrl_key = bool(e.modifiers() & Qt.KeyboardModifier.ControlModifier)
+        mods = e.modifiers()
+        # VS: Ctrl+click and Shift+click add a control to the selection / take it out again
+        ctrl_key = bool(mods & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier))
         self.recorded = False
+        self.snaplines = []
         if e.button() != Qt.MouseButton.LeftButton:
             hit = self.control_at(pos)
             if hit not in self.doc.selection:
                 self.doc.select(hit)
             return
         if TOOL_STATE.current:
-            self.view.create_control(TOOL_STATE.current, pos)
-            TOOL_STATE.set(None)
+            tool = TOOL_STATE.current
+            ctype = CONTROL_TYPES.get(tool)
+            if ctype is None or ctype.nonvisual or tool in MENU_TYPES or self.view.phone.active:
+                self.view.create_control(tool, pos)
+                TOOL_STATE.set(None)
+                return
+            # VS: click = default size at the point, click-drag = draw the control's rectangle
+            self.mode = "create"
+            self.create_tool = tool
+            self.press = pos
+            self.band = QRect(pos, pos)
             return
         if self.view.tab_order_mode:
             hit = self.control_at(pos)
             if hit is not None:
-                self.view.assign_tab_index(hit)
+                self.view.assign_tab_index(hit, restart=bool(mods & Qt.KeyboardModifier.ControlModifier))
             self.mode = None
             return
         self.press = pos
@@ -222,7 +285,11 @@ class Overlay(QWidget):
             self.mode = "resize"
             c = self.doc.selected
             self.view.blend_begin_edit()    # Record off: the edit is on the designed form, not the timeline
-            self.starts = {id(c): self.start_rect(c)}
+            group = [x for x in self._movable() if not is_docked(x)]
+            if c not in group:
+                group.append(c)
+            self.starts = {id(x): self.start_rect(x) for x in group}      # VS: every selected control resizes
+            self.start_abs = {id(x): self.abs_rect(x) for x in group}
             return
         hit = self.control_at(pos)
         if hit is None:
@@ -247,6 +314,7 @@ class Overlay(QWidget):
         self.mode = "move"
         self.view.blend_begin_edit()        # Record off: the edit is on the designed form, not the timeline
         self.starts = {id(c): self.start_rect(c) for c in self._movable()}
+        self.start_abs = {id(c): self.abs_rect(c) for c in self._movable()}
         self.view.phone.begin_drag(self._movable())     # children of a Column / Row follow the mouse
 
     def _click_tab(self, tc: Control, pos: QPoint) -> bool:
@@ -263,27 +331,63 @@ class Overlay(QWidget):
             self.doc.set_prop(tc, "SelectedIndex", idx, record=False)
         return True
 
+    def _move_delta(self, movable: list[Control], dx: int, dy: int, free: bool) -> tuple[int, int]:
+        """How far the dragged group moves: the PRIMARY control goes to the grid (or sticks to another
+        control's edge - a snapline - when one is within SNAP_DIST); the others keep their distance to it.
+        Alt (free) = no snapping at all, as in Visual Studio."""
+        self.snaplines = []
+        if free:
+            return dx, dy
+        prim = self.doc.selected if self.doc.selected in movable else movable[0]
+        s = self.starts[id(prim)]
+        ddx, ddy = snap(s.x() + dx) - s.x(), snap(s.y() + dy) - s.y()
+        if self.view.phone.active:
+            return ddx, ddy
+        boxes = [self.start_abs[id(c)] for c in movable if id(c) in self.start_abs]
+        if not boxes:
+            return ddx, ddy
+        box = boxes[0]
+        for b in boxes[1:]:
+            box = box.united(b)
+        others = self._snap_targets(prim, movable)
+        bx = self._best_edge([box.left() + dx, box.left() + box.width() + dx],
+                             [v for r in others for v in (r.left(), r.left() + r.width())])
+        by = self._best_edge([box.top() + dy, box.top() + box.height() + dy],
+                             [v for r in others for v in (r.top(), r.top() + r.height())])
+        xs, ys = [], []
+        if bx is not None:
+            ddx = dx + bx[0]
+            xs.append(bx[1])
+        if by is not None:
+            ddy = dy + by[0]
+            ys.append(by[1])
+        if xs or ys:
+            self.snaplines = self._snap_lines(box.translated(ddx, ddy), others, xs, ys)
+        return ddx, ddy
+
     def mouseMoveEvent(self, e):
         pos = e.position().toPoint()
         dx, dy = pos.x() - self.press.x(), pos.y() - self.press.y()
-        if self.mode == "band":
+        free = bool(e.modifiers() & Qt.KeyboardModifier.AltModifier)
+        if self.mode in ("band", "create"):
             self.band = QRect(self.press, pos).normalized()
             self.update()
             return
         if self.mode == "move":
             if abs(dx) < 2 and abs(dy) < 2 and not self.recorded:
                 return
+            movable = [c for c in self._movable() if id(c) in self.starts]
+            if not movable:
+                return
             self._record()
-            moved = False
-            for c in self._movable():
-                s = self.starts.get(id(c))
-                if s is not None:     # size: the base value (a previewed state / keyframe size stays as is)
-                    gb = self.view.geometry_base(c)
-                    self.doc.set_geometry(c, snap(s.x() + dx), snap(s.y() + dy),
-                                          int(gb["Width"]), int(gb["Height"]), relayout=False)
-                    moved = True
-            if moved:                 # docked controls snap once per step, not once per moved control
-                self.doc.relayout_docked()
+            ddx, ddy = self._move_delta(movable, dx, dy, free)
+            for c in movable:     # size: the base value (a previewed state / keyframe size stays as is)
+                s = self.starts[id(c)]
+                gb = self.view.geometry_base(c)
+                self.doc.set_geometry(c, s.x() + ddx, s.y() + ddy, int(gb["Width"]), int(gb["Height"]),
+                                      relayout=False)
+            self.doc.relayout_docked()   # docked controls snap once per step, not once per moved control
+            self.update()
             return
         if self.mode == "resize":
             c = self.doc.selected
@@ -294,16 +398,45 @@ class Overlay(QWidget):
             ml, mt, mr, mb = HANDLE_EDGES[self.handle]
             left, top = s.left(), s.top()
             right, bottom = left + s.width(), top + s.height()
-            if ml: left = min(snap(left + dx), right - MIN_SIZE)
-            if mt: top = min(snap(top + dy), bottom - MIN_SIZE)
-            if mr: right = max(snap(right + dx), left + MIN_SIZE)
-            if mb: bottom = max(snap(bottom + dy), top + MIN_SIZE)
+            sa = self.start_abs.get(id(c), QRect(s))
+            ox, oy = sa.x() - s.x(), sa.y() - s.y()          # local -> form coordinates
+            others = [] if (free or self.view.phone.active) else self._snap_targets(c, [c])
+            txs = [v for r in others for v in (r.left(), r.left() + r.width())]
+            tys = [v for r in others for v in (r.top(), r.top() + r.height())]
+            xs, ys = [], []
+
+            def edge(v, off, targets, lines):
+                if free:
+                    return v
+                hit = self._best_edge([v + off], targets)
+                if hit is not None:
+                    lines.append(hit[1])
+                    return hit[1] - off
+                return snap(v)
+            if ml: left = min(edge(left + dx, ox, txs, xs), right - MIN_SIZE)
+            if mt: top = min(edge(top + dy, oy, tys, ys), bottom - MIN_SIZE)
+            if mr: right = max(edge(right + dx, ox, txs, xs), left + MIN_SIZE)
+            if mb: bottom = max(edge(bottom + dy, oy, tys, ys), top + MIN_SIZE)
             new = (left, top, right - left, bottom - top)
             old = (s.left(), s.top(), s.width(), s.height())
+            self.snaplines = self._snap_lines(QRect(left + ox, top + oy, right - left, bottom - top),
+                                              others, xs, ys) if (xs or ys) else []
             gb = self.view.geometry_base(c)
             base = [int(gb[k]) for k in ("Left", "Top", "Width", "Height")]
             # edges the gesture did not move keep their base value (matters while previewing a state)
             self.doc.set_geometry(c, *[n if n != o else b for n, o, b in zip(new, old, base)])
+            # VS: the other selected controls change their edges by the same amounts
+            dl, dt = left - s.left(), top - s.top()
+            dr, db = right - (s.left() + s.width()), bottom - (s.top() + s.height())
+            for o in self._movable():
+                so = self.starts.get(id(o))
+                if o is c or so is None:
+                    continue
+                w = max(MIN_SIZE, so.width() + dr - dl)
+                h = max(MIN_SIZE, so.height() + db - dt)
+                self.doc.set_geometry(o, so.left() + dl, so.top() + dt, w, h, relayout=False)
+            self.doc.relayout_docked()
+            self.update()
             return
         if TOOL_STATE.current:
             self.setCursor(Qt.CursorShape.CrossCursor)
@@ -318,26 +451,49 @@ class Overlay(QWidget):
 
     def mouseReleaseEvent(self, e):
         mode, self.mode = self.mode, None
+        self.snaplines = []
         self.view.end_live()            # ONE controlChanged per dragged control (Properties, previews ...)
+        pos = e.position().toPoint()
+        if mode == "create":
+            band, self.band = self.band, QRect()
+            tool, self.create_tool = self.create_tool, None
+            TOOL_STATE.set(None)
+            if tool:
+                if band.width() >= 4 and band.height() >= 4:
+                    self.view.create_control(tool, band.topLeft(), band.size())
+                else:
+                    self.view.create_control(tool, self.press)
+            self.update()
+            return
         if mode == "band":
             band = self.band
             self.band = QRect()
             if band.width() > 2 or band.height() > 2:
-                hits = [c for c in self.shown() if self.abs_rect(c).intersects(band)]
-                if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                # VS: the band selects the controls of the container it was drawn on (here: the form)
+                hits = [c for c in self.shown() if not c.parent and self.abs_rect(c).intersects(band)]
+                mods = e.modifiers()
+                if mods & Qt.KeyboardModifier.ControlModifier:          # Ctrl: toggle
+                    sel = list(self.doc.selection)
+                    for c in hits:
+                        sel.remove(c) if c in sel else sel.append(c)
+                    hits = sel
+                elif mods & Qt.KeyboardModifier.ShiftModifier:          # Shift: add
                     hits = self.doc.selection + [c for c in hits if c not in self.doc.selection]
                 self.doc.select_many(hits)
             self.update()
         elif mode == "move" and self.recorded and not self.view.blend_recording() and not self._variant_shown():
             moved = self._movable()
-            for c in moved:                    # drop into / out of containers
-                r = self.abs_rect(c)
-                target = self.container_at(r.center(), moved)
+            # VS: the controls go into the container under the mouse pointer (or out to the form)
+            target = self.container_at(pos, moved)
+            for c in moved:
                 self.doc.reparent(c, target)
             self.update()
         if mode == "move":           # dropped inside a Column / Row: take that place in the order
             self.view.phone.end_drag(self._movable() if self.recorded and not self.view.blend_recording()
                                      and not self._variant_shown() else [])
+        if mode in ("move", "resize") and self.recorded:
+            self.doc.drop_noop()         # a drag that ended where it started is no undo step
+        self.update()
 
     def _variant_shown(self) -> bool:
         """A layout size is shown: a drag moves the control on that size, never into another container."""
@@ -357,16 +513,86 @@ class Overlay(QWidget):
         self.view.show_context_menu(self.control_at(e.pos()), e.globalPos())
 
     # --------------------------------------------------------------- keyboard
+    def tab_cycle(self) -> list[Control]:
+        """What Tab / Shift+Tab step through: the shown controls, then the component tray."""
+        return self.shown() + self.form.nonvisual()
+
+    def focusNextPrevChild(self, nxt: bool) -> bool:
+        """VS: Tab selects the next control of the form, Shift+Tab the previous one (focus stays here)."""
+        if self.view.tab_order_mode or self.mode is not None:
+            return True
+        items = self.tab_cycle()
+        if not items:
+            return True
+        cur = self.doc.selected
+        i = items.index(cur) if cur in items else -1
+        j = (i + 1) % len(items) if nxt else ((i - 1) % len(items) if i >= 0 else len(items) - 1)
+        self.doc.select(items[j])
+        return True
+
+    def cancel_drag(self) -> bool:
+        """Esc during a mouse gesture: the drag is undone (VS); returns True when there was one."""
+        mode, self.mode = self.mode, None
+        if mode is None:
+            return False
+        self.snaplines = []
+        self.band = QRect()
+        if mode == "create":
+            self.create_tool = None
+            TOOL_STATE.set(None)
+        if mode in ("move", "resize") and self.recorded:
+            self.view.end_live()
+            self.doc.cancel_gesture()
+            self.view.phone.end_drag([])
+        self.recorded = False
+        self.update()
+        return True
+
+    def _key_delta(self, prim: Control, movable: list[Control], step: tuple[int, int], resize: bool) -> tuple[int, int]:
+        """Ctrl+arrow: to the next grid line or the next edge of another control, whichever is nearer
+        (Ctrl+Shift+arrow: the same for the right / bottom edge)."""
+        r = self.abs_rect(prim)
+        others = [] if self.view.phone.active else self._snap_targets(prim, movable)
+        out = []
+        for axis in (0, 1):
+            d = step[axis]
+            if not d:
+                out.append(0)
+                continue
+            p = self.view.design_props(prim)
+            local = int(p["Left" if axis == 0 else "Top"])
+            size = int(p["Width" if axis == 0 else "Height"])
+            start = r.left() if axis == 0 else r.top()
+            edges = [local + size] if resize else [local, local + size]
+            grid_edge = local + size if resize else local         # the Location (or the far edge) to the grid
+            cands = [next_grid(grid_edge, d) - grid_edge]
+            off = start - local                          # local -> form coordinates
+            for o in others:
+                lo, hi = (o.left(), o.left() + o.width()) if axis == 0 else (o.top(), o.top() + o.height())
+                for e in edges:
+                    cands += [t - (e + off) for t in (lo, hi)]
+            cands = [c for c in cands if c * d > 0]
+            out.append(min(cands, key=abs) if cands else d * GRID)
+        return out[0], out[1]
+
     def keyPressEvent(self, e):
         k = e.key()
+        mods = e.modifiers()
         if k == Qt.Key.Key_Escape:
+            if self.cancel_drag():
+                return
             if self.view.tab_order_mode:
                 self.view.set_tab_order_mode(False)
                 return
-            TOOL_STATE.set(None)
-            self.doc.select(None)
+            if TOOL_STATE.current:
+                TOOL_STATE.set(None)
+                return
+            # VS: Esc selects the container of the selected control (then the form)
+            c = self.doc.selected
+            parent = self.form.find(c.parent) if c is not None and c.parent else None
+            self.doc.select(parent)
             return
-        if not self.doc.selection:
+        if not self.doc.selection or self.mode is not None:
             return super().keyPressEvent(e)
         if k == Qt.Key.Key_Delete:
             self.doc.remove_controls(list(self.doc.selection))
@@ -375,24 +601,30 @@ class Overlay(QWidget):
                 Qt.Key.Key_Up: (0, -1), Qt.Key.Key_Down: (0, 1)}.get(k)
         if not step:
             return super().keyPressEvent(e)
-        if self.doc.locked:
+        if self.doc.locked or self.view.tab_order_mode:
             return
+        movable = [c for c in self._movable() if not is_docked(c)]
+        if not movable:
+            return
+        prim = self.doc.selected if self.doc.selected in movable else movable[0]
+        resize = bool(mods & Qt.KeyboardModifier.ShiftModifier)
+        by_grid = bool(mods & Qt.KeyboardModifier.ControlModifier)
         self.view.blend_begin_edit()
         self.doc.checkpoint()
+        dx, dy = self._key_delta(prim, movable, step, resize) if by_grid else step
         # from what is shown (a previewed state / keyframe); the other two values keep their base value
-        if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-            c = self.doc.selected
-            if c is not None and not c.ctype.nonvisual:
-                p = self.view.design_props(c)
-                gb = self.view.geometry_base(c)
+        for c in movable:
+            p = self.view.design_props(c)
+            gb = self.view.geometry_base(c)
+            if resize:          # Shift+arrow: every selected control grows / shrinks (VS)
                 self.doc.set_geometry(c, int(gb["Left"]), int(gb["Top"]),
-                                      max(MIN_SIZE, p["Width"] + step[0]), max(MIN_SIZE, p["Height"] + step[1]))
-        else:
-            for c in self._movable():
-                p = self.view.design_props(c)
-                gb = self.view.geometry_base(c)
-                self.doc.set_geometry(c, p["Left"] + step[0], p["Top"] + step[1], int(gb["Width"]),
-                                      int(gb["Height"]))
+                                      max(MIN_SIZE, int(p["Width"]) + dx), max(MIN_SIZE, int(p["Height"]) + dy),
+                                      relayout=False)
+            else:
+                self.doc.set_geometry(c, int(p["Left"]) + dx, int(p["Top"]) + dy, int(gb["Width"]),
+                                      int(gb["Height"]), relayout=False)
+        self.doc.relayout_docked()
+        self.doc.drop_noop()
 
     # ------------------------------------------------------------ drag & drop
     def dragEnterEvent(self, e):
@@ -445,6 +677,10 @@ class Overlay(QWidget):
             p.setPen(QPen(QColor("#000000"), 1, Qt.PenStyle.DashLine))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(self.band)
+        if self.snaplines:
+            p.setPen(QPen(QColor(SNAPLINE), 1))
+            for ln in self.snaplines:
+                p.drawLine(ln)
 
 
     @staticmethod
@@ -1064,8 +1300,14 @@ class DesignerView(QScrollArea):
         self.overlay.setFocus()
         self.tabOrderModeChanged.emit(on)
 
-    def assign_tab_index(self, c: Control) -> None:
-        """Tab Order mode: give *c* the next TabIndex of its container (0, 1, 2 ... in click order)."""
+    def assign_tab_index(self, c: Control, restart: bool = False) -> None:
+        """Tab Order mode: give *c* the next TabIndex of its container (0, 1, 2 ... in click order).
+        restart (Ctrl+click, VS): *c* keeps its number and the numbering goes on from it."""
+        if restart:
+            self.tab_next[c.parent] = int(c.props.get("TabIndex", 0) or 0) + 1
+            self.tab_assigned.add(id(c))
+            self.overlay.update()
+            return
         if not self._tab_recorded:
             self.doc.checkpoint()
             self._tab_recorded = True
@@ -1076,7 +1318,9 @@ class DesignerView(QScrollArea):
         self.overlay.update()
 
     # ------------------------------------------------------------ actions
-    def create_control(self, type_name: str, pos: QPoint) -> None:
+    def create_control(self, type_name: str, pos: QPoint, size: QSize | None = None) -> None:
+        """A Toolbox tool placed at *pos* (form coordinates); *size*: the rectangle drawn with a
+        click-drag (VS), else the control's default size."""
         ctype = CONTROL_TYPES[type_name]
         if type_name in MENU_TYPES:
             existing = next((c for c in self.doc.form.controls if c.type == type_name), None)
@@ -1087,11 +1331,36 @@ class DesignerView(QScrollArea):
             self.set_tab_order_mode(False)
         parent = "" if ctype.nonvisual else self.overlay.container_at(pos, [])
         px, py = self.doc.form.client_origin(self.doc.form.find(parent) if parent else None)
-        ctrl = self.doc.add_control(type_name, snap(pos.x() - px), snap(pos.y() - py), parent)
+        x, y = snap(pos.x() - px), snap(pos.y() - py)
+        ctrl = self.doc.add_control(type_name, x, y, parent)
+        if size is not None and not ctype.nonvisual:      # same undo step as the new control
+            w = max(MIN_SIZE, snap(pos.x() - px + size.width()) - x)
+            h = max(MIN_SIZE, snap(pos.y() - py + size.height()) - y)
+            self.doc.set_geometry(ctrl, x, y, w, h)
         self.phone.placed(ctrl, pos)
         self.overlay.setFocus()
         if type_name in MENU_TYPES:
             self.edit_menu(ctrl)
+
+    def add_default(self, type_name: str) -> Control | None:
+        """Toolbox double-click (VS): the control goes into the selected container (or next to the
+        selected control, else onto the form) near its top-left corner, one step further while taken."""
+        ctype = CONTROL_TYPES.get(type_name)
+        if ctype is None:
+            return None
+        if type_name in MENU_TYPES or ctype.nonvisual:
+            self.create_control(type_name, QPoint(0, 0))
+            return self.doc.selected
+        if self.tab_order_mode:
+            self.set_tab_order_mode(False)
+        parent = self.doc.paste_target()
+        used = {(int(c.props["Left"]), int(c.props["Top"])) for c in self.doc.form.children(parent)}
+        x = y = 2 * GRID
+        while (x, y) in used and x < 100 * PASTE_STEP:
+            x, y = x + PASTE_STEP, y + PASTE_STEP
+        ctrl = self.doc.add_control(type_name, x, y, parent)
+        self.overlay.setFocus()
+        return ctrl
 
     def edit_menu(self, ctrl: Control) -> None:
         from .controls import menu_names
@@ -1141,12 +1410,12 @@ class DesignerView(QScrollArea):
                 m.addAction("Edit Buttons...", lambda: self.edit_menu(c))
             if not c.ctype.nonvisual:
                 m.addSeparator()
-                m.addAction("Bring to Front", lambda: self.doc.reorder(c, True))
-                m.addAction("Send to Back", lambda: self.doc.reorder(c, False))
+                m.addAction("Bring to Front", lambda: self.doc.reorder(list(self.doc.selection), True))
+                m.addAction("Send to Back", lambda: self.doc.reorder(list(self.doc.selection), False))
         m.addSeparator()
         m.addAction("Cut", self.doc.cut).setEnabled(bool(self.doc.selection))
         m.addAction("Copy", self.doc.copy).setEnabled(bool(self.doc.selection))
-        m.addAction("Paste", self.doc.paste).setEnabled(self.doc.can_paste())
+        m.addAction("Paste", lambda: self.doc.paste()).setEnabled(self.doc.can_paste())
         m.addAction("Delete", lambda: self.doc.remove_controls(list(self.doc.selection))) \
             .setEnabled(bool(self.doc.selection))
         m.addSeparator()

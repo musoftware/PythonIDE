@@ -21,6 +21,21 @@ LAYOUT_PROPS = {"Left", "Top", "Width", "Height", "Dock", "Anchor", "Visible", "
 
 CLIP_MIME = "application/x-radide-controls"
 UNDO_LIMIT = 200
+GRID = 8                # the designer's grid (radide/designer.py)
+PASTE_STEP = 16         # a pasted group shifts by this while its place is taken
+
+SPACING_MODES = {"hspace_equal", "hspace_inc", "hspace_dec", "hspace_remove",
+                 "vspace_equal", "vspace_inc", "vspace_dec", "vspace_remove"}
+# Format menu command -> how many selected controls it needs (Visual Studio greys it out below that)
+FORMAT_MIN = {"left": 2, "center_v": 2, "right": 2, "top": 2, "middle": 2, "bottom": 2, "to_grid": 1,
+              "same_width": 2, "same_height": 2, "same_size": 2, "size_to_grid": 1,
+              "hspace_equal": 3, "hspace_inc": 2, "hspace_dec": 2, "hspace_remove": 2,
+              "vspace_equal": 3, "vspace_inc": 2, "vspace_dec": 2, "vspace_remove": 2,
+              "center_form_h": 1, "center_form_v": 1}
+
+
+def is_docked(c) -> bool:
+    return str(c.props.get("Dock") or "None") != "None"
 
 
 class FormDocument(QObject):
@@ -103,6 +118,18 @@ class FormDocument(QObject):
         if self._redo:
             self._undo.append(self.form.snapshot())
             self._restore(self._redo.pop())
+
+    def drop_noop(self) -> None:
+        """A gesture recorded a checkpoint but changed nothing (a drag that snapped back to where it
+        started, an arrow key on a docked control ...): forget that empty undo step, like Visual Studio."""
+        if self._undo and self._undo[-1] == self.form.snapshot():
+            self._undo.pop()
+            self.undoStateChanged.emit()
+
+    def cancel_gesture(self) -> None:
+        """Esc during a drag: put everything back as it was at the last checkpoint, without a redo step."""
+        if self._undo:
+            self._restore(self._undo.pop())
 
     def _restore(self, snap: str) -> None:
         self._live = None                       # an undo replaces every control: nothing left to commit
@@ -258,6 +285,7 @@ class FormDocument(QObject):
     def set_locked(self, on: bool) -> None:
         """Format > Lock Controls: controls can be selected but not moved or resized."""
         if self.locked != bool(on):
+            self.checkpoint()                   # VS: Lock Controls is an undoable designer change
             self.form.props["LockControls"] = bool(on)
             self.controlChanged.emit(None)
             self.set_modified()
@@ -276,14 +304,22 @@ class FormDocument(QObject):
         self.structureChanged.emit()
         self.set_modified()
 
-    def reorder(self, ctrl: Control, front: bool) -> None:
+    def reorder(self, ctrl, front: bool) -> None:
+        """Bring to Front / Send to Back.  *ctrl*: one control or a list (VS applies the command to every
+        selected control and keeps their order among themselves)."""
+        ctrls = [c for c in (ctrl if isinstance(ctrl, (list, tuple)) else [ctrl])
+                 if c is not None and c in self.form.controls and not c.ctype.nonvisual]
+        if not ctrls:
+            return
+        moved = [c for c in self.form.controls if c in ctrls]          # their current z-order
+        rest = [c for c in self.form.controls if c not in ctrls]
+        new = rest + moved if front else moved + rest
+        if new == self.form.controls:
+            return
         self.checkpoint()
-        self.form.controls.remove(ctrl)
-        if front:
-            self.form.controls.append(ctrl)
-        else:
-            self.form.controls.insert(0, ctrl)
+        self.form.controls = new
         self._normalize()
+        self._relayout(emit=False)             # the dock order follows the z-order
         self.structureChanged.emit()
         self.set_modified()
 
@@ -312,10 +348,22 @@ class FormDocument(QObject):
         md = QApplication.clipboard().mimeData()
         return md is not None and md.hasFormat(CLIP_MIME)
 
-    def paste(self) -> None:
+    def paste_target(self) -> str:
+        """Where Edit > Paste puts the controls (Visual Studio): into the selected container, next to a
+        selected control (its container), else on the form."""
+        c = self.selected
+        if c is None or c.ctype.nonvisual:
+            return ""
+        return c.name if c.ctype.container else (c.parent or "")
+
+    def paste(self, parent: str | None = None) -> None:
         if not self.can_paste():
             return
         data = json.loads(bytes(QApplication.clipboard().mimeData().data(CLIP_MIME)).decode())
+        if parent is None:
+            parent = self.paste_target()
+        if parent and self.form.find(parent) is None:
+            parent = ""
         self.checkpoint()
         new: list[Control] = []
         mapping: dict[str, str] = {}
@@ -330,22 +378,34 @@ class FormDocument(QObject):
             mapping[c.name] = new_name
             c.props["Name"] = new_name
             new.append(c)
+        tops = [c for c in new if c.parent not in mapping]
         for c in new:
             if c.parent in mapping:
                 c.props["Parent"] = mapping[c.parent]
             else:
-                c.props["Parent"] = ""
-                if not c.ctype.nonvisual:
-                    c.props["Left"] = int(c.props["Left"]) + 16
-                    c.props["Top"] = int(c.props["Top"]) + 16
+                c.props["Parent"] = "" if c.ctype.nonvisual else parent
             if c.type in MENU_TYPES:   # menu item names must stay unique too
                 self._rename_menu_items(c.props.get("Items", []), taken)
+        # VS: the pasted controls keep their Location; while that spot is taken by a control of the same
+        # container (pasting next to the originals, pasting again ...) the whole group shifts by a step
+        vis = [c for c in tops if not c.ctype.nonvisual]
+        if vis:
+            def pos(c):
+                return int(c.props["Left"]), int(c.props["Top"])
+            used = {pos(c) for c in self.form.children(parent) if c not in new}
+            off = 0
+            while off < 100 * PASTE_STEP and any((x + off, y + off) in used for x, y in map(pos, vis)):
+                off += PASTE_STEP
+            for c in vis:
+                c.props["Left"], c.props["Top"] = pos(c)[0] + off, pos(c)[1] + off
         self.form.controls += new
+        for c in vis:
+            self._set_tab_page(c)              # pasted onto a TabControl: its selected page
         self._normalize()
         self._relayout(emit=False)
         self.structureChanged.emit()
         self.set_modified()
-        self.select_many([c for c in new if c.parent not in mapping.values()])
+        self.select_many(tops)
 
     def _rename_menu_items(self, items: list, taken: set[str]) -> None:
         for it in items:
@@ -356,69 +416,149 @@ class FormDocument(QObject):
             self._rename_menu_items(it.get("Items", []), taken)
 
     # ------------------------------------------------------------ format
-    def align(self, mode: str) -> None:
-        sel = [c for c in self.selection if not c.ctype.nonvisual]
+    def format_targets(self) -> list[Control]:
+        """Selected controls a Format command may move / resize: visual ones whose container is not also
+        selected (that one carries them), not docked (the dock decides their place)."""
+        sel = [c for c in self.selection if not c.ctype.nonvisual and c in self.form.controls]
+        ids = {id(c) for c in sel}
+        out = []
+        for c in sel:
+            p, seen, ok = (self.form.find(c.parent) if c.parent else None), set(), True
+            while p is not None and p.name not in seen:
+                seen.add(p.name)
+                if id(p) in ids:
+                    ok = False
+                    break
+                p = self.form.find(p.parent) if p.parent else None
+            if ok and not is_docked(c):
+                out.append(c)
+        return out
+
+    def can_format(self, mode: str) -> bool:
+        """Whether the Format command *mode* applies to the selection (Visual Studio greys it out
+        otherwise): Align / Make Same Size need 2 controls, Make Equal spacing 3, Center in Form,
+        Align to Grid and Size to Grid 1; nothing moves while the controls are locked."""
+        need = FORMAT_MIN.get(mode)
+        if need is None or self.locked:
+            return False
+        targets = self.format_targets()
+        if not targets:
+            return False
         ref = self.selected
-        if ref is None or ref.ctype.nonvisual:
+        if need >= 2:
+            if ref is None or ref.ctype.nonvisual:
+                return False
+            count = len(targets) + (0 if ref in targets else 1)
+            if ref not in targets and mode in SPACING_MODES:
+                count = len(targets)
+            return count >= need and any(c is not ref for c in targets)
+        return True
+
+    def _abs_rect(self, c: Control) -> list[int]:
+        x, y = self.form.abs_pos(c)
+        return [x, y, int(c.props["Width"]), int(c.props["Height"])]
+
+    def _origin(self, c: Control) -> tuple[int, int]:
+        return self.form.client_origin(self.form.find(c.parent) if c.parent else None)
+
+    def align(self, mode: str, grid: int = GRID) -> None:
+        """Format menu: Align (Lefts / Centers / Rights / Tops / Middles / Bottoms / to Grid), Make Same
+        Size (Width / Height / Both / Size to Grid), Horizontal / Vertical Spacing (Make Equal / Increase /
+        Decrease / Remove) and Center in Form - like Visual Studio: relative to the PRIMARY selection (the
+        control with the white handles), in form coordinates (controls of different containers line up on
+        screen), one undo step, nothing at all when the command does not apply."""
+        if not self.can_format(mode):
             return
-        p = lambda c, k: int(c.props[k])
-        if mode.startswith("center_form"):
-            if not sel:
-                return
-            # like Visual Studio: the selection moves as ONE group (the spaces between the controls stay);
-            # controls in different containers are centred per container; docked controls do not move
-            groups: dict[str, list] = {}
-            for c in sel:
-                if c.props.get("Dock") not in (None, "", "None"):
+        targets = self.format_targets()
+        ref = self.selected
+        old = {id(c): self._abs_rect(c) for c in targets}
+        new = {k: list(v) for k, v in old.items()}
+        R = self._abs_rect(ref) if ref is not None and not ref.ctype.nonvisual else None
+        if mode in ("left", "center_v", "right", "top", "middle", "bottom",
+                    "same_width", "same_height", "same_size"):
+            for c in targets:
+                if c is ref:
                     continue
+                r = new[id(c)]
+                if mode == "left":
+                    r[0] = R[0]
+                elif mode == "right":
+                    r[0] = R[0] + R[2] - r[2]
+                elif mode == "center_v":
+                    r[0] = R[0] + (R[2] - r[2]) // 2
+                elif mode == "top":
+                    r[1] = R[1]
+                elif mode == "bottom":
+                    r[1] = R[1] + R[3] - r[3]
+                elif mode == "middle":
+                    r[1] = R[1] + (R[3] - r[3]) // 2
+                if mode in ("same_width", "same_size"):
+                    r[2] = R[2]
+                if mode in ("same_height", "same_size"):
+                    r[3] = R[3]
+        elif mode == "to_grid":                 # the Location goes to the nearest grid point
+            for c in targets:
+                r, (ox, oy) = new[id(c)], self._origin(c)
+                r[0] = int(round((r[0] - ox) / grid) * grid) + ox
+                r[1] = int(round((r[1] - oy) / grid) * grid) + oy
+        elif mode == "size_to_grid":            # the Size goes to the nearest whole number of grid steps
+            for c in targets:
+                r = new[id(c)]
+                r[2] = max(grid, int(round(r[2] / grid) * grid))
+                r[3] = max(grid, int(round(r[3] / grid) * grid))
+        elif mode in ("center_form_h", "center_form_v"):
+            # the selection moves as ONE group (the spaces between the controls stay); controls of
+            # different containers are centred in their own container
+            groups: dict[str, list] = {}
+            for c in targets:
                 groups.setdefault(c.parent or "", []).append(c)
-            if not groups:
-                return
-            self.checkpoint()
+            a, s = (0, 2) if mode == "center_form_h" else (1, 3)
             for parent_name, items in groups.items():
                 parent = self.form.find(parent_name) if parent_name else None
-                pw = p(parent, "Width") if parent else int(self.form.props["Width"])
-                ph = p(parent, "Height") if parent else int(self.form.props["Height"])
-                if mode == "center_form_h":
-                    lo = min(p(c, "Left") for c in items)
-                    hi = max(p(c, "Left") + p(c, "Width") for c in items)
-                    delta = (pw - (hi - lo)) // 2 - lo
-                    key = "Left"
-                else:
-                    lo = min(p(c, "Top") for c in items)
-                    hi = max(p(c, "Top") + p(c, "Height") for c in items)
-                    delta = (ph - (hi - lo)) // 2 - lo
-                    key = "Top"
+                cw, ch = client_size(self.form, parent)
+                origin = self.form.client_origin(parent)[a]
+                lo = min(old[id(c)][a] for c in items) - origin
+                hi = max(old[id(c)][a] + old[id(c)][s] for c in items) - origin
+                delta = ((cw if a == 0 else ch) - (hi - lo)) // 2 - lo
                 for c in items:
-                    c.props[key] = p(c, key) + delta
-                    self.controlChanged.emit(c)
-            self.set_modified()
-            return
-        if len(sel) < 2:
+                    new[id(c)][a] += delta
+        elif mode in SPACING_MODES:
+            a, s = (0, 2) if mode.startswith("h") else (1, 3)
+            kind = mode.split("_", 1)[1]
+            items = sorted(targets, key=lambda c: (old[id(c)][a], old[id(c)][1 - a]))
+            if kind == "equal":                 # the outermost controls stay, the others share the room
+                first, last = old[id(items[0])], old[id(items[-1])]
+                room = last[a] + last[s] - first[a] - sum(old[id(c)][s] for c in items)
+                gap = room / (len(items) - 1)
+                pos = float(first[a])
+                for i, c in enumerate(items):
+                    if 0 < i < len(items) - 1:
+                        new[id(c)][a] = int(round(pos))
+                    pos += old[id(c)][s] + gap
+            else:                               # the primary control stays where it is
+                k = items.index(ref) if ref in items else 0
+                if kind in ("inc", "dec"):
+                    step = grid if kind == "inc" else -grid
+                    for i, c in enumerate(items):
+                        new[id(c)][a] = old[id(c)][a] + (i - k) * step
+                else:                           # remove: the controls touch each other
+                    pivot = old[id(items[k])]
+                    pos = pivot[a] + pivot[s]
+                    for c in items[k + 1:]:
+                        new[id(c)][a] = pos
+                        pos += old[id(c)][s]
+                    pos = pivot[a]
+                    for c in reversed(items[:k]):
+                        pos -= old[id(c)][s]
+                        new[id(c)][a] = pos
+        changed = [c for c in targets if new[id(c)] != old[id(c)]]
+        if not changed:
             return
         self.checkpoint()
-        for c in sel:
-            if c is ref:
-                continue
-            if mode == "left":
-                c.props["Left"] = p(ref, "Left")
-            elif mode == "right":
-                c.props["Left"] = p(ref, "Left") + p(ref, "Width") - p(c, "Width")
-            elif mode == "top":
-                c.props["Top"] = p(ref, "Top")
-            elif mode == "bottom":
-                c.props["Top"] = p(ref, "Top") + p(ref, "Height") - p(c, "Height")
-            elif mode == "center_v":
-                c.props["Left"] = p(ref, "Left") + (p(ref, "Width") - p(c, "Width")) // 2
-            elif mode == "middle":
-                c.props["Top"] = p(ref, "Top") + (p(ref, "Height") - p(c, "Height")) // 2
-            elif mode == "same_width":
-                c.props["Width"] = p(ref, "Width")
-            elif mode == "same_height":
-                c.props["Height"] = p(ref, "Height")
-            elif mode == "same_size":
-                c.props["Width"], c.props["Height"] = p(ref, "Width"), p(ref, "Height")
-            self.controlChanged.emit(c)
+        for c in changed:
+            r, (ox, oy) = new[id(c)], self._origin(c)
+            self.set_geometry(c, r[0] - ox, r[1] - oy, max(1, r[2]), max(1, r[3]), relayout=False)
+        self._relayout()
         self.set_modified()
 
     def save(self) -> None:

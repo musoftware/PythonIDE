@@ -315,7 +315,11 @@ def _host_build(folder: Path, cfg: PublishConfig, work: Path, launcher: str, log
               # the generated Tk designer code is exec'd at run time: PyInstaller cannot see its imports
               "tkinter.ttk", "tkinter.font", "tkinter.filedialog", "tkinter.colorchooser", "tkinter.messagebox",
               "tkinter.simpledialog", "tkinter.scrolledtext"]
-    return pyinstaller(py, script, folder, cfg, work, log, paths=[IDE_ROOT, *upaths], hidden=hidden,
+    # the built-in controls are component packages (component.json + runtime/*.py read from disk): without
+    # them radide.controls has no control types and the program stops with KeyError: 'DataGridView'
+    pkg_root = Path(__file__).resolve().parents[1]
+    datas = [(pkg_root / "components" / "builtin", "radide/components/builtin")]
+    return pyinstaller(py, script, folder, cfg, work, log, paths=[IDE_ROOT, *upaths], hidden=hidden, datas=datas,
                        excludes=HOST_EXCLUDES, hooks=uhooks, icon=make_icon(folder, cfg, gen, log))
 
 

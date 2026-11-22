@@ -1,5 +1,12 @@
 {
  "strings": {
+  "Horizontal Spacing": "التباعد الأفقي",
+  "Vertical Spacing": "التباعد الرأسي",
+  "Make Equal": "مساواة التباعد",
+  "Increase": "زيادة",
+  "Decrease": "تقليل",
+  "to Grid": "إلى الشبكة",
+  "Size to Grid": "الحجم حسب الشبكة",
   "Scan All Control Units": "فحص كل وحدات التحكم",
   "Also read the faults of the ABS, airbag, instrument cluster, climate and other units (UDS), not only the engine (OBD-II)": "اقرأ أيضًا أعطال الفرامل ABS والوسائد الهوائية ولوحة العدادات والتكييف وباقي الوحدات (UDS)، وليس المحرك فقط (OBD-II)",
   "Save a diagnosis report (HTML): vehicle, faults with explanations, freeze frame, readiness and live values": "احفظ تقرير فحص (HTML): بيانات العربية والأعطال بشرحها ولقطة التجميد والجاهزية والقيم الحية",

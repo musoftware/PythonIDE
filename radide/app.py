@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (QApplication, QBoxLayout, QDockWidget, QFileDialog,
                              QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStyle, QTabWidget,
                              QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
-from .controls import event_args
+from .controls import CONTROL_TYPES, event_args
 from .debugger import Session, StopInfo
 from .designer import DesignerView
 from .dialogs import AddItemDialog, NewProjectDialog
@@ -472,6 +472,7 @@ class MainWindow(QMainWindow):
 
     def _make_docks(self):
         self.toolbox = Toolbox()
+        self.toolbox.itemDoubleClicked.connect(self._toolbox_dclick)
         self.solution = QTreeWidget()
         self.solution.setHeaderHidden(True)
         self.solution.itemDoubleClicked.connect(self._on_solution_dclick)
@@ -600,20 +601,32 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction("Open Project &Folder", self.open_folder)
         m.addAction("Project &Properties...", self.project_properties)
+        # Format menu (Visual Studio 2005 / 2022 WinForms designer); each command is greyed out unless it
+        # applies to the selection (FormDocument.can_format)
         self.format_menu = m = mb.addMenu("F&ormat")
-        sub = m.addMenu("&Align")
-        for text, mode in (("Lefts", "left"), ("Centers", "center_v"), ("Rights", "right"), (None, None),
-                           ("Tops", "top"), ("Middles", "middle"), ("Bottoms", "bottom")):
-            sub.addSeparator() if text is None else sub.addAction(text, lambda m_=mode: self._align(m_))
-        sub = m.addMenu("&Make Same Size")
-        for text, mode in (("Width", "same_width"), ("Height", "same_height"), ("Both", "same_size")):
-            sub.addAction(text, lambda m_=mode: self._align(m_))
-        sub = m.addMenu("&Center in Form")
-        sub.addAction("Horizontally", lambda: self._align("center_form_h"))
-        sub.addAction("Vertically", lambda: self._align("center_form_v"))
+        self.format_actions: dict[str, QAction] = {}
+        for title, items in (
+                ("&Align", (("&Lefts", "left"), ("&Centers", "center_v"), ("&Rights", "right"), None,
+                            ("&Tops", "top"), ("&Middles", "middle"), ("&Bottoms", "bottom"), None,
+                            ("to &Grid", "to_grid"))),
+                ("&Make Same Size", (("&Width", "same_width"), ("&Size to Grid", "size_to_grid"),
+                                     ("&Height", "same_height"), ("&Both", "same_size"))),
+                ("&Horizontal Spacing", (("&Make Equal", "hspace_equal"), ("&Increase", "hspace_inc"),
+                                         ("&Decrease", "hspace_dec"), ("&Remove", "hspace_remove"))),
+                ("&Vertical Spacing", (("&Make Equal", "vspace_equal"), ("&Increase", "vspace_inc"),
+                                       ("&Decrease", "vspace_dec"), ("&Remove", "vspace_remove"))),
+                ("&Center in Form", (("&Horizontally", "center_form_h"), ("&Vertically", "center_form_v")))):
+            sub = m.addMenu(title)
+            for it in items:
+                if it is None:
+                    sub.addSeparator()
+                    continue
+                self.format_actions[it[1]] = sub.addAction(it[0], lambda m_=it[1]: self._align(m_))
         m.addSeparator()
-        m.addAction("Bring to &Front", lambda: self._order(True))
-        m.addAction("Send to &Back", lambda: self._order(False))
+        sub = m.addMenu("&Order")
+        self.a_bring_front = sub.addAction("Bring to &Front", lambda: self._order(True))
+        self.a_send_back = sub.addAction("Send to &Back", lambda: self._order(False))
+        m.aboutToShow.connect(self._sync_format_menu)
         m = mb.addMenu("&Debug")
         for a in (self.a_run, self.a_run_nodebug, self.a_stop, None, self.a_step_into,
                   self.a_step_over, self.a_step_out, None, self.a_bp):
@@ -1398,8 +1411,32 @@ class MainWindow(QMainWindow):
 
     def _order(self, front: bool):
         d = self._current_designer()
-        if d and d.doc.selected and not d.doc.selected.ctype.nonvisual:
-            d.doc.reorder(d.doc.selected, front)
+        if d and d.doc.selection:
+            d.doc.reorder(list(d.doc.selection), front)    # VS: every selected control
+
+    def _toolbox_dclick(self, item):
+        """Toolbox double-click (VS): the control is added to the shown form at once."""
+        name = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        d = self._current_designer()
+        if d is None or not name or name not in CONTROL_TYPES:
+            return
+        TOOL_STATE.set(None)
+        d.add_default(name)
+
+    def _sync_format_menu(self):
+        """Grey out the Format commands that do not apply to the selection (as Visual Studio does)."""
+        d = self._current_designer()
+        doc = d.doc if d is not None else None
+        for mode, a in getattr(self, "format_actions", {}).items():
+            a.setEnabled(bool(doc is not None and doc.can_format(mode)))
+        for menu in self.format_menu.findChildren(QMenu):
+            acts = [a for a in menu.actions() if not a.isSeparator()]
+            if acts and all(a in self.format_actions.values() for a in acts):
+                menu.setEnabled(any(a.isEnabled() for a in acts))
+        visual = bool(doc is not None and any(not c.ctype.nonvisual for c in doc.selection))
+        for a in (getattr(self, "a_bring_front", None), getattr(self, "a_send_back", None)):
+            if a is not None:
+                a.setEnabled(visual)
 
     # ================================================================ files & menus
     def _code_text(self, form_name: str) -> str:
@@ -1735,7 +1772,7 @@ class MainWindow(QMainWindow):
             for text, mode in (("Lefts", "left"), ("Centers", "center_v"), ("Rights", "right"),
                                ("Tops", "top"), ("Middles", "middle"), ("Bottoms", "bottom"),
                                ("Same Size", "same_size")):
-                al.addAction(text, lambda m_=mode: doc.align(m_))
+                al.addAction(text, lambda m_=mode: doc.align(m_)).setEnabled(doc.can_format(mode))
             m.addMenu(al)
         m.addSeparator()
         if c is None:
