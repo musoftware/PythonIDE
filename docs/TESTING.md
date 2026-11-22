@@ -207,7 +207,10 @@ automation channel built into the IDE.
 * **Adding commands:** create `radide/automation/commands_<area>.py`, register handlers with
   `@command("name", doc="...")` from `radide.automation.registry` (`token=True` for anything that runs code), add the
   module name to `BUILTIN` in `radide/automation/__init__.py`. A test can also ship its own modules without a
-  rebuild: `RADIDE_AUTOMATION_PLUGINS=<dir>` (token runs only) loads every `*.py` there. Nothing else in the IDE
+  rebuild: `RADIDE_AUTOMATION_PLUGINS=<dir>` (token runs only) loads every `*.py` there; files named
+  `commands_*.py` / `widgets.py` replace the built-in module of that name, so pointing it at a checkout's
+  `radide/automation` gives an older release build the current command code (the E2E harness does this by default,
+  `RADIDE_E2E_LIVE_COMMANDS=0` turns it off). The IDE code under test stays the build's own. Nothing else in the IDE
   changes when the channel is off: `app.main()` only checks `requested()`.
 
 ### The client and the hidden desktop

@@ -169,14 +169,15 @@ def j2_languages(env: C.Env, rep: Report, langs: list[str]):
     ide.quit()
 
 
-from journeys_more import j3_existing_projects, j5_debugger, j7_language_theme, j8_designer_load  # noqa: E402
+from journeys_more import (j3_existing_projects, j5_debugger, j7_language_theme, j8_designer_load,  # noqa: E402
+                           j10_two_windows)
 
 from journey_claude import j4_claude  # noqa: E402
 from journey_install import j6_install_update  # noqa: E402
 from journey_fullapp import j9_customer_manager  # noqa: E402
 
 JOURNEYS = {"J9": j9_customer_manager, "J6": j6_install_update, "J4": j4_claude, "J1": j1_first_start_and_vb6, "J2": j2_languages, "J3": j3_existing_projects, "J5": j5_debugger,
-            "J7": j7_language_theme, "J8": j8_designer_load}
+            "J7": j7_language_theme, "J8": j8_designer_load, "J10": j10_two_windows}
 
 
 def main(argv=None) -> int:

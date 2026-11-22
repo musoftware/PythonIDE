@@ -11,6 +11,8 @@
 // * Extensions write to stdout freely: stdout / console are redirected to stderr (logged by the IDE).
 
 const realStdoutWrite = process.stdout.write.bind(process.stdout);
+const lifeline = require('./lifeline');      // never outlive the IDE (pipe end, parent watchdog, child trees)
+lifeline.patch();
 process.stdout.write = function (chunk, encoding, cb) { return process.stderr.write(chunk, encoding, cb); };
 for (const k of ['log', 'info', 'debug', 'trace']) console[k] = (...a) => process.stderr.write(require('util').format(...a) + '\n');
 console.warn = (...a) => process.stderr.write('[warn] ' + require('util').format(...a) + '\n');
@@ -152,6 +154,7 @@ class Host {
     this.fsApi = this._makeFs();
     this._installRequireHook();
     this._registerHandlers();
+    lifeline.install({ deactivate: () => this.deactivateAll(), log: (m) => { try { this.logHost(m); } catch (_) { /* */ } } });
     process.on('uncaughtException', (e) => this.logHost('uncaught exception: ' + (e && e.stack || e)));
     process.on('unhandledRejection', (e) => this.logHost('unhandled rejection: ' + (e && e.stack || e)));
   }
@@ -1614,6 +1617,7 @@ class Host {
 
     R('shutdown', async () => {
       await this.deactivateAll();
+      lifeline.killChildren();                 // language servers, terminals, debug adapters of the extensions
       setTimeout(() => process.exit(0), 50);
       return true;
     });

@@ -40,6 +40,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QEventLoop, QObject, QProcess, QProcessEnvironment, QTimer, pyqtSignal
@@ -62,6 +64,19 @@ def find_node() -> str:
         if cand.is_file():
             return str(cand)
     return ""
+
+
+def _kill_tree(pid: int) -> None:
+    if pid <= 0:
+        return
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, timeout=5,  # noqa: S603,S607
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        else:
+            os.kill(pid, 9)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 class VsxHost(QObject):
@@ -94,6 +109,7 @@ class VsxHost(QObject):
         self.proc = QProcess(self)
         pe = QProcessEnvironment.systemEnvironment()
         pe.insert("RADIDE_EXTENSION_HOST", "1")
+        pe.insert("RADIDE_PARENT_PID", str(os.getpid()))     # host/lifeline.js exits when the IDE is gone
         pe.remove("ELECTRON_RUN_AS_NODE")
         for k, v in (env or {}).items():
             pe.insert(k, str(v))
@@ -124,6 +140,7 @@ class VsxHost(QObject):
             except Exception:  # noqa: BLE001
                 pass
             if not p.waitForFinished(1500):
+                _kill_tree(int(p.processId() or 0))       # its language servers / terminals too
                 p.kill()
                 p.waitForFinished(1500)
         self.proc = None

@@ -26,11 +26,13 @@ from radide.deploy.config import PublishConfig  # noqa: E402
 from radide.deploy.native import builder_for  # noqa: E402
 from radide.model import Project  # noqa: E402
 
-args = [a for a in sys.argv[1:] if not a.startswith("--")]
-SCRATCH = Path(sys.argv[sys.argv.index("--scratch") + 1]) if "--scratch" in sys.argv else \
-    Path(tempfile.mkdtemp(prefix="radide_fm_rf_"))
-if "--scratch" in sys.argv:
-    args = [a for a in args if a != str(SCRATCH)]
+argv = sys.argv[1:]
+SCRATCH = Path(tempfile.mkdtemp(prefix="radide_fm_rf_"))
+if "--scratch" in argv:
+    i = argv.index("--scratch")
+    SCRATCH = Path(argv[i + 1])
+    del argv[i:i + 2]
+args = [a for a in argv if not a.startswith("--")]
 LANGS = args or list(fm_project.USER)
 totals: dict[str, tuple[int, int]] = {}
 fails = 0

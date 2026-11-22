@@ -44,8 +44,8 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[2]))
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-import fuzzlib as FL  # noqa: E402
-import targets as TG  # noqa: E402
+import fuzzlib as FL
+import targets as TG
 
 NEST_DEPTHS = (50, 500, 5000, 50000)
 

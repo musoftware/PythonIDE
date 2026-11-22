@@ -176,7 +176,7 @@ with j.step("devices"):
     v = ST["view"]
     doc = v.doc
     sizes = {}
-    for dev, posture in (("pixel", None), ("galaxy_tab_s9", None), ("galaxy_z_fold6", "Flat"),
+    for dev, posture in (("pixel", None), ("tablet", None), ("galaxy_z_fold6", "Flat"),
                          ("galaxy_z_fold6", "HalfOpened"), ("galaxy_z_fold6", "Folded")):
         from radide import devices as DV
         if dev not in DV.DEVICES:

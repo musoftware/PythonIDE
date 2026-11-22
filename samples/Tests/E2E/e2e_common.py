@@ -56,6 +56,11 @@ def portable_copy(env: Env, fresh: bool = False) -> Path:
     return dst
 
 
+# message boxes a user simply confirms (the journeys check their effect, not the box)
+AUTO_RULES = [{"match": "save changes to", "button": "Save"},
+              {"match": "publish succeeded", "button": "Close"}]
+
+
 def launch(env: Env, name: str, extra_env: dict | None = None, exe=None, offscreen: bool = True) -> IDE:
     e = {"RADIDE_NO_UPDATE_CHECK": "1", "RADIDE_SETTINGS_ORG": "RADIDE-TEST-E2E"}
     if os.environ.get("RADIDE_E2E_LIVE_COMMANDS", "1") != "0":
@@ -67,7 +72,7 @@ def launch(env: Env, name: str, extra_env: dict | None = None, exe=None, offscre
     logs.mkdir(parents=True, exist_ok=True)
     ide = IDE.launch(exe or env.exe(), desktop=env.desktop, env_extra=e, scratch=env.scratch / "ide",
                      log_path=logs / f"{name}-{int(time.time())}.log", offscreen=offscreen, timeout=240)
-    ide.call("auto_dialogs", rules=[{"match": "save changes to", "button": "Save"}])
+    ide.call("auto_dialogs", rules=AUTO_RULES)
     return ide
 
 
@@ -184,7 +189,9 @@ def have_tool(name: str) -> bool:
     if shutil.which(name):
         return True
     local = Path(os.environ.get("LOCALAPPDATA", "")) / "RADIDE"
-    return any(local.glob(f"**/{name}.exe")) if local.is_dir() else False
+    pats = [f"toolchains/*/bin/{name}.exe", f"toolchains/*/{name}.exe", f"toolchains/*/*/bin/{name}.exe",
+            f"toolchains/*/*/{name}.exe", f"tools/*/{name}.exe", f"tools/*/bin/{name}.exe"]
+    return local.is_dir() and any(next(local.glob(p), None) for p in pats)
 
 
 def published_exe_from_output(text: str) -> Path | None:
@@ -308,7 +315,7 @@ def hello_journey(env: Env, ide: IDE, rep: Report, L: Lang, root: Path) -> None:
 
     def run():
         ide.call("output", clear=True)
-        ide.call("key", keys="F5", async_=True)
+        ide.call("key", keys="F5", sel="@tabs", async_=True)
         ide.wait_for(lambda: ide.call("run_state")["running"] or "------" in ide.output(), 60, desc="session")
         return ide.call("run_state")
     if not rep.step(P + "F5 run", run):

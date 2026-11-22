@@ -166,7 +166,7 @@ def j5_debugger(env: C.Env, rep: Report):
 
         def run_click(title=title):
             ide.call("output", clear=True)
-            ide.call("key", keys="F5", async_=True)
+            ide.call("key", keys="F5", sel="@tabs", async_=True)
             w = C.wait_window(ide, f"DBG {title}", timeout=180)
             st["w"] = w
             C.drive_hello(ide, rep, w, "Bob", "")
@@ -193,7 +193,7 @@ def j5_debugger(env: C.Env, rep: Report):
                                f"call stack {st['dbg'].get('callstack')}") and st["dbg"]["callstack"][:3])
 
         def cont():
-            ide.call("key", keys="F5", async_=True)
+            ide.call("key", keys="F5", sel="@tabs", async_=True)
             ide.wait_for(lambda: not ide.call("run_state")["paused"], 30, desc="resumed")
             t = C.wait_title(ide, st["w"]["hwnd"], f"DBG {title}", 5)
             ide.call("trigger", path="Debug/Stop Debugging")
@@ -304,6 +304,8 @@ def j7_language_theme(env: C.Env, rep: Report):
         return "screenshots"
     rep.step("dark + Arabic screenshot", dark_ar)
     rep.step("no internal errors", lambda: C.no_internal_errors(ide))
+    # the journeys share the portable copy's settings: back to the defaults for the next one
+    ide.try_call("exec", code="from radide.features.workbench import set_theme\nset_theme(win, 'Light')")
     ide.quit()
 
 
@@ -421,3 +423,45 @@ def j8_designer_load(env: C.Env, rep: Report):
     rep.step("every View menu item opens without an error", view_menu)
     rep.step("no internal errors", lambda: C.no_internal_errors(ide))
     ide.quit()
+
+
+# ================================================================================================ J10
+def j10_two_windows(env: C.Env, rep: Report):
+    """Two RAD IDE processes of the same installation at once (File > New Window, or a second start with
+    --new-window): both start, both work, closing one leaves the other alive."""
+    C.portable_copy(env)
+    st = {}
+
+    def both():
+        a = C.launch(env, "J10a", extra_env={"RADIDE_INSTANCE_NAME": "e2e-j10a"})
+        rep.ide = a
+        b = C.launch(env, "J10b", extra_env={"RADIDE_INSTANCE_NAME": "e2e-j10b"},
+                     exe=None if env.source else [str(env.app / "RADIDE.exe"), "--new-window"])
+        st["a"], st["b"] = a, b
+        ha, hb = a.call("hello"), b.call("hello")
+        check(ha["pid"] != hb["pid"], "same process")
+        return f"pids {ha['pid']} + {hb['pid']}"
+    if not rep.step("two IDE processes start side by side", both):
+        return
+    root = env.scratch / "projects" / "J10"
+    root.mkdir(parents=True, exist_ok=True)
+
+    def work():
+        for k in ("a", "b"):
+            st[k].call("new_project", language="vb-basic", name=f"Two{k.upper()}{int(time.time())}", location=str(root))
+            st[k].call("designer_place", type="Button", x=30, y=30)
+            st[k].call("designer_dclick", name="Button1")
+            check("Button1_Click" in st[k].call("editor_text")["text"], f"{k}: no handler")
+        return "both edit a project (Monaco editors in both)"
+    rep.step("both work at the same time (designer + Monaco)", work)
+
+    def close_one():
+        st["a"].quit()
+        time.sleep(3)
+        h = st["b"].call("hello")
+        C.no_internal_errors(st["b"])
+        rep.ide = st["b"]
+        return f"second IDE still answers ({h['title']})"
+    rep.step("closing one leaves the other running", close_one)
+    st["b"].quit()
+    rep.ide = None

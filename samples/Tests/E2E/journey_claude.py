@@ -55,8 +55,7 @@ def j4_claude(env: C.Env, rep: Report, vsix: Path = VSIX_DEFAULT):
     shutil.rmtree(vsx_root, ignore_errors=True)
     ide = C.launch(env, "J4", extra_env={"CLAUDE_CONFIG_DIR": str(cfg), "RADIDE_VSX_ROOT": str(vsx_root)})
     rep.ide = ide
-    ide.call("auto_dialogs", rules=[{"match": "save changes to", "button": "Save"},
-                                    {"match": "CLAUDE.md", "button": "Yes"}])
+    ide.call("auto_dialogs", rules=C.AUTO_RULES + [{"match": "CLAUDE.md", "button": "Yes"}])
     proj = env.scratch / "projects" / "J4" / "ClaudeHello"
     shutil.rmtree(proj, ignore_errors=True)
     shutil.copytree(REPO / "samples" / "HelloVB", proj)

@@ -234,7 +234,7 @@ def _breakpoint(ctx, file: str, line: int, on: bool = True):
     def mine():                    # 1-based lines of this file, as the debugger gets them
         return sorted(int(x[1]) for x in win._all_breakpoints() if Path(str(x[0])).name.lower() == Path(file).name.lower())
     if (int(line) in mine()) != bool(on):
-        ed.toggle_breakpoint(int(line))
+        ed.toggle_breakpoint(int(line) - 1)        # editors count lines from 0
     pump(100)
     return {"breakpoints": mine(), "all": [list(x) for x in win._all_breakpoints()]}
 

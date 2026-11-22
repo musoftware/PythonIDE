@@ -91,6 +91,19 @@ class FakeGitHub:
         self.httpd.shutdown()
 
 
+def wait_setups_gone(timeout: float = 1200) -> None:
+    """No RAD IDE setup (started by the updater) is still running."""
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True).stdout.lower()
+        if "radide-" not in out or "setup" not in out:
+            return
+        if not [ln for ln in out.splitlines() if ln.startswith('"radide-') and "setup" in ln]:
+            return
+        time.sleep(3)
+    raise AssertionError("a RAD IDE setup is still running")
+
+
 def j6_install_update(env: C.Env, rep: Report):
     new_setup = getattr(env, "next_setup", None)
     old_setup = env.setup
@@ -167,13 +180,15 @@ def j6_install_update(env: C.Env, rep: Report):
         if rep.step(f"Help > Check for Updates -> {vN1} -> Update Now -> Yes: the IDE closes", update):
             def relaunched():
                 ide = st["ide"]
-                ver = C.wait_file_text(inst / "VERSION.txt", vN1, 600)
+                t = time.monotonic()
                 ide2 = IDE(ide.pipe, ide.token)                # the relaunched IDE inherits the channel settings
-                ide2.wait_for(lambda: ide2.try_call("hello"), 240, step=2, desc="new IDE answers")
+                ide2.wait_for(lambda: ide2.try_call("hello"), 1200, step=3, desc="new IDE answers (setup done)")
+                wait_setups_gone()
+                ver = C.wait_file_text(inst / "VERSION.txt", vN1, 30)
                 st["ide"] = ide2
                 rep.ide = ide2
                 check(reg("DisplayVersion") == vN1, f"uninstall entry {reg('DisplayVersion')}")
-                return f"VERSION.txt {ver}; IDE answers again"
+                return f"VERSION.txt {ver}; the new IDE answered after {time.monotonic() - t:.0f}s"
             if rep.step("the setup runs and the new version starts by itself", relaunched):
                 rep.step("settings kept across the update",
                          lambda: check(st["ide"].call("settings", keys=["e2e/marker"])["e2e/marker"] == "keep-me",
@@ -196,9 +211,11 @@ def j6_install_update(env: C.Env, rep: Report):
                         u = ide.wait_dialog(text="downloaded and checked", timeout=180)
                     ide.call("press", button="Yes", dialog=u["title"])
                     ide.close()
-                    ver = C.wait_file_text(inst / "VERSION.txt", vN, 600)
+                    time.sleep(5)
                     ide3 = IDE(ide.pipe, ide.token)
-                    ide3.wait_for(lambda: ide3.try_call("hello"), 240, step=2, desc="rolled-back IDE answers")
+                    ide3.wait_for(lambda: ide3.try_call("hello"), 1200, step=3, desc="rolled-back IDE answers")
+                    wait_setups_gone()
+                    ver = C.wait_file_text(inst / "VERSION.txt", vN, 30)
                     st["ide"] = ide3
                     rep.ide = ide3
                     return f"items {tree.get('items', [])[:3]}; VERSION.txt {ver}"
@@ -227,6 +244,7 @@ def j6_install_update(env: C.Env, rep: Report):
         rep.step(f"setup {vN1} while an IDE runs: it closes the IDE, installs, nothing damaged", while_running)
 
     def uninstall():
+        wait_setups_gone()
         if st.get("ide"):
             st["ide"].quit()
             rep.ide = None

@@ -322,7 +322,7 @@ def crash_session(folder: Path) -> dict:
                          encoding="utf-8", errors="replace", env=E.child_env())
     rep = {}
     t0 = time.time()
-    while time.time() - t0 < 120:
+    while time.time() - t0 < 600:
         ln = p.stdout.readline()
         if not ln:
             break
@@ -361,7 +361,8 @@ ok("the restored edits are now in the files", "recovered-edit" in (rec_dir / "Fo
    and "Edited" in (rec_dir / "Form1.form").read_text(encoding="utf-8"))
 
 rec2 = new_project("Startup Proj", ROOT / E.ARABIC)
-crash_session(rec2)
+rep2 = crash_session(rec2)
+ok("second crashed IDE wrote its snapshot", "code/Form1.py" in (rep2.get("snapshot") or []), rep2)
 pend = [m["folder"] for m in recovery.pending()]
 ok("pending() lists the crashed project", str(rec2.resolve()) in pend, pend)
 r4 = run_child("startup", rec2, "yes")

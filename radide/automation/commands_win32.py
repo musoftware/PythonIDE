@@ -453,8 +453,8 @@ def _process_status(ctx, pid: int):
     return {"pid": p.pid, "returncode": p.poll()}
 
 
-@command("win32_menu", doc="choose an item of a window's menu bar by text path ('File/Export CSV'): WM_COMMAND "
-                           "with the item's id (Win32 / Tk menus); list=True returns the menu tree")
+@command("win32_menu", doc="choose an item of a window's menu bar by text path ('File/Export CSV') or position "
+                           "('#0/#1'): WM_COMMAND with the item's id (Win32 / Tk menus); list_=True: the tree")
 def _menu(ctx, hwnd: int, path: str = "", list_: bool = False):
     user32.GetMenu.restype = wintypes.HMENU
     user32.GetSubMenu.restype = wintypes.HMENU
@@ -484,8 +484,12 @@ def _menu(ctx, hwnd: int, path: str = "", list_: bool = False):
     menu = h
     parts = [p.strip().lower() for p in path.split("/")]
     for n, part in enumerate(parts):
-        hit = next(((t, s, i) for t, s, i in items(menu) if t.lower() == part), None) or next(
-            ((t, s, i) for t, s, i in items(menu) if part in t.lower()), None)
+        its = items(menu)
+        if part.startswith("#") and part[1:].isdigit():          # by position: owner-drawn menus (Tk) have no text
+            hit = its[int(part[1:])] if int(part[1:]) < len(its) else None
+        else:
+            hit = next(((t, s, i) for t, s, i in its if t.lower() == part), None) or next(
+                ((t, s, i) for t, s, i in its if part and part in t.lower()), None)
         if hit is None:
             raise AutomationError(f"no menu item {part!r} in {[t for t, _s, _i in items(menu)]}")
         if n == len(parts) - 1:

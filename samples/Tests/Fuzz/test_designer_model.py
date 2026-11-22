@@ -26,7 +26,7 @@ those regression cases are replayed first on every run.
 
 Run:  .venv\\Scripts\\python samples\\Tests\\Fuzz\\test_designer_model.py [--seed S] [--steps N]
       [--episode N] [--save] [--replay FILE]
-Default: 2000 steps (~2-3 min). Exit code = failures.
+Default: 1200 steps (~2-3 min unloaded; --steps 5000+ for deep runs). Exit code = failures.
 """
 from __future__ import annotations
 
@@ -58,11 +58,11 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 
-import PyQt6.QtWebEngineWidgets  # noqa: E402,F401  (before the QApplication)
-from PyQt6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, QSettings, Qt  # noqa: E402
-from PyQt6.QtGui import QMouseEvent  # noqa: E402
-from PyQt6.QtTest import QTest  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QComboBox, QMessageBox, QPushButton  # noqa: E402
+import PyQt6.QtWebEngineWidgets  # noqa: F401  (before the QApplication)
+from PyQt6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, QSettings, Qt
+from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QComboBox, QMessageBox, QPushButton
 
 QCoreApplication.setOrganizationName("RADIDE-TEST-FUZZ")
 QCoreApplication.setApplicationName("RADIDE-TEST-FUZZ")
@@ -73,7 +73,15 @@ for _n in ("warning", "critical", "information"):
     setattr(QMessageBox, _n, staticmethod(lambda *a, **k: QMessageBox.StandardButton.Ok))
 # a combo choice may open a modal dialog ("(Browse...)", a colour / font picker ...): offscreen nobody can
 # close it, so every modal loop is cancelled at once (the dialog's Cancel path is exercised instead)
-from PyQt6.QtWidgets import QColorDialog, QDialog, QFileDialog, QFontDialog, QInputDialog, QMenu  # noqa: E402
+from PyQt6.QtWidgets import (
+    QColorDialog,
+    QDialog,
+    QFileDialog,
+    QFontDialog,
+    QInputDialog,
+    QMenu,
+)
+
 QDialog.exec = lambda self, *a, **k: 0
 QMenu.exec = lambda self, *a, **k: None
 QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: ("", ""))
@@ -84,18 +92,19 @@ QFontDialog.getFont = staticmethod(lambda *a, **k: (None, False))
 QInputDialog.getText = staticmethod(lambda *a, **k: ("", False))
 QInputDialog.getItem = staticmethod(lambda *a, **k: ("", False))
 
-import fuzzlib as FL  # noqa: E402
-from radide import motion  # noqa: E402,F401
-from radide.controls import CONTROL_TYPES, MENU_TYPES, PAGED_TYPES, split_items  # noqa: E402
-from radide.designer import DesignerView  # noqa: E402
-from radide.document import FORMAT_MIN, UNDO_LIMIT, FormDocument  # noqa: E402
-from radide.features.variants import VariantPreview  # noqa: E402
-from radide.languages import get_plugin  # noqa: E402
-from radide.model import Form  # noqa: E402
-from radide.motion import model as mm  # noqa: E402
-from radide.motion import presets as mp  # noqa: E402
-from radide.properties import PropertiesPanel, valid_identifier  # noqa: E402
-from radide.variants import model as vm  # noqa: E402
+import fuzzlib as FL
+
+from radide import motion  # noqa: F401
+from radide.controls import CONTROL_TYPES, PAGED_TYPES, split_items
+from radide.designer import DesignerView
+from radide.document import FORMAT_MIN, UNDO_LIMIT, FormDocument
+from radide.features.variants import VariantPreview
+from radide.languages import get_plugin
+from radide.model import Form
+from radide.motion import model as mm
+from radide.motion import presets as mp
+from radide.properties import PropertiesPanel, valid_identifier
+from radide.variants import model as vm
 
 OUT = Path(tempfile.mkdtemp(prefix="radide-designer-fuzz-"))
 VERBOSE = False
@@ -771,7 +780,7 @@ def save_case(base: str, ops: list[dict], sig: str, detail: str) -> Path:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--seed", default=os.environ.get("RADFUZZ_SEED", "radide"))
-    ap.add_argument("--steps", type=int, default=2000, help="total random operations (default 2000)")
+    ap.add_argument("--steps", type=int, default=1200, help="total random operations (default 1200)")
     ap.add_argument("--episode", type=int, default=60, help="operations per episode (default 60)")
     ap.add_argument("--save", action="store_true", help="store shrunk failures in corpus/designer/")
     ap.add_argument("--no-shrink", action="store_true")

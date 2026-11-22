@@ -14,7 +14,7 @@ ROUTES = {"home": "/", "products": "/products", "add": "/products/add", "edit": 
 DEBUG = {"file": "src/products/products.controller.ts", "match": "const rows = this.store.list(", "path": "/products"}
 DEBUG_TIMEOUT = 300
 INTELLI = {"file": "src/products/products.service.ts", "after": "list(q: string)", "type": "this.db.prep",
-           "expect": "prepare", "timeout": 60, "settle": 2.0,
+           "expect": "prepare", "timeout": 60, "settle": 5.0,
            "html_file": "public/index.html", "css_file": "public/css/site.css"}
 PUBLISH_EXPECT = ["package.json", "src/main.ts", "src/products/products.controller.ts", "public/index.html",
                   "public/ar.html", "public/css/site.css"]

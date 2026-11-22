@@ -101,8 +101,10 @@ def collect_extras(w, ctx: str, folder) -> dict:
                 C.APP.processEvents()
                 tpls = [dlg.templates.item(k).text() for k in range(dlg.templates.count())
                         if not dlg.templates.item(k).isHidden()]
+                tids = [str(dlg.templates.item(k).data(Qt.ItemDataRole.UserRole)) for k in
+                        range(dlg.templates.count()) if not dlg.templates.item(k).isHidden()]
                 langs[f"{g.text(0)} > {it.text(0)}"] = {"id": str(it.data(0, Qt.ItemDataRole.UserRole)),
-                                                        "templates": tpls}
+                                                        "templates": tpls, "template_ids": tids}
         ex["new_project"] = langs
         dlg.deleteLater()
     except Exception as e:  # noqa: BLE001
@@ -240,8 +242,9 @@ def merge(data: dict) -> dict:
     dialogs = FS.dialog_classes()
     templates = []
     for lang, v in (extras.get("new_project") or {}).items():
-        for t in v["templates"]:
-            templates.append({"language": lang, "language_id": v["id"], "template": t})
+        for i, t in enumerate(v["templates"]):
+            tid = (v.get("template_ids") or [""] * len(v["templates"]))[i]
+            templates.append({"language": lang, "language_id": v["id"], "template": t, "template_id": tid})
     return {"generated": time.strftime("%Y-%m-%d %H:%M"), "contexts": {c: C.CONTEXTS[c][1] for c in data},
             "context_languages": {c: d.get("project_language") for c, d in data.items()},
             "errors": {c: d["error"] for c, d in data.items() if d.get("error")},

@@ -75,6 +75,15 @@ def qapp(name: str):
     global _app
     if _app is not None:
         return _app
+    if os.name == "nt" and not REAL:
+        # offscreen Qt draws text with FreeType, which keeps every opened font file as a C stdio stream; Arabic
+        # text makes the font fallback open many system fonts and the UCRT default of 512 streams runs out, after
+        # which every new glyph fails ("QFontEngineFT: Failed to create FreeType font engine") and painting
+        # crawls. The real Windows platform plugin uses DirectWrite and is not affected.
+        try:
+            ctypes.cdll.ucrtbase._setmaxstdio(8192)
+        except Exception:  # noqa: BLE001
+            pass
     import PyQt6.QtWebEngineWidgets  # noqa: F401 - must be imported before the QApplication
     from PyQt6.QtCore import QCoreApplication, QSettings
     from PyQt6.QtWidgets import QApplication

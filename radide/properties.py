@@ -730,7 +730,8 @@ class PropertiesPanel(QWidget):
                 self.help.setText(f"<span style='color:#b00'>{d.name}: use a value from {lo} to {hi}.</span>")
                 self._refresh_values()
                 return
-            if not -2 ** 31 <= value < 2 ** 31:                 # Int32, like VB / WinForms (Qt overflowed)
+            limit = 1_000_000 if d.name in ("Left", "Top", "Width", "Height") else 2 ** 31   # pixels / Int32
+            if not -limit <= value < limit:                      # (2147483647 overflowed Qt's geometry)
                 self.help.setText(f"<span style='color:#b00'>{d.name}: the value is too large.</span>")
                 self._refresh_values()
                 return

@@ -844,7 +844,7 @@ class PythonTkPlugin(LanguagePlugin):
                     if sub.get("Text") == "-":
                         out.append("_b.menu.add_separator()")
                     elif sub.get("Name"):
-                        out.append(f"_b.menu.add_command(label={sub['Text']!r}, "
+                        out.append(f"_b.menu.add_command({PythonTkPlugin._mnemonic(sub['Text'])}, "
                                    f"command=self._ev(\"{sub['Name']}_Click\"))")
             else:
                 out.append(f"_b = tk.Button(self.{n}, text={text!r}, relief=\"flat\", padx=6, "
@@ -896,6 +896,26 @@ class PythonTkPlugin(LanguagePlugin):
             args.append("own=True")
         return f"        self._bind({', '.join(args)})"
 
+    @staticmethod
+    def _mnemonic(text: str) -> str:
+        """label=... (and underline=N) for a VB / WinForms caption: "&File" -> File with F underlined, "&&" -> &."""
+        out, underline, i = [], -1, 0
+        while i < len(text):
+            ch = text[i]
+            if ch == "&" and i + 1 < len(text):
+                if text[i + 1] == "&":
+                    out.append("&")
+                    i += 2
+                    continue
+                if underline < 0:
+                    underline = len(out)
+                i += 1
+                continue
+            out.append(ch)
+            i += 1
+        label = "".join(out)
+        return f"label={label!r}" + (f", underline={underline}" if underline >= 0 else "")
+
     def _menu(self, menu) -> list[str]:
         out = [f"self.{menu.name} = tk.Menu(self.root, tearoff=0)"]
         counter = [0]
@@ -908,10 +928,10 @@ class PythonTkPlugin(LanguagePlugin):
                     counter[0] += 1
                     sub = f"_m{counter[0]}"
                     out.append(f"{sub} = tk.Menu({var}, tearoff=0)")
-                    out.append(f"{var}.add_cascade(label={it['Text']!r}, menu={sub})")
+                    out.append(f"{var}.add_cascade({self._mnemonic(it['Text'])}, menu={sub})")
                     build(sub, it["Items"])
                 else:
-                    out.append(f"{var}.add_command(label={it['Text']!r}, "
+                    out.append(f"{var}.add_command({self._mnemonic(it['Text'])}, "
                                f"command=self._ev(\"{it['Name']}_Click\"))")
         build(f"self.{menu.name}", menu.props["Items"])
         out.append(f"self.root.config(menu=self.{menu.name})")

@@ -140,9 +140,12 @@ svc = win.vsx_host
 wait(lambda: svc.host.running() and svc.host.init_result is not None, 60)
 for name in ("tool.py", "app.js", "notes.md", "conf.yaml", "data.xml", "main.go", "lib.rs", "hello.c", "Hello.java"):
     try:
-        win.open_file(src / name) if callable(getattr(win, "open_file", None)) else win.open_any_file(src / name)
+        ed = win.open_file(src / name) if callable(getattr(win, "open_file", None)) else win.open_any_file(src / name)
     except Exception as e:  # noqa: BLE001
         print("open", name, e)
+        ed = None
+    # the page of a Monaco editor loads while its tab is shown: the document reaches the extension host then
+    wait(lambda: ed is None or getattr(ed, "_ready", False), 40)
     wait(lambda: False, 0.4)
 code_ids = [r["id"].lower() for r in ROWS.values() if r.get("has_code")]
 wait(lambda: all(i in svc.activation for i in code_ids), 120)

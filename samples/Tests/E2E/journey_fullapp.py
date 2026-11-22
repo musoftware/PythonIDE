@@ -211,6 +211,14 @@ def _close_msgbox(ide, w):
     ide.wait_for(lambda: not [x for x in ide.call("win32_windows") if x["hwnd"] == w["hwnd"]], 10, desc="box closed")
 
 
+def menu_click(ide, hwnd, path: str, by_position: str):
+    """Menu bar item by text; by position when the toolkit draws its own menu texts (Tk: owner-drawn items)."""
+    try:
+        return ide.call("win32_menu", hwnd=hwnd, path=path)
+    except Exception:  # noqa: BLE001
+        return ide.call("win32_menu", hwnd=hwnd, path=by_position)
+
+
 def exercise_program(ide, rep: Report, P: str, data: Path, pid=None, prefix="F5") -> None:
     """Use every feature of the running Customer Manager through its own window."""
     st = {}
@@ -282,7 +290,7 @@ def exercise_program(ide, rep: Report, P: str, data: Path, pid=None, prefix="F5"
     rep.step(f"{P}{prefix}: Export CSV (UTF-8, Arabic intact)", export)
 
     def about():
-        ide.call("win32_menu", hwnd=W, path="Help/About")
+        menu_click(ide, W, "Help/About", "#1/#0")
         a = C.wait_window(ide, "About", timeout=15, pid=pid)
         rep.shot(f"{P}{prefix} about", hwnd=a["hwnd"])
         ide.call("win32_click", hwnd=_kids_sorted(ide, a["hwnd"], "button")[0]["hwnd"])
@@ -302,7 +310,7 @@ def exercise_program(ide, rep: Report, P: str, data: Path, pid=None, prefix="F5"
     rep.step(f"{P}{prefix}: SQLite rows + settings.json on disk", db_and_settings)
 
     def close():
-        ide.call("win32_menu", hwnd=W, path="File/Exit")
+        menu_click(ide, W, "File/Exit", "#0/#1")
         ide.wait_for(lambda: not ide.call("win32_windows", title="Customer Manager", pid=pid), 20,
                      desc="program closed")
         return "File > Exit closed it"
@@ -489,7 +497,7 @@ def j9_customer_manager(env: C.Env, rep: Report):
         ide.call("set_env", set={"CUSTMGR_DIR": str(data)})
         ide.call("output", clear=True)
         ide.call("activate_tab", title="Form1.form")
-        ide.call("key", keys="Ctrl+F5", async_=True)          # Start Without Debugging
+        ide.call("key", keys="Ctrl+F5", sel="@tabs", async_=True)          # Start Without Debugging
         return "started"
     if rep.step(P + "Ctrl+F5 (start without debugging)", run):
         exercise_program(ide, rep, P, data)
@@ -500,7 +508,7 @@ def j9_customer_manager(env: C.Env, rep: Report):
         ide.call("open_form", name="Form1", view="code")
         line = ide.call("editor_find", needle="rows = self.refresh()")[0]
         ide.call("breakpoint", file="Form1.py", line=line, on=True)
-        ide.call("key", keys="F5", async_=True)
+        ide.call("key", keys="F5", sel="@tabs", async_=True)
         w = C.wait_window(ide, "Customer Manager", timeout=240)
         eds = _kids_sorted(ide, w["hwnd"], "edit")
         _type_into(ide, eds[0]["hwnd"], "Ahmed")
@@ -510,7 +518,7 @@ def j9_customer_manager(env: C.Env, rep: Report):
         rep.shot(P + "debugger paused")
         check(any("text" in x and "Ahmed" in x for x in d.get("locals") or []), f"Locals {d.get('locals')}")
         ide.call("breakpoint", file="Form1.py", line=line, on=False)
-        ide.call("key", keys="F5", async_=True)
+        ide.call("key", keys="F5", sel="@tabs", async_=True)
         time.sleep(1)
         ide.call("trigger", path="Debug/Stop Debugging")
         ide.wait_for(lambda: not ide.call("run_state")["running"], 30, desc="stopped")
@@ -554,6 +562,9 @@ def j9_customer_manager(env: C.Env, rep: Report):
 
         def uninstall():
             import subprocess
+            if ide.call("process_status", pid=r["pid"])["returncode"] is None:      # still running: close it
+                ide.try_call("win32_kill", pid=r["pid"])
+                time.sleep(1)
             un = sorted(inst.glob("unins*.exe"))[-1]
             res = subprocess.run([str(un), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], timeout=300)
             check(res.returncode == 0, f"uninstaller exit {res.returncode}")

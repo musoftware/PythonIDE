@@ -9,11 +9,10 @@ from __future__ import annotations
 import io
 import json
 import random
-import struct
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -33,7 +32,7 @@ class Target:
     generate: Callable[[random.Random], bytes] | None = None   # an input made from scratch
     timeout: float = 10.0
     seeds_must_load: bool = True                 # False: a seed may also fail cleanly (e.g. random programs)
-    refuse: Callable[[], list[tuple[str, bytes]]] = lambda: []   # inputs that MUST fail cleanly (handled)
+    refuse: Callable[[], list[tuple[str, bytes]]] = list   # inputs that MUST fail cleanly (handled)
 
 
 TARGETS: dict[str, Target] = {}

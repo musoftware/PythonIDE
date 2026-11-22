@@ -952,9 +952,9 @@ def build(folder: Path, cfg: PublishConfig, log=print, interpreter: str = "") ->
     work = out / "build"
     net_work = None
     if str(out).startswith("\\\\"):
-        # a network share (\server\share): cmd.exe cannot run in a UNC folder ("UNC paths are not supported",
+        # a network share (UNC: server share): cmd.exe cannot run in a UNC folder ("UNC paths are not supported",
         # windres / bridge builds fail) and thousands of small build files over SMB are slow - the build runs
-        # in a local folder and only the finished program is copied to <output>uild\dist on the share
+        # in a local folder and only the finished program is copied to <output>/build/dist on the share
         from ..paths import user_data_dir
         from ..safeio import folder_key
         net_work, work = work, user_data_dir() / "netbuild" / folder_key(out) / "build"

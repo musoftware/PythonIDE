@@ -210,8 +210,13 @@ def build(crawl_path: Path | None) -> dict:
                      "tests": sorted(files)[:6], "n_tests": len(files), "why": ["class"] if files else [],
                      "crawl": "", "importance": 40})
     for t in inv.get("templates", []):
-        files = cor.by_string(t["template"]) & (cor.by_string(t["language_id"]) | cor.by_ident(t["language_id"])) \
-            if len(norm(t["template"])) >= 4 else set()
+        # a test that names the language id and the template (title, or its id passed to apply_template /
+        # create_new_project / the New Project dialog)
+        lang_files = cor.by_string(t["language_id"]) | cor.by_ident(t["language_id"])
+        tpl_files = cor.by_string(t["template"]) if len(norm(t["template"])) >= 4 else set()
+        if t.get("template_id"):
+            tpl_files |= cor.by_string(t["template_id"])
+        files = lang_files & tpl_files
         rows.append({"type": "template", "key": f"template|{t['language_id']}|{t['template']}",
                      "area": "New Project templates", "label": f"{t['language']} > {t['template']}",
                      "status": "covered" if files else "NOT covered", "tests": sorted(files)[:6],

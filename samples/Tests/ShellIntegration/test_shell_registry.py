@@ -7,13 +7,19 @@ shortcuts into <scratch>\\shortcuts. Checks every planned key/value, that values
 are kept, and that unregister restores exactly the previous state (a full dump of the test tree)."""
 from __future__ import annotations
 
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
-import winreg
-from pathlib import Path
+import faulthandler
+import sys as _sys
+
+faulthandler.enable()                    # a native crash (CI) still leaves a stack in the log
+print("test_shell_registry: starting", _sys.version.split()[0], flush=True)
+
+import os  # noqa: E402
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import tempfile  # noqa: E402
+import winreg  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
@@ -215,4 +221,10 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        code = main()
+    except Exception:                    # noqa: BLE001 - show why in the CI log
+        import traceback
+        traceback.print_exc()
+        code = 1
+    sys.exit(code)

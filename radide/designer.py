@@ -76,6 +76,13 @@ def handle_rects(r: QRect) -> list[QRect]:
     return [QRect(x - h, y - h, HANDLE, HANDLE) for x, y in pts]
 
 
+PX_LIMIT = 1_000_000        # geometry drawn by Qt (Int32): absurd values of a form file / the Properties window
+
+
+def _px(v) -> int:
+    return max(-PX_LIMIT, min(PX_LIMIT, int(v)))
+
+
 class Surface(QWidget):
     """The form's client area. Paints background + grid; hosts previews."""
 
@@ -134,22 +141,22 @@ class Overlay(QWidget):
         """Where c is drawn - the previewed visual state / timeline geometry when one is shown."""
         dp = self.view.design_props
         p = dp(c)
-        x, y = int(p["Left"]), int(p["Top"])
+        x, y = _px(p["Left"]), _px(p["Top"])
         seen = set()
         parent = self.form.find(c.parent) if c.parent else None
         while parent is not None and parent.name not in seen:
             seen.add(parent.name)
             pp = dp(parent)
             ox, oy = self.form.client_offset(parent)
-            x += int(pp["Left"]) + ox
-            y += int(pp["Top"]) + oy
+            x += _px(pp["Left"]) + ox
+            y += _px(pp["Top"]) + oy
             parent = self.form.find(parent.parent) if parent.parent else None
-        return QRect(x, y, int(p["Width"]), int(p["Height"]))
+        return QRect(_px(x), _px(y), _px(p["Width"]), _px(p["Height"]))
 
     def start_rect(self, c: Control) -> QRect:
         """Geometry a move / resize starts from (what the designer shows for c)."""
         p = self.view.design_props(c)
-        return QRect(int(p["Left"]), int(p["Top"]), int(p["Width"]), int(p["Height"]))
+        return QRect(_px(p["Left"]), _px(p["Top"]), _px(p["Width"]), _px(p["Height"]))
 
     def shown(self) -> list[Control]:
         """Visual controls the designer currently shows (z-order, containers first)."""
@@ -962,10 +969,11 @@ class FormFrame(QWidget):
             for it in items:
                 if it.get("Text") == "-":
                     continue
-                w = fm.horizontalAdvance(it.get("Text", "")) + 16
+                w = fm.horizontalAdvance(it.get("Text", "").replace("&&", "&").replace("&", "")) + 16
                 ir = QRect(x, mr.top(), w, MENU_H)
-                p.setPen(QColor("#000000"))
-                p.drawText(ir, Qt.AlignmentFlag.AlignCenter, it.get("Text", ""))
+                p.setPen(QColor("#000000"))       # "&File" shows as File with the F underlined (like VS / VB)
+                p.drawText(ir, int(Qt.AlignmentFlag.AlignCenter) | int(Qt.TextFlag.TextShowMnemonic),
+                           it.get("Text", ""))
                 self.menu_rects.append((ir, it))
                 x += w
             if not items:

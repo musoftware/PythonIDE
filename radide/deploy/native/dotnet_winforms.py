@@ -231,6 +231,12 @@ def check(folder, project: Project, cfg) -> list[str]:
             if p.is_file() and re.search(r"(?im)^\s*#requires\s+-version\s+([6-9]|\d\d)",
                                          p.read_text(encoding="utf-8", errors="replace")):
                 out.append(f"{name} requires PowerShell 7 (#Requires -Version)")
+    for name in [f + exts[0] for f in project.forms] + [m for m in project.modules if m.lower().endswith(exts)]:
+        p = folder / name
+        text = p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+        if re.search(r"[\"']Animate[\"']|\.Animate\s*\(", text):     # same rule as java_native / radforms
+            out.append(f"{name} calls Animate (ad hoc presets need the IDE runtime; design the animation with "
+                       "trigger Manual and call BeginAnimation)")
     return out
 
 

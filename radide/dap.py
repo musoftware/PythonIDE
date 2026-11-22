@@ -203,6 +203,8 @@ class DapSession(QObject):
 
     # adapters that change breakpoints only while the program is halted (Delve): set_breakpoint pauses it
     pause_for_bp_changes = False
+    # count hit conditions here even if the adapter could (Delve keeps a breakpoint's hit count when it changes)
+    count_hits_here = False
 
     def _flush_bp_queue(self, then=None):
         paths = sorted(self.__dict__.pop("_bp_queue", set()))
@@ -240,6 +242,14 @@ class DapSession(QObject):
                 reason = "exception"            # runtime.gopanic / rust_panic: a panic starts
             if reason == "breakpoint" and self._hit_held_back(top):
                 return
+            here = ((top.get("source") or {}).get("path", ""), top.get("line", 0), len(frames))
+            sf = getattr(self, "_step_from", None)
+            if reason == "step" and sf and sf[1] == here and self._step_again < 50:
+                self._step_again += 1
+                self._request(sf[0], {"threadId": self.thread_id})
+                return
+            self._step_from = None
+            self._last_stop = here
             if reason == "exception":       # a panic / signal inside the runtime or a library: show the user's line
                 user = next((f for f in frames if self._is_user_frame(f)), None)
                 if user is not None:
@@ -307,9 +317,16 @@ class DapSession(QObject):
             QTimer.singleShot(1500, lambda: self.proc.kill() if self.running() else None)
 
     # ------------------------------------------------------------ Session-compatible commands
+    # adapters that stop at every expression of a line when stepping (Dart): a step that stays on the same line of
+    # the same frame steps again, so F10 / F11 move by lines like the other languages
+    line_steps = False
+
     def _resume(self, command):
         if self.paused:
             self.paused = False
+            last = getattr(self, "_last_stop", None)
+            self._step_from = (command, last) if command in ("next", "stepIn") and self.line_steps and last else None
+            self._step_again = 0
             self._request(command, {"threadId": self.thread_id})
             self.resumed.emit()
 
@@ -343,6 +360,8 @@ class DapSession(QObject):
 
     def _adapter_hits(self) -> bool:
         """Does the adapter count hit conditions itself? (netcoredbg does not: then this session counts)"""
+        if self.count_hits_here:
+            return False
         caps = getattr(self, "capabilities", None)
         return caps is None or bool(caps.get("supportsHitConditionalBreakpoints"))
 

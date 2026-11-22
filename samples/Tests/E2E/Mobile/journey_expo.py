@@ -72,9 +72,20 @@ def setp(v, name, key, value):
 
 # ============================================================================ 1. new project
 with j.step("new project"):
+    # node_modules of an earlier run is kept aside (npm install of Expo takes many minutes the first time)
+    cache = j.out / "_node_modules_cache"
+    old_nm = j.work / "NotesApp" / "NotesApp" / "node_modules"
+    if old_nm.is_dir() and not cache.exists():
+        shutil.move(str(old_nm), str(cache))
     shutil.rmtree(j.work / "NotesApp", ignore_errors=True)
     j.new_project("expo", "expo_app", "NotesApp")
     folder = Path(win.project.folder)
+    if cache.is_dir() and not (folder / "node_modules").exists():
+        shutil.move(str(cache), str(folder / "node_modules"))
+        lock = folder / "node_modules" / ".package-lock.json"
+        if lock.exists():
+            os.utime(lock)                    # newer than package.json: the IDE skips npm install
+        j.note("node_modules reused from the previous run")
     j.check((folder / "package.json").exists() and "MainScreen" in win.project.forms,
             f"forms {win.project.forms}")
     E.pump(0.5)
@@ -240,13 +251,21 @@ def body_text(page):
     return E.js(page, "document.body ? document.body.innerText : ''", 5) or ""
 
 
+def reload(page):
+    """Reload the page and wait until the app has rendered its text field again."""
+    E.js(page, "window.__e2e_old = 1, location.reload(), 1")
+    E.wait(lambda: E.js(page, "window.__e2e_old === undefined && !!document.querySelector('input')", 3) is True,
+           90, 0.4)
+    E.pump(0.5)
+
+
 def exercise(view, label: str):
     """Add a note through the page, check list + localStorage, reload, details, About (RTL)."""
     page = view.page()
     ok = E.wait(lambda: "Notes" in body_text(page) and "Add" in body_text(page), 120, 0.5)
     j.check(ok, f"{label}: app did not render: {body_text(page)[:300]}")
     E.js(page, "localStorage.removeItem('rad-notes'), 1")
-    E.js(page, "location.reload(), 1")
+    reload(page)
     E.wait(lambda: "0 notes" in body_text(page), 60, 0.5)
     j.shot(view, f"{label}_notes_empty")
     r = E.js(page, SET_INPUT % json.dumps("Buy bread"))
@@ -259,7 +278,7 @@ def exercise(view, label: str):
     stored = E.js(page, "localStorage.getItem('rad-notes')")
     j.check(stored and "Buy bread" in stored, f"{label}: localStorage {stored}")
     j.shot(view, f"{label}_note_added")
-    E.js(page, "location.reload(), 1")
+    reload(page)
     ok = E.wait(lambda: "Buy bread" in body_text(page), 60, 0.5)
     j.check(ok, f"{label}: note lost after reload")
     r = E.js(page, CLICK_TEXT % json.dumps("Buy bread"))
@@ -287,7 +306,7 @@ with j.step("run preview"):
     s = feat.run(debug=False)
     j.check(s is not None, f"Expo session not started: {j.msgs[-3:]}")
     view = win.web_preview.view
-    ok = E.wait(lambda: view.url().toString().startswith("http"), 1500, 1.0)
+    ok = E.wait(lambda: view.url().toString().startswith("http"), 3000, 1.0)
     j.check(ok, f"no Preview URL from Expo: {j.output_text()[-1500:]}")
     j.note(f"Preview {view.url().toString()}")
     align = exercise(view, "preview")

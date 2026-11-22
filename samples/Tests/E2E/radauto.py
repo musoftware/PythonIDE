@@ -238,7 +238,8 @@ class IDE:
     def try_call(self, cmd: str, **args):
         try:
             return self.call(cmd, **args)
-        except AutomationError:
+        except (AutomationError, OSError, ValueError):
+            self.close()                 # a dead pipe: reconnect on the next request
             return None
 
     def job(self, cmd: str, wait_s: float = 120, **args):
@@ -274,7 +275,7 @@ class IDE:
                 last = fn()
                 if last:
                     return last
-            except AutomationError as e:
+            except (AutomationError, OSError) as e:
                 last = e
             time.sleep(step)
         raise AutomationError(f"timeout waiting for {desc or fn}: last={last!r}"[:2000])

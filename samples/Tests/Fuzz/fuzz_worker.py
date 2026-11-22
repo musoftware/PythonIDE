@@ -122,7 +122,7 @@ def main() -> None:
             res = {"st": "handled", "sig": type(e).__name__, "msg": str(e)[:300]}
         except RecursionError as e:
             res = {"st": "crash", "sig": _sig(e), "msg": "RecursionError", "tb": traceback.format_exc()[-3000:]}
-        except BaseException as e:  # noqa: BLE001 - everything else is a finding
+        except BaseException as e:
             if isinstance(e, KeyboardInterrupt):
                 raise
             res = {"st": "crash", "sig": _sig(e), "msg": f"{type(e).__name__}: {str(e)[:300]}",

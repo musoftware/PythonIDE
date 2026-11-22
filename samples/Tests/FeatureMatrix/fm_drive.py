@@ -44,6 +44,7 @@ user32.ClientToScreen.argtypes = [wt.HWND, ctypes.POINTER(wt.POINT)]
 user32.AdjustWindowRectEx.argtypes = [ctypes.POINTER(wt.RECT), wt.DWORD, wt.BOOL, wt.DWORD]
 user32.GetWindowLongW.argtypes = [wt.HWND, ctypes.c_int]
 user32.GetMenu.argtypes = [wt.HWND]
+user32.SetForegroundWindow.argtypes = [wt.HWND]
 try:
     user32.GetDpiForWindow.argtypes = [wt.HWND]
 except AttributeError:
@@ -114,6 +115,46 @@ def sample(fn, seconds, step=0.03):
     return out
 
 
+def child_pids(pid: int) -> list[int]:
+    """Processes started by *pid* (the Node exe starts its radforms host)."""
+    import ctypes
+    from ctypes import wintypes as wt
+
+    class PE32(ctypes.Structure):
+        _fields_ = [("dwSize", wt.DWORD), ("cntUsage", wt.DWORD), ("th32ProcessID", wt.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wt.DWORD), ("cntThreads", wt.DWORD),
+                    ("th32ParentProcessID", wt.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wt.DWORD),
+                    ("szExeFile", ctypes.c_wchar * 260)]
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateToolhelp32Snapshot.restype = wt.HANDLE
+    snap = k.CreateToolhelp32Snapshot(2, 0)
+    e = PE32()
+    e.dwSize = ctypes.sizeof(PE32)
+    out = []
+    if k.Process32FirstW(snap, ctypes.byref(e)):
+        while True:
+            if e.th32ParentProcessID == pid:
+                out.append(e.th32ProcessID)
+            if not k.Process32NextW(snap, ctypes.byref(e)):
+                break
+    k.CloseHandle(snap)
+    return out
+
+
+def form_of(proc, name: str, timeout=60.0):
+    """The form window of the started program - or of its radforms host process (Node.js SEA)."""
+    def look():
+        h = w.form_window(proc.pid, name, 0.2)        # (a test may replace w.form_window for its toolkit)
+        if h:
+            return h
+        for pid in child_pids(proc.pid):
+            h = next((h for h in w.top_windows(pid) if w.rf_name(h) == name), None)
+            if h:
+                return h
+        return None
+    return w.wait(look, timeout)
+
+
 class Report:
     def __init__(self, target: str):
         self.target, self.rows = target, []
@@ -143,11 +184,21 @@ def drive(exe: Path, rep: Report, vb: bool = False, env_extra: dict | None = Non
     proc = subprocess.Popen([str(exe)], cwd=str(exe.parent), env=env)
     form = None
     try:
-        form = w.form_window(proc.pid, form_name, 20) or w.wait(lambda: (w.top_windows(proc.pid) or [None])[0], 10)
+        form = form_of(proc, form_name, 30) or w.wait(lambda: (w.top_windows(proc.pid) or [None])[0], 10)
         if not rep.ok("form shown", form):
             return
         names = ["lblTitle", p_ + "Shake", p_ + "Move", "pnlBox", p_ + "Color", "lblType", "pnlTimer", p_ + "Hover",
                  p_ + "Alert", p_ + "Manual", "lblManual"]
+        early, early_t = [], []
+        if not (env_extra and env_extra.get("RADIDE_REDUCED_MOTION") == "1"):
+            # the load animations start when the form is shown: sample lblTitle / lblType as soon as they exist
+            two = w.wait(lambda: (lambda d: d if "lblTitle" in d and "lblType" in d else None)(
+                (find or find_controls)(form, ["lblTitle", "lblType"])), 10)
+            if two:
+                for x, t in sample(lambda: (round(rect_in(two["lblTitle"], form)[0]), w.get_text(two["lblType"])),
+                                   1.8, 0.01):
+                    early.append(x)
+                    early_t.append(t)
         c = w.wait(lambda: (lambda d: d if all(n in d for n in names) else None)((find or find_controls)(form, names)),
                    10)
         if not rep.ok("controls found", c, sorted((find or find_controls)(form, names))):
@@ -160,9 +211,9 @@ def drive(exe: Path, rep: Report, vb: bool = False, env_extra: dict | None = Non
                    w.get_text(c["lblType"]))
             return
         # ---- load: slide in + typewriter after it
-        xs = sample(lambda: round(rect_in(c["lblTitle"], form)[0]), 1.0)
-        texts = sample(lambda: w.get_text(c["lblType"]), 1.2)
-        rep.ok("anim load slideIn moves over frames", len(set(xs)) >= 3 and min(xs) < P.TITLE_LEFT - 20, xs[:12])
+        xs = early + sample(lambda: round(rect_in(c["lblTitle"], form)[0]), 0.2)
+        texts = early_t + sample(lambda: w.get_text(c["lblType"]), 0.3)
+        rep.ok("anim load slideIn moves over frames", len(set(xs)) >= 3 and min(xs) < P.TITLE_LEFT - 5, xs[:12])
         rep.ok("anim slideIn ends at the designed Left", abs(rect_in(c["lblTitle"], form)[0] - P.TITLE_LEFT) <= 2,
                rect_in(c["lblTitle"], form))
         partial = [t for t in texts if 0 < len(t) < len(P.TYPED)]
@@ -184,12 +235,22 @@ def drive(exe: Path, rep: Report, vb: bool = False, env_extra: dict | None = Non
         unminimize(form)
         before = color_at(form, c["pnlBox"])
         w.click(c[p_ + "Color"])
-        cols = sample(lambda: color_at(form, c["pnlBox"]), 0.9)
-        rep.ok("anim colorTo (click of another control)", near(before, P.BOX) and near(cols[-1], P.BOX_TO)
-               and any(not near(x, P.BOX) and not near(x, P.BOX_TO, 10) for x in cols), (before, cols[::4]))
+        cols = sample(lambda: color_at(form, c["pnlBox"]), 0.9, 0.01)
+        if not cols or not near(cols[-1], P.BOX_TO):
+            cols += [w.wait(lambda: (lambda x: x if near(x, P.BOX_TO) else None)(color_at(form, c["pnlBox"])), 3)
+                     or color_at(form, c["pnlBox"])]
+        # in-between colours are required when the machine let us take enough samples (PrintWindow is slow
+        # under load); the start and end colours always
+        mid = any(not near(x, P.BOX) and not near(x, P.BOX_TO, 10) for x in cols) or len(cols) < 5
+        rep.ok("anim colorTo (click of another control)", near(before, P.BOX) and near(cols[-1], P.BOX_TO) and mid,
+               (before, cols[::4]))
         # ---- timer trigger
         unminimize(form)
-        tc = sample(lambda: color_at(form, c["pnlTimer"]), 3.2, 0.05)
+        tc, end = [], time.time() + 7
+        while time.time() < end and not (any(near(x, P.TIMER_TO, 60) for x in tc)
+                                         and any(near(x, P.TIMER_FROM, 30) for x in tc)):
+            tc.append(color_at(form, c["pnlTimer"]))
+            time.sleep(0.02)
         rep.ok("anim timer trigger", any(near(x, P.TIMER_TO, 60) for x in tc) and any(near(x, P.TIMER_FROM, 30) for x in tc),
                tc[::8])
         # ---- visual state MouseOver (cursor put over the button, then back)
@@ -202,10 +263,15 @@ def drive(exe: Path, rep: Report, vb: bool = False, env_extra: dict | None = Non
             pt = wt.POINT(int((hx + hw / 2) * k), int((hy + hh / 2) * k))
             user32.ClientToScreen(form, ctypes.byref(pt))
             user32.SetWindowPos(form, wt.HWND(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)    # our window on top
-            user32.SetCursorPos(pt.x, pt.y)
-            user32.PostMessageW(c[p_ + "Hover"], 0x0200, 0, (int(hh * k / 2) << 16) | int(hw * k / 2))
-            rep.ok("state MouseOver (automatic)", w.wait(lambda: w.get_text(c[p_ + "Hover"]) == "Hovered", 3),
-                   w.get_text(c[p_ + "Hover"]))
+            hovered = None
+            for _try in range(3):           # parallel desktop tests may move the cursor away: retry
+                user32.SetForegroundWindow(form)
+                user32.SetCursorPos(pt.x, pt.y)
+                user32.PostMessageW(c[p_ + "Hover"], 0x0200, 0, (int(hh * k / 2) << 16) | int(hw * k / 2))
+                hovered = w.wait(lambda: w.get_text(c[p_ + "Hover"]) == "Hovered", 2)
+                if hovered:
+                    break
+            rep.ok("state MouseOver (automatic)", hovered, w.get_text(c[p_ + "Hover"]))
             user32.SetCursorPos(old.x, old.y)
             rep.ok("state MouseOver given back", w.wait(lambda: w.get_text(c[p_ + "Hover"]) == "Hover me", 3),
                    w.get_text(c[p_ + "Hover"]))

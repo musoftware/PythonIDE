@@ -15,7 +15,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
-sys.path.insert(0, str(REPO))
+if not __import__("os").environ.get("RADIDE_FM_NO_REPO"):        # (the frozen IDE check uses its own radide)
+    sys.path.insert(0, str(REPO))
 
 from radide import motion  # noqa: E402
 from radide.model import Form  # noqa: E402
