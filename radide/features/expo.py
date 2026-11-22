@@ -356,21 +356,15 @@ class ExpoFeature(QObject):
 
     def _wrap(self):
         win = self.win
-        orig_run, orig_update = win.run_project, win._update_actions
+        orig_run = win.run_project
 
         def run_project(debug: bool = True):
             if is_expo(win):
                 return self.run(debug)
             return orig_run(debug)
 
-        def update_actions():
-            orig_update()
-            try:
-                self.update_ui()
-            except Exception:  # noqa: BLE001 - never break the IDE
-                pass
         win.run_project = run_project
-        win._update_actions = update_actions
+        win.extension_points.on("actions_updated", lambda: self.update_ui(), "expo")      # errors logged once
 
     # ------------------------------------------------------------ run
     def run(self, debug: bool = True):

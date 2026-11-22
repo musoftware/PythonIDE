@@ -761,9 +761,7 @@ def new_from_template(win, template: str):
 
 
 def install(win) -> None:
-    orig_open = win.open_project
-
-    def open_project(folder, *args, **kw):
+    def apply_pending(folder) -> None:        # before the new project is loaded
         pending = getattr(win, "_pending_template", None)
         if pending:
             win._pending_template = None
@@ -772,8 +770,7 @@ def install(win) -> None:
                     apply_template(Path(folder), pending[1])
             except Exception as e:  # noqa: BLE001 - never block opening the project
                 win.log(f"[templates] could not apply the template: {e}")
-        return orig_open(folder, *args, **kw)
-    win.open_project = open_project
+    win.extension_points.on("project_opening", apply_pending, "templates")
     try:
         _start_page_templates(win)
     except Exception as e:  # noqa: BLE001

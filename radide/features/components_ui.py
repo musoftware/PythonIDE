@@ -194,16 +194,8 @@ def install(win) -> None:
     except Exception as e:  # noqa: BLE001
         win.log(f"[components] {e}")
 
-    orig_activate = win.activate_project
-
-    def activate_project(project, *a, **kw):
-        r = orig_activate(project, *a, **kw)
-        try:
-            REGISTRY.set_project(getattr(win.project, "folder", None) if win.project is not None else None)
-        except Exception as e:  # noqa: BLE001
-            win.log(f"[components] {e}")
-        return r
-    win.activate_project = activate_project
+    win.extension_points.on("project_activated", lambda: REGISTRY.set_project(
+        getattr(win.project, "folder", None) if win.project is not None else None), "components")
 
     win.extension_points.add_save_listener(lambda _ok: feat.after_save(), "components")   # errors are logged
 

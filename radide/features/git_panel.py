@@ -717,13 +717,8 @@ def install(win) -> None:
                     pass
         return inner
 
-    orig_open = win.open_project
-
-    def open_project(*args, **kw):
-        r = orig_open(*args, **kw)
-        safe(panel.set_project)(background=True)      # git status in a worker thread: never blocks the open
-        return r
-    win.open_project = open_project
+    win.extension_points.on(            # git status in a worker thread: never blocks the open
+        "project_opened", lambda: safe(panel.set_project)(background=True), "git")
 
     win.extension_points.add_solution_contributor(       # git colours after every refill
         lambda: safe(lambda: panel.colour_solution(panel._project_states() if panel.git and panel.statuses

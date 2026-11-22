@@ -482,20 +482,11 @@ def install(win) -> None:
         win.error_list.itemDoubleClicked.connect(lambda it, _c: _on_error_dclick(win, it))
     except Exception:  # noqa: BLE001
         pass
-    orig_activate = win.activate_project
-
-    def activate_project(project, *a, **kw):
-        ok = orig_activate(project, *a, **kw)
-        QTimer.singleShot(0, bar.sync)
-        return ok
-    win.activate_project = activate_project
-    orig_reset = win._reset
-
-    def reset(*a, **kw):
+    win.extension_points.on("project_activated", lambda: QTimer.singleShot(0, bar.sync), "rust bar")
+    def clear_diagnostics() -> None:
         win.rust_diags = {}
         win._rust_err_keys = set()
-        return orig_reset(*a, **kw)
-    win._reset = reset
+    win.extension_points.on("projects_reset", clear_diagnostics, "rust")
     tools = next((a.menu() for a in win.menuBar().actions()
                   if a.menu() is not None and a.text().replace("&", "") == "Tools"), None)
     if tools is not None:

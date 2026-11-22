@@ -341,16 +341,7 @@ def install(win) -> None:
         view.addAction(a)
     # follow the open project (start lazily when the dock is first shown)
     d.visibilityChanged.connect(lambda vis: vis and not win.terminal.running() and win.terminal.start())
-    orig_open = win.open_project
-
-    def open_project(*args, **kw):
-        r = orig_open(*args, **kw)
-        try:
-            win.terminal.on_project_changed()
-        except Exception:  # noqa: BLE001 - never break opening a project
-            pass
-        return r
-    win.open_project = open_project
+    win.extension_points.on("project_opened", lambda: win.terminal.on_project_changed(), "terminal")
     win.extension_points.add_shutdown_step(lambda: win.terminal.stop(), "terminal")
 
 

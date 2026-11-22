@@ -471,13 +471,8 @@ def install(win) -> None:
                 m.addAction(a_if)
             break
 
-    orig_activate = win.activate_project
-
-    def activate_project(project, *a, **kw):
-        r = orig_activate(project, *a, **kw)
-        QTimer.singleShot(0, feat.refresh_toolbox)
-        return r
-    win.activate_project = activate_project
+    win.extension_points.on("project_activated", lambda: QTimer.singleShot(0, feat.refresh_toolbox),
+                            "user controls")
 
     orig_open = win.open_designer
 

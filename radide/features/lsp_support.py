@@ -103,12 +103,9 @@ def install(win) -> None:
         return result
     win.open_module = open_module
 
-    orig_reset = win._reset
-
-    def reset():
+    def stop_servers() -> None:
         win.lsp_manager.stop_all()
         win._lsp_editors.clear()
-        orig_reset()
-    win._reset = reset
+    win.extension_points.on("projects_reset", stop_servers, "language servers")
 
     win.extension_points.add_shutdown_step(lambda: win.lsp_manager.stop_all(), "language servers")

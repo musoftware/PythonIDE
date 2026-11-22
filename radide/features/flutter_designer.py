@@ -496,32 +496,25 @@ class FlutterDesignerManager:
         win = self.win
         win.extension_points.add_document_provider(self)
         win.extension_points.add_solution_contributor(self.add_tree_nodes, "flutter designer")
-        orig_open_project = getattr(win, "open_project", None)
-        if callable(orig_open_project):
-            def open_project(*a, **k):
-                r = orig_open_project(*a, **k)
-                QTimer.singleShot(0, self._safe_start)
-                return r
-            win.open_project = open_project
-        orig_update = getattr(win, "_update_actions", None)
-        if callable(orig_update):
-            def update_actions(*a, **k):
-                r = orig_update(*a, **k)
-                ed = self.current()
-                if ed is not None:            # Edit menu commands of the current screen designer
-                    st = ed.undo_stack
-                    win.a_undo.setEnabled(st.canUndo())
-                    win.a_redo.setEnabled(st.canRedo())
-                    sel = bool(ed.selected) and ed.selected != ed.screen.tree.get("id")
-                    for act in (win.a_cut, win.a_copy, win.a_delete):
-                        act.setEnabled(sel)
-                    win.a_paste.setEnabled(True)
-                return r
-            win._update_actions = update_actions
+        win.extension_points.on("project_opened", lambda: QTimer.singleShot(0, self._safe_start), "flutter designer")
+        win.extension_points.on("actions_updated", self._edit_commands, "flutter designer")
         win.open_flutter_screen = self.open_screen
         win.add_flutter_screen = self.add_screen
         win.flutter_designer = self
         QTimer.singleShot(0, self._wrap_open_file)
+
+    def _edit_commands(self) -> None:
+        """Edit menu commands of the current screen designer (after the window set its own)."""
+        win = self.win
+        ed = self.current()
+        if ed is not None:
+            st = ed.undo_stack
+            win.a_undo.setEnabled(st.canUndo())
+            win.a_redo.setEnabled(st.canRedo())
+            sel = bool(ed.selected) and ed.selected != ed.screen.tree.get("id")
+            for act in (win.a_cut, win.a_copy, win.a_delete):
+                act.setEnabled(sel)
+            win.a_paste.setEnabled(True)
 
     def _safe_start(self):
         try:

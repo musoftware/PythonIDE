@@ -306,29 +306,16 @@ class GameDesigner:
     def has_modified_documents(self) -> bool:
         return any(self._alive(e) and e.is_modified() for e in self.editors.values())
 
+    def _after_open(self) -> None:
+        self.update_visibility()
+        self._open_start_scene()
+
     def _wrap(self) -> None:
         win = self.win
         win.extension_points.add_document_provider(self)
         win.extension_points.add_solution_contributor(self._add_tree_scenes, "game designer")
-        orig_open_project = win.open_project
-        orig_activate = win.activate_project
-
-        def open_project(*a, **k):
-            r = orig_open_project(*a, **k)
-            try:
-                self.update_visibility()
-                self._open_start_scene()
-            except Exception as e:  # noqa: BLE001
-                win.log(f"[game designer] {e}")
-            return r
-
-        def activate_project(*a, **k):
-            r = orig_activate(*a, **k)
-            self.update_visibility()
-            return r
-
-        win.open_project = open_project
-        win.activate_project = activate_project
+        win.extension_points.on("project_opened", self._after_open, "game designer")
+        win.extension_points.on("project_activated", lambda: self.update_visibility(), "game designer")
         win.open_scene = self.open_scene
         win.scene_editors = self.editors
         win.game_designer = self

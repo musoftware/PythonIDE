@@ -2079,16 +2079,7 @@ def install(win) -> None:
         pass
     win._ai_chat_menu_hook = _MenuHook(win, lambda: win.ai_chat)
     # follow the open project (history is per project)
-    orig_open = win.open_project
-
-    def open_project(*args, **kw):
-        r = orig_open(*args, **kw)
-        try:
-            panel.on_project_changed()
-        except Exception as e:  # noqa: BLE001
-            win.log(f"[ai chat] {e}")
-        return r
-    win.open_project = open_project
+    win.extension_points.on("project_opened", lambda: panel.on_project_changed(), "AI chat")
     def stop_on_close() -> None:
         panel.stop()
         panel.save()

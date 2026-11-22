@@ -830,7 +830,6 @@ class MobileFeature(QObject):
     def _wrap(self):
         win = self.win
         orig_run = win.run_project
-        orig_update = win._update_actions
 
         def run_project(debug: bool = True):
             if is_flutter(win):
@@ -842,14 +841,8 @@ class MobileFeature(QObject):
         # after every successful save: project files + hot reload (radide/extension_points.py)
         win.extension_points.add_save_listener(self._after_save, "mobile", before=self._before_save)
 
-        def update_actions():
-            orig_update()
-            try:
-                self.update_ui()
-            except Exception:  # noqa: BLE001 - never break the IDE
-                pass
         win.run_project = run_project
-        win._update_actions = update_actions
+        win.extension_points.on("actions_updated", lambda: self.update_ui(), "mobile")    # errors logged once
 
     def _before_save(self) -> None:
         self._designer_before = designer_state(self.win) if is_flutter(self.win) else None

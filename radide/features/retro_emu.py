@@ -105,16 +105,7 @@ class EmulatorBar:
         win.addToolBar(tb)
         tb.setVisible(False)
         self.toolbar = tb
-        orig_update = getattr(win, "_update_actions", None)
-        if callable(orig_update):
-            def update_actions(*a, **k):
-                r = orig_update(*a, **k)
-                try:
-                    self.update_ui()
-                except Exception:  # noqa: BLE001 - never break the IDE
-                    pass
-                return r
-            win._update_actions = update_actions
+        win.extension_points.on("actions_updated", lambda: self.update_ui(), "retro emulator")   # errors logged once
 
     def update_ui(self, force: bool = False) -> None:
         from ..retro.emu import ui

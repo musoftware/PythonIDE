@@ -64,13 +64,7 @@ class FirmwareMapsFeature:
     def _glue(self) -> None:
         win = self.win
         win.extension_points.add_document_provider(self)
-        orig_update = getattr(win, "_update_actions", None)
-        if callable(orig_update):
-            def update_actions(*a, **k):
-                r = orig_update(*a, **k)
-                self._update_actions()
-                return r
-            win._update_actions = update_actions
+        win.extension_points.on("actions_updated", lambda: self._update_actions(), "firmware maps")
         try:
             win.tabs.currentChanged.connect(lambda _i: self._update_actions())
         except Exception:  # noqa: BLE001

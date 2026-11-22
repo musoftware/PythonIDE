@@ -51,6 +51,17 @@
     "{scratch}"
    ],
    "note": "closing the IDE: save question Cancel / agent tasks No keep it open and shut nothing down; Yes + Discard closes and runs every shutdown step once"
+  },
+  "test_lifecycle_events.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "project lifecycle events: template before open; after open / activate / reset / _update_actions each feature step runs the measured number of times; a failing step is logged"
   }
  }
 }
