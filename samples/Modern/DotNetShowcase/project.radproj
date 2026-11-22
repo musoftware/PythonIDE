@@ -1,0 +1,9 @@
+{
+  "name": "DotNetShowcase",
+  "language": "csharp-bridge",
+  "forms": [
+    "MainForm"
+  ],
+  "startup": "MainForm",
+  "modules": []
+}

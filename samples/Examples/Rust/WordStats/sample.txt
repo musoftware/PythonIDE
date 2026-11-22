@@ -1,0 +1,4 @@
+RAD IDE builds programs the way Visual Basic did: draw the form, double-click a control, write the code.
+The same project runs with F5 inside the IDE and becomes a small exe with Build > Publish.
+Console programs work too: this text is counted by the WordStats example.
+Draw, click, write, run - and publish.

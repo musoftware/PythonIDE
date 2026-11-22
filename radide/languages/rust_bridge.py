@@ -303,6 +303,16 @@ class RustBridgePlugin(BridgeLanguagePlugin):
                 out.append(Completion(w, "variable"))
         return out
 
+    def hover(self, code, line, col, path, names=None):
+        """The GUI Bridge helper under the mouse (rust-analyzer answers nothing before the first build writes
+        Cargo.toml)."""
+        lines = code.splitlines()
+        text = lines[line] if 0 <= line < len(lines) else ""
+        for m in re.finditer(r"\w+", text):
+            if m.start() <= col <= m.end():
+                return HELPERS.get(m.group(), "")
+        return ""
+
     def calltip(self, code, line, col, path, names=None):
         lines = code.splitlines()
         before = lines[line][:col] if line < len(lines) else ""

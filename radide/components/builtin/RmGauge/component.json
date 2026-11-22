@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "name": "RmGauge",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Circular dial or linear gauge with coloured ranges.",
+  "category": "Modern (RAD)",
+  "order": 3080,
+  "builtin": true,
+  "prefix": "RmGauge",
+  "defaultSize": [
+    150,
+    140
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Value",
+      "type": "float",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Current value."
+    },
+    {
+      "name": "Minimum",
+      "type": "float",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Lowest value."
+    },
+    {
+      "name": "Maximum",
+      "type": "float",
+      "default": 100,
+      "category": "Behavior",
+      "description": "Highest value."
+    },
+    {
+      "name": "Ranges",
+      "type": "str",
+      "default": "0-60:#2E7D32;60-80:#F9A825;80-100:#C62828",
+      "category": "Appearance",
+      "description": "Coloured ranges from-to:#colour;..."
+    },
+    {
+      "name": "Unit",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Unit after the value (km/h, %, °C)."
+    },
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Caption under the value."
+    },
+    {
+      "name": "Kind",
+      "type": "enum",
+      "default": "Circular",
+      "category": "Appearance",
+      "description": "Circular dial or Linear scale.",
+      "choices": [
+        "Circular",
+        "Linear"
+      ]
+    },
+    {
+      "name": "Decimals",
+      "type": "int",
+      "default": 0,
+      "category": "Appearance",
+      "description": "Decimals of the value."
+    },
+    {
+      "name": "ShowTicks",
+      "type": "bool",
+      "default": true,
+      "category": "Appearance",
+      "description": "Draws ticks."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmGauge.py",
+      "class": "RmGauge",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

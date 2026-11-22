@@ -1,0 +1,97 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form2",
+    "Text": "About Tip Calculator",
+    "Width": 320,
+    "Height": 160,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "FixedSingle",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblAbout",
+        "Text": "Tip Calculator - a RAD IDE example in Dart (GUI Bridge).",
+        "Left": 12,
+        "Top": 14,
+        "Width": 290,
+        "Height": 40,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblCopy",
+        "Text": "(c) 2026 Musoftware - musoftwares.com",
+        "Left": 12,
+        "Top": 58,
+        "Width": 290,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "cmdClose",
+        "Text": "Close",
+        "Left": 200,
+        "Top": 92,
+        "Width": 100,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    }
+  ]
+}

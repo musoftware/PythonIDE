@@ -262,6 +262,21 @@ RF_API const rf_class *rf_class_at(int index);         /* built-in and registere
 RF_API void rf_invalidate(rf_handle h);               /* repaint */
 RF_API void rf_set_timer(rf_handle h, int id, int ms);    /* WM_TIMER(id) to message(); ms 0 = stop */
 
+/* containers of registered classes (added in RADFORMS_VERSION 2, ABI 1 compatible):
+ * rf_set_page - children whose TabPage property is *page* are shown, the others hidden (paged
+ *   containers: tab strips, navigation panes); RF_PAGE_ALL (default) shows every child, RF_PAGE_NONE
+ *   hides them all (a collapsed group);
+ * rf_set_child_back - the background colour standard child controls (Label, CheckBox ...) and
+ *   owner-drawn children get inside this container (RF_NONE = the container's / form's colour). */
+enum { RF_PAGE_ALL = -1, RF_PAGE_NONE = -2 };
+RF_API void rf_set_page(rf_handle h, int page);
+RF_API int rf_get_page(rf_handle h);
+RF_API void rf_set_child_back(rf_handle h, unsigned color);
+RF_API int rf_child_page(rf_handle h);                /* TabPage of a control (0 = first page) */
+RF_API int rf_dpi(rf_handle h);                       /* DPI of the form of a control (96 = 100 %) */
+RF_API const rf_theme *rf_theme_find(const char *name);   /* a defined theme by name (NULL = none) */
+RF_API int rf_rtl(rf_handle h);                       /* 1 = the form is mirrored (RightToLeft) */
+
 /* Modules: a file in radforms/controls/ declares RF_MODULE(name) { rf_register_class(...); } and the
  * line "RF_CLASSES: Name1 Name2" in a comment; the IDE builder links the modules a project uses and
  * calls their registration from rad_modules_init(). Static-library users call rfmod_<name>(). */

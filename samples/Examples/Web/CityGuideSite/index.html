@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A small city guide: places to visit, a favourites list and a contact form.">
+    <title>City Guide - Home</title>
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header>
+    <h1>City Guide</h1>
+    <nav>
+        <a href="index.html" class="active">Places</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="ar/index.html" lang="ar">العربية</a>
+    </nav>
+</header>
+<main>
+    <h2>Places to visit</h2>
+    <div class="toolbar">
+        <input id="filter" type="search" placeholder="Filter places..." aria-label="Filter places">
+        <label><input type="checkbox" id="onlyFav"> Only my favourites</label>
+        <span id="count"></span>
+    </div>
+    <ul id="places" class="cards"></ul>
+    <p class="hint">Click the star to add a place to your favourites - they are kept in this browser
+        (localStorage), so they are still there after a reload.</p>
+</main>
+<footer>Made with RAD IDE - <span id="clock"></span></footer>
+<script src="js/places.js"></script>
+<script src="js/site.js"></script>
+</body>
+</html>

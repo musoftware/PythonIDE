@@ -1,0 +1,311 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Text Tools - PHP",
+    "Width": 600,
+    "Height": 440,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "Tools",
+            "Name": "mnuTools",
+            "Items": [
+              {
+                "Text": "Run",
+                "Name": "mnuRun"
+              },
+              {
+                "Text": "Swap Input/Output",
+                "Name": "mnuSwap"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuExit"
+              }
+            ]
+          },
+          {
+            "Text": "Samples",
+            "Name": "mnuSamples",
+            "Items": [
+              {
+                "Text": "English text",
+                "Name": "mnuSampleEn"
+              },
+              {
+                "Text": "نص عربي",
+                "Name": "mnuSampleAr"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblInput",
+        "Text": "Input:",
+        "Left": 10,
+        "Top": 8,
+        "Width": 100,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtInput",
+        "Text": "",
+        "Left": 10,
+        "Top": 28,
+        "Width": 570,
+        "Height": 120,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": true,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblOp",
+        "Text": "Operation:",
+        "Left": 10,
+        "Top": 160,
+        "Width": 70,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ComboBox",
+      "props": {
+        "Name": "cboOp",
+        "Left": 80,
+        "Top": 156,
+        "Width": 200,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "UPPER CASE;lower case;Title Case;Reverse;Word count;Remove extra spaces;Slug;Base64 encode;Base64 decode;MD5;SHA-256;Sort lines;Unique lines",
+        "DropDownStyle": "DropDownList",
+        "DataSource": "",
+        "DisplayMember": "",
+        "ValueMember": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "CheckBox",
+      "props": {
+        "Name": "chkAuto",
+        "Text": "Run when typing",
+        "Left": 290,
+        "Top": 158,
+        "Width": 160,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "cmdRun",
+        "Text": "Run",
+        "Left": 470,
+        "Top": 154,
+        "Width": 110,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblOutput",
+        "Text": "Output:",
+        "Left": 10,
+        "Top": 190,
+        "Width": 100,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtOutput",
+        "Text": "",
+        "Left": 10,
+        "Top": 210,
+        "Width": 570,
+        "Height": 120,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": true,
+        "ReadOnly": true,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblStats",
+        "Text": "",
+        "Left": 10,
+        "Top": 340,
+        "Width": 570,
+        "Height": 40,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

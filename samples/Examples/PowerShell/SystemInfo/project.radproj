@@ -1,0 +1,11 @@
+{
+  "name": "SystemInfo",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "SysInfo.ps1"
+  ]
+}

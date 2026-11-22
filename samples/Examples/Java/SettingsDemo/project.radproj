@@ -1,0 +1,13 @@
+{
+  "name": "SettingsDemo",
+  "language": "java-bridge",
+  "forms": [
+    "frmMain",
+    "frmSettings",
+    "frmAbout"
+  ],
+  "startup": "frmMain",
+  "modules": [
+    "AppSettings.java"
+  ]
+}

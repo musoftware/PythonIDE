@@ -4,6 +4,30 @@ All notable changes to RAD IDE. Releases are published on GitHub
 (https://github.com/musoftware/PythonIDE/releases) for every tag `vX.Y.Z`; the release notes are the
 section of this file whose heading starts with `## [X.Y.Z]`.
 
+## [0.2.3] - 2026-11-22
+
+### New
+- **Modern controls (RAD Modern, 29 Rm* controls)**: Ribbon, Grid, SideBar, NavigationPane, TabStrip, DockPanel,
+  Toast, Gauge, Tile, TreeView, ListView, Calendar / Date / Time pickers, modern Button / Toggle / TextBox /
+  ComboBox ... with Light / Dark / Office / Metro themes, RTL and DPI - in the Toolbox ("Modern (RAD)") for every
+  desktop language: native C modules on radforms (C, C++, Fortran, VB6, Rust, Go, Lua ...) and the managed .NET
+  library RadIDE.Controls (C#, VB.NET, also Visual Studio WinForms projects).
+- **Native exes without Python for Rust (~300 KB), Go, Lua (~300 KB) and JavaScript / TypeScript** (a single exe
+  built from the official Node.js - V8, npm packages work - with the native forms host inside). Build > Build Native Exe.
+- **VS Code extensions**: built from the real VS Code source inventories (2,808 commands, vscode.d.ts, context keys,
+  contribution points): API level 1.147, tree views with menus and welcome content, view containers, editor title
+  / context menus, 160+ context keys, many built-in commands; Claude Code's commands all work.
+- **Example Projects** (Help > Example Projects and the Start Page): about 110 complete examples in every language
+  (Notepad, Calculator, Contacts with a database, charts, games, multi-form apps, web apps, DOS, retro consoles).
+- **Performance**: the forms designer is 10-80x faster on big forms (Undo 5.3 s -> 72 ms, add control 4.6 s ->
+  58 ms, tab switch 3.7 s -> 0.2 s, click-select 200 -> 10 ms); IDE start-up 9.3 s -> 4.8 s.
+
+### Fixed
+- Multi-line text, ShowDialog, SelStart/SelLength/SelText, run-time TextAlign / colours over the GUI Bridge; C/C++
+  helpers are no longer taken for event handlers; Publish of console programs, Cargo projects, assembly, Flutter
+  without a windows folder, Godot imports, smaller Python and Ring publishes; FASM debug link; emu8086 / Apollo /
+  legacy Fortran runs; code completion waits at most 3 s for a language server; VB `Me.Text`; Ursina / Panda3D.
+
 ## [0.2.2] - 2026-11-22
 
 ### New

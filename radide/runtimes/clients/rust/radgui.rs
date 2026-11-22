@@ -42,8 +42,27 @@ fn read_line() -> Option<String> {
     }
 }
 
+/// Started without RAD IDE (double-clicked): there is nobody on stdin to draw the forms - say so.
+fn started_alone() -> bool {
+    use std::io::IsTerminal;
+    if !io::stdin().is_terminal() || std::env::var_os("RAD_HANDLERS").is_some() {
+        return false;
+    }
+    println!("This program is a RAD IDE GUI Bridge client: its forms are drawn by RAD IDE.");
+    println!("Run it from the IDE (F5), or make a standalone exe with the forms inside:");
+    println!("Build > Build Native Exe (or Build > Publish).");
+    println!();
+    println!("Press Enter to close.");
+    let _ = read_line();
+    true
+}
+
 /// Used by the generated main program: next "<obj>_<event>" key, None = quit.
 pub fn next_event() -> Option<String> {
+    thread_local!(static FIRST: std::cell::Cell<bool> = std::cell::Cell::new(true));
+    if FIRST.with(|f| f.replace(false)) && started_alone() {
+        return None;
+    }
     let line = read_line()?;
     if line.starts_with("QUIT") {
         return None;
@@ -75,13 +94,46 @@ pub fn event_arg(i: usize) -> String {
 }
 
 // ------------------------------------------------------------------ GUI
+/// A value for an "ESC" command: \\ newline CR escaped, so multi-line text survives the line protocol.
+fn esc(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\n', "\\n").replace('\r', "\\r")
+}
+
+/// The answer to an "ESC" command, unescaped.
+fn unesc(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut it = s.chars().peekable();
+    while let Some(c) = it.next() {
+        if c == '\\' {
+            let real = match it.peek() {
+                Some('n') => Some('\n'),
+                Some('r') => Some('\r'),
+                Some('\\') => Some('\\'),
+                _ => None,
+            };
+            if let Some(r) = real {
+                out.push(r);
+                it.next();
+                continue;
+            }
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// Send an ESC command and read its (escaped) answer.
+fn ask(line: &str) -> String {
+    send(line);
+    unesc(&read_line().unwrap_or_default())
+}
+
 pub fn set(obj: &str, prop: &str, value: impl fmt::Display) {
-    send(&format!("SET {} {} {}", obj, prop, value));
+    send(&format!("ESC SET {} {} {}", obj, prop, esc(&value.to_string())));
 }
 
 pub fn get(obj: &str, prop: &str) -> String {
-    send(&format!("GET {} {}", obj, prop));
-    read_line().unwrap_or_default()
+    ask(&format!("ESC GET {} {}", obj, prop))
 }
 
 pub fn get_num(obj: &str, prop: &str) -> f64 {
@@ -90,21 +142,19 @@ pub fn get_num(obj: &str, prop: &str) -> f64 {
 
 pub fn call(obj: &str, method: &str, args: &[&str]) -> String {
     if args.is_empty() {
-        send(&format!("CALL {} {}", obj, method));
+        ask(&format!("ESC CALL {} {}", obj, method))
     } else {
-        send(&format!("CALL {} {} {}", obj, method, args.join("\t")));
+        let a: Vec<String> = args.iter().map(|x| esc(x)).collect();
+        ask(&format!("ESC CALL {} {} {}", obj, method, a.join("\t")))
     }
-    read_line().unwrap_or_default()
 }
 
 pub fn msgbox(text: impl fmt::Display) {
-    send(&format!("MSGBOX {}", text));
-    read_line();
+    ask(&format!("ESC MSGBOX {}", esc(&text.to_string())));
 }
 
 pub fn input(prompt: &str) -> String {
-    send(&format!("INPUT {}", prompt));
-    read_line().unwrap_or_default()
+    ask(&format!("ESC INPUT {}", esc(prompt)))
 }
 
 pub fn show(form: &str) {

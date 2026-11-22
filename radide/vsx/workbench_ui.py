@@ -29,7 +29,7 @@ from pathlib import Path
 from PyQt6 import sip
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSlot
 from PyQt6.QtGui import QAction, QColor, QFont, QTextCursor
-from PyQt6.QtWidgets import (QApplication, QDockWidget, QHBoxLayout, QInputDialog, QLineEdit, QPlainTextEdit,
+from PyQt6.QtWidgets import (QDockWidget, QHBoxLayout, QInputDialog, QLineEdit, QPlainTextEdit,
                              QTabWidget, QToolButton, QVBoxLayout, QWidget)
 
 from . import when as W
@@ -307,6 +307,86 @@ class _VsxEditorBridge(QObject):
         wb.visible_ranges(self.ed, ranges)
 
 
+# ============================================================================ editor/title of every editor tab
+class EditorTitleBar(QWidget):
+    """The ``editor/title`` menu of extensions for the current editor tab (VS Code's editor title bar):
+    the 'navigation' group as buttons (icon or title), the other groups under '...'. A command gets the
+    editor's resource URI as its argument, like in VS Code. Lives in the editor tab widget's top-right corner."""
+
+    def __init__(self, wb: "WorkbenchUI"):
+        super().__init__()
+        self.wb = wb
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 2, 0)
+        lay.setSpacing(1)
+        self.lay = lay
+        self.entries: list = []
+        self._sig = None
+
+    def _ctx_and_uri(self):
+        tabs = getattr(self.wb.win, "tabs", None)
+        cur = tabs.currentWidget() if tabs is not None else None
+        if cur is not None and getattr(cur, "diff_id", None) in self.wb.diffs:
+            return None, None                       # diff tabs have their own toolbar
+        ed = self.wb._widget_editor(cur)
+        if ed is None:
+            return None, None
+        uri = self.wb.virtual_uri(str(ed.path)) or Path(ed.path).resolve().as_uri()
+        return self.wb.svc.context_for(ed), uri
+
+    def refresh(self):
+        from . import menus as M
+        ctx, uri = self._ctx_and_uri()
+        ents = M.entries(self.wb.svc, "editor/title", ctx) if ctx is not None else []
+        sig = [(e.command, e.title, e.group, e.enabled) for e in ents]
+        if sig == self._sig:
+            return
+        self._sig = sig
+        while self.lay.count():
+            w = self.lay.takeAt(0).widget()
+            if w is not None:
+                w.deleteLater()
+        self.entries = ents
+        nav = [e for e in ents if e.group == "navigation"]
+        rest = [e for e in ents if e.group != "navigation"]
+        for e in nav:
+            b = QToolButton()
+            ic = M.qicon(e)
+            if ic is not None:
+                b.setIcon(ic)
+            else:
+                b.setText(M.label(e))
+            b.setToolTip(M.label(e))
+            b.setAutoRaise(True)
+            b.setEnabled(e.enabled)
+            b.setObjectName("vsxEditorTitle:" + e.command)
+            b.clicked.connect(lambda _c=False, cid=e.command: self.run(cid))
+            self.lay.addWidget(b)
+        if rest:
+            from PyQt6.QtWidgets import QMenu
+            b = QToolButton()
+            b.setText("...")
+            b.setAutoRaise(True)
+            b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+            m = QMenu(b)
+            last = None
+            for e in rest:
+                if last is not None and e.group != last:
+                    m.addSeparator()
+                last = e.group
+                M._add(m, e, self.run)
+            b.setMenu(m)
+            self.lay.addWidget(b)
+        self.setVisible(bool(ents))
+
+    def commands(self) -> list[str]:
+        return [e.command for e in self.entries]
+
+    def run(self, cid: str):
+        _ctx, uri = self._ctx_and_uri()
+        self.wb.svc.execute(cid, [{"$uri": uri}] if uri else [])
+
+
 # ============================================================================ the service
 class WorkbenchUI:
     current: "WorkbenchUI | None" = None
@@ -325,8 +405,16 @@ class WorkbenchUI:
         except Exception:  # noqa: BLE001
             pass
         tabs = getattr(self.win, "tabs", None)
+        self.title_bar = None
         if tabs is not None:
             tabs.currentChanged.connect(self._current_changed)
+            try:
+                if tabs.cornerWidget(Qt.Corner.TopRightCorner) is None:
+                    self.title_bar = EditorTitleBar(self)
+                    tabs.setCornerWidget(self.title_bar, Qt.Corner.TopRightCorner)
+                    self.title_bar.hide()
+            except Exception:  # noqa: BLE001
+                self.title_bar = None
         self._register_handlers()
         self._register_palette()
 
@@ -383,6 +471,8 @@ class WorkbenchUI:
         return ed if ed is not None and ed in self.svc._editors else None
 
     def _current_changed(self, _i=None):
+        if self.title_bar is not None and _alive(self.title_bar):
+            QTimer.singleShot(0, self.title_bar.refresh)
         tabs = getattr(self.win, "tabs", None)
         w = tabs.currentWidget() if tabs is not None else None
         if w is not None and getattr(w, "diff_id", None) in self.diffs:
@@ -522,6 +612,17 @@ class WorkbenchUI:
         for v in list(self.diffs.values()):
             if _alive(v):
                 v.refresh_title_actions()
+        if self.title_bar is not None and _alive(self.title_bar):
+            self.title_bar.refresh()
+
+    def virtual_uri(self, path: str) -> str | None:
+        """The extension URI (scheme:/...) of a temp copy that shows a virtual document, else None."""
+        v = getattr(self, "_virtual", {}).get(str(Path(path).resolve()).lower()) if path else None
+        return v
+
+    def virtual_scheme(self, path: str) -> str | None:
+        u = self.virtual_uri(path)
+        return u.split(":", 1)[0] if u and ":" in u else None
 
     # ---------------------------------------------------------------- virtual documents in editors
     def _n_editor_setText(self, p):
@@ -694,6 +795,9 @@ class WorkbenchUI:
     def exec_command(self, cmd: str, args: list):
         """-> True when handled, None when not this module's command."""
         win = self.win
+        from . import ide_commands
+        if ide_commands.handles(cmd):
+            return ide_commands.run(self, cmd, args)
         if cmd.startswith("workbench.action.terminal."):
             return self.terminal_command(cmd, args[0] if args else None)
         if cmd == "vscode.openFolder" and args:
@@ -705,16 +809,9 @@ class WorkbenchUI:
                 if callable(getattr(win, "open_project", None)):
                     win.open_project(folder)
             return True
-        if cmd in ("revealInExplorer", "revealFileInOS") and args:
+        if cmd == "revealFileInOS" and args:
             p = args[0].get("path") if isinstance(args[0], dict) else str(args[0])
             if not p:
-                return True
-            if cmd == "revealInExplorer":
-                d = getattr(win, "dock_solution", None)
-                if d is not None:
-                    d.show()
-                    d.raise_()
-                self.svc.status(str(p), 5000)
                 return True
             if os.environ.get("RADIDE_NO_BROWSER"):        # tests: never start other programs
                 return True
@@ -729,58 +826,25 @@ class WorkbenchUI:
             if w is not None:
                 w.setFocus()
             return True
-        if cmd in ("workbench.action.lockEditorGroup", "workbench.action.unlockEditorGroup",
-                   "workbench.action.moveEditorToNewWindow", "workbench.action.copyEditorToNewWindow",
-                   "workbench.action.splitEditor", "workbench.action.splitEditorRight",
-                   "workbench.action.moveEditorToNextGroup", "workbench.action.moveEditorToPreviousGroup",
-                   "workbench.action.newGroupRight", "workbench.action.focusSecondEditorGroup",
-                   "workbench.action.joinAllGroups", "workbench.action.evenEditorWidths",
-                   "workbench.action.toggleMaximizeEditorGroup"):
-            return True                                 # one editor group / one window in RAD IDE
-        if cmd.endswith(".focus") or cmd.startswith("workbench.view.extension."):
-            return self._focus_view(cmd)
-        if cmd in ("workbench.action.openSettings", "workbench.action.openGlobalSettings",
-                   "workbench.action.openSettingsJson", "workbench.action.openSettings2"):
-            if cmd == "workbench.action.openSettingsJson":
-                try:
-                    from . import contrib_configuration
-                    path = contrib_configuration.settings_path()
-                    if not path.exists():
-                        path.parent.mkdir(parents=True, exist_ok=True)
-                        path.write_text("{}\n", "utf-8")
-                    self.svc.open_path(str(path))
-                    return True
-                except Exception:  # noqa: BLE001
-                    return None
-            return None                                 # contrib_keybindings: Tools > Options...
-        if cmd == "workbench.action.reopenClosedEditor":
-            return True
+        if cmd.endswith((".focus", ".open")) or cmd.startswith("workbench.view.extension."):
+            return self._focus_view(cmd, args)
         return None
 
-    def _focus_view(self, cmd: str):
+    def _focus_view(self, cmd: str, args=None):
+        """<viewId>.focus / <viewId>.open / workbench.view.extension.<container> (viewsService.ts semantics:
+        open the view - or the container's visible views - and focus it unless preserveFocus)."""
         svc = self.svc
+        opts = args[0] if isinstance(args, list) and args and isinstance(args[0], dict) else {}
+        focus = not opts.get("preserveFocus")
         if cmd.startswith("workbench.view.extension."):
-            container = cmd[len("workbench.view.extension."):]
-            for ext in svc.extensions:
-                views = (ext.contributes.get("views") or {}).get(container)
-                if isinstance(views, list) and views:
-                    vid = next((v.get("id") for v in views if isinstance(v, dict) and v.get("id")), None)
-                    if vid:
-                        return self._focus_view(vid + ".focus")
-            return None
-        vid = cmd[:-len(".focus")]
-        if vid in svc.contributed_webview_views() or vid in (svc.webviews.providers if hasattr(svc.webviews, "providers") else {}):
-            svc.webviews.show_view(vid)
+            return True if svc.views.show_container(cmd[len("workbench.view.extension."):]) else None
+        vid = cmd.rsplit(".", 1)[0]
+        if svc.views.view_info(vid) is not None:
+            svc.views.show_view(vid, focus=focus)
             return True
-        for ext in svc.extensions:
-            for views in (ext.contributes.get("views") or {}).values():
-                for v in views if isinstance(views, list) else []:
-                    if isinstance(v, dict) and v.get("id") == vid:
-                        if v.get("type") == "webview":
-                            svc.webviews.show_view(vid)
-                        else:
-                            svc.show_view(vid)
-                        return True
+        if vid in getattr(svc.webviews, "providers", set()):
+            svc.webviews.show_view(vid, focus=focus)
+            return True
         return None
 
 

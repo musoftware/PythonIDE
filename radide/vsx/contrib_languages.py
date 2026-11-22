@@ -295,14 +295,15 @@ def apply_file_mappings(reg: Registry | None = None) -> None:
     for lang in reg.languages.values():
         target = monaco_id(lang.id)
         has_grammar = lang.id in with_grammar
-        if not has_grammar and lang.configuration is None and lang.id not in reg.snippet_files:
-            continue                                  # a bare id (e.g. only to attach a debugger)
+        # a bare id (no grammar / configuration / snippets, e.g. only to attach a debugger or providers) still
+        # names the files nobody else claims - VS Code gives them that languageId (plain text colouring)
+        bare = not has_grammar and lang.configuration is None and lang.id not in reg.snippet_files
         for e in lang.extensions:
             el = e.lower()
             if not el.startswith("."):
                 continue
             cur = me.MONACO_LANG.get(el)
-            if cur == target:
+            if cur == target or (bare and cur is not None):
                 continue
             if cur is None or has_grammar:
                 if el not in _mapped:

@@ -1,0 +1,16 @@
+{
+  "name": "GasGuessNumber",
+  "language": "asm-gas",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "asm": {
+    "assembler": "gas",
+    "arch": "x64",
+    "linker": "gcc",
+    "entry": "main",
+    "syntax": "intel"
+  }
+}

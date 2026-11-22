@@ -1,0 +1,62 @@
+{
+  "name": "FlaskGuestbook",
+  "language": "python-flask",
+  "forms": [],
+  "startup": "",
+  "modules": [],
+  "kind": "website",
+  "web": {
+    "root": ".",
+    "start": "/",
+    "port": 0,
+    "live_reload": true,
+    "framework": "flask",
+    "app": "app",
+    "template": "flask-app"
+  },
+  "publish": [
+    {
+      "name": "Local folder",
+      "kind": "folder",
+      "host": "",
+      "port": 0,
+      "user": "",
+      "remote_dir": "",
+      "site_url": "",
+      "local_dir": "",
+      "passive": true,
+      "verify_tls": true,
+      "host_key": "",
+      "key_file": "",
+      "excludes": [
+        ".git",
+        ".svn",
+        ".hg",
+        ".radide",
+        ".radide_backup*",
+        "project.radproj",
+        "*.radsln",
+        "__pycache__",
+        "*.pyc",
+        ".vscode",
+        ".idea",
+        "Thumbs.db",
+        ".DS_Store",
+        "*.bak",
+        "*.tmp",
+        "~$*",
+        "data/*.sqlite",
+        "data/*.sqlite-*",
+        "data/*.db",
+        "data/sessions",
+        ".venv",
+        "instance",
+        "*.sqlite3",
+        "tests"
+      ],
+      "delete_removed": false,
+      "save_password": true,
+      "timeout": 30
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "csharp-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

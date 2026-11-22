@@ -447,14 +447,223 @@ properties / methods radforms does not implement used with literal names (`set("
 (Rust) or its own cgo (Go), Lua `require` of something that is not a Lua file of the project (C modules / DLL
 rocks such as LuaSocket), cargo / Go missing.
 
-**Not done (they stay on the bridge build):** JavaScript / TypeScript with QuickJS and Ruby with mruby - their
-bridge clients (`radgui.js`, `rad.rb`) are written against Node / CRuby (process, child_process, sockets,
-net/http, JSON gems), so embedding the small engines needs a port of the clients and of the users' expectations
-(npm / gems would not work); Perl and PHP are too big to embed small. A host that speaks the bridge line protocol
-can use `rad_line_out` / `rad_line_in` (the Fortran builder does) - that is the way for these later.
+**JavaScript / TypeScript** get a Node.js single executable (next section). Embedding QuickJS / mruby for ~1 MB JS / Ruby exes is not done yet (Ruby stays on the bridge build: its client uses CRuby APIs and gems); Perl and PHP are too big to embed small.
 
 **Tests:** `samples/Tests/Native/test_native_rust_go_lua.py` (FormsDemo per language in `Rust/`, `Go/`, `Lua/`:
 publish, kind native, one exe, size, imports, project folder unchanged, drive with `winauto.py`: text change,
 button click, list, timer, combo, check / radio, second form writing back, message box, Arabic text, menu; a new
 RustApp1-like project; the GNU Rust target; check() fallbacks; `RAD_TEST_USER_RUST=<folder>` also tests a copy
 of that project) and `test_build_native_ui.py` (offscreen IDE: Build > Build Native Exe, the build note, Arabic).
+
+## JavaScript and TypeScript (`node_sea.py`) - Node.js single executable + native forms host
+
+The exe **is Node.js** (the official nodejs.org binary: V8, every Node API, npm packages), so a program runs
+exactly as under the IDE - only the forms are not drawn by the IDE's Python host but by a tiny **radforms host**
+(C + radforms, ~80 KB, built per app with the forms, images, manifest and icon as resources).
+
+| Part | What it is |
+|---|---|
+| SEA blob | main = `radgui.js` in a native variant (+ `runMain(files)`): its stdin/stdout I/O goes to a named pipe, scripts are read from SEA assets, `require` resolves the bundled npm packages, project files (`./Helpers`, CommonJS, `.json`) and Node built-ins; before waiting for an event it sends `NEXT`. Everything else of the client (global-scope script loading, `ui.<control>`, handler lookup, `module.exports` shim, ESC multi-line protocol) is unchanged |
+| Assets | `src/<file>` - the project's `.js` / `.json` files and `.ts` files transpiled at build time **with Node's own type stripper** (`module.stripTypeScriptTypes`, mode transform - what the IDE uses at run time; else the project's `typescript` package); `rad/deps.js` - the npm packages the scripts `require`, bundled by **esbuild** (CommonJS, platform node; esbuild.exe from the official npm package `@esbuild/win32-x64`, SHA-512 integrity checked, kept in `%LOCALAPPDATA%\RADIDE\toolchains\esbuild`); `rad/radhost.exe` |
+| Forms host | `_radhost.c`: creates `\\.\pipe\radforms-<pid>-<random>` (local only, one instance), serves the GUI Bridge line protocol with `rad_command` / `rad_event_line` (answers for GET / CALL / MSGBOX / INPUT, `ESC` lines unescaped / escaped), exits when Node closes the pipe; extracted once to `%LOCALAPPDATA%\RADIDE\apps\<sha256>\<App>-forms.exe` (temp folder as fallback) |
+| Node | the installed Node.js when it is 20.12+ (PATH / the JavaScript plugin's places / `toolchains\node`), else the current LTS zip from nodejs.org (SHA-256 from `SHASUMS256.txt`) into `%LOCALAPPDATA%\RADIDE\toolchains\node` |
+| Exe | `node --experimental-sea-config` -> blob; a copy of node.exe gets its signature removed (invalid after editing), the blob as RCDATA `NODE_SEA_BLOB` (Windows resource API - what postject does), the SEA fuse flipped, the app's version info / icon replacing Node's, subsystem **Windows GUI** (no console). `Node.js-LICENSE.txt` is copied next to it |
+
+**Why a host process and not an N-API addon:** an addon must be written to disk and loaded with `process.dlopen`,
+and it imports `napi_*` from "node.exe" - a SEA exe has another name, which needs MSVC's delay-load hook (not
+available with MinGW). The host needs nothing from Node, keeps the client's synchronous model (`fs.readSync` /
+`writeSync` on the pipe fd) and works with every Node version that has SEA.
+
+**Size:** ~85 MB (node.exe 22.x) - the exe is a full Node.js; the forms host adds ~80 KB. Two processes run (the
+exe and `<App>-forms.exe`, which owns the windows); closing the forms ends both, and the host ends when the exe
+ends. `console.log` / error reports go nowhere in a GUI exe unless the environment variable `RAD_LOG=<file>` is
+set (they are appended there).
+
+**Falls back to the bridge build** (reasons in the Output): `radcall` / references to other projects, ES module
+`import` statements (the IDE loads the files as scripts: use `require`), npm packages that are not installed or
+have native `.node` addons, unsupported controls / properties used with literal names, no forms.
+
+**Limits:** like under the IDE, the program waits for the next event synchronously, so `setTimeout` /
+`setInterval` callbacks and promise continuations do not run while it waits - use a Timer control (Tick events)
+for periodic work. RAD Hub is not available.
+
+**Tests:** `samples/Tests/Native/test_native_rust_go_lua.py` (`RAD_TEST_ONLY=JS` runs only this part): the JS and
+TS FormsDemo (`samples/Tests/Native/JS|TS/FormsDemo`, npm package `rad-shout` vendored in `vendor/` and
+installed into the scratch copy's `node_modules`, a CommonJS module, a global-script module, `fs` write / read)
+are published, checked (kind native, one exe + licence, SEA blob / fuse / GUI subsystem, host size and imports)
+and driven (Load with npm + fs in the title, text change, click, list, timer, combo, check / radio, second form,
+message box, Arabic, menu, closing ends both processes); check() fallbacks for radcall, a missing package, a
+native addon, `import`, an unknown property.
+
+## RadIDE.Controls (.NET) - the RAD Modern controls as a managed WinForms library
+
+`radide/runtimes/dotnet/RadIDE.Controls/` (C#, MIT, our own design and source - no code, look, assets or names of
+commercial suites) implements the controls of `docs/plans/MODERN_CONTROLS.md` natively in .NET: the same type names,
+property names, events and methods as the radforms C modules, so one `.form` behaves the same in C, C++, Fortran, VB6,
+C#, VB.NET and PowerShell programs. SDK-style project, `net8.0-windows;net48`.
+
+| Group | Controls (all owner-drawn, double-buffered, themed) |
+|---|---|
+| Buttons | RmButton (Default / Accent / Outline / Flat / Link, image + text, split drop-down), RmToggle (animated knob), RmCheckBox (+ Indeterminate), RmRadioButton, RmTile |
+| Input | RmTextBox (watermark, clear button, icon, ErrorText border; hosts a real edit), RmComboBox (images, watermark), RmSlider (value tip), RmDatePicker / RmTimePicker / RmCalendar |
+| Indicators | RmProgress (Bar / Circle / Marquee), RmGauge (circular 240 degrees or linear, coloured Ranges, animated needle) |
+| Containers | RmPanel (rounded, shadow, gradient, title), RmGroupPanel (collapsible), RmTabStrip (top / left / bottom, closable, overflow menu), RmNavigationPane, RmDockPanel + RmDockWindow (dock left / right / top / bottom / centre tabs, splitters, auto-hide strips, float on title double-click, SaveLayout / Layout) |
+| Navigation | RmRibbon (application button + menu, tabs, groups of large / small buttons, check items, combos, quick access toolbar, collapse), RmSideBar (groups, images, badges, collapses to icons), RmStatusBar (text / progress / zoom panels) |
+| Data | RmGrid (DataGridView + typed columns Text / Number / Check / Combo / Date / Image / Progress / Button, sort, filter row, GroupBy with collapsible group rows, frozen columns, editing, alternating rows), RmTreeView (images, themed check boxes, lazy nodes filled in NodeExpanding), RmListView (Details / Tiles / Cards / List) |
+| Components | RmToast (Show(title, text, kind, ms), stacked, fade), RmSuperTooltip / RmBalloonTip (title, text, image, footer), RmMessageBox (Show / ShowTask, returns the button) |
+
+* **Themes**: `RmThemeManager` has the colour tables of radforms' `rf_theme` (Light / Dark / Office / Metro, same RGB
+  values and radii) + `AccentColor`; `Style` per control (Inherit = the application theme). The form property
+  `Theme` (and `Me.Theme = "Dark"` / `Me.AccentColor = "#107C10"` at run time) switches everything, also the standard
+  controls of the form (labels, edits, lists, buttons; ambient colours are kept) and the title bar (DWM dark mode).
+* **DPI / RTL / animation**: metrics in 96-DPI units scaled by `DeviceDpi`; `RightToLeft` mirrors each control's
+  drawing, and a right-to-left form (`RightToLeft = True`, at design time or from code) mirrors the layout too
+  (`RadApp.MirrorLayout`: Left / Dock / Anchor). Hover / press fades and value animations run on one shared UI timer
+  (`anim_ms` of the theme). Text is drawn with GDI (`TextRenderer`: ClearType, Arabic shaping), shapes with GDI+.
+* **Icons**: image properties take a file (relative to the exe) or a built-in glyph `icon:save`, `icon:home` ...
+  drawn with the Segoe Fluent Icons / Segoe MDL2 Assets font of Windows 10/11 (nothing is shipped).
+* **Visual Studio**: `[Category]`, `[DefaultValue]`, `ShouldSerialize*`, `[DefaultEvent]`, `ToolboxItem` - the dll
+  works in the VS designer (net48 and net8) as an ordinary control library. Accessibility: buttons / toggles have the
+  right roles and default actions; ribbon, side bar, tab and status bar items are accessible children (screen
+  readers, UI Automation Invoke); `BM_CLICK` clicks Rm buttons, toggles and tiles.
+
+### How the .NET builder uses it
+
+`radide/deploy/native/dotnet/RadIDE.Controls.controls.json` maps every `Rm*` type (props with kinds `:enum:`,
+`:color`, `:date`, `:json`, `:float`; .NET names that clash with WinForms members are renamed - `Columns` ->
+`ColumnsJson`, the library also answers the neutral names through `[RmName]`), `pageProp: "TabPage"` (children of
+RmTabStrip / RmNavigationPane go to `AddToPage(i, control)`, coordinates relative to the container as in the designer)
+and `formInit` (the form `Theme` -> `RmThemeManager.ApplyFormTheme`). The generator also works when the designer
+packages are not installed (container / non-visual flags come from the map).
+
+| Target | How the library gets into the program | Showcase exe (`samples/Modern/DotNetShowcase`) |
+|---|---|---|
+| `standalone` | the project is copied to the work folder (no bin / obj in the IDE folder) and added as a `ProjectReference`; `-p:RadIDEControlsTargets=net8.0-windows` restores / builds only that framework; merged into the single file | **62.9 MB**, one exe |
+| `framework` | same, framework-dependent | **452 KB** |
+| `netfx` | its sources are compiled with Roslyn `csc` against the .NET Framework 4.8 of Windows into `RadIDE.Controls.dll` (no SDK, no NuGet; cached by a hash of the sources in `%LOCALAPPDATA%\RADIDE\cache\dotnet\RadIDE.Controls\<hash>\`) and **embedded in the exe** as the resource `radlib.RadIDE.Controls.dll`, loaded by `RadApp.LoadEmbedded()` (AssemblyResolve) | **299 KB**, one exe |
+
+Run-time protocol: `RmToast1.Call("Show", "Saved", "Done", "Success", 3000)`, `gaugeCpu["Value"] = "50"`,
+`RmRibbon1.Call("SetChecked", "chkRuler", true)` work because the runtime (`RadWinForms.cs`) asks library objects
+first through `RadGet` / `RadSet` / `RadCall` (found by reflection, no reference): public properties and methods
+declared in the library, values as invariant strings. Events: any `(sender, EventArgs)`-shaped event is wired
+(`RadRelay`, also `EventHandler<RmItemEventArgs>`); item events fill `e.ItemName`, `e.Index` and `e.Args` =
+`"name index"` (grid cells `"row col"`), the same text the radforms controls send; `e.Cancel` cancels `TabClosing` /
+`NodeExpanding`.
+
+### VB.NET (and C#) Visual Studio WinForms projects
+
+Projects opened in place (`radide/foreign/winforms_cs.py` / `winforms_vb.py`) can use the controls too
+(`radide/foreign/winforms_rm.py`): the Toolbox offers the Rm controls on a WinForms form (`RadIDE.Controls.*`),
+`Me.RmButton1 = New RadIDE.Controls.RmButton()` is read back as the neutral control with its mapped properties
+(when the designer package is installed), new / changed controls are written with the same table, item events get
+`e As RadIDE.Controls.RmItemEventArgs` (C#: `System.EventHandler<RadIDE.Controls.RmItemEventArgs>`). When a form uses
+an Rm control the project gets `lib\RadIDE.Controls.dll` - the build for its target (.NET Framework 4.x: net48 via
+csc; .NET 8+: net8.0-windows via `dotnet build`, cached) - and a `<Reference Include="RadIDE.Controls">` with a
+HintPath, so it builds in RAD IDE, with dotnet / MSBuild and in Visual Studio. .NET 5-7 projects are not supported
+(the library targets net48 and net8.0-windows).
+
+### Tests
+
+`samples/Tests/Native/test_native_modern_dotnet.py`: control map / generated code checks, the cached net48 build,
+the showcase built **standalone**, **netfx** and **framework**, the first two started and driven (UI Automation by
+AutomationId and through the accessible items of ribbon / side bar / tabs / status bar, `BM_CLICK`, `WM_SETTEXT` on
+the edit inside RmTextBox, arrow keys on the slider, the modal RmMessageBox answered through its button, the split
+button menu, the toast window, theme colours checked on `PrintWindow` captures of the program's own window, RTL
+layout), a VB.NET project (`samples/Tests/Native/VBNet/RmVb`) that gets the reference, builds with dotnet and reacts to
+RmToggle / RmRibbon events, a Visual Studio VB.NET form with Rm controls read / edited / saved in place (and the
+.vbproj reference added), and that the property / event / method names of the designer packages
+`radide/components/builtin/Rm*/` are the ones the map and the library know.
+
+Limits: the docking panel docks by its `DockSide` / `Layout` (no drag-and-drop docking guides yet), floating windows
+are owned tool windows; RmComboBox is a themed native combo (its drop-down list is drawn by the control, the edit
+part of `DropDown` style by Windows); RmGrid filtering is "contains", grouping is one level; the VS designer has no
+custom designers (pages of RmTabStrip are edited in code / the RAD designer).
+
+## Modern controls (Rm*) - the RAD Modern suite on radforms (C ABI, every native language)
+
+The controls of `docs/plans/MODERN_CONTROLS.md` as radforms control modules: owner-drawn (double buffer, theme,
+hover / press animation from the core), DPI aware, keyboard accessible, right-to-left aware (a mirrored form mirrors
+them, GDI+ drawing included; Arabic text through `DrawTextW`). Our own design: own colours / shapes, a built-in set
+of vector glyphs (`Image = "save"`, `"mail"`, `"settings"` ... or an image file of the project).
+
+| Module (`radforms/controls/`) | Classes |
+|---|---|
+| `rm_buttons.c` | RmButton (Default / Accent / Outline / Flat / Link, image + text, split drop-down), RmToggle, RmCheckBox (indeterminate), RmRadioButton, RmTile |
+| `rm_input.c` | RmTextBox (native EDIT inside: watermark, clear button, icon, ErrorText border, password, multi-line), RmComboBox (own drop-down list with images, editable style), RmSlider |
+| `rm_progress.c` | RmProgress (bar / circle / marquee, animated), RmGauge (circular / linear, ranges, needle) |
+| `rm_panels.c` | RmPanel (rounded, shadow, gradient, title), RmGroupPanel (collapsible), RmTabStrip (top / left / bottom, closable, overflow), RmNavigationPane, RmDockPanel + RmDockWindow (dock sides, tabbed zones, splitters, auto-hide strips, float inside the host, Layout JSON) |
+| `rm_bars.c` | RmSideBar (groups, badges, icon-only collapse), RmStatusBar (text / progress / zoom panels, springs) |
+| `rm_ribbon.c` | RmRibbon (application button + menu, quick access, tabs, groups, large / small / check / drop-down / combo items, collapse) |
+| `rm_grid.c` | RmGrid (typed columns Text / Number / Check / Combo / Date / Image / Progress / Button, sort, filter row, grouping, frozen columns, in-place editing, selection modes, own scroll bars), RmListView (Details / Tiles / Cards) |
+| `rm_tree.c` | RmTreeView (images, check boxes with propagation, lines, lazy nodes) |
+| `rm_date.c` | RmCalendar, RmDatePicker (drop-down calendar), RmTimePicker - month / day names from the user locale |
+| `rm_notify.c` | RmToast, RmSuperTooltip, RmBalloonTip, RmMessageBox (non-visual components) |
+| `rm_kit.c` | shared helpers (JSON, item trees, glyphs, GDI+ arcs / ellipses, popup lists, item-event store) - every module says `RF_REQUIRES: rm_kit.c` |
+
+**Builds**: `win32_c.py` links only the modules whose classes the forms use, plus what they require
+(`radforms_gen.modules_for` follows `RF_REQUIRES:` lines); the exe stays one file that imports only Windows system
+DLLs (GDI+ is loaded on demand). `samples/Modern/NativeShowcase` (ribbon, side bar, tabs, grid, gauges, tiles,
+toggles, toast, message box, run-time themes) is about 260 KB. `build_static_lib` / `build_msvc_lib` contain every
+module (`rfmod_rm_buttons()` ... or `rf_modules_register_all()`). Nested properties (ribbon tabs, tree nodes, side bar
+items, grid columns) reach the form description as JSON. User code may use every property / method a module
+declares (`k.properties` / `k.methods`), so `check()` only falls back for names nobody implements.
+
+**Core additions** (ABI 1, compatible): `rf_set_page(h, page)` / `rf_get_page` / `rf_child_page` - paged containers
+show the children whose `TabPage` is the page (`RF_PAGE_ALL`, `RF_PAGE_NONE` = collapsed); `rf_set_child_back(h,
+color)` - the background standard children (Label ...) get inside a drawn container; `rf_theme_find(name)` (per
+control `Style`), `rf_dpi(h)`, `rf_rtl(h)`; custom windows answer `WM_GETFONT`; GDI+ drawing follows mirrored DCs.
+
+### Calling them from a language that is not C (VB6 / FreeBASIC, Go, Rust, C#, Lua ...)
+
+Everything goes through the plain C ABI of `radforms.h` (cdecl, UTF-8 strings, opaque handles) - nothing is
+specific to C:
+
+```basic
+' FreeBASIC (what the VB6 -> FreeBASIC builder emits for VB6 code)
+#inclib "radforms"
+Declare Function rf_find Cdecl Alias "rf_find" (ByVal path As ZString Ptr) As Any Ptr
+Declare Function rf_create Cdecl Alias "rf_create" (ByVal parent As Any Ptr, ByVal typ As ZString Ptr, _
+    ByVal nm As ZString Ptr, ByVal x As Long, ByVal y As Long, ByVal w As Long, ByVal h As Long) As Any Ptr
+Declare Function rf_prop_set Cdecl Alias "rf_prop_set" (ByVal h As Any Ptr, ByVal p As ZString Ptr, ByVal v As ZString Ptr) As Long
+Declare Function rf_prop_get Cdecl Alias "rf_prop_get" (ByVal h As Any Ptr, ByVal p As ZString Ptr) As ZString Ptr
+Declare Function rf_invoke Cdecl Alias "rf_invoke" (ByVal h As Any Ptr, ByVal m As ZString Ptr, ByVal a As ZString Ptr) As ZString Ptr
+Declare Sub rfmod_rm_notify Cdecl Alias "rfmod_rm_notify" ()
+
+rfmod_rm_notify()                                    ' register the module's classes (or rf_modules_register_all)
+Dim As Any Ptr toast = rf_create(rf_find("Form1"), "RmToast", "RmToast1", 0, 0, 0, 0)
+rf_invoke(toast, "Show", "Saved" & Chr(9) & "The file was saved." & Chr(9) & "Success" & Chr(9) & "3000")
+rf_prop_set(rf_find("Form1.RmGauge1"), "Value", "72")
+Print *rf_prop_get(rf_find("Form1.RmGrid1"), "RowCount")
+```
+
+* **Create**: from the form description (`C RmGrid RmGrid1 <parent>` + `P` lines - what the IDE writes) or at run time
+  with `rf_create(parent, "RmGrid", "RmGrid1", x, y, w, h)` (96-DPI pixels; a container handle as parent puts the
+  control inside it; on a paged container set `TabPage` afterwards).
+* **Properties**: `rf_prop_set(h, "Columns", "Name;Age:Number:60")` / `rf_prop_get` (or `rad_set("RmGrid1",
+  "Rows", "...")`); values are text: numbers, `True` / `False`, `#RRGGBB`, `a;b;c` lists, JSON for nested items.
+* **Methods**: `rf_invoke(h, "AddRow", "Sara;28;True")`, several arguments separated by a TAB
+  (`rf_invoke(h, "SetCell", "0\t2\tNew")`); the result is a string (`RmMessageBox.Show` returns the button).
+* **Events**: `rf_run_events(callback, user)` calls `callback(handle, event_id, args, user)`; custom names
+  (ItemClick, CellClick, NodeExpanding, TabClosing ...) get ids from `rf_event_id` (>= `RF_EV_CUSTOM`), compare
+  `args->event` or `rf_event_name(id)`. Item events carry `args->args` = `"<item name> <index>"` (grid: `"<row>
+  <column>"`); with the key loop (`rad_run`) the handler `RmRibbon1_ItemClick` reads `rad_arg(0)` / `rad_arg(1)`.
+  Every control with item events also keeps the last one in the properties **EventItem / EventIndex** (grid:
+  **EventRow / EventColumn**) - the portable way (the GUI Bridge and the Tk runtime of the IDE do the same).
+* **Themes**: `rf_theme_set("Dark")` or the form property `Theme` repaints every control whose `Style` is
+  `Inherit`; `Style = "Office"` pins one control to a theme; `AccentColor = "#C62828"` changes its accent.
+
+**IDE side**: the packages `radide/components/builtin/Rm*/` (Toolbox "Modern (RAD)", generated by
+`tools/gen_rm_packages.py`) draw the controls at design time (`radide/components/rmpaint.py`) and run them inside the
+IDE with a Tk runtime (`builtin/_rmkit/rmkit_tk.py`) for python-tk, VB6 and the GUI Bridge languages; RmTabStrip /
+RmNavigationPane pages are edited like TabControl pages (click a tab in the designer).
+
+**Tests**: `samples/Tests/Native/test_native_modern.py` - the showcase published and driven (Win32 messages,
+PrintWindow pixels of its own windows: ribbon accent, toast, modal message box, side bar -> grid page, grid check
+cell, Dark / Metro themes at run time, timer gauges), the 29 packages (manifests, help EN + AR, design-time
+drawing, python-tk run), module selection, static library and `radforms_api.json`.
+
+**Limits** (native modules): RmDockPanel docks through `DockSide`, the window menu and the pin / close buttons (no
+drag-and-drop docking guides; "Float" floats inside the host window); RmGrid filtering is "contains", grouping is
+one level, Date cells are edited as text; RmTextBox watermark shows on single-line boxes only; RmComboBox
+`DropDown` style keeps a native edit; RmSuperTooltip / RmBalloonTip pick their target by control name; a collapsed
+RmGroupPanel / RmSideBar / RmRibbon changes its own size (neighbours are not moved).

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Send a message to the City Guide team.">
+    <title>City Guide - Contact</title>
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header>
+    <h1>City Guide</h1>
+    <nav>
+        <a href="index.html">Places</a>
+        <a href="about.html">About</a>
+        <a href="contact.html" class="active">Contact</a>
+        <a href="ar/index.html" lang="ar">العربية</a>
+    </nav>
+</header>
+<main>
+    <h2>Contact us</h2>
+    <form id="contact" novalidate>
+        <label for="name">Name</label>
+        <input id="name" name="name" autocomplete="name">
+        <p class="error" id="name-error"></p>
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="email">
+        <p class="error" id="email-error"></p>
+        <label for="topic">Topic</label>
+        <select id="topic" name="topic">
+            <option value="">- choose -</option><option>Suggest a place</option><option>Report a mistake</option>
+            <option>Other</option>
+        </select>
+        <p class="error" id="topic-error"></p>
+        <label for="message">Message <span id="chars">0/500</span></label>
+        <textarea id="message" name="message" rows="5" maxlength="500"></textarea>
+        <p class="error" id="message-error"></p>
+        <button type="submit">Send</button> <button type="reset">Clear</button>
+    </form>
+    <div id="sent" hidden>
+        <h3>Thank you!</h3>
+        <p>Your message was saved in this browser (a static site has no server to send it to).</p>
+    </div>
+    <h3>Messages sent from this browser</h3>
+    <ol id="outbox"></ol>
+</main>
+<footer>Made with RAD IDE - <span id="clock"></span></footer>
+<script src="js/contact.js"></script>
+<script src="js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "frmEditor",
+    "Text": "Untitled - Qt Text Editor",
+    "Width": 760,
+    "Height": 520,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "&File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "New",
+                "Name": "mnuFileNew"
+              },
+              {
+                "Text": "Open...",
+                "Name": "mnuFileOpen"
+              },
+              {
+                "Text": "Save",
+                "Name": "mnuFileSave"
+              },
+              {
+                "Text": "Save As...",
+                "Name": "mnuFileSaveAs"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "&Edit",
+            "Name": "mnuEdit",
+            "Items": [
+              {
+                "Text": "Undo",
+                "Name": "mnuEditUndo"
+              },
+              {
+                "Text": "Redo",
+                "Name": "mnuEditRedo"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Cut",
+                "Name": "mnuEditCut"
+              },
+              {
+                "Text": "Copy",
+                "Name": "mnuEditCopy"
+              },
+              {
+                "Text": "Paste",
+                "Name": "mnuEditPaste"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Upper Case",
+                "Name": "mnuEditUpper"
+              },
+              {
+                "Text": "Lower Case",
+                "Name": "mnuEditLower"
+              }
+            ]
+          },
+          {
+            "Text": "&View",
+            "Name": "mnuView",
+            "Items": [
+              {
+                "Text": "Zoom In",
+                "Name": "mnuViewZoomIn"
+              },
+              {
+                "Text": "Zoom Out",
+                "Name": "mnuViewZoomOut"
+              },
+              {
+                "Text": "Right to Left",
+                "Name": "mnuViewRtl"
+              }
+            ]
+          },
+          {
+            "Text": "&Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "About",
+                "Name": "mnuHelpAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblFind",
+        "Text": "Find:",
+        "Left": 8,
+        "Top": 8,
+        "Width": 40,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtFind",
+        "Text": "",
+        "Left": 50,
+        "Top": 6,
+        "Width": 180,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblReplace",
+        "Text": "Replace:",
+        "Left": 240,
+        "Top": 8,
+        "Width": 56,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtReplace",
+        "Text": "",
+        "Left": 298,
+        "Top": 6,
+        "Width": 160,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnFind",
+        "Text": "Find Next",
+        "Left": 466,
+        "Top": 5,
+        "Width": 80,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnReplaceAll",
+        "Text": "Replace All",
+        "Left": 552,
+        "Top": 5,
+        "Width": 90,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtEdit",
+        "Text": "",
+        "Left": 0,
+        "Top": 38,
+        "Width": 760,
+        "Height": 438,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Consolas",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Multiline": true,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "StatusBar",
+      "props": {
+        "Name": "sbStatus",
+        "Text": "Ready",
+        "Left": 0,
+        "Top": 0,
+        "Width": 200,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Bottom",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "OpenFileDialog",
+      "props": {
+        "Name": "dlgOpen",
+        "Title": "Open",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgSave",
+        "Title": "Save As",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

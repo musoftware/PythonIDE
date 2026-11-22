@@ -1,0 +1,9 @@
+{
+  "name": "WordStats",
+  "language": "cpp-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "WordStats.cpp"
+  ]
+}

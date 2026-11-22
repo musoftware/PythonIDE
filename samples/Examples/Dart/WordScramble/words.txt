@@ -1,0 +1,26 @@
+# (c) 2026 Musoftware - https://musoftwares.com - MIT License
+# One word per line (3+ letters). Add your own words.
+planet
+rocket
+guitar
+window
+garden
+bridge
+python
+silver
+orange
+market
+castle
+jungle
+pencil
+summer
+winter
+button
+forest
+harbor
+library
+keyboard
+compass
+dolphin
+lantern
+village

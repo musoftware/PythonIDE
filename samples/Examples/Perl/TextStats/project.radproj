@@ -1,0 +1,11 @@
+{
+  "name": "TextStats",
+  "language": "perl-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "TextTools.pl"
+  ]
+}

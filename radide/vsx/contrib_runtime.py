@@ -97,10 +97,33 @@ def context_keys(editor) -> dict:
     """Values for VS Code when-clause keys that Monaco does not know."""
     p = getattr(editor, "path", None)
     name = p.name if p is not None else ""
-    return {"resourceFilename": name, "resourceExtname": p.suffix.lower() if p is not None else "",
-            "resourceLangId": editor.language_id() if hasattr(editor, "language_id") else "",
-            "resourcePath": str(p) if p is not None else "", "isWindows": True, "isMac": False, "isLinux": False,
-            "isWeb": False, "terminalFocus": False}
+    ctx = {"resourceFilename": name, "resourceExtname": p.suffix.lower() if p is not None else "",
+           "resourceLangId": editor.language_id() if hasattr(editor, "language_id") else "",
+           "resourcePath": str(p) if p is not None else "", "isWindows": True, "isMac": False, "isLinux": False,
+           "isWeb": False, "terminalFocus": False, "resourceScheme": "file", "isWorkspaceTrusted": True,
+           "resource": p.as_uri() if p is not None and p.is_absolute() else ""}
+    ctx.update(_config_keys())
+    return ctx
+
+
+def _config_keys() -> dict:
+    """config.<setting> values the keybinding when clauses of extensions mention (Monaco context keys)."""
+    import re
+    out = {}
+    try:
+        from . import contrib_configuration as CC
+        from . import contrib_keybindings as KB
+        keys = set()
+        for b in KB.collect():
+            keys.update(re.findall(r"config\.([\w.\-]+)", str(b.get("when") or "")))
+        vals = CC.values() if keys else {}
+        for k in keys:
+            v = vals.get(k)
+            if isinstance(v, (bool, int, float, str)) or v is None:
+                out["config." + k] = v
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def page_spec(editor) -> dict:

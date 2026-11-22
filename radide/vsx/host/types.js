@@ -530,9 +530,15 @@ class InlineCompletionList { constructor(items) { this.items = items; } }
 class EvaluatableExpression { constructor(range, expression) { this.range = range; this.expression = expression; } }
 class DocumentDropEdit { constructor(insertText, title, kind) { this.insertText = insertText; this.title = title; this.kind = kind; } }
 class DocumentPasteEdit { constructor(insertText, title, kind) { this.insertText = insertText; this.title = title; this.kind = kind; } }
-class DocumentDropOrPasteEditKind { constructor(value) { this.value = value; } append(...parts) { return new DocumentDropOrPasteEditKind((this.value ? [this.value, ...parts] : parts).join('.')); } }
+class DocumentDropOrPasteEditKind {
+  constructor(value) { this.value = value; }
+  append(...parts) { return new DocumentDropOrPasteEditKind((this.value ? [this.value, ...parts] : parts).join('.')); }
+  intersects(other) { return this.contains(other) || other.contains(this); }
+  contains(other) { return this.value === other.value || other.value.startsWith(this.value + '.'); }
+}
 DocumentDropOrPasteEditKind.Empty = new DocumentDropOrPasteEditKind('');
 DocumentDropOrPasteEditKind.Text = new DocumentDropOrPasteEditKind('text');
+DocumentDropOrPasteEditKind.TextUpdateImports = DocumentDropOrPasteEditKind.Text.append('updateImports');
 class RelativePattern {
   constructor(base, pattern) {
     if (typeof base === 'string') { this.baseUri = Uri.file(base); } else if (Uri.isUri(base)) this.baseUri = base; else this.baseUri = base.uri;
@@ -596,16 +602,102 @@ class NotebookCellData { constructor(kind, value, languageId) { Object.assign(th
 class NotebookData { constructor(cells) { this.cells = cells; } }
 class NotebookCellOutputItem { constructor(data, mime) { this.data = data; this.mime = mime; } static text(v, mime) { return new NotebookCellOutputItem(Buffer.from(String(v)), mime || 'text/plain'); } static json(v, mime) { return new NotebookCellOutputItem(Buffer.from(JSON.stringify(v)), mime || 'text/x-json'); } static stdout(v) { return NotebookCellOutputItem.text(v, 'application/vnd.code.notebook.stdout'); } static stderr(v) { return NotebookCellOutputItem.text(v, 'application/vnd.code.notebook.stderr'); } static error(e) { return NotebookCellOutputItem.json({ name: e.name, message: e.message, stack: e.stack }, 'application/vnd.code.notebook.error'); } }
 class NotebookCellOutput { constructor(items, id, metadata) { Object.assign(this, { items, id, metadata }); } }
-class NotebookEdit { constructor(range, newCells) { this.range = range; this.newCells = newCells; } }
+class NotebookEdit {
+  constructor(range, newCells) { this.range = range; this.newCells = newCells; }
+  static replaceCells(range, newCells) { return new NotebookEdit(range, newCells); }
+  static insertCells(index, newCells) { return new NotebookEdit(new NotebookRange(index, index), newCells); }
+  static deleteCells(range) { return new NotebookEdit(range, []); }
+  static updateCellMetadata(index, newMetadata) { const e = new NotebookEdit(new NotebookRange(index, index), []); e.newCellMetadata = newMetadata; return e; }
+  static updateNotebookMetadata(newMetadata) { const e = new NotebookEdit(new NotebookRange(0, 0), []); e.newNotebookMetadata = newMetadata; return e; }
+}
 class TestMessage { constructor(message) { this.message = message; } static diff(message, expected, actual) { const m = new TestMessage(message); m.expectedOutput = expected; m.actualOutput = actual; return m; } }
 class TestTag { constructor(id) { this.id = id; } }
 class TestRunRequest { constructor(include, exclude, profile, continuous) { Object.assign(this, { include, exclude, profile, continuous }); } }
 class LanguageModelChatMessage { constructor(role, content, name) { Object.assign(this, { role, content, name }); } static User(c, n) { return new LanguageModelChatMessage(1, c, n); } static Assistant(c, n) { return new LanguageModelChatMessage(2, c, n); } }
 class LanguageModelTextPart { constructor(value) { this.value = value; } }
-class LanguageModelError extends Error { }
+class LanguageModelError extends Error {
+  constructor(message, code, cause) { super(message, cause ? { cause } : undefined); this.name = 'LanguageModelError'; this.code = code || ''; }
+  static NotFound(message) { return new LanguageModelError(message, 'NotFound'); }
+  static NoPermissions(message) { return new LanguageModelError(message, 'NoPermissions'); }
+  static Blocked(message) { return new LanguageModelError(message, 'Blocked'); }
+}
 class QuickInputButtonsCls { }
 const QuickInputButtons = { Back: { iconPath: new ThemeIcon('arrow-left'), tooltip: 'Back' } };
 void QuickInputButtonsCls;
+
+
+// ============================================================================ API types added through VS Code 1.147
+// (constructors / defaults as in src/vs/workbench/api/common/extHostTypes.ts of microsoft/vscode, MIT)
+const InputBoxValidationSeverity = { Info: 1, Warning: 2, Error: 3 };
+const IndentAction = E(['None', 'Indent', 'IndentOutdent', 'Outdent']);
+const TerminalShellExecutionCommandLineConfidence = E(['Low', 'Medium', 'High']);
+const QuickInputButtonLocation = { Title: 1, Inline: 2, Input: 3 };
+const TimelineTriggerKind = { Invoke: 1, Automatic: 2 };
+const LanguageModelChatToolMode = { Auto: 1, Required: 2 };
+class DataTransferItem {
+  constructor(value) { this.value = value; }
+  async asString() { return typeof this.value === 'string' ? this.value : JSON.stringify(this.value); }
+  asFile() { return undefined; }
+}
+class DataTransfer {
+  constructor(init) { this._items = new Map(); for (const [mime, item] of init || []) { const k = String(mime).toLowerCase(); const ex = this._items.get(k); if (ex) ex.push(item); else this._items.set(k, [item]); } }
+  get(mimeType) { const l = this._items.get(String(mimeType).toLowerCase()); return l ? l[0] : undefined; }
+  set(mimeType, value) { this._items.set(String(mimeType).toLowerCase(), [value]); }
+  forEach(cb, thisArg) { for (const [mime, items] of this._items) for (const item of items) cb.call(thisArg, item, mime, this); }
+  *[Symbol.iterator]() { for (const [mime, items] of this._items) for (const item of items) yield [mime, item]; }
+}
+class TimelineItem { constructor(arg1, timestamp) { if (Uri.isUri(arg1)) this.resourceUri = arg1; else this.label = arg1; this.timestamp = timestamp; } }
+class NotebookCellStatusBarItem { constructor(text, alignment) { this.text = text; this.alignment = alignment; } }
+class DebugThread { constructor(session, threadId) { this.session = session; this.threadId = threadId; } }
+class DebugStackFrame { constructor(session, threadId, frameId) { this.session = session; this.threadId = threadId; this.frameId = frameId; } }
+class TestCoverageCount {
+  constructor(covered, total) {
+    this.covered = covered; this.total = total;
+    if (covered > total) throw new Error(`The total number of covered items (${covered}) cannot be greater than the total (${total})`);
+    if (total < 0) throw new Error(`The number of covered items (${total}) cannot be negative`);
+  }
+}
+class FileCoverage {
+  constructor(uri, statementCoverage, branchCoverage, declarationCoverage, includesTests) { Object.assign(this, { uri, statementCoverage, branchCoverage, declarationCoverage, includesTests: includesTests || [] }); }
+  static fromDetails(uri, details) {
+    const st = new TestCoverageCount(0, 0); const br = new TestCoverageCount(0, 0); const de = new TestCoverageCount(0, 0);
+    for (const d of details) {
+      if ('branches' in d) { st.total += 1; st.covered += d.executed ? 1 : 0; for (const b of d.branches) { br.total += 1; br.covered += b.executed ? 1 : 0; } } else { de.total += 1; de.covered += d.executed ? 1 : 0; }
+    }
+    const c = new FileCoverage(uri, st, br.total > 0 ? br : undefined, de.total > 0 ? de : undefined);
+    c.detailedCoverage = details;
+    return c;
+  }
+}
+class StatementCoverage { constructor(executed, location, branches) { Object.assign(this, { executed, location, branches: branches || [] }); } get executionCount() { return +this.executed; } set executionCount(n) { this.executed = n; } }
+class BranchCoverage { constructor(executed, location, label) { Object.assign(this, { executed, location, label }); } get executionCount() { return +this.executed; } set executionCount(n) { this.executed = n; } }
+class DeclarationCoverage { constructor(name, executed, location) { Object.assign(this, { name, executed, location }); } get executionCount() { return +this.executed; } set executionCount(n) { this.executed = n; } }
+class TelemetryTrustedValue { constructor(value) { this.value = value; this.isTrustedTelemetryValue = true; } }
+class ChatResponseMarkdownPart {
+  constructor(value) {
+    if (typeof value !== 'string' && value && value.isTrusted === true) throw new Error('The boolean form of MarkdownString.isTrusted is NOT supported for chat participants.');
+    this.value = typeof value === 'string' ? new MarkdownString(value) : value;
+  }
+}
+class ChatResponseFileTreePart { constructor(value, baseUri) { this.value = value; this.baseUri = baseUri; } }
+class ChatResponseAnchorPart { constructor(value, title) { this.value = value; this.title = title; } }
+class ChatResponseProgressPart { constructor(value) { this.value = value; } }
+class ChatResponseReferencePart { constructor(value, iconPath) { this.value = value; this.iconPath = iconPath; } }
+class ChatResponseCommandButtonPart { constructor(value) { this.value = value; } }
+class ChatRequestTurn { constructor(prompt, command, references, participant, toolReferences) { Object.assign(this, { prompt, command, references, participant, toolReferences: toolReferences || [] }); } }
+class ChatResponseTurn { constructor(response, result, participant, command) { Object.assign(this, { response, result, participant, command }); } }
+class LanguageModelToolCallPart { constructor(callId, name, input) { this.callId = callId; this.name = name; this.input = input; } }
+class LanguageModelToolResultPart { constructor(callId, content, isError) { this.callId = callId; this.content = content; this.isError = isError ?? false; } }
+class LanguageModelPromptTsxPart { constructor(value) { this.value = value; } toJSON() { return { value: this.value }; } }
+class LanguageModelToolResult { constructor(content) { this.content = content; } toJSON() { return { content: this.content }; } }
+class LanguageModelDataPart {
+  constructor(data, mimeType) { this.mimeType = mimeType; this.data = data; }
+  static image(data, mimeType) { return new LanguageModelDataPart(data, mimeType); }
+  static json(value, mime = 'text/x-json') { return new LanguageModelDataPart(new Uint8Array(Buffer.from(JSON.stringify(value, undefined, '\t'))), mime); }
+  static text(value, mime = 'text/plain') { return new LanguageModelDataPart(new Uint8Array(Buffer.from(String(value))), mime); }
+}
+class McpStdioServerDefinition { constructor(label, command, args, env, version) { Object.assign(this, { label, command, args: args || [], env: env || {}, version }); this.cwd = undefined; } }
+class McpHttpServerDefinition { constructor(label, uri, headers, version) { Object.assign(this, { label, uri, headers: headers || {}, version }); } }
 
 module.exports = {
   Uri, Position, Range, Selection, Location, Disposable, EventEmitter, CancellationTokenSource, CancellationError,
@@ -635,4 +727,11 @@ module.exports = {
   DataBreakpoint, TaskGroup, ShellExecution, ProcessExecution, CustomExecution, Task, TerminalLink, TerminalProfile,
   NotebookRange, NotebookCellData, NotebookData, NotebookCellOutputItem, NotebookCellOutput, NotebookEdit, TestMessage,
   TestTag, TestRunRequest, LanguageModelChatMessage, LanguageModelTextPart, LanguageModelError, QuickInputButtons,
+  InputBoxValidationSeverity, IndentAction, TerminalShellExecutionCommandLineConfidence, QuickInputButtonLocation,
+  TimelineTriggerKind, LanguageModelChatToolMode, DataTransferItem, DataTransfer, TimelineItem, NotebookCellStatusBarItem,
+  DebugThread, DebugStackFrame, TestCoverageCount, FileCoverage, StatementCoverage, BranchCoverage, DeclarationCoverage,
+  TelemetryTrustedValue, ChatResponseMarkdownPart, ChatResponseFileTreePart, ChatResponseAnchorPart, ChatResponseProgressPart,
+  ChatResponseReferencePart, ChatResponseCommandButtonPart, ChatRequestTurn, ChatResponseTurn, LanguageModelToolCallPart,
+  LanguageModelToolResultPart, LanguageModelPromptTsxPart, LanguageModelToolResult, LanguageModelDataPart,
+  McpStdioServerDefinition, McpHttpServerDefinition,
 };

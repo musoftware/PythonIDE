@@ -1431,15 +1431,38 @@ class GitFull(QObject):
         elif hasattr(w, "reload"):
             w.reload()
 
+    @staticmethod
+    def _state_of(d) -> str:
+        """GitX.state() from a known git dir (file checks only)."""
+        if d is None:
+            return ""
+        if (d / "rebase-merge").is_dir() or (d / "rebase-apply").is_dir():
+            return "rebase"
+        for name, st in (("MERGE_HEAD", "merge"), ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert")):
+            if (d / name).exists():
+                return st
+        return ""
+
     def on_refreshed(self):
         g = self.gx()
-        repo = g is not None and g.is_repo()
-        remote = repo and bool(g.remotes())
+        # the panel's last query (run in its worker thread, every 5 s) already knows the repository, remotes,
+        # branch and git dir: asking git again here blocked the UI 4-5 times per refresh
+        res = getattr(self.panel, "last_query", None)
+        if g is not None and isinstance(res, dict) and res.get("folder") == g.folder \
+                and (res.get("top") is None or "git_dir" in res):
+            repo = res.get("top") is not None
+            remote = repo and bool(res.get("remotes"))
+            st = self._state_of(res.get("git_dir")) if repo else ""
+            branch = res.get("branch", "") if repo else ""
+        else:
+            repo = g is not None and g.is_repo()
+            remote = repo and bool(g.remotes())
+            st = g.state() if repo else ""
+            branch = None
         for b in (self.b_fetch, self.b_sync):
             b.setVisible(bool(remote))
         for b in (self.b_branch, self.b_stash, self.amend):
             b.setVisible(bool(repo))
-        st = g.state() if repo else ""
         self.banner.setVisible(bool(st))
         if st:
             n = len(g.conflicts())
@@ -1454,7 +1477,7 @@ class GitFull(QObject):
         try:
             self.status_btn.setVisible(bool(repo))
             if repo:
-                self.status_btn.setText(f" ⎇ {g.branch()} ")
+                self.status_btn.setText(f" ⎇ {g.branch() if branch is None else branch} ")
                 self.panel.status_label.hide()
         except RuntimeError:
             pass

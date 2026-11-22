@@ -81,7 +81,9 @@ def shot(w, name):
 for rng, ok in [("^1.82.0", True), ("^1.91.0", False), ("*", True), (">=1.60.0", True), ("~1.90.0", True),
                 ("1.90.x", True), ("^1.94.0-20240918", False), ("0.10.x", True), (">=1.5 <2", True),
                 ("^1.89.0-20240415", True), ("^2.0.0", False)]:
-    check(f"engine {rng} vs {vsx.API_LEVEL}", R.engine_compatible(rng, vsx.API_LEVEL) == ok)
+    check(f"engine {rng} vs 1.90.0", R.engine_compatible(rng, "1.90.0") == ok)      # the range parser
+for rng, ok in [("^1.101.0", True), ("^1.147.0", True), ("^1.148.0", False), ("^1.94.0", True)]:
+    check(f"engine {rng} vs {vsx.API_LEVEL}", R.engine_compatible(rng, vsx.API_LEVEL) == ok)   # the emulated level
 
 evil_dir = Path(WORK) / "evil"
 evil_dir.mkdir()

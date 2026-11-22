@@ -1,0 +1,9 @@
+{
+  "name": "SalesChart",
+  "language": "fortran-bridge",
+  "forms": [
+    "frmChart"
+  ],
+  "startup": "frmChart",
+  "modules": []
+}

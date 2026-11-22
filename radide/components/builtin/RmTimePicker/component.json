@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "name": "RmTimePicker",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Time box with hour / minute / second segments.",
+  "category": "Modern (RAD)",
+  "order": 3210,
+  "builtin": true,
+  "prefix": "RmTimePicker",
+  "defaultSize": [
+    120,
+    30
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {
+      "name": "Value",
+      "type": "str",
+      "default": "12:00:00",
+      "category": "Behavior",
+      "description": "The time HH:mm:ss (empty = now)."
+    },
+    {
+      "name": "Format",
+      "type": "str",
+      "default": "HH:mm",
+      "category": "Appearance",
+      "description": "HH:mm, HH:mm:ss or hh:mm tt (12 hours)."
+    },
+    {
+      "name": "ShowSeconds",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "Shows the seconds."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged",
+      "description": "The time changed."
+    }
+  ],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmTimePicker.py",
+      "class": "RmTimePicker",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

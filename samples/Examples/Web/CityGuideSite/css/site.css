@@ -1,0 +1,25 @@
+/* (c) 2026 Musoftware - https://musoftwares.com - MIT License */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", Tahoma, system-ui, sans-serif; color: #222; background: #f4f6fb; }
+header { background: #3b5bdb; color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 24px; }
+nav a { color: #dbe4ff; margin-inline-end: 16px; text-decoration: none; }
+nav a.active { color: #fff; font-weight: 600; border-bottom: 2px solid #ffd43b; }
+main { max-width: 900px; margin: 24px auto; background: #fff; padding: 24px 32px; border-radius: 8px;
+       box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar input[type=search] { flex: 1; min-width: 180px; padding: 8px; }
+.cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.cards li { position: relative; border: 1px solid #e3e7f1; border-radius: 8px; padding: 12px 16px; }
+.cards h3 { margin: 0 0 6px; font-size: 17px; } .cards p { margin: 0; color: #555; }
+.star { position: absolute; inset-inline-end: 8px; top: 8px; background: none; border: 0; font-size: 22px; cursor: pointer; color: #adb5bd; }
+.star.on { color: #f59f00; }
+.hint { color: #666; font-size: 13px; }
+form label { display: block; margin-top: 12px; font-weight: 600; }
+form input, form select, form textarea { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font: inherit; }
+.invalid { border-color: #e03131 !important; background: #fff5f5; }
+.error { color: #e03131; margin: 4px 0 0; min-height: 1em; font-size: 13px; }
+button { margin-top: 12px; padding: 8px 18px; }
+figure img { max-width: 100%; height: auto; }
+footer { text-align: center; color: #888; font-size: 12px; padding: 16px; }
+[dir=rtl] body, body[dir=rtl] { font-family: "Segoe UI", Tahoma, "Arial", sans-serif; }

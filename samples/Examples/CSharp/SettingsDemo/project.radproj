@@ -1,0 +1,13 @@
+{
+  "name": "SettingsDemo",
+  "language": "csharp-bridge",
+  "forms": [
+    "frmMain",
+    "frmSettings",
+    "frmAbout"
+  ],
+  "startup": "frmMain",
+  "modules": [
+    "AppSettings.cs"
+  ]
+}

@@ -431,7 +431,12 @@ class Emu8086Plugin(LanguagePlugin):
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         f = self._startup_file(folder, startup_form)
-        return RunSpec(sys.executable, ["-m", "radide.emu8086", f], Path(folder))
+        # the IDE runs it in process (make_session); this spec is the stand-alone emulator, started in the
+        # project folder: radide must be importable from there
+        import os
+        from ..paths import python_root
+        env = dict(os.environ, PYTHONPATH=str(python_root()) + os.pathsep + os.environ.get("PYTHONPATH", ""))
+        return RunSpec(sys.executable, ["-m", "radide.emu8086", f], Path(folder), env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:
         spec = self.run_spec(folder, startup_form, interpreter)

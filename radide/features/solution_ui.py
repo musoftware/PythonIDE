@@ -814,6 +814,24 @@ def _build_commands(win, only=None) -> list[tuple[Project, object, str]]:
     return out
 
 
+def bridge_build_note(p, plugin) -> str:
+    """After a normal build of a GUI Bridge application: its exe only shows forms when the IDE runs it."""
+    lang = getattr(plugin, "id", "") or getattr(p, "language", "")
+    if getattr(p, "is_library", False) or not lang.endswith("-bridge") or not getattr(p, "forms", None):
+        return ""
+    try:
+        from ..deploy.native import builder_for
+        native = builder_for(lang) is not None
+    except Exception:  # noqa: BLE001
+        native = False
+    from ..i18n import tr
+    msg = tr("Note: this build is a GUI Bridge program - its forms are drawn by RAD IDE, so the exe shows "
+             "nothing when started alone. Run it with F5.")
+    return msg + " " + (tr("For one standalone exe with the forms inside use Build > Build Native Exe "
+                           "(or Build > Publish).") if native
+                        else tr("Use Build > Publish to make a program that runs without the IDE."))
+
+
 def build_solution(win, only=None, wait: bool = False):
     """Build > Build Solution: save, refresh the reference proxies, then run the build command of
     every library whose plugin compiles (C#, Java, C, Rust, ...). *wait* = run in this thread and
@@ -850,6 +868,9 @@ def build_solution(win, only=None, wait: bool = False):
                 if text.strip():
                     say(text if text.endswith("\n") else text + "\n")
                 results[name] = proc.returncode
+                note = bridge_build_note(p, plugin) if proc.returncode == 0 else ""
+                if note:
+                    say(note + "\n")
             except (OSError, subprocess.TimeoutExpired) as e:
                 say(f"*** {name}: {e}\n")
                 results[name] = -1

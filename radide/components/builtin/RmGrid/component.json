@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "name": "RmGrid",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Advanced grid: typed columns, sorting, filter row, grouping, frozen columns, editing, alternating rows.",
+  "category": "Modern (RAD)",
+  "order": 3170,
+  "builtin": true,
+  "prefix": "RmGrid",
+  "defaultSize": [
+    360,
+    200
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "CellClick",
+  "properties": [
+    {
+      "name": "Columns",
+      "type": "multiline",
+      "default": "Name;Age:Number:60;Active:Check:60",
+      "category": "Data",
+      "description": "Columns: Name;Age:Number:60 (header:type:width) or JSON [{Text, Type, Width, Frozen, ReadOnly, Items}]; types Text, Number, Check, Combo, Date, Image, Progress, Button."
+    },
+    {
+      "name": "Rows",
+      "type": "multiline",
+      "default": "Mona|31|True;Ali|25|False",
+      "category": "Data",
+      "description": "Rows separated by ; with cells separated by |, or JSON [[...]]."
+    },
+    {
+      "name": "ReadOnly",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "No editing."
+    },
+    {
+      "name": "AllowSort",
+      "type": "bool",
+      "default": true,
+      "category": "Behavior",
+      "description": "Click a header to sort."
+    },
+    {
+      "name": "AllowFilter",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Filter row under the header."
+    },
+    {
+      "name": "GroupBy",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Column name whose values group the rows (empty = no groups)."
+    },
+    {
+      "name": "SelectionMode",
+      "type": "enum",
+      "default": "FullRowSelect",
+      "category": "Behavior",
+      "description": "Selection.",
+      "choices": [
+        "FullRowSelect",
+        "CellSelect",
+        "MultiRow"
+      ]
+    },
+    {
+      "name": "AlternatingRows",
+      "type": "bool",
+      "default": true,
+      "category": "Appearance",
+      "description": "Every other row tinted."
+    },
+    {
+      "name": "RowHeight",
+      "type": "int",
+      "default": 28,
+      "category": "Appearance",
+      "description": "Row height in pixels."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "CellClick",
+      "description": "A cell was clicked (EventRow / EventColumn)."
+    },
+    {
+      "name": "CellDoubleClick",
+      "description": "A cell was double-clicked."
+    },
+    {
+      "name": "CellValueChanged",
+      "description": "The user changed a cell (EventRow / EventColumn)."
+    },
+    {
+      "name": "SelectionChanged",
+      "description": "The selection changed."
+    },
+    {
+      "name": "ButtonCellClick",
+      "description": "A Button cell was clicked (EventRow / EventColumn)."
+    },
+    {
+      "name": "ColumnHeaderClick",
+      "description": "A header was clicked."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddRow",
+      "signature": "AddRow(\"a;b;c\")",
+      "description": "Adds a row (cells separated by ; or |); returns its index."
+    },
+    {
+      "name": "InsertRow",
+      "signature": "InsertRow(index, cells)",
+      "description": "Inserts a row."
+    },
+    {
+      "name": "RemoveRow",
+      "signature": "RemoveRow(index)",
+      "description": "Removes a row."
+    },
+    {
+      "name": "Clear",
+      "signature": "Clear()",
+      "description": "Removes every row."
+    },
+    {
+      "name": "GetCell",
+      "signature": "GetCell(row, column)",
+      "description": "Value of a cell (column = index or name)."
+    },
+    {
+      "name": "SetCell",
+      "signature": "SetCell(row, column, value)",
+      "description": "Changes a cell."
+    },
+    {
+      "name": "GetRow",
+      "signature": "GetRow(row)",
+      "description": "Cells of a row separated by |."
+    },
+    {
+      "name": "SortBy",
+      "signature": "SortBy(column, descending)",
+      "description": "Sorts."
+    },
+    {
+      "name": "SetFilter",
+      "signature": "SetFilter(column, text)",
+      "description": "Filters a column."
+    },
+    {
+      "name": "ClearFilter",
+      "signature": "ClearFilter()",
+      "description": "Removes the filters."
+    },
+    {
+      "name": "SetColumnWidth",
+      "signature": "SetColumnWidth(column, width)",
+      "description": "Column width."
+    },
+    {
+      "name": "BeginEdit",
+      "signature": "BeginEdit(row, column)",
+      "description": "Edits a cell."
+    },
+    {
+      "name": "EnsureVisible",
+      "signature": "EnsureVisible(row)",
+      "description": "Scrolls to a row."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmGrid.py",
+      "class": "RmGrid",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

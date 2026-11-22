@@ -1,0 +1,11 @@
+{
+  "name": "Contacts",
+  "language": "python-tk",
+  "forms": [
+    "frmContacts"
+  ],
+  "startup": "frmContacts",
+  "modules": [
+    "Validation.py"
+  ]
+}

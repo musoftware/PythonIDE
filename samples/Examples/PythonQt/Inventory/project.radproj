@@ -1,0 +1,12 @@
+{
+  "name": "Inventory",
+  "language": "python-qt",
+  "forms": [
+    "frmInventory",
+    "frmItem"
+  ],
+  "startup": "frmInventory",
+  "modules": [
+    "InventoryDb.py"
+  ]
+}

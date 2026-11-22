@@ -1,0 +1,11 @@
+{
+  "name": "FileOrganizer",
+  "language": "powershell-bridge",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Organizer.ps1"
+  ]
+}

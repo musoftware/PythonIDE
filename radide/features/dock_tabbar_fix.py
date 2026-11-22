@@ -8,18 +8,21 @@ above or below the dock of its current tab; every other visible tab bar of the m
 """
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QObject, QTimer
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
 from PyQt6.QtWidgets import QDockWidget, QTabBar
 
 _SLACK = 8
 
 
-def _attached(win, bar: QTabBar) -> bool:
+_DIRECT = Qt.FindChildOption.FindDirectChildrenOnly      # docks / dock tab bars are children of the window
+
+
+def _attached(win, bar: QTabBar, docks=None) -> bool:
     if bar.count() == 0:
         return False
     title = bar.tabText(bar.currentIndex() if bar.currentIndex() >= 0 else 0)
     g = bar.geometry()
-    for d in win.findChildren(QDockWidget):
+    for d in (docks if docks is not None else win.findChildren(QDockWidget, options=_DIRECT)):
         if d.parent() is not win or not d.isVisible() or d.isFloating() or d.windowTitle() != title:
             continue
         r = d.geometry()
@@ -37,8 +40,9 @@ def hide_stale_tabbars(win) -> int:
     if not win.isVisible():
         return 0
     n = 0
-    for bar in win.findChildren(QTabBar):
-        if bar.parent() is win and bar.isVisible() and not _attached(win, bar):
+    docks = win.findChildren(QDockWidget, options=_DIRECT)  # (a whole-tree search per bar cost ~0.6 s at start-up)
+    for bar in win.findChildren(QTabBar, options=_DIRECT):
+        if bar.parent() is win and bar.isVisible() and not _attached(win, bar, docks):
             bar.hide()
             n += 1
     return n

@@ -104,6 +104,10 @@ typedef struct RfCtl {
     void *state;                    /* T_CUSTOM: what cls->create returned */
     int hot, pressed, focused;      /* owner-drawn: mouse / keyboard state */
     double hover, pressv;           /* owner-drawn: animated 0..1 */
+    int paged, cpage;               /* registered container: rf_set_page was called / shown page */
+    int has_child_back;             /* registered container: rf_set_child_back colour */
+    COLORREF child_back;
+    HBRUSH child_brush;
 } RfCtl;
 
 typedef struct RfForm {
@@ -767,6 +771,11 @@ static HBRUSH rf_brush_for(RfCtl *c, COLORREF *color) {
     }
     for (p = c ? c->parent : NULL; p; p = p->parent) {
         if (p->type == T_TAB && !g_themed) { *color = GetSysColor(COLOR_WINDOW); return g_white; }
+        if (p->has_child_back) {
+            if (!p->child_brush) p->child_brush = CreateSolidBrush(p->child_back);
+            *color = p->child_back;
+            return p->child_brush;
+        }
         if (p->has_back) {
             if (!p->brush) p->brush = CreateSolidBrush(p->back);
             *color = p->back;
@@ -1469,6 +1478,8 @@ static void rf_apply_visible(RfCtl *c) {
     int show = c->visible;
     if (!c->hwnd) return;
     if (c->parent && c->parent->type == T_TAB && rf_tab_sel(c->parent) != c->page) show = 0;
+    if (c->parent && c->parent->paged && (c->parent->cpage == RF_PAGE_NONE ||
+                                          (c->parent->cpage >= 0 && c->parent->cpage != c->page))) show = 0;
     ShowWindow(c->hwnd, show ? SW_SHOWNA : SW_HIDE);
     if (c->buddy) ShowWindow(c->buddy, show ? SW_SHOWNA : SW_HIDE);
 }
@@ -2126,6 +2137,7 @@ static void rf_set(RfForm *f, RfCtl *c, const char *p, const char *v) {
         rf_is(p, "Parent") || rf_is(p, "TabPage") || rf_is(p, "TabPages") || rf_is(p, "DropDownStyle") ||
         rf_is(p, "Multiline") || rf_is(p, "BorderStyle")) {
         if (rf_is(p, "Tag")) rf_kv_set(c, p, v);
+        if (rf_is(p, "TabPage") && !g_building) { c->page = rf_int(v); rf_apply_visible(c); }
         return;
     }
     switch (c->type) {                      /* non-visual objects */
@@ -3561,6 +3573,7 @@ void rf_destroy(rf_handle h) {
     if (c->hwnd) DestroyWindow(c->hwnd);
     if (c->font) DeleteObject(c->font);
     if (c->brush) DeleteObject(c->brush);
+    if (c->child_brush) DeleteObject(c->child_brush);
     if (c->image) DeleteObject(c->image);
     while (c->kv) { KV *k = c->kv; c->kv = k->next; free(k->key); free(k->val); free(k); }
     c->magic = 0;
@@ -3593,6 +3606,53 @@ void rf_set_timer(rf_handle h, int id, int ms) {
     if (!w) return;
     if (ms > 0) SetTimer(w, (UINT_PTR)id, (UINT)ms, NULL);
     else KillTimer(w, (UINT_PTR)id);
+}
+
+void rf_set_page(rf_handle h, int page) {
+    RfCtl *c = HC(h), *k;
+    if (!c) return;
+    c->paged = 1;
+    c->cpage = page < RF_PAGE_NONE ? RF_PAGE_ALL : page;
+    for (k = c->form->ctls; k; k = k->next)
+        if (k->parent == c) rf_apply_visible(k);
+}
+
+int rf_get_page(rf_handle h) { RfCtl *c = HC(h); return c && c->paged ? c->cpage : RF_PAGE_ALL; }
+
+int rf_child_page(rf_handle h) { RfCtl *c = HC(h); return c ? c->page : 0; }
+
+void rf_set_child_back(rf_handle h, unsigned color) {
+    RfCtl *c = HC(h);
+    int had;
+    if (!c) return;
+    had = c->has_child_back;
+    if (had && color != RF_NONE && c->child_back == (COLORREF)color) return;
+    if (!had && color == RF_NONE) return;
+    if (c->child_brush) DeleteObject(c->child_brush);
+    c->child_brush = NULL;
+    c->has_child_back = color != RF_NONE;
+    c->child_back = (COLORREF)color;
+    if (c->hwnd) RedrawWindow(c->hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+}
+
+int rf_dpi(rf_handle h) {
+    RfCtl *c = HC(h);
+    RfForm *f = c ? c->form : HF(h);
+    return f && f->dpi > 0 ? f->dpi : 96;
+}
+
+int rf_rtl(rf_handle h) {
+    RfCtl *c = HC(h);
+    RfForm *f = c ? c->form : HF(h);
+    return f && f->hwnd && (GetWindowLongW(f->hwnd, GWL_EXSTYLE) & WS_EX_LAYOUTRTL) ? 1 : 0;
+}
+
+const rf_theme *rf_theme_find(const char *name) {
+    int i;
+    rf_init_themes();
+    for (i = 0; i < g_nthemes; i++)
+        if (rf_ieq(g_themes[i].name, name ? name : "")) return &g_themes[i];
+    return NULL;
 }
 
 /* ================================================================== owner-drawn windows */
@@ -3638,7 +3698,11 @@ static void rf_custom_paint(RfCtl *c, HDC target) {
     mem = CreateCompatibleDC(dc);
     bmp = CreateCompatibleBitmap(dc, r.right, r.bottom);
     oldb = (HBITMAP)SelectObject(mem, bmp);
-    FillRect(mem, &r, rf_brush_for(c->parent ? c->parent : NULL, &bg));
+    if (c->parent && c->parent->has_child_back) {
+        if (!c->parent->child_brush) c->parent->child_brush = CreateSolidBrush(c->parent->child_back);
+        FillRect(mem, &r, c->parent->child_brush);
+    } else
+        FillRect(mem, &r, rf_brush_for(c->parent ? c->parent : NULL, &bg));
     if (!c->parent) FillRect(mem, &r, c->form->has_back ? (c->form->brush ? c->form->brush :
                          (c->form->brush = CreateSolidBrush(c->form->back))) : (g_themed && g_theme_brush ?
                          g_theme_brush : GetSysColorBrush(COLOR_BTNFACE)));
@@ -3733,6 +3797,8 @@ static LRESULT CALLBACK rf_custom_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
     case WM_SETFONT:
         InvalidateRect(h, NULL, FALSE);
         return 0;
+    case WM_GETFONT:
+        return (LRESULT)c->font;
     case WM_TIMER:
         if (w == RF_ANIM_TIMER) { rf_anim_step(c); return 0; }
         break;
@@ -3753,11 +3819,12 @@ typedef int(WINAPI *GpPen_t)(DWORD, float, int, void **);
 typedef int(WINAPI *GpDrawPath_t)(void *, void *, void *);
 typedef int(WINAPI *GpLine_t)(void *, void *, float, float, float, float);
 typedef int(WINAPI *GpImgRect_t)(void *, void *, int, int, int, int);
+typedef int(WINAPI *GpXform_t)(void *, float, float, int);
 static struct {
     int ok;
     GpFromHdc_t from_hdc; GpDelete_t del_g, del_path, del_brush, del_pen, close_fig; GpSmooth_t smooth;
     GpNewPath_t new_path; GpArc_t arc; GpSolid_t solid; GpFillPath_t fill; GpPen_t pen; GpDrawPath_t draw;
-    GpLine_t line; GpImgRect_t img;
+    GpLine_t line; GpImgRect_t img; GpXform_t translate, scale;
 } gd;
 
 static int rf_gd(void) {
@@ -3771,10 +3838,23 @@ static int rf_gd(void) {
     GP(smooth, "GdipSetSmoothingMode"); GP(new_path, "GdipCreatePath"); GP(arc, "GdipAddPathArc");
     GP(solid, "GdipCreateSolidFill"); GP(fill, "GdipFillPath"); GP(pen, "GdipCreatePen1");
     GP(draw, "GdipDrawPath"); GP(line, "GdipDrawLine"); GP(img, "GdipDrawImageRectI");
+    GP(translate, "GdipTranslateWorldTransform"); GP(scale, "GdipScaleWorldTransform");
 #undef GP
     gd.ok = gd.from_hdc && gd.del_g && gd.del_path && gd.del_brush && gd.del_pen && gd.close_fig && gd.smooth &&
             gd.new_path && gd.arc && gd.solid && gd.fill && gd.pen && gd.draw && gd.line && gd.img;
     return gd.ok;
+}
+
+/* GDI+ ignores the layout of a mirrored (RightToLeft) DC: mirror its drawing like GDI's */
+static void rf_gp_layout(void *g, HDC dc) {
+    if ((GetLayout(dc) & LAYOUT_RTL) && gd.translate && gd.scale) {
+        BITMAP bm;
+        HGDIOBJ b = GetCurrentObject(dc, OBJ_BITMAP);
+        if (b && GetObjectW(b, sizeof bm, &bm) && bm.bmWidth > 0) {
+            gd.translate(g, (float)bm.bmWidth, 0, 0);
+            gd.scale(g, -1, 1, 0);
+        }
+    }
 }
 
 static DWORD rf_argb(unsigned c) {
@@ -3800,6 +3880,7 @@ void rf_draw_rect(const rf_paint *p, int x, int y, int w, int h, unsigned fill, 
         float fx = (float)x, fy = (float)y, fw = (float)w, fh = (float)h, d = (float)(radius * 2), inset;
         if (gd.from_hdc(dc, &g) != 0) goto gdi;
         gd.smooth(g, 4);                                     /* anti-alias */
+        rf_gp_layout(g, dc);
         inset = border != RF_NONE && bw > 0 ? bw / 2.0f : 0;
         fx += inset; fy += inset; fw -= 2 * inset + 1; fh -= 2 * inset + 1;
         if (d > fw) d = fw;
@@ -3855,6 +3936,7 @@ void rf_draw_line(const rf_paint *p, int x1, int y1, int x2, int y2, unsigned co
         void *g = NULL, *pen = NULL;
         if (gd.from_hdc(dc, &g) == 0) {
             gd.smooth(g, 4);
+            rf_gp_layout(g, dc);
             gd.pen(rf_argb(color), (float)(width > 0 ? width : 1), 2, &pen);
             gd.line(g, pen, (float)x1, (float)y1, (float)x2, (float)y2);
             gd.del_pen(pen);
@@ -3895,6 +3977,7 @@ void rf_draw_image(const rf_paint *p, const char *path, int x, int y, int w, int
     if (!p || !p->hdc || !rf_gd() || !(img = rf_gp_image(path))) return;
     if (gd.from_hdc((HDC)p->hdc, &g) == 0) {
         gd.smooth(g, 4);
+        rf_gp_layout(g, (HDC)p->hdc);
         gd.img(g, img, x, y, w, h);
         gd.del_g(g);
     }

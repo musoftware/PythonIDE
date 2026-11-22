@@ -1,0 +1,21 @@
+/* (c) 2026 Musoftware - https://musoftwares.com - MIT License */
+:root { --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7280; --accent: #2457c5; --ok: #1f7a3a; --err: #b42318; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 "Segoe UI", Tahoma, sans-serif; }
+main { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+header { display: flex; align-items: center; justify-content: space-between; }
+h1 { margin: 0 0 16px; font-size: 28px; }
+.card { background: var(--card); border-radius: 10px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+label { display: block; margin-bottom: 10px; font-weight: 600; }
+input, textarea { display: block; width: 100%; margin-top: 4px; padding: 8px; font: inherit; border: 1px solid #cfd4dc; border-radius: 6px; }
+button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 16px; font: inherit; cursor: pointer; }
+.del button { background: transparent; color: var(--err); padding: 0; }
+.meta { color: var(--muted); font-size: 14px; }
+.msg p { margin: 6px 0; white-space: normal; overflow-wrap: anywhere; }
+.flash { padding: 10px 14px; border-radius: 8px; }
+.flash.ok { background: #e7f6ec; color: var(--ok); }
+.flash.err { background: #fdecea; color: var(--err); }
+.muted { color: var(--muted); }
+.pager { display: flex; gap: 16px; justify-content: center; margin: 16px 0; }
+a { color: var(--accent); }
+footer { margin-top: 32px; font-size: 13px; text-align: center; }

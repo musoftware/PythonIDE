@@ -9,11 +9,13 @@ ones follow when the form is resized; Lock Controls and a Tab Order mode
 (click controls in sequence to number them) are available."""
 from __future__ import annotations
 
+import json
+
 from PyQt6.QtCore import QLine, QPoint, QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QHBoxLayout, QMenu, QScrollArea, QToolButton, QWidget)
 
-from .controls import CONTROL_TYPES, MENU_TYPES, TOOLSTRIP_H
+from .controls import CONTROL_TYPES, MENU_TYPES, PAGED_TYPES, TOOLSTRIP_H
 from .document import PASTE_STEP, FormDocument, is_docked
 from .layout import tab_page
 from .mobile.frame import PhoneChrome
@@ -41,7 +43,7 @@ def design_visible(form, c: Control) -> bool:
         parent = form.find(c.parent)
         if parent is None:
             return True
-        if parent.type == "TabControl" and tab_page(c) != int(parent.props.get("SelectedIndex", 0) or 0):
+        if parent.type in PAGED_TYPES and tab_page(c) != int(parent.props.get("SelectedIndex", 0) or 0):
             return False
         c = parent
     return True
@@ -161,9 +163,10 @@ class Overlay(QWidget):
 
     def container_at(self, pos: QPoint, exclude: list[Control]) -> str:
         banned = set()
+        kids = self.form.children_map() if exclude else None
         for c in exclude:
             banned.add(id(c))
-            banned |= {id(d) for d in self.form.descendants(c)}
+            banned |= {id(d) for d in self.form.descendants(c, kids)}
         for c in reversed(self.shown()):
             if c.ctype.container and id(c) not in banned and self.abs_rect(c).contains(pos):
                 return c.name
@@ -205,9 +208,10 @@ class Overlay(QWidget):
         """Rectangles (form coordinates) a drag of *moving* may line up with: the other controls of
         ref's container and the container's client area (Visual Studio's snaplines)."""
         banned = set()
+        kids = self.form.children_map()
         for c in moving:
             banned.add(id(c))
-            banned |= {id(d) for d in self.form.descendants(c)}
+            banned |= {id(d) for d in self.form.descendants(c, kids)}
         out = [self.abs_rect(c) for c in self.shown() if c.parent == ref.parent and id(c) not in banned]
         parent = self.form.find(ref.parent) if ref.parent else None
         if parent is None:
@@ -251,6 +255,7 @@ class Overlay(QWidget):
         ctrl_key = bool(mods & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier))
         self.recorded = False
         self.snaplines = []
+        self._move_snap = None
         if e.button() != Qt.MouseButton.LeftButton:
             hit = self.control_at(pos)
             if hit not in self.doc.selection:
@@ -277,7 +282,7 @@ class Overlay(QWidget):
             return
         self.press = pos
         hit = self.control_at(pos)
-        if hit is not None and hit.type == "TabControl" and self._click_tab(hit, pos):
+        if hit is not None and hit.type in PAGED_TYPES and self._click_tab(hit, pos):
             self.mode = None
             return
         self.handle = self.handle_at(pos) if not ctrl_key else -1
@@ -320,10 +325,22 @@ class Overlay(QWidget):
     def _click_tab(self, tc: Control, pos: QPoint) -> bool:
         """A click on the tab bar of a TabControl shows that page (VS behaviour)."""
         w = self.view.previews.get(id(tc))
-        if w is None or not hasattr(w, "tab_at"):
-            return False
         r = self.abs_rect(tc)
-        idx = w.tab_at(pos - r.topLeft())
+        if w is not None and not hasattr(w, "tab_at"):      # a package container: its designer.py tab_at()
+            ctx = getattr(w, "rad_comp_ctx", None)
+            mod = ctx.package.designer_module() if ctx is not None and ctx.package is not None else None
+            fn = getattr(mod, "tab_at", None) if mod is not None else None
+            if not callable(fn):
+                return False
+            local = pos - r.topLeft()
+            try:
+                idx = int(fn(dict(tc.props), local.x(), local.y(), r.width(), r.height()))
+            except Exception:  # noqa: BLE001
+                return False
+        elif w is None:
+            return False
+        else:
+            idx = w.tab_at(pos - r.topLeft())
         if idx < 0:
             return False
         self.doc.select(tc)
@@ -349,7 +366,14 @@ class Overlay(QWidget):
         box = boxes[0]
         for b in boxes[1:]:
             box = box.united(b)
-        others = self._snap_targets(prim, movable)
+        # the other controls stand still during a move: their rectangles are worked out once per drag
+        key = (id(prim), tuple(id(c) for c in movable))
+        cached = getattr(self, "_move_snap", None)
+        if cached is not None and cached[0] == key:
+            others = cached[1]
+        else:
+            others = self._snap_targets(prim, movable)
+            self._move_snap = (key, others)
         bx = self._best_edge([box.left() + dx, box.left() + box.width() + dx],
                              [v for r in others for v in (r.left(), r.left() + r.width())])
         by = self._best_edge([box.top() + dy, box.top() + box.height() + dy],
@@ -365,13 +389,37 @@ class Overlay(QWidget):
             self.snaplines = self._snap_lines(box.translated(ddx, ddy), others, xs, ys)
         return ddx, ddy
 
+    def _handles_rect(self) -> QRect | None:
+        """What the overlay draws for a drag step: the selection outlines + grab handles and the snaplines
+        (None = repaint everything: a phone form, a layout size, a recorded state ...)."""
+        if not self.view.live_drag_ok():
+            return None
+        r = QRect()
+        for c in self.doc.selection:
+            if not c.ctype.nonvisual:
+                r = r.united(self.abs_rect(c))
+        for ln in self.snaplines:
+            r = r.united(QRect(ln.p1(), ln.p2()).normalized())
+        return r.adjusted(-HANDLE - 2, -HANDLE - 2, HANDLE + 2, HANDLE + 2)
+
+    def _update_handles(self, before: QRect | None) -> None:
+        """Repaint where the handles were and are now: the overlay is transparent, so a full update repaints
+        every control preview under it on each mouse move (the moved previews repaint themselves)."""
+        after = self._handles_rect() if before is not None else None
+        if before is None or after is None:
+            self.update()
+        else:
+            self.update(before.united(after))
+
     def mouseMoveEvent(self, e):
         pos = e.position().toPoint()
         dx, dy = pos.x() - self.press.x(), pos.y() - self.press.y()
         free = bool(e.modifiers() & Qt.KeyboardModifier.AltModifier)
         if self.mode in ("band", "create"):
-            self.band = QRect(self.press, pos).normalized()
-            self.update()
+            old, self.band = self.band, QRect(self.press, pos).normalized()
+            # only where the dashed rectangle was / is: the overlay is transparent, so a full update
+            # repaints every control preview under it on each mouse move
+            self.update(old.united(self.band).adjusted(-2, -2, 2, 2) if not old.isNull() else self.rect())
             return
         if self.mode == "move":
             if abs(dx) < 2 and abs(dy) < 2 and not self.recorded:
@@ -380,6 +428,7 @@ class Overlay(QWidget):
             if not movable:
                 return
             self._record()
+            before = self._handles_rect()
             ddx, ddy = self._move_delta(movable, dx, dy, free)
             for c in movable:     # size: the base value (a previewed state / keyframe size stays as is)
                 s = self.starts[id(c)]
@@ -387,7 +436,7 @@ class Overlay(QWidget):
                 self.doc.set_geometry(c, s.x() + ddx, s.y() + ddy, int(gb["Width"]), int(gb["Height"]),
                                       relayout=False)
             self.doc.relayout_docked()   # docked controls snap once per step, not once per moved control
-            self.update()
+            self._update_handles(before)
             return
         if self.mode == "resize":
             c = self.doc.selected
@@ -395,6 +444,7 @@ class Overlay(QWidget):
             if s is None:
                 return
             self._record()
+            before = self._handles_rect()
             ml, mt, mr, mb = HANDLE_EDGES[self.handle]
             left, top = s.left(), s.top()
             right, bottom = left + s.width(), top + s.height()
@@ -436,7 +486,7 @@ class Overlay(QWidget):
                 h = max(MIN_SIZE, so.height() + db - dt)
                 self.doc.set_geometry(o, so.left() + dl, so.top() + dt, w, h, relayout=False)
             self.doc.relayout_docked()
-            self.update()
+            self._update_handles(before)
             return
         if TOOL_STATE.current:
             self.setCursor(Qt.CursorShape.CrossCursor)
@@ -452,6 +502,7 @@ class Overlay(QWidget):
     def mouseReleaseEvent(self, e):
         mode, self.mode = self.mode, None
         self.snaplines = []
+        self._move_snap = None
         self.view.end_live()            # ONE controlChanged per dragged control (Properties, previews ...)
         pos = e.position().toPoint()
         if mode == "create":
@@ -1188,16 +1239,86 @@ class DesignerView(QScrollArea):
         super().showEvent(e)
         self.phone.announce()       # the Toolbox shows the Mobile group for phone forms
 
+    # ------------------------------------------------------------ previews
+    def _reuse_ok(self) -> bool:
+        """Preview widgets may be kept across a rebuild only while nothing draws other values into them (a
+        visual state / timeline / sample rows of the Blend preview, a localized or mirrored language, a
+        layout size, a phone frame): then a widget shows exactly its control's properties."""
+        if self.phone.active:
+            return False
+        bp = getattr(self, "_blend_preview", None)
+        if bp is not None and (getattr(bp, "state", None) or getattr(bp, "timeline", None) is not None
+                               or getattr(bp, "_dirty", None) or getattr(bp, "recording", False)
+                               or getattr(bp, "key_recorder", None) is not None):
+            return False
+        lp = getattr(self, "_loc_preview", None)
+        if lp is not None and (getattr(lp, "code", "") or getattr(lp, "mirrored", False)):
+            return False
+        vp = getattr(self, "_variant_preview", None)
+        return not (vp is not None and getattr(vp, "active", False))
+
+    @staticmethod
+    def _preview_key(c: Control, host) -> tuple | None:
+        """What a component preview is built from (radide/components/designer.py: the control's type and
+        properties - its DesignContext holds the name / type / package / folder only) and where it lives."""
+        try:
+            props = {k: v for k, v in c.props.items() if k not in ("Left", "Top", "Width", "Height")}
+            return (c.type, id(host), json.dumps(props, sort_keys=True, default=str))
+        except (TypeError, ValueError):
+            return None
+
     def rebuild(self) -> None:
         self.phone.refresh()
-        for w in self.previews.values():
-            w.setParent(None)
-            w.deleteLater()
-        self.previews.clear()
-        for c in self.doc.form.ordered():
-            parent = self.previews.get(id(self.doc.form.find(c.parent))) if c.parent else None
+        root = self.doc.path.parent
+        form = self.doc.form
+        # Keep the preview of a control whose type, properties and container did not change (add / delete /
+        # paste / undo of a 400-control form re-created every widget: seconds); anything else is built anew.
+        old = {}
+        if self._reuse_ok() and getattr(self, "_built_root", None) == root:
+            keys = getattr(self, "_preview_keys", {})
+            for cid, w in self.previews.items():
+                k = keys.get(cid)
+                name = getattr(getattr(w, "rad_comp_ctx", None), "name", None)
+                if k is not None and name is not None and getattr(w, "rad_comp", False):
+                    old.setdefault((name, k[0]), (k, w))
+        kept = set()
+        new_previews: dict[int, QWidget] = {}
+        new_keys: dict[int, tuple] = {}
+        for c in form.ordered():
+            parent = new_previews.get(id(form.find(c.parent))) if c.parent else None
             host = getattr(parent, "client", parent) if parent is not None else self.surface
-            self.previews[id(c)] = make_preview(c, host, self.doc.path.parent)
+            key = self._preview_key(c, host)
+            hit = old.get((c.name, c.type))
+            w = None
+            if hit is not None and key is not None and hit[0] == key and id(hit[1]) not in kept:
+                w = hit[1]
+                try:
+                    if w.parentWidget() is not host:
+                        w = None
+                except RuntimeError:
+                    w = None
+            if w is not None:
+                kept.add(id(w))
+                p = c.props
+                try:
+                    w.setGeometry(int(p.get("Left", 0)), int(p.get("Top", 0)), max(4, int(p.get("Width", 4))),
+                                  max(4, int(p.get("Height", 4))))
+                except (TypeError, ValueError):
+                    pass
+                w.raise_()                      # z-order = creation order, as when every preview is new
+            else:
+                w = make_preview(c, host, root)
+            new_previews[id(c)] = w
+            if key is not None:
+                new_keys[id(c)] = key
+        for w in self.previews.values():
+            if id(w) not in kept:
+                w.setParent(None)
+                w.deleteLater()
+        self.previews.clear()                   # the same dict: features keep a reference to it
+        self.previews.update(new_previews)
+        self._preview_keys = new_keys
+        self._built_root = root
         self.sync_pages()
         self.overlay.raise_()
         self.tray.rebuild()
@@ -1211,7 +1332,7 @@ class DesignerView(QScrollArea):
             w = self.previews.get(id(c))
             if w is not None and c.parent:
                 parent = form.find(c.parent)
-                if parent is not None and parent.type == "TabControl":
+                if parent is not None and parent.type in PAGED_TYPES:
                     w.setVisible(tab_page(c) == int(parent.props.get("SelectedIndex", 0) or 0))
 
     def on_control_changed(self, ctrl) -> None:
@@ -1224,8 +1345,19 @@ class DesignerView(QScrollArea):
             if vp is not None and vp.active:    # the control as the shown layout size has it
                 vp.apply(ctrl)
             else:
-                apply_props(self.previews[id(ctrl)], ctrl)
-            if ctrl.type == "TabControl" or "TabPage" in ctrl.props:
+                w = self.previews[id(ctrl)]
+                apply_props(w, ctrl)
+                keys = getattr(self, "_preview_keys", None)
+                if keys is not None:            # the widget shows these properties now (rebuild may keep it)
+                    try:
+                        key = self._preview_key(ctrl, w.parentWidget())
+                    except RuntimeError:
+                        key = None
+                    if key is None:
+                        keys.pop(id(ctrl), None)
+                    else:
+                        keys[id(ctrl)] = key
+            if ctrl.type in PAGED_TYPES or "TabPage" in ctrl.props:
                 self.sync_pages()
         self.overlay.update()
 
@@ -1274,7 +1406,7 @@ class DesignerView(QScrollArea):
                 parent = form.find(x.parent)
                 if parent is None:
                     break
-                if parent.type == "TabControl" and tab_page(x) != int(parent.props.get("SelectedIndex", 0) or 0):
+                if parent.type in PAGED_TYPES and tab_page(x) != int(parent.props.get("SelectedIndex", 0) or 0):
                     self.doc.set_prop(parent, "SelectedIndex", tab_page(x), record=False)
                 x = parent
         self.overlay.update()

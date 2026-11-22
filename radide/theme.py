@@ -262,9 +262,16 @@ def palette_for(t: dict) -> QPalette:
     return p
 
 
+_LIGHT_FORM_PALETTE: list = [None, None]      # (theme values, palette): every designer preview asks for it
+
+
 def light_form_palette() -> QPalette:
     """The palette of a real (light) Windows program - for the form designer surface."""
-    return palette_for(THEMES["Light"])
+    t = THEMES["Light"]
+    key = tuple(sorted((k, str(v)) for k, v in t.items()))
+    if _LIGHT_FORM_PALETTE[0] != key:
+        _LIGHT_FORM_PALETTE[:] = [key, palette_for(t)]
+    return QPalette(_LIGHT_FORM_PALETTE[1])        # a copy: callers may change theirs
 
 
 class _Manager(QObject):
@@ -296,8 +303,16 @@ class _Manager(QObject):
         self.name = resolve(self.setting)
         t = self.t
         if app is not None:
-            if app.style().name().lower() != "fusion":
+            st = app.style()
+            base = st.name().lower()
+            if not base and st.metaObject().className() == "QStyleSheetStyle":
+                # with the application style sheet set, app.style() is Qt's style-sheet proxy (name ""):
+                # its base is the style checked here last time - setting Fusion again re-polished every
+                # widget (~1.7 s at start-up and on each theme change)
+                base = str(app.property("radBaseStyle") or "")
+            if base != "fusion":
                 app.setStyle("Fusion")        # the only style that honours the whole palette
+            app.setProperty("radBaseStyle", "fusion")
             try:      # tells Qt widgets and web pages (prefers-color-scheme) the same thing
                 self._pinning = True
                 app.styleHints().setColorScheme(Qt.ColorScheme.Dark if t["dark"] else Qt.ColorScheme.Light)
@@ -306,7 +321,9 @@ class _Manager(QObject):
             finally:
                 self._pinning = False
             app.setPalette(palette_for(t))
-            app.setStyleSheet(stylesheet(t))
+            sheet = stylesheet(t)
+            if app.styleSheet() != sheet:     # the same sheet again re-polishes every widget (~2 s at start-up)
+                app.setStyleSheet(sheet)
         self.changed.emit(self.name)
         return self.name
 

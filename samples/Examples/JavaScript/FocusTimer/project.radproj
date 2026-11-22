@@ -1,0 +1,10 @@
+{
+  "name": "FocusTimer",
+  "language": "javascript",
+  "forms": [
+    "Form1",
+    "Settings"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

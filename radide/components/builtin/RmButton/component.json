@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "name": "RmButton",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Modern button: default / accent / outline / flat / link, image + text, split drop-down.",
+  "category": "Modern (RAD)",
+  "order": 3000,
+  "builtin": true,
+  "prefix": "RmButton",
+  "defaultSize": [
+    110,
+    32
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": "Button"
+  },
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Kind",
+      "type": "enum",
+      "default": "Default",
+      "category": "Appearance",
+      "description": "Look of the button.",
+      "choices": [
+        "Default",
+        "Accent",
+        "Outline",
+        "Flat",
+        "Link"
+      ]
+    },
+    {
+      "name": "Image",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Image file or a built-in glyph name (save, open, mail, settings ...)."
+    },
+    {
+      "name": "ImagePosition",
+      "type": "enum",
+      "default": "Left",
+      "category": "Appearance",
+      "description": "Where the image goes.",
+      "choices": [
+        "Left",
+        "Top",
+        "Right"
+      ]
+    },
+    {
+      "name": "CornerRadius",
+      "type": "int",
+      "default": -1,
+      "category": "Appearance",
+      "description": "Corner radius in pixels (-1 = the theme's)."
+    },
+    {
+      "name": "DropDownItems",
+      "type": "list",
+      "default": "",
+      "category": "Behavior",
+      "description": "Items of the split drop-down: a;b;c or JSON [{Text, Name}]."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "Click",
+      "description": "The button was clicked (or Space / Enter)."
+    },
+    {
+      "name": "DropDownItemClicked",
+      "description": "An item of the drop-down was picked (EventItem = its Name)."
+    }
+  ],
+  "methods": [
+    {
+      "name": "PerformClick",
+      "signature": "PerformClick()",
+      "description": "Raises Click."
+    },
+    {
+      "name": "ShowDropDown",
+      "signature": "ShowDropDown()",
+      "description": "Opens the drop-down."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmButton.py",
+      "class": "RmButton",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Calculator",
+  "language": "go-bridge",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": []
+}

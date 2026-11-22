@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "name": "RmStatusBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Modern status bar with panels: text, progress, zoom; spring panels fill the rest.",
+  "category": "Modern (RAD)",
+  "order": 3160,
+  "builtin": true,
+  "prefix": "RmStatusBar",
+  "defaultSize": [
+    400,
+    26
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "defaultEvent": "PanelClick",
+  "properties": [
+    {
+      "name": "Panels",
+      "type": "multiline",
+      "default": "[{\"Text\":\"Ready\"},{\"Text\":\"Ln 1\",\"Width\":90},{\"Kind\":\"Zoom\",\"Value\":100}]",
+      "category": "Data",
+      "description": "JSON [{Text, Name, Width (0 = spring), Kind: Text|Progress|Zoom, Value, Image}] or a;b;c."
+    },
+    {
+      "name": "AccentBar",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "Accent-coloured bar."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "PanelClick",
+      "description": "A panel was clicked (EventItem / EventIndex)."
+    },
+    {
+      "name": "ValueChanged",
+      "description": "The zoom changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "SetPanelText",
+      "signature": "SetPanelText(panel, text)",
+      "description": "Text of a panel (name or index)."
+    },
+    {
+      "name": "GetPanelText",
+      "signature": "GetPanelText(panel)",
+      "description": "Text of a panel."
+    },
+    {
+      "name": "SetPanelValue",
+      "signature": "SetPanelValue(panel, value)",
+      "description": "Value of a progress / zoom panel."
+    },
+    {
+      "name": "GetPanelValue",
+      "signature": "GetPanelValue(panel)",
+      "description": "Value of a panel."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmStatusBar.py",
+      "class": "RmStatusBar",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

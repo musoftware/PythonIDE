@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "java-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

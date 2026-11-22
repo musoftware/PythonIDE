@@ -340,6 +340,7 @@ class RingQtPlugin(LanguagePlugin):
         L += [f"{g} = NULL" for g in globals_]
         L += ["", f"func {n}_Create",
               f"    {n} = new qWidget()",
+              f"    {n}.setObjectName({q(n)})",
               f"    {n}.setWindowTitle({q(fp['Text'])})",
               f"    {n}.resize({w}, {h + top})"]
         if fp.get("FormBorderStyle") == "FixedSingle":
@@ -521,6 +522,7 @@ class RingQtPlugin(LanguagePlugin):
             out = [f"{n} = new qAxWidget2({q(str(p.get('ProgID') or ''))}, {parent}, 0)"]
         else:
             out = [f"{n} = new {cls}({parent}{extra})"]
+        out.append(f"{n}.setObjectName({q(n)})")      # UI Automation AutomationId / Qt object name
         if t == "GroupBox":
             out.append(f"{n}.setTitle({q(p['Text'])})")
         elif multiline:

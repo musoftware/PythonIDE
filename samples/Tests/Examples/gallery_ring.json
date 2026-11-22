@@ -1,0 +1,66 @@
+[
+ {
+  "key": "Ring/RingNotepad",
+  "lang": "ring-qt",
+  "title_en": "Ring Notepad",
+  "title_ar": "مفكرة Ring",
+  "desc_en": "Text editor in RingQt: menus, toolbar, Open/Save/Font dialogs, clipboard, live status bar.",
+  "desc_ar": "محرر نصوص بـ RingQt: قوائم وشريط أدوات ونوافذ فتح/حفظ/خط والحافظة وشريط حالة مباشر."
+ },
+ {
+  "key": "Ring/RingContacts",
+  "lang": "ring-qt",
+  "title_en": "Ring Contacts (SQLite)",
+  "title_ar": "جهات الاتصال بـ Ring و SQLite",
+  "desc_en": "Address book CRUD with SQLite, live search, a modal Settings form, saved settings, Arabic RTL.",
+  "desc_ar": "دفتر عناوين بقاعدة SQLite وبحث مباشر ونافذة إعدادات مشروطة وحفظ الإعدادات وواجهة عربية."
+ },
+ {
+  "key": "Ring/RingDataTool",
+  "lang": "ring-app",
+  "title_en": "Ring Data Tool (console)",
+  "title_ar": "أداة بيانات Ring (سطر أوامر)",
+  "desc_en": "Console statistics tool: CSV reading, classes, sorting, ASCII chart, matrix, report file.",
+  "desc_ar": "أداة إحصاء في سطر الأوامر: قراءة CSV وكلاسات وترتيب ورسم بياني نصي ومصفوفات وملف تقرير."
+ },
+ {
+  "key": "Ring/RingGuestbook",
+  "lang": "ring-app",
+  "title_en": "Ring Guestbook (web)",
+  "title_ar": "سجل زوار Ring (ويب)",
+  "desc_en": "RingHTTPLib web app: HTML form, SQLite storage, JSON API, Post/Redirect/Get, escaping.",
+  "desc_ar": "تطبيق ويب بـ RingHTTPLib: نموذج HTML وتخزين SQLite وواجهة JSON وتحويل بعد الإرسال."
+ },
+ {
+  "key": "Ring/RingPong",
+  "lang": "ring-game",
+  "title_en": "Ring Pong (RingRayLib game)",
+  "title_ar": "لعبة بونج بـ Ring",
+  "desc_en": "Pong made with the scene designer and RingRayLib: keyboard paddle, AI paddle, score, timer.",
+  "desc_ar": "لعبة بونج بمصمم المشاهد و RingRayLib: مضرب بلوحة المفاتيح ومضرب آلي ونقاط ومؤقت."
+ },
+ {
+  "key": "Dart/TipCalculator",
+  "lang": "dart-bridge",
+  "title_en": "Tip Calculator (Dart)",
+  "title_ar": "حاسبة البقشيش (Dart)",
+  "desc_en": "Dart GUI Bridge form: TrackBar, NumericUpDown, ComboBox, CheckBox, history list, About form.",
+  "desc_ar": "نافذة Dart عبر GUI Bridge: شريط تمرير وعدّاد وقائمة منسدلة وخانة اختيار وسجل ونافذة حول."
+ },
+ {
+  "key": "Dart/WordScramble",
+  "lang": "dart-bridge",
+  "title_en": "Word Scramble (Dart game)",
+  "title_ar": "لعبة ترتيب الحروف (Dart)",
+  "desc_en": "Word game in Dart: Timer control, ProgressBar countdown, words.txt, hints, score.",
+  "desc_ar": "لعبة كلمات بـ Dart: مؤقت وشريط تقدم للعد التنازلي وملف كلمات وتلميحات ونقاط."
+ },
+ {
+  "key": "Flutter/TodoDesigner",
+  "lang": "flutter",
+  "title_en": "Todo app (Flutter designer)",
+  "title_ar": "تطبيق المهام (مصمم Flutter)",
+  "desc_en": "Two screens made in the Flutter visual designer: task list + Settings with Arabic RTL.",
+  "desc_ar": "شاشتان بمصمم Flutter المرئي: قائمة مهام وإعدادات مع العربية من اليمين لليسار."
+ }
+]

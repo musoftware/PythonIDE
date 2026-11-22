@@ -325,8 +325,10 @@ class GitPanel(QWidget):
         """Everything _apply needs, computed without touching widgets (thread safe)."""
         top = g.toplevel()
         if top is None:
-            return {"top": None}
-        return {"top": top, "branch": g.branch(), "statuses": g.status(untracked), "remotes": g.remotes()}
+            return {"top": None, "folder": g.folder}
+        gd = g.out("rev-parse", "--absolute-git-dir")      # git_full.py's merge / rebase banner reads it
+        return {"top": top, "branch": g.branch(), "statuses": g.status(untracked), "remotes": g.remotes(),
+                "git_dir": Path(gd.splitlines()[0]) if gd else None, "folder": g.folder}
 
     def refresh_async(self):
         g = self.git
@@ -403,6 +405,7 @@ class GitPanel(QWidget):
         self._apply(g, self._query(g, self.untracked_mode()))
 
     def _apply(self, g: "Git", res: dict):
+        self.last_query = res               # what git said, for the refreshed listeners (no git on the UI thread)
         top = res.get("top")
         if top is None:
             self.branch.setText("Not a git repository")

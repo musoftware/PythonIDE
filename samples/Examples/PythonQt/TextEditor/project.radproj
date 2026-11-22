@@ -1,0 +1,9 @@
+{
+  "name": "TextEditor",
+  "language": "python-qt",
+  "forms": [
+    "frmEditor"
+  ],
+  "startup": "frmEditor",
+  "modules": []
+}

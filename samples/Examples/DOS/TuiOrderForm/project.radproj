@@ -1,0 +1,21 @@
+{
+  "name": "TuiOrderForm",
+  "language": "dos-pascal",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.PAS",
+    "Main.tform"
+  ],
+  "dos": {
+    "kind": "pascal",
+    "main": "MAIN.PAS",
+    "exe": "TUIORDER",
+    "output": "exe",
+    "compiler": "fpc"
+  },
+  "tui": {
+    "target": "pascal",
+    "startup": "Main"
+  }
+}

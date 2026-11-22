@@ -49,6 +49,7 @@ from ..controls import CONTROL_TYPES, FORM_EVENTS, format_anchor, menu_names, sp
 from ..importers.exe.dotnet import COLOR_NAMES, Parser, _lit, _match_brace
 from ..languages.base import LanguagePlugin, RunSpec
 from ..model import FORM_STORES, Control, Form
+from . import winforms_rm as _rm
 from .resx import ICON, ResxFile, image_ext, image_type_for
 
 # ============================================================================ type tables
@@ -954,7 +955,7 @@ class Loader:
         doc = self.doc
         wt = c["wtype"]
         sw = short(wt)
-        nt = WF_TO_NEUTRAL.get(sw)
+        nt = WF_TO_NEUTRAL.get(sw) or _rm.neutral(wt)        # RadIDE.Controls.Rm* (RAD Modern) when installed
         if nt is None:
             if sw in NONVISUAL_WF or c.get("component") or sw in COMPONENT_TYPES:
                 return None          # tray component RAD does not know: kept verbatim, not shown
@@ -1076,6 +1077,8 @@ class Loader:
             p["Text"] = txt if isinstance(txt, str) else ""
         if "ToolTip" in p:
             p["ToolTip"] = doc.tooltips.get(name, ("", -1, ""))[0]
+        if _rm.is_rm(nt):
+            _rm.read_props(nt, name, v, p)
         return Control(nt, p)
 
     def _page_text(self, tp: str) -> str:
@@ -1198,7 +1201,7 @@ class Renderer:
                 continue
             if c.name in bmap:
                 self._update_control(bmap[c.name], c)
-            elif c.type in NEUTRAL_TO_WF or (c.props.get("_wft") and c.type == "Panel"):
+            elif c.type in NEUTRAL_TO_WF or _rm.is_rm(c.type) or (c.props.get("_wft") and c.type == "Panel"):
                 new_names.append(c)
             else:
                 self.report.append(f"{c.name}: {c.type} has no WinForms equivalent - not written")
@@ -1599,6 +1602,8 @@ class Renderer:
         nt = c.type
         ct = CONTROL_TYPES[nt]
         changed = {k for k in set(bp) | set(cp) if k not in HIDDEN and bp.get(k) != cp.get(k)}
+        if _rm.is_rm(nt):                    # RadIDE.Controls: mapped properties through the control map
+            changed -= _rm.update_props(self, c, changed)
         new_off = self._new_offset()
         if new_off != self.offset and not cp.get("Parent") and not ct.nonvisual:
             changed |= {"Top"}
@@ -1889,7 +1894,8 @@ class Renderer:
                         if c.name not in self._new_blocks] or [-1]) + 1
         new_names = {c.name for c in ctrls}
         for c in ctrls:
-            wt = c.props.get("_wft") if c.props.get("_wft") and c.type == "Panel" else NEUTRAL_TO_WF[c.type]
+            wt = c.props.get("_wft") if c.props.get("_wft") and c.type == "Panel" else \
+                (NEUTRAL_TO_WF.get(c.type) or _rm.wf_type(c.type))
             sw = short(wt)
             typ = self.T(sw) if "." not in wt else wt
             args = self.ref("components") if sw in COMPONENT_TYPES else ""
@@ -1956,8 +1962,10 @@ class Renderer:
                 props["Size"] = self.v_size(p.get("Width", 75), p.get("Height", 23))
             ti = p.get("TabIndex", 0)
             props["TabIndex"] = str(int(ti) if ti else tab_next)
-        if sw not in NONVISUAL_WF:           # components (Timer, ToolTip, dialogs...) have no Name property
+        if sw not in NONVISUAL_WF and not _rm.is_component(nt):   # components (Timer, ToolTip, dialogs...) have no Name
             props["Name"] = d.lit_str(c.name)
+        if _rm.is_rm(nt):                    # RadIDE.Controls: the mapped properties (Kind, Tabs, Value ...)
+            props.update(_rm.new_props(self, c))
         if ct.has_text and not ct.nonvisual and nt != "StatusBar":
             props["Text"] = d.lit_str(str(p.get("Text", "")))
         if nt in ("MenuStrip", "ToolStrip"):
@@ -2244,8 +2252,8 @@ class Renderer:
 
     # ---------------------------------------------------------------- events
     def _wire_code(self, owner: str, event: str, meth: str) -> str:
-        delegate = EVENT_SIG.get(event, ("EventHandler", ""))[0]
-        dtype = "System.EventHandler" if delegate == "EventHandler" else self.T(delegate)
+        delegate = (EVENT_SIG.get(event) or _rm.event_signature(event) or ("EventHandler", ""))[0]
+        dtype = "System.EventHandler" if delegate == "EventHandler" else delegate if "." in delegate else self.T(delegate)
         return self.doc.d.wire(self.ref(owner), event, meth, dtype)
 
     def _new_wires(self, owner: str) -> list[str]:
@@ -2569,6 +2577,13 @@ def save_form(form: Form, path=None) -> list[str]:
     if text != s.text:
         data = text.encode("utf-8")
         dp.write_bytes((b"\xef\xbb\xbf" if s.bom else b"") + data)
+    if any(_rm.is_rm(c.type) for c in form.controls):        # RAD Modern controls: lib\RadIDE.Controls.dll + Reference
+        try:
+            line = _rm.ensure_reference(dp, log=lambda *_: None)
+        except OSError as e:
+            line = f"RadIDE.Controls: reference not added ({e})"
+        if line:
+            r.report.append(line)
     if r.resx is not None and r.resx.modified:
         r.resx.save()
     if s.dialect.lang == "vb" and (getattr(r, "deleted", None) or getattr(r, "renamed", None)):
@@ -2626,7 +2641,7 @@ if not any(isinstance(s, WinFormsStore) for s in FORM_STORES):
 # ============================================================================ event handlers in Form1.cs
 def handler_signature(event: str) -> str:
     net = EVENT_TO_NET.get(event, event)
-    return EVENT_SIG.get(net, ("EventHandler", "EventArgs"))[1]
+    return (EVENT_SIG.get(net) or _rm.event_signature(net) or ("EventHandler", "EventArgs"))[1]
 
 
 def add_event_handler_cs(code: str, form_name: str, method: str, event: str) -> tuple[str, int]:
@@ -2689,6 +2704,12 @@ class WinFormsCSPlugin(LanguagePlugin):
     # Toolbox (radide/toolbox.py TOOL_STATE.set_profile): the WinForms names of the controls the
     # writer can create; the others (no WinForms equivalent) are hidden while a WinForms form is shown
     designer_profile = {"name": "Windows Forms", "labels": dict(NEUTRAL_TO_WF), "allowed": set(NEUTRAL_TO_WF)}
+    try:                                 # the RAD Modern controls (RadIDE.Controls) can be used on WinForms forms too
+        _rm_types = {t: f"{_rm.NS}.{t}" for t in _rm.control_map()}
+        designer_profile = {**designer_profile, "labels": {**designer_profile["labels"], **_rm_types},
+                            "allowed": designer_profile["allowed"] | set(_rm_types)}
+    except Exception:  # noqa: BLE001
+        pass
 
     def __init__(self):
         self._pending: dict[str, tuple] = {}
@@ -2702,7 +2723,7 @@ class WinFormsCSPlugin(LanguagePlugin):
         return NET_PROPERTY_LABELS.get(name)
 
     def type_label(self, ctrl: Control) -> str:
-        wt = ctrl.props.get("_wft") or NEUTRAL_TO_WF.get(ctrl.type) or ctrl.type
+        wt = ctrl.props.get("_wft") or NEUTRAL_TO_WF.get(ctrl.type) or _rm.wf_type(ctrl.type) or ctrl.type
         return wt if "." in wt else f"{FORMS_NS}.{wt}"
 
     def code_file(self, form_name: str) -> str:

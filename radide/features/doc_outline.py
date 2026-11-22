@@ -51,7 +51,35 @@ class DocumentOutline(QTreeWidget):
             self.rebuild()
 
     # ------------------------------------------------------------ tree
-    def rebuild(self) -> None:
+    def _signature(self):
+        """What the tree shows: the form name and each control's name / type / parent / page (TabPages)."""
+        doc = self.doc
+        if doc is None:
+            return None
+        form = doc.form
+        return (id(doc), form.name, tuple((c.name, c.type, c.parent, tab_page(c), str(c.props.get("TabPages", "")))
+                                          for c in form.controls))
+
+    def _on_screen(self) -> bool:
+        return self.isVisible() and not self.visibleRegion().isEmpty()
+
+    def _dock_shown(self, visible: bool) -> None:
+        if visible and getattr(self, "_dirty", False):
+            self.rebuild(force=True)
+
+    def rebuild(self, force: bool = False) -> None:
+        # Undo, a form property, a drag of the form edge ... ask again for the same tree: rebuilt only when
+        # what it shows changed, and not at all while the window is hidden behind another tab (it is
+        # rebuilt when its tab is shown) - a 400-control form took ~0.3-4 s per rebuild
+        sig = self._signature()
+        if not force and self.doc is not None and not self._on_screen():
+            self._dirty = True
+            return
+        if not force and not getattr(self, "_dirty", False) and sig is not None and sig == getattr(self, "_sig", None):
+            self._on_selection(self.doc.selected)
+            return
+        self._dirty = False
+        self._sig = sig
         self._syncing = True
         self.clear()
         self.items = {}
@@ -132,6 +160,7 @@ def install(win) -> None:
         win.dock_solution.raise_()
     win.dock_outline = dock
     win.doc_outline = outline
+    dock.visibilityChanged.connect(outline._dock_shown)
     for a in win.menuBar().actions():
         if a.menu() is not None and a.text().replace("&", "").lower() == "view":
             a.menu().addAction(dock.toggleViewAction())

@@ -514,6 +514,28 @@ class VBBasicPlugin(LanguagePlugin):
                 uniq.append(c)
         return uniq
 
+    def hover(self, code, line, col, path, names=None):
+        """Quick Info for the word under the mouse: the signature of a VB function or of a Sub / Function of the
+        project's code (the same table as the signature help)."""
+        lines = code.splitlines()
+        text = lines[line] if 0 <= line < len(lines) else ""
+        word = ""
+        for m in re.finditer(r"\w+", text):
+            if m.start() <= col <= m.end():
+                word = m.group()
+                break
+        if not word:
+            return ""
+        if word.lower() in SIGNATURES:
+            return SIGNATURES[word.lower()]
+        mm = re.search(rf"^\s*(?:Private\s+|Public\s+)?(Sub|Function)\s+{re.escape(word)}\s*(\([^)]*\))?",
+                       code, re.I | re.M)
+        if mm:
+            return f"{mm.group(1)} {word}{mm.group(2) or '()'}"
+        if names and word in names:
+            return f"{word} As {names[word]}"
+        return ""
+
     def calltip(self, code, line, col, path, names=None):
         lines = code.splitlines()
         before = lines[line][:col] if line < len(lines) else ""

@@ -1,0 +1,12 @@
+{
+  "name": "CPixelPainter",
+  "language": "dos-c",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.C"
+  ],
+  "dos": {
+    "kind": "c"
+  }
+}

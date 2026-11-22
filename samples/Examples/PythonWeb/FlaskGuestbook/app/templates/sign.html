@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{# (c) 2026 Musoftware - https://musoftwares.com - MIT License #}
+{% block title %}Sign - {{ site_name }}{% endblock %}
+{% block content %}
+<h2>Sign the guestbook</h2>
+<form method="post" class="sign" novalidate>
+    <label>Name <input name="name" value="{{ form.name }}" maxlength="60" required></label>
+    {% if errors.name %}<p class="error">{{ errors.name }}</p>{% endif %}
+    <label>Message <textarea name="message" rows="4" required>{{ form.message }}</textarea></label>
+    {% if errors.message %}<p class="error">{{ errors.message }}</p>{% endif %}
+    <label>Rating
+        <select name="rating">
+        {% for n in range(5, 0, -1) %}<option value="{{ n }}" {% if form.rating == n|string %}selected{% endif %}>{{ n }} stars</option>{% endfor %}
+        </select></label>
+    {% if errors.rating %}<p class="error">{{ errors.rating }}</p>{% endif %}
+    <button>Add my message</button>
+</form>
+{% endblock %}

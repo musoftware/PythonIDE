@@ -1,0 +1,9 @@
+{
+  "name": "Notepad",
+  "language": "go-bridge",
+  "forms": [
+    "frmMain"
+  ],
+  "startup": "frmMain",
+  "modules": []
+}

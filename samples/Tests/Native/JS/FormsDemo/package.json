@@ -1,0 +1,8 @@
+{
+  "name": "formsdemo-js",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "rad-shout": "file:./vendor/rad-shout"
+  }
+}

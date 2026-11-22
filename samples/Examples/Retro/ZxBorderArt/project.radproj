@@ -1,0 +1,16 @@
+{
+  "name": "ZxBorderArt",
+  "language": "retro-zx",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm"
+  ],
+  "retro": {
+    "system": "zx",
+    "lang": "asm",
+    "main": "main.asm",
+    "org": 32768,
+    "entry": "start"
+  }
+}

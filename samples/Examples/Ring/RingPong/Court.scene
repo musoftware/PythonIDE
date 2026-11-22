@@ -1,0 +1,48 @@
+{
+  "name": "Court",
+  "width": 800,
+  "height": 480,
+  "background": "#14213D",
+  "fps": 60,
+  "gravity": 0,
+  "camera": {
+    "follow": null
+  },
+  "assets": {
+    "images": {},
+    "sounds": {},
+    "spritesheets": {},
+    "tilesets": {}
+  },
+  "layers": [
+    {
+      "name": "Court",
+      "type": "sprites",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {"name": "Net", "kind": "sprite", "x": 398, "y": 0, "w": 4, "h": 480, "props": {"BackColor": "#3A4A6B"}},
+        {"name": "Player", "kind": "sprite", "x": 24, "y": 200, "w": 14, "h": 80,
+         "props": {"BackColor": "#FCA311"},
+         "behaviours": [{"type": "keyboard_move", "speed": 360, "axis": "y"}]},
+        {"name": "Cpu", "kind": "sprite", "x": 762, "y": 200, "w": 14, "h": 80, "props": {"BackColor": "#E5E5E5"}},
+        {"name": "Ball", "kind": "sprite", "x": 392, "y": 232, "w": 14, "h": 14, "props": {"BackColor": "#FFFFFF"}}
+      ]
+    },
+    {
+      "name": "UI",
+      "type": "ui",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {"name": "ScoreText", "kind": "text", "x": 300, "y": 16, "w": 200, "h": 40,
+         "text": "0 : 0", "props": {"FontSize": 36, "ForeColor": "#FFFFFF", "Align": "center"}},
+        {"name": "HelpText", "kind": "text", "x": 10, "y": 452, "w": 780, "h": 20,
+         "text": "Up / Down (or W / S) move - first to 5 wins - Esc quits",
+         "props": {"FontSize": 16, "ForeColor": "#8D99AE", "Align": "center"}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Pomodoro",
+  "language": "ruby-bridge",
+  "forms": [
+    "Form1",
+    "SettingsForm"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "PomodoroSettings.rb"
+  ]
+}

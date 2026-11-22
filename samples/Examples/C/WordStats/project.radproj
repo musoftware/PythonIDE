@@ -1,0 +1,9 @@
+{
+  "name": "WordStats",
+  "language": "c-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "WordStats.c"
+  ]
+}

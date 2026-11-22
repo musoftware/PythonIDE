@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "name": "RmTabStrip",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Modern tabs (top / left / bottom, closable, overflow arrows); children live on the pages (TabPage).",
+  "category": "Modern (RAD)",
+  "order": 3120,
+  "builtin": true,
+  "prefix": "RmTabStrip",
+  "defaultSize": [
+    320,
+    200
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "SelectedIndexChanged",
+  "properties": [
+    {
+      "name": "TabPages",
+      "type": "list",
+      "default": "Page 1;Page 2",
+      "category": "Data",
+      "description": "Tabs: a;b;c or JSON [{Text, Name, Image}]."
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Page shown (click a tab in the designer to edit it)."
+    },
+    {
+      "name": "TabPosition",
+      "type": "enum",
+      "default": "Top",
+      "category": "Appearance",
+      "description": "Where the tabs are.",
+      "choices": [
+        "Top",
+        "Left",
+        "Bottom"
+      ]
+    },
+    {
+      "name": "Closable",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Tabs have a close button (TabClosing)."
+    },
+    {
+      "name": "AutoClose",
+      "type": "bool",
+      "default": true,
+      "category": "Behavior",
+      "description": "The close button removes the tab (False = only TabClosing)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged",
+      "description": "Another tab was selected."
+    },
+    {
+      "name": "TabClosing",
+      "description": "A tab's close button was pressed (EventItem / EventIndex)."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddTab",
+      "signature": "AddTab(text)",
+      "description": "Adds a tab; returns its index."
+    },
+    {
+      "name": "RemoveTab",
+      "signature": "RemoveTab(index)",
+      "description": "Removes a tab."
+    },
+    {
+      "name": "TabCaption",
+      "signature": "TabCaption(index, text)",
+      "description": "Gets / sets the caption of a tab."
+    },
+    {
+      "name": "SelectTab",
+      "signature": "SelectTab(name)",
+      "description": "Shows a tab."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmTabStrip.py",
+      "class": "RmTabStrip",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

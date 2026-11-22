@@ -235,6 +235,20 @@ function createApi(host, ext) {
     encode: (text) => Promise.resolve(W.encode(text)),
     decode: (bytes) => Promise.resolve(W.decode(bytes)),
     registerPortAttributesProvider: () => new T.Disposable(() => {}),   // no port forwarding in a local IDE
+    // no Timeline view in RAD IDE: providers register (and are kept) but nothing asks them
+    registerTimelineProvider: (scheme, provider) => host.registerTimeline(ext, scheme, provider),
+    registerWorkspaceTimelineProvider: (provider) => host.registerTimeline(ext, '*', provider),
+    saveAs: async (uri) => {
+      // workspace.saveAs: the Save As dialog for that document; resolves to the new Uri (undefined if cancelled)
+      const doc = host.docs.get(uri);
+      if (!doc) return undefined;
+      const target = await host.rpc.request('window/showSaveDialog', { defaultUri: uri.scheme === 'file' ? uri.fsPath : undefined });
+      if (!target) return undefined;
+      const nu = T.Uri.file(target);
+      await host.fsApi.writeFile(nu, Buffer.from(doc.getText(), 'utf8'));
+      await host.showTextDocument(nu);
+      return nu;
+    },
     get fs() { return host.fsApi; },
     get isTrusted() { return true; },
     requestWorkspaceTrust: () => Promise.resolve(true),
@@ -311,6 +325,7 @@ function createApi(host, ext) {
     remoteName: undefined,
     shell: process.env.ComSpec || '/bin/sh',
     isNewAppInstall: false,
+    get isAppPortable() { return !!host.portable; },
     isTelemetryEnabled: false,
     onDidChangeTelemetryEnabled: noopEvent,
     onDidChangeShell: noopEvent,
@@ -407,6 +422,8 @@ function createApi(host, ext) {
     invokeTool: (name) => Promise.reject(new Error(`No language model tool named '${name}' is registered in RAD IDE`)),
     registerMcpServerDefinitionProvider: () => new T.Disposable(() => {}),
     registerChatModelProvider: () => new T.Disposable(() => {}),
+    // RAD IDE has no chat UI that would ask a language model provider: registering works, nothing calls it
+    registerLanguageModelChatProvider: (vendor, provider) => host.registerTimeline(ext, 'lm:' + vendor, provider),
   }, 'lm');
   api.interactive = N({}, 'interactive');
   return new Proxy(api, {

@@ -1,0 +1,250 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Focus Timer - JavaScript",
+    "Width": 420,
+    "Height": 330,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "Timer",
+            "Name": "mnuTimer",
+            "Items": [
+              {
+                "Text": "Start / Pause",
+                "Name": "mnuStart"
+              },
+              {
+                "Text": "Reset",
+                "Name": "mnuReset"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuExit"
+              }
+            ]
+          },
+          {
+            "Text": "Tools",
+            "Name": "mnuTools",
+            "Items": [
+              {
+                "Text": "Settings...",
+                "Name": "mnuSettings"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblMode",
+        "Text": "Focus",
+        "Left": 10,
+        "Top": 10,
+        "Width": 390,
+        "Height": 30,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 14,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblTime",
+        "Text": "25:00",
+        "Left": 10,
+        "Top": 44,
+        "Width": 390,
+        "Height": 70,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 40,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ProgressBar",
+      "props": {
+        "Name": "prgTime",
+        "Left": 20,
+        "Top": 124,
+        "Width": 370,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "cmdStart",
+        "Text": "Start",
+        "Left": 20,
+        "Top": 156,
+        "Width": 120,
+        "Height": 34,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "cmdReset",
+        "Text": "Reset",
+        "Left": 150,
+        "Top": 156,
+        "Width": 110,
+        "Height": 34,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "cmdSettings",
+        "Text": "Settings...",
+        "Left": 270,
+        "Top": 156,
+        "Width": 120,
+        "Height": 34,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "lstLog",
+        "Left": 20,
+        "Top": 200,
+        "Width": 370,
+        "Height": 70,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "DataSource": "",
+        "DisplayMember": "",
+        "ValueMember": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Timer",
+      "props": {
+        "Name": "tmrTick",
+        "Interval": 1000,
+        "Enabled": false,
+        "Parent": ""
+      }
+    }
+  ]
+}

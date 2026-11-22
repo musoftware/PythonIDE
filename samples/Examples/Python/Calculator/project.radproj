@@ -1,0 +1,11 @@
+{
+  "name": "Calculator",
+  "language": "python-tk",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": [
+    "CalcEngine.py"
+  ]
+}

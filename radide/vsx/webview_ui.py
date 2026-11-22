@@ -22,7 +22,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, Qt, QUrl, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, Qt, QTimer, QUrl, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QDockWidget, QLabel
 
 mimetypes.add_type("text/javascript", ".js")
@@ -443,12 +443,25 @@ class WebviewView:
             sc.setSourceCode(src if src is not None else _shim(None))
             scripts.insert(sc)
         self.web.loadStarted.connect(self._load_started)
-        self.dock.setWidget(self.web)
+        if self.kind == "view":
+            # view/title actions above the page (VS Code shows them in the view's title bar)
+            from PyQt6.QtWidgets import QVBoxLayout, QWidget
+            from .views_ui import TitleRow
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(0)
+            self.title_row = TitleRow(self.mgr.svc.views, self.view_type)
+            lay.addWidget(self.title_row)
+            lay.addWidget(self.web, 1)
+            self.dock.setWidget(box)
+        else:
+            self.title_row = None
+            self.dock.setWidget(self.web)
 
     def _load_started(self):
         self._ready = False
         try:
-            from PyQt6.QtWebEngineCore import QWebEngineScript  # noqa: F401
             sc = self.web.page().scripts().find("vscodeApi")
             for s in sc:
                 self.web.page().scripts().remove(s)
@@ -495,9 +508,13 @@ class WebviewView:
         self.title = title or self.title
         self.dock.setWindowTitle(self.title)
 
-    def reveal(self):
+    def reveal(self, focus: bool = True):
         self.dock.show()
         self.dock.raise_()
+        if self.kind == "panel":
+            self.mgr._active_panel = self.handle
+        if focus and self.web is not None:
+            self.web.setFocus()
 
     def dispose(self):
         self.mgr.server.drop_page(self.handle)
@@ -532,6 +549,7 @@ class WebviewManager(QObject):
         self.view_docks: dict[str, QDockWidget] = {}     # viewId -> dock (sidebar views survive re-resolve)
         self.view_handles: dict[str, str] = {}           # viewId -> handle
         self.providers: set[str] = set()
+        self._active_panel: str | None = None            # handle of the last revealed / focused webview panel
         try:
             from .. import theme as TH
             TH.changed.connect(lambda *_a: [w.theme_changed() for w in list(self.items.values())])
@@ -568,13 +586,18 @@ class WebviewManager(QObject):
         import re
         d = QDockWidget(v.title, win)
         d.setObjectName("vsxWebview_" + re.sub(r"\W+", "_", v.view_type or v.handle))
-        area = Qt.DockWidgetArea.RightDockWidgetArea
-        win.addDockWidget(area, d)
-        # stack panels of the same area as tabs, like editor tabs
-        others = [x.dock for x in self.items.values() if x.dock is not d and x.dock.isVisible()
-                  and win.dockWidgetArea(x.dock) == area]
-        if others:
-            win.tabifyDockWidget(others[-1], d)
+        if v.kind == "view" and self.svc.views.view_info(v.view_type) is not None:
+            # the view's container decides: activitybar -> left, panel -> bottom, secondarySidebar -> right
+            self.svc.views.place(d, v.view_type)
+            d.setWindowTitle(self.svc.views.dock_title(v.view_type, v.title))
+        else:
+            area = Qt.DockWidgetArea.RightDockWidgetArea
+            win.addDockWidget(area, d)
+            # stack panels of the same area as tabs, like editor tabs
+            others = [x.dock for x in self.items.values() if x.dock is not d and x.dock.isVisible() and x.kind == "panel"
+                      and win.dockWidgetArea(x.dock) == area]
+            if others:
+                win.tabifyDockWidget(others[-1], d)
         if v.kind == "view":
             d.visibilityChanged.connect(lambda vis, vt=v.view_type: self._visible(self.view_handles.get(vt), vis))
         else:
@@ -585,6 +608,7 @@ class WebviewManager(QObject):
             d.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
             d.installEventFilter(self)
             d.setProperty("vsxHandle", v.handle)
+            self._active_panel = v.handle
         d.resize(460, 700)
         d.show()
         d.raise_()
@@ -601,7 +625,37 @@ class WebviewManager(QObject):
                 obj.deleteLater()
         return False
 
+    def placeholder_dock(self, view_id: str) -> QDockWidget:
+        """The dock of a webview view that is not resolved yet (VS Code resolves a view when it becomes visible):
+        showing it resolves the view; the WebviewView created then reuses this dock."""
+        d = self.view_docks.get(view_id)
+        if d is not None:
+            return d
+        import re
+        d = QDockWidget(self.svc.views.dock_title(view_id), self.svc.win)
+        d.setObjectName("vsxWebview_" + re.sub(r"\W+", "_", view_id))
+        self.svc.views.place(d, view_id)
+        d.hide()
+
+        def vis(on, vt=view_id):
+            self._visible(self.view_handles.get(vt), on)
+            if on and vt not in self.view_handles and self.svc.host.running():
+                QTimer.singleShot(0, lambda: self.show_view(vt, focus=False))
+        d.visibilityChanged.connect(vis)
+        self.view_docks[view_id] = d
+        return d
+
+    def active_panel(self):
+        """The active webview panel (VS Code: the active editor when it is a webview) or None."""
+        w = self.items.get(self._active_panel) if self._active_panel else None
+        if w is not None and w.kind == "panel" and w.dock.isVisible():
+            return w
+        vis = [x for x in self.items.values() if x.kind == "panel" and x.dock.isVisible()]
+        return vis[-1] if vis else None
+
     def _visible(self, handle: str, vis: bool):
+        if vis and handle in self.items and self.items[handle].kind == "panel":
+            self._active_panel = handle
         if handle in self.items:
             self.to_host("webview/visible", {"handle": handle, "visible": bool(vis)})
 
@@ -646,7 +700,7 @@ class WebviewManager(QObject):
     def _n_webview_reveal(self, p):
         w = self.items.get(p.get("handle"))
         if w is not None:
-            w.reveal()
+            w.reveal(focus=not p.get("preserveFocus"))
 
     def _n_webview_dispose(self, p):
         w = self.items.pop(p.get("handle"), None)
@@ -666,19 +720,44 @@ class WebviewManager(QObject):
                 self.show_view(vid)
 
     # ------------------------------------------------------------ IDE actions
-    def show_view(self, view_id: str):
+    def show_view(self, view_id: str, focus: bool = True):
+        """<viewId>.focus: show the webview view in its container (resolving it on first use)."""
+        self.svc.views._reveal_container((self.svc.views.view_info(view_id) or {}).get("container"))
         h = self.view_handles.get(view_id)
         if h and h in self.items:
-            self.items[h].reveal()
+            self.items[h].reveal(focus=focus)
+            return
+        d = self.view_docks.get(view_id)
+        if d is not None:                           # resolved before (the host restarted): show while resolving
+            d.show()
+            d.raise_()
+        if not self.svc.host.running() and not self.svc.start():
+            self.svc.status(f"{view_id}: the extension host (Node.js) is not running", 8000)
             return
 
+        resolving = getattr(self, "_resolving", set())
+        self._resolving = resolving
+        if view_id in resolving:                     # one resolve at a time (the dock showing asks again)
+            return
+        resolving.add(view_id)
+
         def got(res):
+            resolving.discard(view_id)
             if not res or not res.get("handle"):
-                self.svc.status((res or {}).get("error") or f"{view_id}: no webview", 6000)
+                msg = (res or {}).get("error") or f"{view_id}: no webview"
+                self.svc.status(msg, 8000)
+                self.svc.log(f"webview view {view_id}: {msg}")
+            else:
+                w = self.items.get(res["handle"])
+                if w is not None:
+                    w.reveal(focus=focus)
+        self.svc.log(f"showing webview view {view_id}")
+        self.svc.before_request()
         self.svc.host.request("webviewView/resolve", {"viewId": view_id}, got, timeout_ms=30000)
 
     def reset(self):
         """The host stopped: every webview is gone with it."""
+        self._resolving = set()
         for h, w in list(self.items.items()):
             w.dispose()
             if w.kind == "panel":

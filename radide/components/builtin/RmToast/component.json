@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "name": "RmToast",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Notification that slides in at a screen corner (Info / Success / Warning / Error).",
+  "category": "Modern (RAD)",
+  "order": 3250,
+  "builtin": true,
+  "prefix": "RmToast",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Position",
+      "type": "enum",
+      "default": "BottomRight",
+      "category": "Behavior",
+      "description": "Screen corner.",
+      "choices": [
+        "BottomRight",
+        "TopRight",
+        "BottomLeft",
+        "TopLeft",
+        "BottomCenter",
+        "TopCenter"
+      ]
+    },
+    {
+      "name": "Duration",
+      "type": "int",
+      "default": 3000,
+      "category": "Behavior",
+      "description": "Milliseconds shown (0 = until clicked)."
+    },
+    {
+      "name": "ToastWidth",
+      "type": "int",
+      "default": 340,
+      "category": "Appearance",
+      "description": "Width in pixels."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "Click",
+      "description": "A toast was clicked (EventItem = its title)."
+    }
+  ],
+  "methods": [
+    {
+      "name": "Show",
+      "signature": "Show(title, text, kind, ms)",
+      "description": "Shows a toast; kind Info, Success, Warning or Error."
+    },
+    {
+      "name": "CloseAll",
+      "signature": "CloseAll()",
+      "description": "Closes the toasts."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmToast.py",
+      "class": "RmToast",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

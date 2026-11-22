@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "name": "RmMessageBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Themed message box / task dialog: Show returns the pressed button.",
+  "category": "Modern (RAD)",
+  "order": 3280,
+  "builtin": true,
+  "prefix": "RmMessageBox",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [],
+  "methods": [
+    {
+      "name": "Show",
+      "signature": "Show(text, title, buttons, icon, heading)",
+      "description": "Shows the box; buttons OK, OKCancel, YesNo, YesNoCancel, RetryCancel, AbortRetryIgnore or \"Save;Don't Save;Cancel\"; icon Info, Success, Warning, Error, Question; returns the button's text."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmMessageBox.py",
+      "class": "RmMessageBox",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

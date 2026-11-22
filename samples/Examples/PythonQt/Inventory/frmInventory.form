@@ -1,0 +1,310 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "frmInventory",
+    "Text": "Inventory (SQLite) - PySide6",
+    "Width": 720,
+    "Height": 460,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "&File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "Export CSV...",
+                "Name": "mnuFileExport"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "&Item",
+            "Name": "mnuItem",
+            "Items": [
+              {
+                "Text": "Add...",
+                "Name": "mnuItemAdd"
+              },
+              {
+                "Text": "Edit...",
+                "Name": "mnuItemEdit"
+              },
+              {
+                "Text": "Delete",
+                "Name": "mnuItemDelete"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblSearch",
+        "Text": "Search:",
+        "Left": 10,
+        "Top": 10,
+        "Width": 50,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtSearch",
+        "Text": "",
+        "Left": 62,
+        "Top": 8,
+        "Width": 220,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "CheckBox",
+      "props": {
+        "Name": "chkLowStock",
+        "Text": "Low stock only",
+        "Left": 296,
+        "Top": 10,
+        "Width": 140,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnAdd",
+        "Text": "Add...",
+        "Left": 450,
+        "Top": 6,
+        "Width": 80,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnEdit",
+        "Text": "Edit...",
+        "Left": 536,
+        "Top": 6,
+        "Width": 80,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnDelete",
+        "Text": "Delete",
+        "Left": 622,
+        "Top": 6,
+        "Width": 88,
+        "Height": 28,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "DataGridView",
+      "props": {
+        "Name": "grdItems",
+        "Left": 10,
+        "Top": 44,
+        "Width": 700,
+        "Height": 320,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Columns": "Id;SKU;Name;Category;Qty;Price",
+        "Rows": "",
+        "ReadOnly": true,
+        "DataSource": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblTotal",
+        "Text": "",
+        "Left": 10,
+        "Top": 372,
+        "Width": 700,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "StatusBar",
+      "props": {
+        "Name": "sbInfo",
+        "Text": "Ready",
+        "Left": 0,
+        "Top": 0,
+        "Width": 200,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Bottom",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgExport",
+        "Title": "Export",
+        "Filter": "CSV files|*.csv",
+        "FileName": "inventory.csv",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

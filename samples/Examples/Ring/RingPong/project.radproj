@@ -1,0 +1,17 @@
+{
+  "name": "RingPong",
+  "language": "ring-game",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.ring",
+    "Court.ring"
+  ],
+  "scenes": [
+    "Court"
+  ],
+  "game": {
+    "title": "Ring Pong",
+    "start_scene": "Court"
+  }
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QuickPoll</title>
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main>
+    <header>
+        <h1 data-t="title">QuickPoll</h1>
+        <button id="lang" class="link" type="button">العربية</button>
+    </header>
+
+    <form id="newPoll" class="card">
+        <h2 data-t="new">New poll</h2>
+        <label><span data-t="question">Question</span>
+            <input name="question" maxlength="200" required dir="auto"></label>
+        <label><span data-t="options">Answers (one per line, 2-6)</span>
+            <textarea name="options" rows="4" required dir="auto"></textarea></label>
+        <button type="submit" data-t="create">Create poll</button>
+        <p id="error" class="error" role="alert"></p>
+    </form>
+
+    <section id="polls" aria-live="polite"></section>
+    <footer>(c) 2026 Musoftware - https://musoftwares.com - MIT License</footer>
+</main>
+<script src="js/app.js"></script>
+</body>
+</html>

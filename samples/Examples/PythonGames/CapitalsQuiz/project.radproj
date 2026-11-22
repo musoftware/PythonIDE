@@ -1,0 +1,12 @@
+{
+  "name": "CapitalsQuiz",
+  "language": "kivy",
+  "forms": [
+    "MainScreen",
+    "ResultScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [
+    "questions.py"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "TextTools",
+  "language": "php",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "TextOps.php"
+  ]
+}

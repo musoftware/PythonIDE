@@ -103,10 +103,22 @@ class Form:
 
     # ------------------------------------------------------------ queries
     def find(self, name: str) -> Control | None:
-        for c in self.controls:
-            if c.name == name:
-                return c
-        return None
+        # name -> index cache, checked on every hit (the control at that index still has that name and
+        # no earlier control does), so edits of self.controls / props["Name"] need no invalidation;
+        # the designer asks this for every ancestor of every control on each mouse move
+        controls = self.controls
+        cache = self.__dict__.get("_find_cache")
+        if cache is not None and cache[0] is controls:
+            i = cache[1].get(name)
+            if i is not None and i < len(controls) and controls[i].props.get("Name") == name \
+                    and cache[2] == len(controls):
+                return controls[i]
+        index: dict = {}
+        for i, c in enumerate(controls):
+            index.setdefault(c.props.get("Name"), i)
+        self.__dict__["_find_cache"] = (controls, index, len(controls))
+        i = index.get(name)
+        return controls[i] if i is not None else None
 
     def visual(self) -> list[Control]:
         return [c for c in self.controls if not c.ctype.nonvisual]
@@ -123,11 +135,23 @@ class Form:
     def children(self, parent_name: str) -> list[Control]:
         return [c for c in self.visual() if c.parent == parent_name]
 
-    def descendants(self, ctrl: Control) -> list[Control]:
+    def children_map(self) -> dict[str, list[Control]]:
+        """parent name -> its visual children (z-order kept): children() for every container in one pass."""
+        kids: dict[str, list[Control]] = {}
+        for c in self.controls:
+            if not c.ctype.nonvisual:
+                kids.setdefault(c.props.get("Parent", ""), []).append(c)
+        return kids
+
+    def descendants(self, ctrl: Control, kids: dict | None = None) -> list[Control]:
+        kids = self.children_map() if kids is None else kids
         out = []
-        for ch in self.children(ctrl.name):
-            out.append(ch)
-            out += self.descendants(ch)
+
+        def walk(name):
+            for ch in kids.get(name, ()):
+                out.append(ch)
+                walk(ch.name)
+        walk(ctrl.name)
         return out
 
     def abs_pos(self, ctrl: Control) -> tuple[int, int]:
@@ -161,18 +185,22 @@ class Form:
     def ordered(self) -> list[Control]:
         """Visual controls with every container before its children (z-order kept)."""
         out: list[Control] = []
+        kids = self.children_map()           # one pass instead of a scan of all controls per container
 
         def visit(parent: str):
-            for c in self.children(parent):
+            for c in kids.get(parent, ()):
                 out.append(c)
                 if c.ctype.container:
                     visit(c.name)
         visit("")
         # orphans (parent missing) go to the form
-        for c in self.visual():
-            if c not in out:
-                c.props["Parent"] = ""
-                out.append(c)
+        if len(out) != sum(len(v) for v in kids.values()) or len({id(c) for c in out}) != len(out):
+            seen = {id(c) for c in out}
+            for c in self.visual():
+                if id(c) not in seen:
+                    c.props["Parent"] = ""
+                    out.append(c)
+                    seen.add(id(c))
         return out
 
     # ------------------------------------------------------------ edits

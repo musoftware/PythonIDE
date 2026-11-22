@@ -149,6 +149,10 @@ def _buddy_label(w: QWidget) -> str:
     # whole main window - findChildren over thousands of IDE widgets for every new editor (e.g. each
     # Properties grid refresh) cost ~30 ms per editor
     top, win = w, w.window()
+    vp = w.parentWidget()
+    if vp is not None and isinstance(vp.parentWidget(), QAbstractItemView):
+        return ""       # a cell editor of a grid (Properties window): no label is its buddy - and each
+                        # search walked every other cell widget of the grid (~30 ms per new editor)
     for _ in range(3):
         if top is win or top.parentWidget() is None or isinstance(top, QDockWidget):
             break

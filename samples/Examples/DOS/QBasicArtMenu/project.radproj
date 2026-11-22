@@ -1,0 +1,12 @@
+{
+  "name": "QBasicArtMenu",
+  "language": "dos-qbasic",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.BAS"
+  ],
+  "dos": {
+    "kind": "qbasic"
+  }
+}

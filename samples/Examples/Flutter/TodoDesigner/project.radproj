@@ -1,0 +1,11 @@
+{
+  "name": "TodoDesigner",
+  "language": "flutter",
+  "forms": [],
+  "startup": "Todo",
+  "modules": [],
+  "mobile": {
+    "device": "chrome"
+  },
+  "designer": "widget-tree"
+}

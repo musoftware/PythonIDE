@@ -1,0 +1,973 @@
+{
+  "name": "Arena",
+  "width": 800,
+  "height": 600,
+  "background": "#1B2631",
+  "fps": 60,
+  "gravity": 0,
+  "camera": {
+    "follow": null
+  },
+  "assets": {
+    "images": {},
+    "sounds": {},
+    "spritesheets": {},
+    "tilesets": {}
+  },
+  "layers": [
+    {
+      "name": "Sprites",
+      "type": "sprites",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "Paddle",
+          "kind": "sprite",
+          "x": 350,
+          "y": 556,
+          "w": 110,
+          "h": 16,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#ECF0F1"
+          }
+        },
+        {
+          "name": "Ball",
+          "kind": "sprite",
+          "x": 398,
+          "y": 536,
+          "w": 14,
+          "h": 14,
+          "scale": 1,
+          "rotation": 0,
+          "z": 2,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#FFFFFF"
+          }
+        },
+        {
+          "name": "Brick1",
+          "kind": "sprite",
+          "x": 22,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick2",
+          "kind": "sprite",
+          "x": 98,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick3",
+          "kind": "sprite",
+          "x": 174,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick4",
+          "kind": "sprite",
+          "x": 250,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick5",
+          "kind": "sprite",
+          "x": 326,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick6",
+          "kind": "sprite",
+          "x": 402,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick7",
+          "kind": "sprite",
+          "x": 478,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick8",
+          "kind": "sprite",
+          "x": 554,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick9",
+          "kind": "sprite",
+          "x": 630,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick10",
+          "kind": "sprite",
+          "x": 706,
+          "y": 70,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E74C3C",
+            "points": "50"
+          }
+        },
+        {
+          "name": "Brick11",
+          "kind": "sprite",
+          "x": 22,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick12",
+          "kind": "sprite",
+          "x": 98,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick13",
+          "kind": "sprite",
+          "x": 174,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick14",
+          "kind": "sprite",
+          "x": 250,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick15",
+          "kind": "sprite",
+          "x": 326,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick16",
+          "kind": "sprite",
+          "x": 402,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick17",
+          "kind": "sprite",
+          "x": 478,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick18",
+          "kind": "sprite",
+          "x": 554,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick19",
+          "kind": "sprite",
+          "x": 630,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick20",
+          "kind": "sprite",
+          "x": 706,
+          "y": 100,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#E67E22",
+            "points": "40"
+          }
+        },
+        {
+          "name": "Brick21",
+          "kind": "sprite",
+          "x": 22,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick22",
+          "kind": "sprite",
+          "x": 98,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick23",
+          "kind": "sprite",
+          "x": 174,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick24",
+          "kind": "sprite",
+          "x": 250,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick25",
+          "kind": "sprite",
+          "x": 326,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick26",
+          "kind": "sprite",
+          "x": 402,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick27",
+          "kind": "sprite",
+          "x": 478,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick28",
+          "kind": "sprite",
+          "x": 554,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick29",
+          "kind": "sprite",
+          "x": 630,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick30",
+          "kind": "sprite",
+          "x": 706,
+          "y": 130,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#F1C40F",
+            "points": "30"
+          }
+        },
+        {
+          "name": "Brick31",
+          "kind": "sprite",
+          "x": 22,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick32",
+          "kind": "sprite",
+          "x": 98,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick33",
+          "kind": "sprite",
+          "x": 174,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick34",
+          "kind": "sprite",
+          "x": 250,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick35",
+          "kind": "sprite",
+          "x": 326,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick36",
+          "kind": "sprite",
+          "x": 402,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick37",
+          "kind": "sprite",
+          "x": 478,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick38",
+          "kind": "sprite",
+          "x": 554,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick39",
+          "kind": "sprite",
+          "x": 630,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick40",
+          "kind": "sprite",
+          "x": 706,
+          "y": 160,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#2ECC71",
+            "points": "20"
+          }
+        },
+        {
+          "name": "Brick41",
+          "kind": "sprite",
+          "x": 22,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick42",
+          "kind": "sprite",
+          "x": 98,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick43",
+          "kind": "sprite",
+          "x": 174,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick44",
+          "kind": "sprite",
+          "x": 250,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick45",
+          "kind": "sprite",
+          "x": 326,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick46",
+          "kind": "sprite",
+          "x": 402,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick47",
+          "kind": "sprite",
+          "x": 478,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick48",
+          "kind": "sprite",
+          "x": 554,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick49",
+          "kind": "sprite",
+          "x": 630,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        },
+        {
+          "name": "Brick50",
+          "kind": "sprite",
+          "x": 706,
+          "y": 190,
+          "w": 70,
+          "h": 24,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "color": "#3498DB",
+            "points": "10"
+          }
+        }
+      ]
+    },
+    {
+      "name": "UI",
+      "type": "ui",
+      "tileset": "",
+      "data": [],
+      "collision": false,
+      "objects": [
+        {
+          "name": "ScoreText",
+          "kind": "text",
+          "x": 16,
+          "y": 10,
+          "w": 0,
+          "h": 0,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "FontSize": 22,
+            "ForeColor": "#FFFFFF"
+          },
+          "text": "Score: {score}"
+        },
+        {
+          "name": "LivesText",
+          "kind": "text",
+          "x": 640,
+          "y": 10,
+          "w": 0,
+          "h": 0,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "FontSize": 22,
+            "ForeColor": "#FFFFFF"
+          },
+          "text": "Lives: {lives}"
+        },
+        {
+          "name": "BestText",
+          "kind": "text",
+          "x": 330,
+          "y": 10,
+          "w": 0,
+          "h": 0,
+          "scale": 1,
+          "rotation": 0,
+          "z": 0,
+          "visible": true,
+          "behaviours": [],
+          "props": {
+            "FontSize": 22,
+            "ForeColor": "#F1C40F"
+          },
+          "text": "Best: {best}"
+        }
+      ]
+    }
+  ]
+}

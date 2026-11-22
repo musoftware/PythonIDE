@@ -1,0 +1,9 @@
+_build/
+*.EXE
+*.COM
+*.OBJ
+*.o
+CWSDPMI.EXE
+_OUT.TXT
+_SCREEN.TXT
+_SCR13.RAW

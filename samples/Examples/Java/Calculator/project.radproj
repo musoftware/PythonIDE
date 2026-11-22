@@ -1,0 +1,9 @@
+{
+  "name": "Calculator",
+  "language": "java-bridge",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": []
+}

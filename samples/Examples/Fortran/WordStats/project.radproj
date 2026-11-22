@@ -1,0 +1,9 @@
+{
+  "name": "WordStats",
+  "language": "fortran-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "wordstats.f90"
+  ]
+}

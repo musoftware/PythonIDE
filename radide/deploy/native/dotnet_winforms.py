@@ -290,8 +290,34 @@ class _Gen:
     def entry(self, c) -> dict:
         return self.cmap.get(c.type) or {}
 
+    # container / non-visual come from the control map too, so a library control works even when its designer
+    # package is not installed (Form.load gives it a placeholder type)
+    def is_nonvisual(self, c) -> bool:
+        return bool(c.ctype.nonvisual or self.entry(c).get("nonvisual"))
+
+    def is_container(self, c) -> bool:
+        return bool(c.ctype.container or self.entry(c).get("container"))
+
+    def ordered(self) -> list:
+        vis = [c for c in self.form.controls if not self.is_nonvisual(c)]
+        out: list = []
+
+        def visit(parent: str):
+            for c in vis:
+                if c.parent == parent and c not in out:
+                    out.append(c)
+                    if self.is_container(c):
+                        visit(c.name)
+        visit("")
+        for c in vis:                   # orphans (parent missing) go to the form
+            if c not in out:
+                c.props["Parent"] = ""
+                out.append(c)
+        return out
+
     def generic_props(self, c, var: str, L: list[str]) -> None:
-        """Mapped properties of a library control: {"FormProp": "NetProp[:enum:Type|:color]"}."""
+        """Mapped properties of a library control: {"FormProp": "NetProp[:enum:Type|:color|:image|:date|:json]"}.
+        Lists / objects (ribbon tabs, nodes ...) become JSON text; whole floats become ints."""
         for fprop, spec in (self.entry(c).get("props") or {}).items():
             if fprop not in c.props or c.props[fprop] in (None, ""):
                 continue
@@ -303,6 +329,15 @@ class _Gen:
                 col = self.color(v)
                 if col:
                     L.append(f"{var}.{target} = {col};")
+            elif kind == "image":
+                L.append(f"{var}.{target} = Img({lit(v)});")
+            elif kind == "date":
+                L.append(f"{{ System.DateTime d; if (System.DateTime.TryParse({lit(v)}, System.Globalization.CultureInfo.InvariantCulture, "
+                         f"System.Globalization.DateTimeStyles.None, out d)) {var}.{target} = d; }}")
+            elif kind == "json" or isinstance(v, (list, dict)):
+                L.append(f"{var}.{target} = {lit(v if isinstance(v, str) else json.dumps(v, ensure_ascii=False))};")
+            elif isinstance(v, float) and v.is_integer() and kind != "float":
+                L.append(f"{var}.{target} = {int(v)};")
             elif isinstance(v, bool):
                 L.append(f"{var}.{target} = {str(v).lower()};")
             elif isinstance(v, (int, float)):
@@ -313,7 +348,7 @@ class _Gen:
     def control(self, c) -> list[str]:
         p, var = c.props, self.f(c.name)
         t = self.entry(c).get("codegen") or ""
-        L = [f"// ", f"// {c.name}", f"// "]
+        L = ["// ", f"// {c.name}", "// "]
         self.common(c, L, var)
         if not t:              # a control of a referenced library: generic code
             if "Text" in p and "Text" not in (self.entry(c).get("props") or {}):
@@ -451,7 +486,7 @@ class _Gen:
         wire: list[str] = []
         tail: list[str] = []
         pages = self.tab_pages()
-        visual = form.ordered()
+        visual = self.ordered()
         menu = form.menu()
         for c in visual:
             ctype = "global::" + self.entry(c)["type"]
@@ -472,8 +507,10 @@ class _Gen:
         parents: dict[str, list] = {}
         for c in visual:
             parents.setdefault(c.parent, []).append(c)
+        by_name = {c.name: c for c in form.controls}
         adds = []
         for parent, kids in parents.items():
+            page_prop = self.entry(by_name[parent]).get("pageProp") if parent in by_name else None
             for c in reversed(kids):
                 if not parent:
                     target = "this.Client"
@@ -481,10 +518,13 @@ class _Gen:
                     idx = num(c.props.get("TabPage"))
                     plist = pages[parent]
                     target = plist[idx] if 0 <= idx < len(plist) else plist[0]
+                elif page_prop:            # a library container with pages (RmTabStrip ...): AddToPage(i, child)
+                    adds.append(f"{self.f(parent)}.AddToPage({max(0, num(c.props.get(page_prop)))}, {self.f(c.name)});")
+                    continue
                 else:
                     target = self.f(parent)
                 adds.append(f"{target}.Controls.Add({self.f(c.name)});")
-        for c in form.nonvisual():
+        for c in [c for c in form.controls if self.is_nonvisual(c)]:
             v = self.f(c.name)
             kind = self.entry(c).get("codegen") or ""
             if kind == "MenuStrip":
@@ -541,7 +581,7 @@ class _Gen:
             body += menu_setup
         body += [f"this.ClientSize = new System.Drawing.Size({W}, {H});",
                  f"this.Client.Bounds = new System.Drawing.Rectangle(0, 0, {W}, {H});"]
-        containers = [c for c in visual if self.entry(c).get("container") or c.ctype.container]
+        containers = [c for c in visual if self.is_container(c)]
         body += ["this.Client.SuspendLayout();"] + [f"{self.f(c.name)}.SuspendLayout();" for c in containers]
         body += ["this.SuspendLayout();"]
         body += setup
@@ -574,8 +614,16 @@ class _Gen:
             body += [f"{mv}.Name = {lit(menu.name)};", f"this.Controls.Add({mv});", f"this.MainMenuStrip = {mv};",
                      f"this.ClientSize = new System.Drawing.Size({W}, {H} + {mv}.PreferredSize.Height);"]
         body += [f"{self.f(c.name)}.ResumeLayout(false);" for c in reversed(containers)]
-        body += ["this.Client.ResumeLayout(false);", "this.ResumeLayout(false);", "this.PerformLayout();",
-                 "// RAD IDE: event handlers (<Control>_<Event>) and timers"]
+        body += ["this.Client.ResumeLayout(false);", "this.ResumeLayout(false);", "this.PerformLayout();"]
+        if str(fp.get("RightToLeft", "")).lower() in ("true", "yes", "1"):     # Arabic: mirrored layout
+            body += ["this.RightToLeft = System.Windows.Forms.RightToLeft.Yes;", "RadApp.MirrorLayout(this);"]
+        refs = self.cmap.get("__references__") or {}
+        used = {self.entry(c).get("reference") for c in form.controls} - {None, ""}
+        for r in sorted(used):
+            init = (refs.get(r) or {}).get("formInit")
+            if init:                   # e.g. RadIDE.Controls: the form Theme -> RmThemeManager
+                body.append(str(init).replace("{Theme}", lit(fp.get("Theme") or "")))
+        body.append("// RAD IDE: event handlers (<Control>_<Event>) and timers")
         body += wire + menu_wire + tail
         L += [f"        {b}" for b in body]
         L += ["    }", "}", ""]
@@ -612,7 +660,8 @@ def program_cs(project: Project, cfg, forms: list[Form], ps_resources: list[str]
     title = cfg.app_name or project.name
     L = ["// AUTO-GENERATED by RAD IDE (native WinForms build): the program's entry point.", "#nullable disable",
          "namespace RadNative", "{", "    static class RadProgram", "    {", "        [System.STAThread]",
-         "        static int Main(string[] args)", "        {", f"            RadApp.Title = {lit(title)};"]
+         "        static int Main(string[] args)", "        {", "            RadApp.LoadEmbedded();",
+         f"            RadApp.Title = {lit(title)};"]
     if ps_resources is None:
         L.append("            RadApp.Handlers = new CsHandlers(typeof(RadProgram).Assembly);")
     else:
@@ -742,8 +791,12 @@ def _compile_sdk(cs_files: list[Path], out_dir: Path, exe_base: str, icon: Path 
 """
     (proj_dir / f"{exe_base}.csproj").write_text(csproj, encoding="utf-8")
     pub = fresh_dir(out_dir / "sdkout")
+    props = []
+    for r in (refs or {}).values():          # a multi-targeting library builds (and restores) only what the exe needs
+        if r.get("targetsProperty") and r.get("project") and Path(r["project"]).is_file():
+            props.append(f"-p:{r['targetsProperty']}=net{major}.0-windows")
     code, text = _run([dn, "publish", str(proj_dir / f"{exe_base}.csproj"), "-c", "Release", "-o", str(pub), "-nologo",
-                       "-v", "q", "-clp:NoSummary"], proj_dir, log, env=_quiet_env())
+                       "-v", "q", "-clp:NoSummary", *props], proj_dir, log, env=_quiet_env())
     exe = pub / f"{exe_base}.exe"
     return code == 0 and exe.is_file(), text, pub if exe.is_file() else None
 
@@ -775,6 +828,61 @@ def _ps_parse_errors(files: list[Path]) -> list[str]:
     except (OSError, subprocess.TimeoutExpired):
         return []
     return [l.strip() for l in r.stdout.decode("utf-8", "replace").splitlines() if l.strip()]
+
+
+def _copy_library(csproj: Path, dest_root: Path, log) -> Path:
+    """Copy a referenced library project (sources only, no bin / obj) into the work folder; returns the copy's csproj."""
+    dest = dest_root / csproj.parent.name
+    if dest.exists():
+        shutil.rmtree(dest, ignore_errors=True)
+    shutil.copytree(csproj.parent, dest, ignore=shutil.ignore_patterns("bin", "obj", "*.user", ".vs"))
+    return dest / csproj.name
+
+
+def _library_sources(csproj: Path) -> list[Path]:
+    return sorted(p for p in csproj.parent.rglob("*.cs")
+                  if not ({"bin", "obj"} & {x.lower() for x in p.relative_to(csproj.parent).parts}))
+
+
+def library_dll(csproj: Path, name: str, log=print) -> Path | None:
+    """The .NET Framework 4.8 build of a control library (for the netfx exe): its sources compiled with Roslyn csc
+    against the Framework assemblies of Windows - no SDK, no NuGet - cached by a hash of the sources in
+    %LOCALAPPDATA%/RADIDE/cache/dotnet/<name>/<hash>/<name>.dll. None when it cannot be built."""
+    import hashlib
+    fw = framework_dir()
+    srcs = _library_sources(csproj)
+    if fw is None or not srcs:
+        return None
+    h = hashlib.sha256()
+    for p in srcs:
+        h.update(p.name.encode("utf-8"))
+        h.update(p.read_bytes())
+    key = h.hexdigest()[:16]
+    out = _local() / "cache" / "dotnet" / name / key / f"{name}.dll"
+    if out.is_file():
+        return out
+    csc = roslyn(log)
+    if not csc:
+        return None
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.parent / "tmp" / out.name          # same file name: it is the assembly name
+    tmp.parent.mkdir(exist_ok=True)
+    rsp = out.parent / "csc.rsp"
+    args = ["/nologo", "/noconfig", "/nostdlib+", "/target:library", "/optimize+", "/debug-", "/langversion:latest",
+            "/filealign:512", "/platform:anycpu", "/utf8output", "/deterministic+", "/nowarn:CS1591,CS0649,CS0169,CS0414",
+            f"/out:{tmp}"]
+    args += [f"/r:{fw / r}" for r in FRAMEWORK_REFS if (fw / r).is_file()]
+    args += [str(p) for p in srcs]
+    rsp.write_text("\n".join(_rsp_arg(a) for a in args), encoding="utf-8")
+    log(f"Building {name} for the .NET Framework 4.8 (cached) ...")
+    code, text = _run(csc + [f"@{rsp}"], out.parent, log, env=_quiet_env())
+    if code != 0 or not tmp.is_file():
+        log(f"{name}: the .NET Framework build failed:\n  " + "\n  ".join(_errors(text, csproj.parent)))
+        return None
+    tmp.replace(out)
+    rsp.unlink(missing_ok=True)
+    shutil.rmtree(tmp.parent, ignore_errors=True)
+    return out
 
 
 def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim: bool = False):
@@ -837,11 +945,20 @@ def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim:
         packages = []
     cs_files = sorted(src.glob("*.cs"))
     cmap = control_map(folder)
-    refs = {k: v for k, v in cmap["__references__"].items()
+    refs = {k: dict(v) for k, v in cmap["__references__"].items()
             if any((cmap.get(c.type) or {}).get("reference") == k for f in forms for c in f.controls)}
-    for r in refs.values():                     # net48: a referenced control library needs its prebuilt dll
+    embedded: list[tuple[Path, str]] = []
+    for name, r in refs.items():
+        if r.get("project") and Path(r["project"]).is_file():
+            # the SDK builds reference a copy (no bin / obj inside the IDE folder, which may be read-only)
+            r["project"] = str(_copy_library(Path(r["project"]), root / "lib", log))
+        if not (r.get("dll") and Path(r["dll"]).is_file()) and r.get("project") and lang == "csharp-bridge":
+            dll = library_dll(Path(r["project"]), name, log)        # netfx: csc into a cached net48 dll
+            if dll is not None:
+                r["dll"] = str(dll)
         if r.get("dll") and Path(r["dll"]).is_file():
             extra_refs.append(r["dll"])
+            embedded.append((Path(r["dll"]), f"radlib.{Path(r['dll']).stem}.dll"))
     target = {"net48": "netfx", "sdk": "framework"}.get(variant, variant)
     if target == "auto":
         target = str(getattr(cfg, "dotnet_target", "standalone") or "standalone").lower()
@@ -865,11 +982,11 @@ def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim:
                 why.append("netfx: NuGet packages need the .NET SDK build")
                 continue
             out_dir = fresh_dir(root / "net48")
-            ok, text = _compile_net48(cs_files, out_dir / f"{exe_base}.exe", icon, log, extra_refs, resources)
+            ok, text = _compile_net48(cs_files, out_dir / f"{exe_base}.exe", icon, log, extra_refs, resources + embedded)
             if ok:
                 built = ("net48", out_dir)
-                for r in refs.values():
-                    shutil.copy2(r["dll"], out_dir / Path(r["dll"]).name)
+                if embedded:
+                    log("Control libraries embedded in the exe: " + ", ".join(p.name for p, _ in embedded))
                 log(f"Built for the .NET Framework 4.8 of Windows: {exe_base}.exe "
                     f"{size_text((out_dir / f'{exe_base}.exe').stat().st_size)}")
                 notes.append("Runs on the .NET Framework 4.8 that is part of Windows 10/11 (nothing to install).")
@@ -898,8 +1015,8 @@ def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim:
         log("Data files: " + ", ".join(data))
     exe = dist / f"{exe_base}.exe"
     log(f"Native exe: {exe} ({size_text(exe.stat().st_size)}, program folder {size_text(dir_size(dist))}, no Python)")
-    from ..build import BuildResult  # noqa: F811
     return BuildResult(dist, exe.name, f"native-{kind}", notes, python_based=False)
 
 
-__all__ = ["LANGS", "NAME", "TARGETS", "build", "check", "control_map", "forms_code", "framework_dir", "roslyn", "sma_dll"]
+__all__ = ["LANGS", "NAME", "TARGETS", "build", "check", "control_map", "forms_code", "framework_dir", "library_dll", "roslyn",
+           "sma_dll"]

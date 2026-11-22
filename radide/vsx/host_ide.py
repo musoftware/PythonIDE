@@ -29,8 +29,8 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, Qt, QTimer, QUrl
 from PyQt6.QtGui import QDesktopServices, QFont
 from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog, QDialogButtonBox, QDockWidget,
-                             QFileDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
-                             QPlainTextEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
+                             QFileDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox,
+                             QPlainTextEdit, QToolButton, QVBoxLayout, QWidget)
 
 from . import when as W
 from .bridge import VsxHost, find_node
@@ -50,6 +50,14 @@ _ICON_RX = re.compile(r"\$\(([a-z0-9\-~]+)\)")
 
 def codicons(text: str) -> str:
     return _ICON_RX.sub(lambda m: CODICONS.get(m.group(1), ""), text or "").strip()
+
+
+def _portable() -> bool:
+    try:
+        from .. import paths
+        return bool(paths.portable())
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _key(p) -> str:
@@ -204,6 +212,13 @@ class OutputPanel(QWidget):
         self.ensure(name)
         self.combo.setCurrentText(name)
 
+    def remove(self, name: str):
+        if name in self.texts:
+            del self.texts[name]
+            i = self.combo.findText(name)
+            if i >= 0:
+                self.combo.removeItem(i)
+
     def _show(self, name):
         self.view.setPlainText(self.texts.get(name, ""))
         self.view.moveCursor(self.view.textCursor().MoveOperation.End)
@@ -238,6 +253,11 @@ class VsxService(QObject):
         self.dock = None
         from .webview_ui import WebviewManager
         self.webviews = WebviewManager(self)
+        from .views_ui import ViewsUI
+        self.views = ViewsUI(self)                  # view containers, tree views, view/title + view/item menus
+        self._view_docks = self.views.docks
+        from . import context_keys
+        context_keys.install(self)                  # focus tracking for editorFocus / sideBarFocus / focusedView ...
         self.host.notification.connect(self._on_notification)
         self.host.stderr.connect(lambda t: self.output.append(self.HOST_CHANNEL, t))
         self.host.stopped.connect(self._on_stopped)
@@ -343,7 +363,7 @@ class VsxService(QObject):
         try:
             from . import API_LEVEL
         except Exception:  # noqa: BLE001
-            API_LEVEL = "1.90.0"
+            API_LEVEL = "1.147.0"
         try:
             from ..monaco_editor import MONACO_LANG
             languages = sorted(set(MONACO_LANG.values()))
@@ -352,7 +372,7 @@ class VsxService(QObject):
         params = {"extensions": [{"id": e.id, "path": str(e.path), "packageJSON": e.package_json} for e in self.extensions],
                   "workspaceFolders": self.folders(), "settings": self.settings(), "storageRoot": self._storage_root(),
                   "appRoot": str(Path(__file__).resolve().parents[1]), "language": lang, "apiVersion": API_LEVEL,
-                  "themeKind": kind, "languages": languages,
+                  "themeKind": kind, "languages": languages, "portable": _portable(),
                   "webviewBase": self.webviews.server.base, "webviewOrigin": self.webviews.server.origin}
         self._synced.clear()
         self._active_sent = None                 # a new host knows nothing: send the active editor again
@@ -399,6 +419,7 @@ class VsxService(QObject):
     def _on_stopped(self, code):
         try:
             self.webviews.reset()
+            self.views.reset()
         except Exception:  # noqa: BLE001
             pass
         try:
@@ -659,27 +680,9 @@ class VsxService(QObject):
 
     # ------------------------------------------------------------ commands
     def context_for(self, ed=None) -> dict:
-        ctx = dict(self.context)
-        ed = ed or self.active_editor()
-        if ed is not None:
-            p = Path(ed.path)
-            lang = editor_lang(ed)
-            sel = getattr(ed, "_selection", (0, 0, 0, 0)) or (0, 0, 0, 0)
-            ctx.update({"editorLangId": lang, "resourceLangId": lang, "resourceExtname": p.suffix.lower(),
-                        "resourceFilename": p.name, "resourcePath": str(p), "resourceScheme": "file",
-                        "editorTextFocus": True, "editorFocus": True, "textInputFocus": True,
-                        "editorHasSelection": not (sel[0] == sel[2] and sel[1] == sel[3]),
-                        "editorReadonly": bool(getattr(ed, "_readonly", False)), "editorIsOpen": True,
-                        "resourceDirname": str(p.parent), "isFileSystemResource": True})
-        s = getattr(self.win, "session", None)
-        try:
-            ctx["inDebugMode"] = bool(s is not None and s.running())
-        except Exception:  # noqa: BLE001
-            ctx["inDebugMode"] = False
-        ctx.update({"isWindows": os.name == "nt", "isLinux": False, "isMac": False, "isWeb": False,
-                    "workspaceFolderCount": len(self.folders()), "workbenchState": "folder" if self.folders() else "empty",
-                    "extensionHostKind": "local"})
-        return ctx
+        """Context keys for when clauses (radide/vsx/context_keys.py) - setContext values win."""
+        from . import context_keys
+        return context_keys.compute(self, ed)
 
     def _contributed_commands(self) -> dict:
         out = {}
@@ -739,23 +742,20 @@ class VsxService(QObject):
         return False
 
     def _context_menu(self, ed, menu):
-        items = []
-        cmds = self._contributed_commands()
-        try:
-            from . import list_enabled
-            exts = list_enabled()
-        except Exception:  # noqa: BLE001
-            exts = []
+        """editor/context of extensions (groups, submenus, enablement); a command gets the resource URI."""
+        from . import menus as M
         ctx = self.context_for(ed)
-        for ext in exts:
-            for m in (ext.contributes.get("menus") or {}).get("editor/context", []) or []:
-                if isinstance(m, dict) and m.get("command") in cmds and W.evaluate(m.get("when"), ctx):
-                    items.append(m["command"])
-        if not items:
+        uri = self.workbench.virtual_uri(str(ed.path)) or Path(ed.path).resolve().as_uri()
+        tmp = QMenu()
+        n = M.fill_menu(self, tmp, "editor/context", ctx, lambda cid: self.execute(cid, [{"$uri": uri}]))
+        if not n:
+            tmp.deleteLater()
             return
         menu.addSeparator()
-        for cid in items:
-            menu.addAction(codicons(cmds[cid]["title"]), lambda cid=cid: self.execute(cid))
+        for a in list(tmp.actions()):
+            a.setParent(menu)
+            menu.addAction(a)
+        menu._vsx_tmp = tmp
 
     # ------------------------------------------------------------ host -> IDE requests
     def _register_handlers(self):
@@ -835,6 +835,9 @@ class VsxService(QObject):
             if not path and p.get("tempPath"):                      # virtual document: an editable temp copy
                 tmp = Path(p["tempPath"])                            # (edits / Ctrl+S go back to the extension)
                 tmp.parent.mkdir(parents=True, exist_ok=True)
+                if p.get("uri"):                                     # resourceScheme / editor/title use the real URI
+                    self.workbench._virtual = getattr(self.workbench, "_virtual", {})
+                    self.workbench._virtual[str(tmp.resolve()).lower()] = p["uri"]
                 ed = self.editor_for(tmp)
                 if ed is None or not tmp.exists():
                     tmp.write_text(p.get("content") or "", "utf-8")
@@ -941,11 +944,30 @@ class VsxService(QObject):
                                f"{json.dumps(args[0] if args else {})});")
                         return True
                     return None
-                return True if KB.run_command(win, cmd, args) else None
+                # unknown here too: the host rejects ids VS Code does not know ("command 'x' not found")
+                return True if KB.run_command(win, cmd, args) else {"$notFound": True}
             except Exception as e:  # noqa: BLE001
                 self.log(f"command {cmd}: {e}")
                 return None
-        H["commands/executeIde"] = later(exec_ide)
+
+        def exec_ide_async(params, reply):
+            def go():
+                from .ide_commands import Deferred
+                try:
+                    r = exec_ide(params)
+                except Exception as e:  # noqa: BLE001
+                    self.log(f"command {params.get('command')}: {e}")
+                    r = None
+                if isinstance(r, Deferred):
+                    try:
+                        r.fn(reply)
+                    except Exception as e:  # noqa: BLE001
+                        self.log(f"command {params.get('command')}: {e}")
+                        reply(None)
+                else:
+                    reply(r)
+            QTimer.singleShot(0, go)
+        H["commands/executeIde"] = exec_ide_async
         H["env/clipboardRead"] = now(lambda p: QApplication.clipboard().text())
         H["env/clipboardWrite"] = now(lambda p: QApplication.clipboard().setText(p.get("text") or "") or True)
         H["env/openExternal"] = now(lambda p: QDesktopServices.openUrl(QUrl(p.get("uri") or "")))
@@ -977,6 +999,8 @@ class VsxService(QObject):
         try:
             if method.startswith("webview") and self.webviews.handle(method, p):
                 return
+            if method.startswith("tree/") and self.views.handle(method, p):
+                return
             if self.workbench.handle(method, p):
                 return
             fn = getattr(self, "_n_" + method.replace("/", "_"), None)
@@ -999,6 +1023,14 @@ class VsxService(QObject):
 
     def _n_output_show(self, p):
         self.show_output(p["channel"])
+
+    def _n_output_hide(self, p):
+        # OutputChannel.hide(): hide the Output view when it shows that channel
+        if self.dock is not None and self.output.combo.currentText() == p.get("channel"):
+            self.dock.hide()
+
+    def _n_output_dispose(self, p):
+        self.output.remove(p.get("channel") or "")
 
     def _n_statusBar_set(self, p):
         sb = self.win.statusBar()
@@ -1057,8 +1089,15 @@ class VsxService(QObject):
             self._ctx_timer = QTimer(self)
             self._ctx_timer.setSingleShot(True)
             self._ctx_timer.setInterval(50)
-            self._ctx_timer.timeout.connect(lambda: self.workbench.context_changed())
+            self._ctx_timer.timeout.connect(self._context_changed)
         self._ctx_timer.start()
+
+    def _context_changed(self):
+        for fn in (self.workbench.context_changed, self.views.context_changed):
+            try:
+                fn()
+            except Exception as e:  # noqa: BLE001
+                self.log(f"context: {e}")
 
     def _n_languages_setConfiguration(self, p):
         self.lang_configs[p["language"]] = p.get("config") or {}
@@ -1176,87 +1215,21 @@ class VsxService(QObject):
             menu.addAction(title, lambda vid=vid: self.show_view(vid))
         for vid, title in wviews.items():
             menu.addAction(title, lambda vid=vid: self.webviews.show_view(vid))
+        try:
+            self.views.register_containers()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"views: {e}")
 
     def show_view(self, view_id: str):
-        dock = self._view_dock(view_id)
-        dock.show()
-        dock.raise_()
-        tree = dock.widget()
-        if tree.topLevelItemCount() == 0:
-            self._load_children(view_id, tree, None)
+        """Show a contributed view (tree or webview) in its container's area."""
+        if not self.views.show_view(view_id):
+            self.views.tree_dock(view_id).show()
 
     def _view_dock(self, view_id: str) -> QDockWidget:
-        self._view_docks = getattr(self, "_view_docks", {})
-        d = self._view_docks.get(view_id)
-        if d is not None:
-            return d
-        title = self.contributed_views().get(view_id, view_id)
-        d = QDockWidget(title, self.win)
-        d.setObjectName("vsxView_" + re.sub(r"\W+", "_", view_id))
-        tree = QTreeWidget()
-        tree.setHeaderHidden(True)
-        tree.itemExpanded.connect(lambda it, v=view_id, t=tree: self._expand(v, t, it))
-        tree.itemActivated.connect(lambda it, _c=0: self._activate_item(it))
-        tree.itemClicked.connect(lambda it, _c=0: self._activate_item(it))
-        d.setWidget(tree)
-        self.win.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, d)
-        d.hide()
-        self._view_docks[view_id] = d
-        return d
-
-    def _load_children(self, view_id, tree, parent_item):
-        if not self.host.running():
-            return
-        handle = parent_item.data(0, Qt.ItemDataRole.UserRole) if parent_item is not None else None
-
-        def got(items):
-            try:
-                if parent_item is not None:
-                    parent_item.takeChildren()
-                else:
-                    tree.clear()
-            except RuntimeError:
-                return
-            for it in items or []:
-                label = codicons(it.get("label") or "")
-                if it.get("description"):
-                    label += "   " + codicons(it["description"])
-                node = QTreeWidgetItem([label])
-                node.setData(0, Qt.ItemDataRole.UserRole, it.get("handle"))
-                node.setData(0, Qt.ItemDataRole.UserRole + 1, it.get("command"))
-                node.setData(0, Qt.ItemDataRole.UserRole + 2, it.get("path"))
-                node.setToolTip(0, it.get("tooltip") or "")
-                if it.get("collapsible"):
-                    node.setChildIndicatorPolicy(QTreeWidgetItem.ChildIndicatorPolicy.ShowIndicator)
-                (parent_item.addChild if parent_item is not None else tree.addTopLevelItem)(node)
-                if it.get("collapsible") == 2:
-                    node.setExpanded(True)
-        self.before_request()
-        self.host.request("tree/children", {"viewId": view_id, "handle": handle}, got, timeout_ms=15000)
-
-    def _expand(self, view_id, tree, item):
-        if not item.data(0, Qt.ItemDataRole.UserRole + 3):
-            item.setData(0, Qt.ItemDataRole.UserRole + 3, True)
-            self._load_children(view_id, tree, item)
+        return self.views.tree_dock(view_id)
 
     def _activate_item(self, item):
-        cmd = item.data(0, Qt.ItemDataRole.UserRole + 1)
-        if isinstance(cmd, dict) and cmd.get("command"):
-            self.execute(cmd["command"], cmd.get("arguments") or [])
-        elif item.data(0, Qt.ItemDataRole.UserRole + 2):
-            self.open_path(item.data(0, Qt.ItemDataRole.UserRole + 2))
-
-    def _n_tree_registered(self, p):
-        vid = p.get("viewId")
-        if vid in self.contributed_views():
-            d = self._view_dock(vid)
-            if d.isVisible():
-                self._load_children(vid, d.widget(), None)
-
-    def _n_tree_changed(self, p):
-        d = getattr(self, "_view_docks", {}).get(p.get("viewId"))
-        if d is not None and d.isVisible():
-            self._load_children(p["viewId"], d.widget(), None)
+        self.views.activate(None, item)
 
     def _n_extension_activated(self, p):
         self.activation[p["id"]] = "active"

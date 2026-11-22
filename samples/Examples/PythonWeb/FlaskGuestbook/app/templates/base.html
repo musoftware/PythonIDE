@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body>
+<header>
+    <h1><a href="{{ url_for('main.index') }}">{{ site_name }}</a></h1>
+    <nav>
+        <a href="{{ url_for('main.index') }}">Messages</a>
+        <a href="{{ url_for('main.sign') }}">Sign the guestbook</a>
+        <a href="{{ url_for('api.entries') }}">JSON</a>
+    </nav>
+</header>
+<main>
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<p class="flash">{{ m }}</p>{% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+<footer>Made with Flask and RAD IDE</footer>
+</body>
+</html>

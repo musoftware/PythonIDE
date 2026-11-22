@@ -1,0 +1,13 @@
+{
+  "name": "BatchToolbox",
+  "language": "dos-batch",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.BAT",
+    "NOTES.BAT"
+  ],
+  "dos": {
+    "kind": "batch"
+  }
+}

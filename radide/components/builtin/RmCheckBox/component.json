@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "name": "RmCheckBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Themed check box with an indeterminate state.",
+  "category": "Modern (RAD)",
+  "order": 3020,
+  "builtin": true,
+  "prefix": "RmCheckBox",
+  "defaultSize": [
+    150,
+    24
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": "CheckBox"
+  },
+  "defaultEvent": "CheckedChanged",
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Checked or not."
+    },
+    {
+      "name": "Indeterminate",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Shows the third (mixed) state."
+    },
+    {
+      "name": "CheckAlign",
+      "type": "enum",
+      "default": "Left",
+      "category": "Appearance",
+      "description": "Side of the box.",
+      "choices": [
+        "Left",
+        "Right"
+      ]
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "CheckedChanged",
+      "description": "Checked / Indeterminate changed."
+    },
+    {
+      "name": "Click",
+      "description": "The box was clicked."
+    }
+  ],
+  "methods": [
+    {
+      "name": "Toggle",
+      "signature": "Toggle()",
+      "description": "Switches Checked."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmCheckBox.py",
+      "class": "RmCheckBox",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

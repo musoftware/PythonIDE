@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "name": "RmCalendar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Month calendar (locale month and day names, keyboard).",
+  "category": "Modern (RAD)",
+  "order": 3220,
+  "builtin": true,
+  "prefix": "RmCalendar",
+  "defaultSize": [
+    250,
+    230
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {
+      "name": "Value",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Selected date yyyy-MM-dd (empty = today)."
+    },
+    {
+      "name": "MinDate",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Earliest date."
+    },
+    {
+      "name": "MaxDate",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Latest date."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged",
+      "description": "Another day was selected."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddDays",
+      "signature": "AddDays(n)",
+      "description": "Moves the date by n days."
+    },
+    {
+      "name": "AddMonths",
+      "signature": "AddMonths(n)",
+      "description": "Moves the date by n months."
+    },
+    {
+      "name": "Today",
+      "signature": "Today()",
+      "description": "Selects today."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmCalendar.py",
+      "class": "RmCalendar",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

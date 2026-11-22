@@ -1,0 +1,506 @@
+{
+ "_comment": [
+  "RadIDE.Controls (radide/runtimes/dotnet/RadIDE.Controls, MIT): the RAD Modern controls (Rm*) for the native .NET",
+  "build (dotnet_winforms.py). Same names / props / events as docs/plans/MODERN_CONTROLS.md and the radforms C modules.",
+  "props: \"FormProp\": \"NetProp[:enum:Type|:color|:image|:date|:json|:float]\" (.NET names that clash with WinForms",
+  "members are renamed: Columns -> ColumnsJson ...; the library answers the neutral names too, see RmNameAttribute).",
+  "pageProp: the child property that picks the page of a container with pages (GetPage(i).Controls.Add).",
+  "references: standalone / framework builds add a ProjectReference (merged into the single-file exe, only the needed",
+  "framework is restored via targetsProperty); netfx compiles the sources with csc into a cached net48 dll that is",
+  "embedded into the exe (one file). formInit runs at the end of InitializeComponent of a form that uses the library."
+ ],
+ "controls": {
+  "RmButton": {
+   "type": "RadIDE.Controls.RmButton",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Image": "Image",
+    "ImagePosition": "ImagePosition:enum:RadIDE.Controls.RmImagePosition",
+    "Kind": "Kind:enum:RadIDE.Controls.RmButtonKind",
+    "CornerRadius": "CornerRadius",
+    "DropDownItems": "DropDownItems:json",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex"
+   },
+   "events": [
+    "Click",
+    "DropDownItemClicked"
+   ]
+  },
+  "RmToggle": {
+   "type": "RadIDE.Controls.RmToggle",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "OnText": "OnText",
+    "OffText": "OffText",
+    "Checked": "Checked",
+    "CheckAlign": "CheckAlign:enum:RadIDE.Controls.RmCheckAlign"
+   },
+   "events": [
+    "CheckedChanged",
+    "Click"
+   ]
+  },
+  "RmTextBox": {
+   "type": "RadIDE.Controls.RmTextBox",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Watermark": "Watermark",
+    "Icon": "Icon",
+    "ShowClear": "ShowClear",
+    "PasswordChar": "PasswordChar",
+    "MultiLine": "MultiLine",
+    "Multiline": "MultiLine",
+    "ReadOnly": "ReadOnly",
+    "MaxLength": "MaxLength",
+    "ErrorText": "ErrorText"
+   },
+   "events": [
+    "TextChanged",
+    "KeyPress",
+    "IconClick"
+   ]
+  },
+  "RmComboBox": {
+   "type": "RadIDE.Controls.RmComboBox",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "DropDownStyle": "DropDownStyle:enum:System.Windows.Forms.ComboBoxStyle",
+    "Watermark": "Watermark",
+    "Items": "ItemsText:json",
+    "SelectedIndex": "SelectedIndex"
+   },
+   "events": [
+    "SelectedIndexChanged",
+    "TextChanged"
+   ]
+  },
+  "RmCheckBox": {
+   "type": "RadIDE.Controls.RmCheckBox",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Checked": "Checked",
+    "Indeterminate": "Indeterminate",
+    "CheckAlign": "CheckAlign:enum:RadIDE.Controls.RmCheckAlign"
+   },
+   "events": [
+    "CheckedChanged",
+    "Click"
+   ]
+  },
+  "RmRadioButton": {
+   "type": "RadIDE.Controls.RmRadioButton",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Checked": "Checked",
+    "CheckAlign": "CheckAlign:enum:RadIDE.Controls.RmCheckAlign"
+   },
+   "events": [
+    "CheckedChanged",
+    "Click"
+   ]
+  },
+  "RmProgress": {
+   "type": "RadIDE.Controls.RmProgress",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Minimum": "Minimum",
+    "Maximum": "Maximum",
+    "Value": "Value",
+    "Kind": "Kind:enum:RadIDE.Controls.RmProgressKind",
+    "ShowText": "ShowText",
+    "TextFormat": "TextFormat"
+   },
+   "events": []
+  },
+  "RmSlider": {
+   "type": "RadIDE.Controls.RmSlider",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Minimum": "Minimum",
+    "Maximum": "Maximum",
+    "Value": "Value",
+    "TickFrequency": "TickFrequency",
+    "SmallChange": "SmallChange",
+    "LargeChange": "LargeChange",
+    "ShowValue": "ShowValue"
+   },
+   "events": [
+    "ValueChanged"
+   ]
+  },
+  "RmGauge": {
+   "type": "RadIDE.Controls.RmGauge",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Minimum": "Minimum:float",
+    "Maximum": "Maximum:float",
+    "Value": "Value:float",
+    "Ranges": "Ranges",
+    "Unit": "Unit",
+    "Kind": "Kind:enum:RadIDE.Controls.RmGaugeKind",
+    "Title": "Title",
+    "Decimals": "Decimals",
+    "ShowTicks": "ShowTicks"
+   },
+   "events": []
+  },
+  "RmPanel": {
+   "type": "RadIDE.Controls.RmPanel",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Title": "Title",
+    "CornerRadius": "CornerRadius",
+    "Shadow": "Shadow",
+    "GradientTo": "GradientTo:color",
+    "BorderColor": "BorderColor:color"
+   },
+   "events": []
+  },
+  "RmGroupPanel": {
+   "type": "RadIDE.Controls.RmGroupPanel",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Title": "Title",
+    "Collapsed": "Collapsed"
+   },
+   "events": [
+    "CollapsedChanged"
+   ]
+  },
+  "RmTabStrip": {
+   "type": "RadIDE.Controls.RmTabStrip",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "pageProp": "TabPage",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "TabPosition": "TabPosition:enum:RadIDE.Controls.RmTabPosition",
+    "Closable": "Closable",
+    "TabPages": "TabPages:json",
+    "SelectedIndex": "SelectedIndex",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "AutoClose": "AutoClose"
+   },
+   "events": [
+    "SelectedIndexChanged",
+    "TabClosing"
+   ]
+  },
+  "RmSideBar": {
+   "type": "RadIDE.Controls.RmSideBar",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Items": "Items:json",
+    "SelectedItem": "SelectedItem",
+    "Collapsed": "Collapsed",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "ShowToggle": "ShowToggle"
+   },
+   "events": [
+    "ItemClick",
+    "CollapsedChanged"
+   ]
+  },
+  "RmNavigationPane": {
+   "type": "RadIDE.Controls.RmNavigationPane",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "pageProp": "TabPage",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Pages": "Pages:json",
+    "SelectedIndex": "SelectedIndex"
+   },
+   "events": [
+    "SelectedIndexChanged"
+   ]
+  },
+  "RmRibbon": {
+   "type": "RadIDE.Controls.RmRibbon",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Tabs": "Tabs:json",
+    "QuickAccess": "QuickAccess:json",
+    "AppButtonText": "AppButtonText",
+    "AppMenu": "AppMenu:json",
+    "Collapsed": "Collapsed",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "SelectedTab": "SelectedTab"
+   },
+   "events": [
+    "ItemClick",
+    "TabChanged",
+    "CollapsedChanged"
+   ]
+  },
+  "RmStatusBar": {
+   "type": "RadIDE.Controls.RmStatusBar",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Panels": "Panels:json",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "AccentBar": "AccentBar"
+   },
+   "events": [
+    "PanelClick",
+    "ZoomChanged",
+    "ValueChanged"
+   ]
+  },
+  "RmGrid": {
+   "type": "RadIDE.Controls.RmGrid",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Columns": "ColumnsJson:json",
+    "Rows": "RowsData:json",
+    "ReadOnly": "ReadOnly",
+    "AllowSort": "AllowSort",
+    "AllowFilter": "AllowFilter",
+    "GroupBy": "GroupBy",
+    "SelectionMode": "SelectionKind",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "AlternatingRows": "AlternatingRows",
+    "RowHeight": "RowHeight"
+   },
+   "events": [
+    "CellClick",
+    "CellValueChanged",
+    "SelectionChanged",
+    "ButtonCellClick",
+    "CellDoubleClick",
+    "ColumnHeaderClick"
+   ]
+  },
+  "RmTreeView": {
+   "type": "RadIDE.Controls.RmTreeView",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "CheckBoxes": "CheckBoxes",
+    "ShowLines": "ShowLines",
+    "Nodes": "NodesJson:json",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "SelectedNode": "SelectedName"
+   },
+   "events": [
+    "NodeClick",
+    "NodeExpanding",
+    "NodeChecked",
+    "NodeDoubleClick",
+    "NodeCollapsed",
+    "SelectedIndexChanged"
+   ]
+  },
+  "RmListView": {
+   "type": "RadIDE.Controls.RmListView",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Columns": "ColumnsText:json",
+    "Items": "ItemsText:json",
+    "View": "ViewKind:enum:RadIDE.Controls.RmListViewKind",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "RowHeight": "RowHeight",
+    "SelectedIndex": "SelectedIndex"
+   },
+   "events": [
+    "ItemClick",
+    "ItemActivate",
+    "SelectedIndexChanged"
+   ]
+  },
+  "RmDatePicker": {
+   "type": "RadIDE.Controls.RmDatePicker",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Format": "Format",
+    "MinDate": "MinDate:date",
+    "MaxDate": "MaxDate:date",
+    "Value": "Value:date"
+   },
+   "events": [
+    "ValueChanged"
+   ]
+  },
+  "RmTimePicker": {
+   "type": "RadIDE.Controls.RmTimePicker",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Format": "Format",
+    "MinDate": "MinDate:date",
+    "MaxDate": "MaxDate:date",
+    "Value": "Value:date",
+    "ShowSeconds": "ShowSeconds"
+   },
+   "events": [
+    "ValueChanged"
+   ]
+  },
+  "RmCalendar": {
+   "type": "RadIDE.Controls.RmCalendar",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "MinDate": "MinDate:date",
+    "MaxDate": "MaxDate:date",
+    "Value": "Value:date"
+   },
+   "events": [
+    "ValueChanged"
+   ]
+  },
+  "RmTile": {
+   "type": "RadIDE.Controls.RmTile",
+   "reference": "RadIDE.Controls",
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Title": "Title",
+    "Count": "Count",
+    "Image": "Image",
+    "TileColor": "TileColor:color",
+    "Size": "TileSize:enum:RadIDE.Controls.RmTileSize"
+   },
+   "events": [
+    "Click"
+   ]
+  },
+  "RmDockPanel": {
+   "type": "RadIDE.Controls.RmDockPanel",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Layout": "LayoutJson:json",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex"
+   },
+   "events": [
+    "WindowClosed",
+    "ActiveWindowChanged"
+   ]
+  },
+  "RmDockWindow": {
+   "type": "RadIDE.Controls.RmDockWindow",
+   "reference": "RadIDE.Controls",
+   "container": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "AccentColor": "AccentColor:color",
+    "Title": "Title",
+    "DockSide": "DockSide:enum:RadIDE.Controls.RmDockSide",
+    "AutoHide": "AutoHide",
+    "DockSize": "DockSize"
+   },
+   "events": []
+  },
+  "RmToast": {
+   "type": "RadIDE.Controls.RmToast",
+   "reference": "RadIDE.Controls",
+   "nonvisual": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "Position": "Position:enum:RadIDE.Controls.RmToastPosition",
+    "Duration": "Duration",
+    "EventItem": "EventItem",
+    "EventIndex": "EventIndex",
+    "ToastWidth": "ToastWidth"
+   },
+   "events": [
+    "Click"
+   ]
+  },
+  "RmSuperTooltip": {
+   "type": "RadIDE.Controls.RmSuperTooltip",
+   "reference": "RadIDE.Controls",
+   "nonvisual": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "InitialDelay": "InitialDelay",
+    "MaxWidth": "MaxWidth",
+    "Delay": "Delay",
+    "Duration": "Duration"
+   },
+   "events": []
+  },
+  "RmBalloonTip": {
+   "type": "RadIDE.Controls.RmBalloonTip",
+   "reference": "RadIDE.Controls",
+   "nonvisual": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle",
+    "InitialDelay": "InitialDelay",
+    "MaxWidth": "MaxWidth",
+    "Delay": "Delay",
+    "Duration": "Duration"
+   },
+   "events": []
+  },
+  "RmMessageBox": {
+   "type": "RadIDE.Controls.RmMessageBox",
+   "reference": "RadIDE.Controls",
+   "nonvisual": true,
+   "props": {
+    "Style": "Style:enum:RadIDE.Controls.RmStyle"
+   },
+   "events": []
+  }
+ },
+ "references": {
+  "RadIDE.Controls": {
+   "project": "../../../runtimes/dotnet/RadIDE.Controls/RadIDE.Controls.csproj",
+   "targetsProperty": "RadIDEControlsTargets",
+   "formInit": "global::RadIDE.Controls.RmThemeManager.ApplyFormTheme(this, {Theme});"
+  }
+ }
+}

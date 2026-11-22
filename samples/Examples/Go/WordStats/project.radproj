@@ -1,0 +1,9 @@
+{
+  "name": "WordStats",
+  "language": "go-bridge",
+  "forms": [],
+  "startup": "",
+  "modules": [
+    "main.go"
+  ]
+}

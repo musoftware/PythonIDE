@@ -1,0 +1,9 @@
+{
+  "name": "SalesChart",
+  "language": "go-bridge",
+  "forms": [
+    "frmChart"
+  ],
+  "startup": "frmChart",
+  "modules": []
+}

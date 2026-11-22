@@ -1290,14 +1290,27 @@ def _register_providers() -> None:
         from .. import ai
         if _provider_cls is None:
             _provider_cls = _make_provider_class()
-        for s in all_sites():
-            pid = f"web-{s.id}"
-            try:
-                old = ai.get(pid)
-            except KeyError:
-                old = None
-            if old is None or getattr(old, "site", None) != s:
-                ai.register(_provider_cls(s))
+        from ..ai import providers as _P
+        h = getattr(_P, "_hub", None)
+        # one providers_changed for the whole batch: each one refilled the agent / chat provider lists
+        # (detection of every provider included), nine times at start-up (~1 s)
+        was = h.blockSignals(True) if h is not None else None
+        changed = False
+        try:
+            for s in all_sites():
+                pid = f"web-{s.id}"
+                try:
+                    old = ai.get(pid)
+                except KeyError:
+                    old = None
+                if old is None or getattr(old, "site", None) != s:
+                    ai.register(_provider_cls(s))
+                    changed = True
+        finally:
+            if h is not None:
+                h.blockSignals(was)
+                if changed:
+                    h.providers_changed.emit()
     except Exception:  # noqa: BLE001 - the AI core is optional for the web chats
         pass
 

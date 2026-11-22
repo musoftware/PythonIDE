@@ -22,7 +22,7 @@ import importlib
 
 # module names in this package, tried in order (a missing module is simply skipped)
 MODULES = ("vb6_freebasic", "win32_c", "dotnet_winforms", "java_native", "go_native", "rust_native",
-           "script_embed", "webview")
+           "script_embed", "node_sea", "webview")
 
 
 class NativeUnsupported(Exception):

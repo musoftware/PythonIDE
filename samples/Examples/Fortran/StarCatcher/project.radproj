@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "fortran-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

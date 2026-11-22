@@ -1,0 +1,65 @@
+{
+  "name": "reference-test",
+  "publisher": "radide-test",
+  "displayName": "RAD IDE Test: VS Code reference",
+  "description": "Test extension (MIT, written for RAD IDE's tests): view containers in the activity bar / panel / secondary side bar, tree views with view/title + view/item/context menus, viewsWelcome, editor/title + editor/context (submenu) menus, configuration for config.* when clauses, and commands that call built-in VS Code commands.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "engines": { "vscode": "^1.100.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "languages": [{ "id": "reftest", "extensions": [".reftest"], "aliases": ["RefTest"] }],
+    "configuration": {
+      "title": "Reference Test",
+      "properties": {
+        "reftest.flag": { "type": "boolean", "default": true, "description": "A flag for config.* when clauses." },
+        "reftest.mode": { "type": "string", "default": "alpha", "description": "A string setting." }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [{ "id": "refActivity", "title": "Ref Activity", "icon": "media/icon.svg" }],
+      "panel": [{ "id": "refPanel", "title": "Ref Panel", "icon": "media/icon.svg" }],
+      "secondarySidebar": [{ "id": "refSecondary", "title": "Ref Secondary", "icon": "media/icon.svg" }]
+    },
+    "views": {
+      "refActivity": [{ "id": "ref.tree", "name": "Ref Tree" }, { "id": "ref.empty", "name": "Ref Empty" }],
+      "refPanel": [{ "id": "ref.panelTree", "name": "Panel Tree" }],
+      "refSecondary": [{ "type": "webview", "id": "ref.webview", "name": "Ref Webview" }],
+      "explorer": [{ "id": "ref.whenTree", "name": "When Tree", "when": "ref.showWhenTree" }]
+    },
+    "viewsWelcome": [{ "view": "ref.empty", "contents": "Nothing here yet.\n[Add Item](command:ref.addItem)", "when": "config.reftest.flag" }],
+    "commands": [
+      { "command": "ref.refresh", "title": "Refresh", "icon": "$(refresh)" },
+      { "command": "ref.addItem", "title": "Add Item" },
+      { "command": "ref.itemAction", "title": "Item Action" },
+      { "command": "ref.titleOverflow", "title": "Overflow Action" },
+      { "command": "ref.editorTitle", "title": "Ref Editor Button", "icon": "$(beaker)" },
+      { "command": "ref.editorTitleOther", "title": "Ref Editor Other" },
+      { "command": "ref.disabled", "title": "Ref Disabled", "enablement": "ref.neverTrue" },
+      { "command": "ref.state", "title": "Ref: State" },
+      { "command": "ref.exec", "title": "Ref: Exec" },
+      { "command": "ref.api", "title": "Ref: API" },
+      { "command": "ref.reveal", "title": "Ref: Reveal" },
+      { "command": "ref.decorate", "title": "Ref: Decorate View" },
+      { "command": "ref.empty.fill", "title": "Ref: Fill Empty" }
+    ],
+    "submenus": [{ "id": "ref.sub", "label": "Ref Submenu" }],
+    "menus": {
+      "view/title": [
+        { "command": "ref.refresh", "when": "view == ref.tree", "group": "navigation" },
+        { "command": "ref.titleOverflow", "when": "view == ref.tree", "group": "1_more" }
+      ],
+      "view/item/context": [
+        { "command": "ref.itemAction", "when": "view == ref.tree && viewItem == fruit" },
+        { "command": "ref.disabled", "when": "view == ref.tree && viewItem == fruit", "group": "2_x" }
+      ],
+      "editor/title": [
+        { "command": "ref.editorTitle", "when": "resourceExtname == .reftest && config.reftest.flag", "group": "navigation" },
+        { "command": "ref.editorTitleOther", "when": "resourceExtname == .reftest" }
+      ],
+      "editor/context": [{ "submenu": "ref.sub", "when": "resourceExtname == .reftest", "group": "z_ref" }],
+      "ref.sub": [{ "command": "ref.addItem" }]
+    }
+  }
+}

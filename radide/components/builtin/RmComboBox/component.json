@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "name": "RmComboBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Themed combo box with item images and watermark.",
+  "category": "Modern (RAD)",
+  "order": 3050,
+  "builtin": true,
+  "prefix": "RmComboBox",
+  "defaultSize": [
+    180,
+    30
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "defaultEvent": "SelectedIndexChanged",
+  "properties": [
+    {
+      "name": "Items",
+      "type": "list",
+      "default": "Item 1;Item 2;Item 3",
+      "category": "Data",
+      "description": "Items: a;b;c or JSON [{Text, Image}]."
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Behavior",
+      "description": "Index of the selected item (-1 = none)."
+    },
+    {
+      "name": "Watermark",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Hint shown while nothing is selected."
+    },
+    {
+      "name": "DropDownStyle",
+      "type": "enum",
+      "default": "DropDownList",
+      "category": "Behavior",
+      "description": "DropDown = the user can also type.",
+      "choices": [
+        "DropDownList",
+        "DropDown"
+      ]
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "SelectedIndexChanged",
+      "description": "Another item was selected."
+    },
+    {
+      "name": "TextChanged",
+      "description": "The text changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddItem",
+      "signature": "AddItem(text)",
+      "description": "Adds an item; returns its index."
+    },
+    {
+      "name": "RemoveItem",
+      "signature": "RemoveItem(index)",
+      "description": "Removes an item."
+    },
+    {
+      "name": "Clear",
+      "signature": "Clear()",
+      "description": "Removes every item."
+    },
+    {
+      "name": "List",
+      "signature": "List(index)",
+      "description": "Text of an item."
+    },
+    {
+      "name": "IndexOf",
+      "signature": "IndexOf(text)",
+      "description": "Index of an item (-1 = none)."
+    },
+    {
+      "name": "ShowDropDown",
+      "signature": "ShowDropDown()",
+      "description": "Opens the list."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmComboBox.py",
+      "class": "RmComboBox",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

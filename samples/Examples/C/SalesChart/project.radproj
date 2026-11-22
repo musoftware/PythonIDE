@@ -1,0 +1,9 @@
+{
+  "name": "SalesChart",
+  "language": "c-bridge",
+  "forms": [
+    "frmChart"
+  ],
+  "startup": "frmChart",
+  "modules": []
+}

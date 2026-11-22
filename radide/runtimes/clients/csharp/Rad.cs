@@ -108,21 +108,41 @@ public static class Rad
             Send(line);
             var answer = _in.ReadLine();
             if (answer == null) Environment.Exit(0);       // the IDE closed the program
-            return answer;
+            return Unesc(answer);                          // answers to ESC commands are escaped
         }
     }
 
     /// <summary>Value as bridge text: invariant culture, True/False, one line.</summary>
-    public static string Str(object value)
+    public static string Str(object value) =>
+        Text(value).Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ');
+
+    static string Text(object value) => value switch
     {
-        string s = value switch
+        null => "",
+        bool b => b ? "True" : "False",
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? "",
+    };
+
+    /// <summary>Value for an "ESC" command: \\ newline CR escaped, so multi-line text survives the line protocol.</summary>
+    static string Esc(object value) => Text(value).Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
+
+    /// <summary>Answer to an "ESC" command, unescaped.</summary>
+    static string Unesc(string s)
+    {
+        if (s.IndexOf('\\') < 0) return s;
+        var sb = new System.Text.StringBuilder(s.Length);
+        for (int i = 0; i < s.Length; i++)
         {
-            null => "",
-            bool b => b ? "True" : "False",
-            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? "",
-        };
-        return s.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ');
+            char c = s[i];
+            if (c == '\\' && i + 1 < s.Length && (s[i + 1] == '\\' || s[i + 1] == 'n' || s[i + 1] == 'r'))
+            {
+                char n = s[++i];
+                sb.Append(n == 'n' ? '\n' : n == 'r' ? '\r' : '\\');
+            }
+            else sb.Append(c);
+        }
+        return sb.ToString();
     }
 
     public static bool ToBool(string s) =>
@@ -135,19 +155,19 @@ public static class Rad
         double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 0;
 
     // ------------------------------------------------------------------ GUI
-    public static void Set(string obj, string prop, object value) => Send($"SET {obj} {prop} {Str(value)}");
-    public static string Get(string obj, string prop) => Ask($"GET {obj} {prop}");
+    public static void Set(string obj, string prop, object value) => Send($"ESC SET {obj} {prop} {Esc(value)}");
+    public static string Get(string obj, string prop) => Ask($"ESC GET {obj} {prop}");
     public static double GetNumber(string obj, string prop) => ToNumber(Get(obj, prop));
 
     public static string Call(string obj, string method, params object[] args)
     {
-        var line = $"CALL {obj} {method}";
-        if (args != null && args.Length > 0) line += " " + string.Join("\t", args.Select(Str));
+        var line = $"ESC CALL {obj} {method}";
+        if (args != null && args.Length > 0) line += " " + string.Join("\t", args.Select(Esc));
         return Ask(line);
     }
 
-    public static int MsgBox(object text) => ToInt(Ask($"MSGBOX {Str(text)}"));
-    public static string InputBox(object prompt) => Ask($"INPUT {Str(prompt)}");
+    public static int MsgBox(object text) => ToInt(Ask($"ESC MSGBOX {Esc(text)}"));
+    public static string InputBox(object prompt) => Ask($"ESC INPUT {Esc(prompt)}");
     public static void Show(string form) => Send($"SHOW {form}");
     public static void Hide(string form) => Send($"HIDE {form}");
 

@@ -1,0 +1,13 @@
+{
+  "name": "CrystalMaze3D",
+  "language": "python-ursina",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Maze.scene3d"
+  ],
+  "scenes3d": [
+    "Maze"
+  ]
+}

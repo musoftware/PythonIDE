@@ -1,0 +1,13 @@
+/* (c) 2026 Musoftware - https://musoftwares.com - MIT License */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: #222; background: #f4f6f5; }
+header { background: #0c4b33; color: #fff; padding: 14px 32px; display: flex; align-items: center; gap: 32px; }
+header h1 { margin: 0; font-size: 22px; } header a { color: #fff; text-decoration: none; }
+nav a { color: #c8f1dd; margin-right: 16px; }
+main { max-width: 900px; margin: 24px auto; background: #fff; padding: 24px 32px; border-radius: 8px;
+       box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+footer { text-align: center; color: #888; font-size: 12px; padding: 16px; }
+table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+.ok { color: #2b8a3e; } .out { color: #c92a2a; } .msg { background: #e7f5ff; padding: 8px; border-radius: 4px; }
+.msg.error { background: #fff5f5; } .search { margin: 12px 0; } .search input { width: 45%; padding: 6px; }
+dl { display: grid; grid-template-columns: 120px 1fr; } dt { font-weight: 600; } .form p { margin: 8px 0; }

@@ -1,0 +1,9 @@
+{
+  "name": "RingNotepad",
+  "language": "ring-qt",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

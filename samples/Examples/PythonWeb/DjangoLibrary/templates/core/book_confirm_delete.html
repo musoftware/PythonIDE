@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{# (c) 2026 Musoftware - https://musoftwares.com - MIT License #}
+{% block content %}
+<h2>Delete "{{ book.title }}"?</h2>
+<form method="post">{% csrf_token %}<button>Yes, delete it</button> <a href="{{ book.get_absolute_url }}">Cancel</a></form>
+{% endblock %}

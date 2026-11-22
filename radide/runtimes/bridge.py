@@ -12,6 +12,9 @@ RAD IDE form. The IDE draws the forms; the program talks over stdin/stdout:
                      DONE                               (handler finished)
                      END                                (quit the program)
   any other line is program output (shown in the IDE Output window).
+  ESC <command ...>  the same command with \\ \n \r escaped in its values (multi-line text); its answer is
+                     escaped the same way. Answers to commands without ESC are kept on one line.
+  CALL <Form> ShowDialog  shows the form modally for the user and answers at once (see form_call).
 
 <object> is a control name, a form name, or Form.Control.
 
@@ -34,6 +37,33 @@ from .vbinterp import to_str
 from .vbrun import Runtime, VBForm
 
 DEBUG = bool(os.environ.get("RAD_BRIDGE_DEBUG"))      # started by the IDE debugger (radide/bridgedebug.py)
+
+
+def escape_line(s: str) -> str:
+    """Value -> one protocol line ("ESC" commands): \\ -> \\\\, newline -> \\n, CR -> \\r."""
+    return str(s).replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r")
+
+
+def unescape_line(s: str) -> str:
+    """Inverse of escape_line; an unknown escape is kept as written."""
+    if "\\" not in s:
+        return s
+    out, i, n = [], 0, len(s)
+    while i < n:
+        ch = s[i]
+        if ch == "\\" and i + 1 < n and s[i + 1] in "\\nr":
+            out.append({"\\": "\\", "n": "\n", "r": "\r"}[s[i + 1]])
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def one_line(s: str) -> str:
+    """An answer for a client that does not escape: newlines would split it into several protocol lines."""
+    s = str(s)
+    return s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ") if ("\n" in s or "\r" in s) else s
 
 
 class BridgeRuntime(Runtime):
@@ -146,7 +176,10 @@ class BridgeRuntime(Runtime):
             return None
         args = ""
         if e is not None and hasattr(e, "X"):
-            args = f"{e.X} {e.Y} {e.Button} {e.KeyCode} {e.KeyChar}".strip()
+            # a control character as KeyChar (Return = CR, Tab ...) would break the line protocol: leave it out
+            # like the native runtimes do (KeyCode still names the key: Return, Tab, BackSpace, Escape)
+            char = "".join(ch for ch in str(e.KeyChar or "") if ch >= " " and ch != "\x7f")
+            args = f"{e.X} {e.Y} {e.Button} {e.KeyCode} {char}".strip()
         self.send(f"EVENT {owner} {ev} {args}".rstrip())
         self._serving = True
         try:
@@ -169,6 +202,12 @@ class BridgeRuntime(Runtime):
             if line is None:
                 self.end()
                 return None
+            # "ESC <command>": the client escaped \\ \n \r in the values (multi-line text) and wants the
+            # answer escaped the same way; without it an answer is kept on one line (newlines -> spaces)
+            esc = line.startswith("ESC ")
+            if esc:
+                line = unescape_line(line[4:])
+            reply = (lambda s: self.send(escape_line(s))) if esc else (lambda s: self.send(one_line(s)))
             cmd, _, rest = line.partition(" ")
             up = cmd.upper()
             try:
@@ -183,23 +222,64 @@ class BridgeRuntime(Runtime):
                     self.resolve_obj(obj).vb_set(prop.lower(), value)
                 elif up == "GET":
                     obj, prop = (rest.split(" ", 1) + [""])[:2]
-                    self.send(to_str(self.resolve_obj(obj).vb_get(prop.strip().lower())))
+                    target, prop = self.resolve_obj(obj), prop.strip().lower()
+                    if prop == "color" and getattr(target, "type", "") == "ColorDialog":
+                        reply(str(target.w.Color))      # "#RRGGBB" like the native runtimes (VB code gets a number)
+                    else:
+                        reply(to_str(target.vb_get(prop)))
                 elif up == "CALL":
                     obj, method, arg = (rest.split(" ", 2) + ["", ""])[:3]
                     args = [a for a in arg.split("\t")] if arg else []
-                    self.send(to_str(self.resolve_obj(obj).vb_call(method.lower(), args)))
+                    target = self.resolve_obj(obj)
+                    if isinstance(target, VBForm):
+                        reply(self.form_call(target, method.lower(), args))
+                    else:
+                        reply(to_str(target.vb_call(method.lower(), args)))
                 elif up == "MSGBOX":
-                    self.send(str(self.msgbox(rest, 0, "")))
+                    reply(str(self.msgbox(rest, 0, "")))
                 elif up == "INPUT":
-                    self.send(self.inputbox(rest, "", ""))
+                    reply(self.inputbox(rest, "", ""))
                 elif up in ("SHOW", "HIDE"):
-                    self.forms[rest.strip().lower()].vb_call(up.lower(), [])
+                    vf = self.forms[rest.strip().lower()]
+                    if up == "HIDE":
+                        self.release_grab(vf)
+                    vf.vb_call(up.lower(), [])
                 else:
                     print(line, flush=True)            # plain program output
             except Exception as ex:  # noqa: BLE001 - report and keep the program alive
                 print(f"[bridge] {line!r}: {ex}", file=sys.stderr, flush=True)
                 if up in ("GET", "CALL", "INPUT", "MSGBOX"):
                     self.send("")
+
+    def form_call(self, vf, method: str, args) -> str:
+        """CALL <Form> <method>. ShowDialog shows the form modally for the user (the other forms do not take
+        mouse / keyboard input until it is hidden or closed) but answers at once: the program is blocked
+        while it waits for an answer, so a blocking ShowDialog could never get the dialog's own events.
+        Write the dialog's result handling in its OK / Cancel handlers (works the same in a native build)."""
+        if method in ("showdialog", "showmodal"):
+            vf.load()
+            vf.vb_call("show", [])
+            root = vf.ui.root
+            if root is not self.root:
+                try:
+                    root.transient(self.root)
+                    root.grab_set()
+                except tk.TclError:
+                    pass
+            return ""
+        if method in ("hide", "unload", "close"):
+            self.release_grab(vf)
+            if method == "close":
+                method = "unload"
+        return to_str(vf.vb_call(method, args))
+
+    @staticmethod
+    def release_grab(vf):
+        try:
+            if vf.loaded and vf.ui.root.grab_current() is not None:
+                vf.ui.root.grab_release()
+        except Exception:  # noqa: BLE001
+            pass
 
     def resolve_obj(self, path: str):
         parts = path.split(".")

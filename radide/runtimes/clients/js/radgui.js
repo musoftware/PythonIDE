@@ -100,15 +100,22 @@ function patchConsole(fd) {
 // ------------------------------------------------------------------ protocol
 const oneLine = (v) => String(v === undefined || v === null ? '' : v).replace(/\r?\n|\r/g, ' ');
 
+// "ESC <command>" (see radide/runtimes/bridge.py): \ newline CR escaped, so multi-line text survives
+const escLine = (v) => String(v === undefined || v === null ? '' : v)
+  .replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+const unescLine = (s) => s.replace(/\\([\\nr])/g, (_m, c) => (c === 'n' ? '\n' : c === 'r' ? '\r' : '\\'));
+
 function set(obj, prop, value) {
   if (typeof value === 'boolean') value = value ? 'True' : 'False';
-  writeLine(`SET ${obj} ${prop} ${oneLine(value)}`);
+  const s = String(value === undefined || value === null ? '' : value);
+  if (/[\r\n]/.test(s)) writeLine(`ESC SET ${obj} ${prop} ${escLine(s)}`);   // multi-line text
+  else writeLine(`SET ${obj} ${prop} ${s}`);
 }
 
 function get(obj, prop) {
-  writeLine(`GET ${obj} ${prop}`);
+  writeLine(`ESC GET ${obj} ${prop}`);
   const r = readLine();
-  return r === null ? '' : r;
+  return r === null ? '' : unescLine(r);
 }
 
 function getNum(obj, prop) {

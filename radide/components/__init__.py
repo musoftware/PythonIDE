@@ -586,9 +586,19 @@ def package_of(type_name: str) -> ComponentPackage | None:
 
 
 def is_component_type(type_name: str) -> bool:
-    """True for a control type that comes from a non-built-in component package."""
+    """True for a control type that comes from a non-built-in component package - or from a built-in package
+    whose runtime is a class like an installed package's (no ``"*": {"native": true}`` target, a ``class``
+    runtime: the RAD Modern Rm* controls), so generators and the VB / GUI Bridge runtimes treat it the same."""
     pkg = package_of(type_name)
-    return pkg is not None and not pkg.builtin
+    return pkg is not None and (not pkg.builtin or class_runtime(pkg))
+
+
+def class_runtime(pkg) -> bool:
+    """A built-in package generated through its runtime classes instead of the language plugins."""
+    t = pkg.targets
+    if (t.get("*") or {}).get("native"):
+        return False
+    return any(isinstance(v, dict) and v.get("class") for v in t.values())
 
 
 def help_file(type_name: str, include_builtin: bool = False) -> str:

@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "name": "RmListView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Modern list: Details (columns), Tiles and Cards views with images.",
+  "category": "Modern (RAD)",
+  "order": 3180,
+  "builtin": true,
+  "prefix": "RmListView",
+  "defaultSize": [
+    300,
+    200
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ItemClick",
+  "properties": [
+    {
+      "name": "Columns",
+      "type": "list",
+      "default": "Name;Size;Modified",
+      "category": "Data",
+      "description": "Column headers a;b;c (Cards show them as labels)."
+    },
+    {
+      "name": "Items",
+      "type": "multiline",
+      "default": "[{\"Text\":\"Report.docx\",\"Image\":\"file\",\"SubItems\":[\"12 KB\",\"Today\"]}]",
+      "category": "Data",
+      "description": "JSON [{Text, Image, SubItems:[...]}] or rows a|b;c|d."
+    },
+    {
+      "name": "View",
+      "type": "enum",
+      "default": "Details",
+      "category": "Appearance",
+      "description": "How items are shown.",
+      "choices": [
+        "Details",
+        "Tiles",
+        "Cards"
+      ]
+    },
+    {
+      "name": "SelectedIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Behavior",
+      "description": "Selected item (-1 = none)."
+    },
+    {
+      "name": "RowHeight",
+      "type": "int",
+      "default": 0,
+      "category": "Appearance",
+      "description": "Row / tile height (0 = automatic)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "ItemClick",
+      "description": "An item was clicked (EventItem = its text, EventIndex)."
+    },
+    {
+      "name": "ItemActivate",
+      "description": "Double-click / Enter on an item."
+    },
+    {
+      "name": "SelectedIndexChanged",
+      "description": "The selection changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddItem",
+      "signature": "AddItem(\"text;sub1;sub2\")",
+      "description": "Adds an item."
+    },
+    {
+      "name": "RemoveItem",
+      "signature": "RemoveItem(index)",
+      "description": "Removes an item."
+    },
+    {
+      "name": "Clear",
+      "signature": "Clear()",
+      "description": "Removes every item."
+    },
+    {
+      "name": "List",
+      "signature": "List(index)",
+      "description": "Text of an item."
+    },
+    {
+      "name": "SetItemImage",
+      "signature": "SetItemImage(index, image)",
+      "description": "Image of an item."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmListView.py",
+      "class": "RmListView",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

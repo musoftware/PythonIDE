@@ -1,0 +1,1637 @@
+{
+  "name": "Maze",
+  "sky": "#1A237E",
+  "gravity": 9.8,
+  "entities": [
+    {
+      "name": "Ground",
+      "kind": "plane",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        24.0,
+        1.0,
+        24.0
+      ],
+      "color": "#3B5B3B",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Sun",
+      "kind": "light",
+      "position": [
+        4.0,
+        10.0,
+        4.0
+      ],
+      "rotation": [
+        50.0,
+        30.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color": "#FFFFFF",
+      "behaviours": [],
+      "props": {}
+    },
+    {
+      "name": "MainCamera",
+      "kind": "camera",
+      "position": [
+        0.0,
+        14.0,
+        -12.0
+      ],
+      "rotation": [
+        48.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color": "#C0C0C0",
+      "behaviours": [],
+      "props": {}
+    },
+    {
+      "name": "Wall1",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall2",
+      "kind": "cube",
+      "position": [
+        -8.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall3",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall4",
+      "kind": "cube",
+      "position": [
+        -4.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall5",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall6",
+      "kind": "cube",
+      "position": [
+        0.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall7",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall8",
+      "kind": "cube",
+      "position": [
+        4.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall9",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall10",
+      "kind": "cube",
+      "position": [
+        8.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall11",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall12",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Player",
+      "kind": "capsule",
+      "position": [
+        -8.0,
+        1.0,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.8,
+        1.0,
+        0.8
+      ],
+      "color": "#FFB300",
+      "behaviours": [
+        "player"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crystal1",
+      "kind": "sphere",
+      "position": [
+        -4.0,
+        0.8,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "color": "#40E0FF",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall13",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crystal2",
+      "kind": "sphere",
+      "position": [
+        8.0,
+        0.8,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "color": "#40E0FF",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall14",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall15",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall16",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall17",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall18",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall19",
+      "kind": "cube",
+      "position": [
+        4.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall20",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall21",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall22",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall23",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall24",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall25",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall26",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall27",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall28",
+      "kind": "cube",
+      "position": [
+        -4.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall29",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall30",
+      "kind": "cube",
+      "position": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall31",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall32",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall33",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall34",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        -2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crystal3",
+      "kind": "sphere",
+      "position": [
+        -2.0,
+        0.8,
+        -2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "color": "#40E0FF",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall35",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        -2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall36",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        -2.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall37",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall38",
+      "kind": "cube",
+      "position": [
+        -8.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall39",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall40",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall41",
+      "kind": "cube",
+      "position": [
+        0.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall42",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall43",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall44",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        -4.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall45",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Crystal4",
+      "kind": "sphere",
+      "position": [
+        -8.0,
+        0.8,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "color": "#40E0FF",
+      "behaviours": [
+        "collectible",
+        "spin"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall46",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall47",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "ExitPad",
+      "kind": "cylinder",
+      "position": [
+        8.0,
+        0.05,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.6,
+        0.1,
+        1.6
+      ],
+      "color": "#E53935",
+      "behaviours": [],
+      "props": {}
+    },
+    {
+      "name": "Wall48",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        -6.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall49",
+      "kind": "cube",
+      "position": [
+        -10.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall50",
+      "kind": "cube",
+      "position": [
+        -8.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall51",
+      "kind": "cube",
+      "position": [
+        -6.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall52",
+      "kind": "cube",
+      "position": [
+        -4.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall53",
+      "kind": "cube",
+      "position": [
+        -2.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall54",
+      "kind": "cube",
+      "position": [
+        0.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall55",
+      "kind": "cube",
+      "position": [
+        2.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall56",
+      "kind": "cube",
+      "position": [
+        4.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall57",
+      "kind": "cube",
+      "position": [
+        6.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall58",
+      "kind": "cube",
+      "position": [
+        8.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    },
+    {
+      "name": "Wall59",
+      "kind": "cube",
+      "position": [
+        10.0,
+        1.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "color": "#8D6E63",
+      "behaviours": [
+        "solid"
+      ],
+      "props": {}
+    }
+  ]
+}

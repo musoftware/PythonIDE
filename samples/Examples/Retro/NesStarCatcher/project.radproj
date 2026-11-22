@@ -1,0 +1,18 @@
+{
+  "name": "NesStarCatcher",
+  "language": "retro-nes",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.s",
+    "tiles.inc",
+    "nes.inc",
+    "nes.cfg"
+  ],
+  "retro": {
+    "system": "nes",
+    "lang": "asm",
+    "main": "main.s",
+    "cfg": "nes.cfg"
+  }
+}

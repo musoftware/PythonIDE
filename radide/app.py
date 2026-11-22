@@ -325,6 +325,11 @@ class MainWindow(QMainWindow):
         self.hub = None                  # radide.runtimes.radhub.RadHub while a program runs
         self._hub_log.connect(self._append_output)
         self.settings = ide_settings()
+        try:        # the theme's application style sheet before any widget exists: each widget is polished once
+            from . import theme as _theme    # (Tools > Options applies it again at the end: then a no-op)
+            _theme.apply(str(self.settings.value("options/theme", "Light") or "Light"))
+        except Exception:  # noqa: BLE001 - the options code applies the theme anyway
+            pass
         # A solution holds several projects; self.project / self.plugin (and docs, designers,
         # codeviews, modviews, breakpoints) always mean the *active* project - the one whose
         # document is focused. Each project keeps its own state in self._pstates.

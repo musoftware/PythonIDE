@@ -1,0 +1,12 @@
+{
+  "name": "QuizGame",
+  "language": "typescript",
+  "forms": [
+    "Form1",
+    "Results"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "Questions.ts"
+  ]
+}

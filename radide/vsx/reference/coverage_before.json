@@ -1,0 +1,52 @@
+{
+ "commands": {
+  "total": 2808,
+  "internal": 138,
+  "no UI (resolves undefined)": 2370,
+  "implemented (Monaco)": 204,
+  "implemented": 82,
+  "accepted (no-op)": 14
+ },
+ "commandsUsed": {
+  "total": 272,
+  "implemented": 124
+ },
+ "apiCommands": {
+  "total": 59,
+  "implemented": 27
+ },
+ "api": {
+  "total": 2685,
+  "implemented": 1329,
+  "data": 204,
+  "honoured": 604,
+  "ignored": 133,
+  "extension-implemented": 61,
+  "consumed": 69,
+  "missing": 190,
+  "not-consumed": 68,
+  "stub": 26,
+  "optional-missing": 1
+ },
+ "apiCovered": 2267,
+ "contextKeys": {
+  "total": 1316,
+  "implemented": 21
+ },
+ "contextKeysUsed": {
+  "total": 156,
+  "implemented": 21
+ },
+ "contributionPoints": {
+  "total": 53,
+  "implemented": 12,
+  "missing": 33,
+  "partial": 8
+ },
+ "menus": {
+  "total": 98,
+  "implemented": 2,
+  "missing": 95,
+  "partial": 1
+ }
+}

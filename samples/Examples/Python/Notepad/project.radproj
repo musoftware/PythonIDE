@@ -1,0 +1,9 @@
+{
+  "name": "Notepad",
+  "language": "python-tk",
+  "forms": [
+    "frmNotepad"
+  ],
+  "startup": "frmNotepad",
+  "modules": []
+}

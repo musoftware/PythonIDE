@@ -1,0 +1,17 @@
+{
+  "name": "BreakoutGame",
+  "language": "pygame",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py",
+    "Arena.py"
+  ],
+  "scenes": [
+    "Arena"
+  ],
+  "game": {
+    "title": "Breakout",
+    "start_scene": "Arena"
+  }
+}

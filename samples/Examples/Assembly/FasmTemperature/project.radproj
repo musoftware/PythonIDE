@@ -1,0 +1,15 @@
+{
+  "name": "FasmTemperature",
+  "language": "asm-fasm",
+  "forms": [
+    "Form1"
+  ],
+  "startup": "Form1",
+  "modules": [],
+  "asm": {
+    "assembler": "fasm",
+    "arch": "x64",
+    "linker": "gcc",
+    "entry": "main"
+  }
+}

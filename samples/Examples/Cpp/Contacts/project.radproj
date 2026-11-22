@@ -1,0 +1,11 @@
+{
+  "name": "Contacts",
+  "language": "cpp-bridge",
+  "forms": [
+    "frmContacts"
+  ],
+  "startup": "frmContacts",
+  "modules": [
+    "ContactsDb.py"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "GemHunter2D",
+  "language": "godot",
+  "forms": [],
+  "startup": "Room1",
+  "modules": [
+    "Room1.gd"
+  ],
+  "scenes": [
+    "Room1"
+  ],
+  "game": {
+    "title": "GemHunter2D",
+    "start_scene": "Room1"
+  }
+}

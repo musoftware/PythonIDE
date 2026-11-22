@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "name": "RmDockWindow",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "A dockable tool window (container) inside an RmDockPanel.",
+  "category": "Modern (RAD)",
+  "order": 3240,
+  "builtin": true,
+  "prefix": "RmDockWindow",
+  "defaultSize": [
+    200,
+    200
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "Window",
+      "category": "Appearance",
+      "description": "Caption of the title bar."
+    },
+    {
+      "name": "DockSide",
+      "type": "enum",
+      "default": "Left",
+      "category": "Behavior",
+      "description": "Where it docks.",
+      "choices": [
+        "Left",
+        "Right",
+        "Top",
+        "Bottom",
+        "Fill",
+        "Float"
+      ]
+    },
+    {
+      "name": "AutoHide",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Collapsed to a side tab that slides out."
+    },
+    {
+      "name": "DockSize",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Docked width / height (0 = the designer size)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmDockWindow.py",
+      "class": "RmDockWindow",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

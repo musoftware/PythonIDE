@@ -96,6 +96,8 @@ TAB_PAGE_Y = 24
 TOOLSTRIP_H = 26
 # menu-like components whose Items get "<ItemName>_Click" handlers
 MENU_TYPES = ("MenuStrip", "ToolStrip")
+# containers whose children live on pages (props["TabPage"]; the designer shows the SelectedIndex page)
+PAGED_TYPES = ("TabControl", "RmTabStrip", "RmNavigationPane")
 DIALOG_TYPES = ("OpenFileDialog", "SaveFileDialog", "ColorDialog", "FontDialog", "FolderBrowserDialog")
 
 

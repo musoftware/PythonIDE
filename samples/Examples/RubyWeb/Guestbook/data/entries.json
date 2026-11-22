@@ -1,0 +1,4 @@
+[
+  { "id": 1, "name": "Mona", "message": "Nice little app - Sinatra is so short!", "rating": 5, "time": "2026-11-20T10:15:00+02:00" },
+  { "id": 2, "name": "خالد", "message": "تطبيق جميل، والصفحة العربية تعمل من اليمين إلى اليسار.", "rating": 4, "time": "2026-11-21T18:40:00+02:00" }
+]

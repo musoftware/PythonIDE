@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "name": "RmTile",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Metro tile: title, count, image, colour.",
+  "category": "Modern (RAD)",
+  "order": 3090,
+  "builtin": true,
+  "prefix": "RmTile",
+  "defaultSize": [
+    150,
+    150
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "Tile",
+      "category": "Appearance",
+      "description": "Caption at the bottom."
+    },
+    {
+      "name": "Count",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Big number / text at the top right."
+    },
+    {
+      "name": "Image",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Glyph name or image."
+    },
+    {
+      "name": "TileColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Background (empty = accent)."
+    },
+    {
+      "name": "Size",
+      "type": "enum",
+      "default": "Medium",
+      "category": "Appearance",
+      "description": "Small 70, Medium 150, Wide 310x150, Large 310 (pixels).",
+      "choices": [
+        "Small",
+        "Medium",
+        "Wide",
+        "Large"
+      ]
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "Click",
+      "description": "The tile was clicked."
+    }
+  ],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmTile.py",
+      "class": "RmTile",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

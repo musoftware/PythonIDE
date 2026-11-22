@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="About the City Guide sample site.">
+    <title>City Guide - About</title>
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header>
+    <h1>City Guide</h1>
+    <nav>
+        <a href="index.html">Places</a>
+        <a href="about.html" class="active">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="ar/index.html" lang="ar">العربية</a>
+    </nav>
+</header>
+<main>
+    <h2>About this site</h2>
+    <p>This is a static web site made in RAD IDE: plain HTML, CSS and JavaScript, served by the IDE's built-in
+       web server with live reload. Nothing to install.</p>
+    <figure>
+        <img src="img/skyline.svg" alt="A drawn city skyline" width="480" height="160">
+        <figcaption>The picture is an SVG file written by hand.</figcaption>
+    </figure>
+    <h3>What it shows</h3>
+    <ul>
+        <li>Several pages with a shared stylesheet and navigation</li>
+        <li>A list built from JavaScript data, with filtering</li>
+        <li>Favourites and form drafts saved in <code>localStorage</code></li>
+        <li>A contact form validated in JavaScript</li>
+        <li>An Arabic page laid out right-to-left (<code>dir="rtl"</code>)</li>
+    </ul>
+</main>
+<footer>Made with RAD IDE - <span id="clock"></span></footer>
+<script src="js/site.js"></script>
+</body>
+</html>

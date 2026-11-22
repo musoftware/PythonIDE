@@ -138,3 +138,24 @@ extension's lock file (`CLAUDE_CONFIG_DIR` is a scratch folder), calls the MCP t
 "Accept Proposed Changes" on the Diff tab, expects `FILE_SAVED` + the contents, then calls `close_tab`.
 Scratch `RADIDE_VSX_ROOT`, `RADIDE-TEST` QSettings (cleared at the end), `RADIDE_NO_BROWSER=1`, `widget.grab()` only.
 Checks: 74 (86 with Claude Code).
+
+## VS Code reference: built-in commands, context keys, contribution points - `test_vsx_reference.py`
+
+    python samples\Tests\VSX\test_vsx_reference.py <out_dir> [Claude Code .vsix]
+
+Code under test: the inventories in `radide/vsx/reference/` (extracted from microsoft/vscode, see its README and
+`COVERAGE.md`), `radide/vsx/host/commands.js` (API commands and workbench commands that need extension-host state,
+"command 'x' not found" for unknown ids), `radide/vsx/host/treeview.js` (TreeView: handles, reveal, events,
+message / title / description / badge), `radide/vsx/views_ui.py` (view containers in the activity bar / panel /
+secondary side bar, tree panes, view/title and view/item/context menus, viewsWelcome, when clauses of views),
+`radide/vsx/menus.py` (VS Code menu ordering, submenus, enablement, icons), `radide/vsx/context_keys.py`
+(config.*, view.<id>.visible, focus keys, editorHas*Provider ...), `radide/vsx/ide_commands.py` (workbench commands
+in the IDE: openSettings with a query, problems, side bar / panel / auxiliary bar toggles, extensions ...), the
+editor/title bar on every editor tab (`workbench_ui.EditorTitleBar`) and the raised API level (`radide.vsx.API_LEVEL`
+1.147.0: the test extension needs `^1.100.0`). Test extension `reference-test/` (MIT, written for this test).
+With a Claude Code .vsix the Command Palette entries are clicked like a user would: Open in Side Bar (the view lands in
+the secondary side bar), the same again after an extension-host restart with the side bar dock closed (the reported
+"Open in Side Bar does nothing" case), Open in New Tab, Open in New Window (the panel floats as its own window), Focus
+input, New Conversation, Show Logs, and the Claude button in the editor title bar.
+Scratch `RADIDE_VSX_ROOT`, `RADIDE-TEST` QSettings (cleared before / after), `RADIDE_NO_BROWSER=1`, `widget.grab()` only.
+Checks: 70 (86 with Claude Code).

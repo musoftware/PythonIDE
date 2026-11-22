@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "name": "RmDatePicker",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Date box with a drop-down calendar (locale month names).",
+  "category": "Modern (RAD)",
+  "order": 3200,
+  "builtin": true,
+  "prefix": "RmDatePicker",
+  "defaultSize": [
+    170,
+    30
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {
+      "name": "Value",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "The date yyyy-MM-dd (empty = today)."
+    },
+    {
+      "name": "Format",
+      "type": "str",
+      "default": "Short",
+      "category": "Appearance",
+      "description": "Short, Long, ISO or a pattern such as dd/MM/yyyy."
+    },
+    {
+      "name": "MinDate",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Earliest date (yyyy-MM-dd)."
+    },
+    {
+      "name": "MaxDate",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Latest date (yyyy-MM-dd)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged",
+      "description": "The date changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddDays",
+      "signature": "AddDays(n)",
+      "description": "Moves the date by n days."
+    },
+    {
+      "name": "AddMonths",
+      "signature": "AddMonths(n)",
+      "description": "Moves the date by n months."
+    },
+    {
+      "name": "Today",
+      "signature": "Today()",
+      "description": "Sets today's date."
+    },
+    {
+      "name": "ShowDropDown",
+      "signature": "ShowDropDown()",
+      "description": "Opens the calendar."
+    },
+    {
+      "name": "FormatDate",
+      "signature": "FormatDate(date, format)",
+      "description": "A date as text."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmDatePicker.py",
+      "class": "RmDatePicker",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

@@ -1,0 +1,38 @@
+<%# (c) 2026 Musoftware - https://musoftwares.com - MIT License %>
+<p class="lead"><%= t(:lead) %></p>
+
+<% unless @errors.empty? %>
+  <ul class="errors"><% @errors.each do |e| %><li><%= h e %></li><% end %></ul>
+<% end %>
+
+<form method="post" action="/entries?lang=<%= lang %>" class="card">
+  <label><%= t(:name) %> <input name="name" value="<%= h @form["name"] %>" maxlength="40" required></label>
+  <label><%= t(:message) %> <textarea name="message" rows="3" maxlength="500" required><%= h @form["message"] %></textarea></label>
+  <label><%= t(:rating) %>
+    <select name="rating">
+      <% 5.downto(1) do |n| %><option value="<%= n %>" <%= "selected" if @form["rating"].to_i == n %>><%= stars(n) %></option><% end %>
+    </select>
+  </label>
+  <button><%= t(:send) %></button>
+</form>
+
+<form method="get" action="/" class="search">
+  <input type="hidden" name="lang" value="<%= lang %>">
+  <input name="q" value="<%= h params[:q] %>" placeholder="<%= t(:search) %>"> <button><%= t(:search) %></button>
+  <span class="count"><%= format(t(:count), @entries.size) %></span>
+</form>
+
+<% if @entries.empty? %>
+  <p class="empty"><%= t(:empty) %></p>
+<% else %>
+  <ul class="entries">
+  <% @entries.each do |e| %>
+    <li class="entry" id="entry-<%= e["id"] %>">
+      <div class="who"><strong><%= h e["name"] %></strong> <span class="stars"><%= stars(e["rating"]) %></span>
+        <time><%= Time.parse(e["time"]).strftime("%Y-%m-%d %H:%M") %></time></div>
+      <p><%= h e["message"] %></p>
+      <form method="post" action="/entries/<%= e["id"] %>/delete?lang=<%= lang %>"><button class="link">×</button></form>
+    </li>
+  <% end %>
+  </ul>
+<% end %>

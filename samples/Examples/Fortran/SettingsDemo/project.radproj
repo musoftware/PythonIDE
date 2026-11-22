@@ -1,0 +1,13 @@
+{
+  "name": "SettingsDemo",
+  "language": "fortran-bridge",
+  "forms": [
+    "frmMain",
+    "frmSettings",
+    "frmAbout"
+  ],
+  "startup": "frmMain",
+  "modules": [
+    "app_settings.f90"
+  ]
+}

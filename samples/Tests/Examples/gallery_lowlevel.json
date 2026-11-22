@@ -1,0 +1,138 @@
+[
+ {
+  "key": "Assembly/NasmCalculator",
+  "lang": "asm-nasm",
+  "title_en": "Integer Calculator (NASM x64 + form)",
+  "title_ar": "آلة حاسبة للأعداد الصحيحة (NASM x64 + نموذج)",
+  "desc_en": "A RAD form whose event handlers are x64 NASM: + - x / remainder power, overflow (JO) and divide-by-zero checks, sprintf, a history ListBox and menus.",
+  "desc_ar": "نموذج مرئي معالجات أحداثه مكتوبة بلغة التجميع NASM x64: جمع وطرح وضرب وقسمة وباقي وأس، فحص الفيض والقسمة على صفر، sprintf، قائمة سجل وقوائم."
+ },
+ {
+  "key": "Assembly/NasmBaseConverter",
+  "lang": "asm-nasm",
+  "title_en": "Number Base Converter (NASM console)",
+  "title_ar": "محول أنظمة العد (NASM - طرفية)",
+  "desc_en": "x64 console tool: reads numbers and prints decimal, hex, octal, binary (own SHL loop), the number of 1 bits and power-of-two test.",
+  "desc_ar": "أداة طرفية x64: تقرأ أعدادا وتطبعها بالعشري والست عشري والثماني والثنائي (حلقة SHL خاصة) مع عدد البتات 1 واختبار قوى العدد 2."
+ },
+ {
+  "key": "Assembly/FasmTemperature",
+  "lang": "asm-fasm",
+  "title_en": "Temperature Converter (FASM + form)",
+  "title_ar": "محول درجات الحرارة (FASM + نموذج)",
+  "desc_en": "Celsius/Fahrenheit converter in FASM x64: rounded integer division, a CMP/Jcc chain describing the weather and a ProgressBar.",
+  "desc_ar": "محول بين المئوية والفهرنهايت بلغة FASM x64: قسمة صحيحة مع التقريب، سلسلة CMP/Jcc لوصف الطقس، وشريط تقدم."
+ },
+ {
+  "key": "Assembly/MasmTextTools",
+  "lang": "asm-masm",
+  "title_en": "Text & Array Tools (MASM ml64)",
+  "title_ar": "أدوات النصوص والمصفوفات (MASM ml64)",
+  "desc_en": "ml64 console program: string length, reverse, upper case, vowels, words; array sum/min/max/average and insertion sort.",
+  "desc_ar": "برنامج طرفية بـ ml64: طول النص وعكسه وتحويله لحروف كبيرة وعدّ الحروف المتحركة والكلمات؛ ومجموع المصفوفة وأصغر وأكبر قيمة والمتوسط والترتيب بالإدراج."
+ },
+ {
+  "key": "Assembly/GasGuessNumber",
+  "lang": "asm-gas",
+  "title_en": "Guess the Number (GNU as + form)",
+  "title_ar": "خمّن الرقم (GNU as + نموذج)",
+  "desc_en": "A game in GNU assembler (Intel syntax): RDTSC random number, too high / too low hints, tries counter, guesses ListBox, disabled button when won.",
+  "desc_ar": "لعبة بمجمّع GNU (صيغة إنتل): رقم عشوائي من RDTSC، تلميحات أكبر/أصغر، عداد المحاولات، قائمة التخمينات، وتعطيل الزر عند الفوز."
+ },
+ {
+  "key": "Assembly/Emu8086BubbleSort",
+  "lang": "emu8086",
+  "title_en": "Bubble Sort on the 8086 Emulator",
+  "title_ar": "الترتيب الفقاعي على محاكي 8086",
+  "desc_en": "A 16-bit .COM program for the IDE's own 8086 emulator: asks for the order, sorts signed words with early exit and prints every pass.",
+  "desc_ar": "برنامج COM بـ 16 بت لمحاكي 8086 المدمج في البيئة: يسأل عن اتجاه الترتيب ويرتب كلمات بإشارة مع الخروج المبكر ويطبع كل مرور."
+ },
+ {
+  "key": "DOS/QBasicArtMenu",
+  "lang": "dos-qbasic",
+  "title_en": "QBasic Art Menu (DOS)",
+  "title_ar": "قائمة الرسم بـ QBasic (دوس)",
+  "desc_en": "Boxed text-mode menu: times table, SCREEN 13 drawing (LINE, CIRCLE, PAINT, PSET), prime/divisor/binary facts, a calendar from DATE$.",
+  "desc_ar": "قائمة نصية بإطار: جدول الضرب، رسم بـ SCREEN 13 (LINE وCIRCLE وPAINT وPSET)، حقائق الأعداد الأولية والقواسم والثنائي، وتقويم من DATE$."
+ },
+ {
+  "key": "DOS/PascalPhoneBook",
+  "lang": "dos-pascal",
+  "title_en": "Phone Book (Turbo Pascal style, DOS)",
+  "title_ar": "دفتر الهاتف (بأسلوب Turbo Pascal، دوس)",
+  "desc_en": "Records saved in a typed file PHONES.DAT: add, list, find, delete, sort by name - the data survives between runs.",
+  "desc_ar": "سجلات تُحفظ في ملف من نوع محدد PHONES.DAT: إضافة وعرض وبحث وحذف وترتيب بالاسم - والبيانات تبقى بين مرات التشغيل."
+ },
+ {
+  "key": "DOS/CPixelPainter",
+  "lang": "dos-c",
+  "title_en": "Pixel Painter (C, mode 13h, DOS)",
+  "title_ar": "رسام البكسلات (C، الوضع 13h، دوس)",
+  "desc_en": "Keyboard paint program in C: arrow keys draw, 1-9 colours, R random rectangle, B box, C clear - straight into VGA memory at A000:0000.",
+  "desc_ar": "برنامج رسم بلوحة المفاتيح بلغة C: الأسهم ترسم، 1-9 للألوان، R مستطيل عشوائي، B مربع، C مسح - مباشرة في ذاكرة VGA عند A000:0000."
+ },
+ {
+  "key": "DOS/AsmSysInfo",
+  "lang": "dos-asm",
+  "title_en": "System Info .COM (16-bit assembly, DOS)",
+  "title_ar": "معلومات النظام .COM (تجميع 16 بت، دوس)",
+  "desc_en": "Key-driven .COM menu asking DOS and the BIOS: DOS version, date with day name, time, memory/equipment, and an upper-case echo of a typed line.",
+  "desc_ar": "قائمة .COM بالمفاتيح تسأل دوس والبايوس: إصدار دوس، التاريخ مع اسم اليوم، الوقت، الذاكرة والأجهزة، وإعادة سطر مكتوب بحروف كبيرة."
+ },
+ {
+  "key": "DOS/BatchToolbox",
+  "lang": "dos-batch",
+  "title_en": "Batch Toolbox (DOS .BAT)",
+  "title_ar": "صندوق أدوات الدفعات (دوس .BAT)",
+  "desc_en": "CHOICE menu with ERRORLEVEL, a second batch file called with an argument, notes kept in NOTES.TXT, FOR loops and DIR.",
+  "desc_ar": "قائمة CHOICE مع ERRORLEVEL، وملف دفعات ثانٍ يُستدعى بمعامل، وملاحظات تُحفظ في NOTES.TXT، وحلقات FOR و DIR."
+ },
+ {
+  "key": "DOS/TuiOrderForm",
+  "lang": "dos-tuiforms",
+  "title_en": "Coffee Order Form (DOS Text-Mode Designer)",
+  "title_ar": "نموذج طلب القهوة (مصمم الوضع النصي لدوس)",
+  "desc_en": "A DOS forms app drawn in the Text-Mode Designer (Pascal target): text box, option buttons, check boxes, list, progress bar, menus, message boxes.",
+  "desc_ar": "تطبيق نماذج لدوس مرسوم في مصمم الوضع النصي (هدف باسكال): مربع نص وأزرار خيارات ومربعات اختيار وقائمة وشريط تقدم وقوائم ورسائل."
+ },
+ {
+  "key": "Retro/Atari2600Runner",
+  "lang": "retro-atari2600",
+  "title_en": "Desert Runner (Atari 2600)",
+  "title_ar": "العدّاء في الصحراء (أتاري 2600)",
+  "desc_en": "A tiny endless runner: jump over cacti with fire, gravity with a signed velocity, playfield score bar, hardware collision flashes the sky.",
+  "desc_ar": "لعبة جري لا تنتهي: اقفز فوق الصبار بزر الإطلاق، جاذبية بسرعة لها إشارة، شريط نقاط من الـ playfield، والتصادم العتادي يومض السماء."
+ },
+ {
+  "key": "Retro/NesStarCatcher",
+  "lang": "retro-nes",
+  "title_en": "Star Catcher (NES)",
+  "title_ar": "صائد النجوم (نينتندو NES)",
+  "desc_en": "Catch falling stars with a basket: background drawn at reset, BCD score written to the name table in vblank, LFSR random, speed-ups.",
+  "desc_ar": "اصطد النجوم المتساقطة بسلة: الخلفية تُرسم عند البدء، والنقاط بنظام BCD تُكتب في جدول الأسماء أثناء vblank، وأرقام عشوائية بـ LFSR، وزيادة السرعة."
+ },
+ {
+  "key": "Retro/GameBoyGarden",
+  "lang": "retro-gameboy",
+  "title_en": "Garden Planter (Game Boy)",
+  "title_ar": "زارع الحديقة (جيم بوي)",
+  "desc_en": "Walk the gardener and press A to plant flowers on the grass; the count uses DAA; Start clears the garden.",
+  "desc_ar": "حرّك البستاني واضغط A لزراعة الزهور على العشب؛ العداد يستخدم DAA؛ و Start يمسح الحديقة."
+ },
+ {
+  "key": "Retro/C64RasterScroller",
+  "lang": "retro-c64",
+  "title_en": "Raster Scroller (Commodore 64)",
+  "title_ar": "التمرير والخطوط النقطية (كومودور 64)",
+  "desc_en": "Raster bars by busy-waiting on $D012, a smooth fine-scroll text row ($D016 just for that row), and a balloon sprite moved by joystick or W A S D.",
+  "desc_ar": "خطوط ملونة بانتظار $D012، وسطر نص يتحرك بنعومة ($D016 لهذا السطر فقط)، وكائن بالون يتحرك بعصا التحكم أو W A S D."
+ },
+ {
+  "key": "Retro/ZxBorderArt",
+  "lang": "retro-zx",
+  "title_en": "Border & Attribute Art (ZX Spectrum)",
+  "title_ar": "فن الإطار والسمات (ZX Spectrum)",
+  "desc_en": "Moving rainbow stripes made only of colour attributes, border bands after HALT, keys 1-4 change the width, P pauses, Space returns to BASIC.",
+  "desc_ar": "خطوط قوس قزح متحركة مصنوعة من سمات الألوان فقط، وأشرطة في الإطار بعد HALT، والمفاتيح 1-4 تغير العرض، و P إيقاف مؤقت، والمسافة للرجوع إلى BASIC."
+ }
+]

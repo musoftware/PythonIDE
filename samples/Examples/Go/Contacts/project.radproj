@@ -1,0 +1,9 @@
+{
+  "name": "Contacts",
+  "language": "go-bridge",
+  "forms": [
+    "frmContacts"
+  ],
+  "startup": "frmContacts",
+  "modules": []
+}

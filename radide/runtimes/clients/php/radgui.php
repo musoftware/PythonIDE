@@ -52,15 +52,30 @@ function rad__read(): string
     return rtrim($line, "\r\n");
 }
 
+// "ESC <command>" (radide/runtimes/bridge.py): \ newline CR escaped in the values, so multi-line text survives
+function rad__esc(string $s): string
+{
+    return strtr($s, ["\\" => "\\\\", "\n" => "\\n", "\r" => "\\r"]);
+}
+
+function rad__unesc(string $s): string
+{
+    return preg_replace_callback('/\\\\([\\\\nr])/', fn($m) => $m[1] === 'n' ? "\n" : ($m[1] === 'r' ? "\r" : "\\"), $s);
+}
+
 function rad_set(string $obj, string $prop, $value): void
 {
+    if (is_string($value) && strpbrk($value, "\r\n") !== false) {
+        rad__send("ESC SET $obj $prop " . rad__esc($value));          // multi-line text
+        return;
+    }
     rad__send("SET $obj $prop " . rad__line($value));
 }
 
 function rad_get(string $obj, string $prop): string
 {
-    rad__send("GET $obj $prop");
-    return rad__read();
+    rad__send("ESC GET $obj $prop");
+    return rad__unesc(rad__read());
 }
 
 function rad_num(string $obj, string $prop): float

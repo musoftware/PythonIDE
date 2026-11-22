@@ -1203,7 +1203,17 @@ class SizesPanel(QWidget):
         return out
 
     def schedule(self, *_a) -> None:
-        if self.isVisible() or self.side_by_side:
+        # a dock tabbed behind another one (Properties) still reports isVisible(): its visible region is
+        # empty then. Each render rebuilds the whole form in a hidden designer (seconds for a big form),
+        # so a hidden gallery waits until its tab is shown (dock.visibilityChanged -> schedule)
+        if self.side_by_side or (self.isVisible() and not self.visibleRegion().isEmpty()):
+            self.timer.start()
+        else:
+            self._stale = True
+
+    def _dock_shown(self, visible: bool) -> None:
+        if visible and getattr(self, "_stale", True):
+            self._stale = False
             self.timer.start()
 
     def showEvent(self, e):
@@ -1340,6 +1350,7 @@ def install(win) -> None:
     try:
         from .states import _add_dock, current_view
         panel.dock = _add_dock(win, "Sizes", panel, "dock_sizes")
+        panel.dock.visibilityChanged.connect(panel._dock_shown)
         win.tabs.currentChanged.connect(lambda *_a: panel.bind(current_view(win)))
     except Exception as e:  # noqa: BLE001
         win.log(f"[variants] Sizes window: {e}")

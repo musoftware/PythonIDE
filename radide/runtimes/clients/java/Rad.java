@@ -52,12 +52,16 @@ public class Rad {
             send(line);
             String answer = readLine();
             if (answer == null) System.exit(0);          // the IDE closed the program
-            return answer;
+            return unesc(answer);                        // answers to ESC commands are escaped
         }
     }
 
     /** A value as bridge text (True/False for booleans, one line). */
     public static String str(Object v) {
+        return text(v).replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ');
+    }
+
+    private static String text(Object v) {
         String s;
         if (v == null) s = "";
         else if (v instanceof Boolean) s = ((Boolean) v) ? "True" : "False";
@@ -65,7 +69,26 @@ public class Rad {
             double d = ((Number) v).doubleValue();
             s = d == Math.rint(d) && Math.abs(d) < 1e15 ? Long.toString((long) d) : Double.toString(d);
         } else s = v.toString();
-        return s.replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ');
+        return s;
+    }
+
+    /** A value for an "ESC" command: \\ newline CR escaped, so multi-line text survives the line protocol. */
+    private static String esc(Object v) {
+        return text(v).replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    /** The answer to an "ESC" command, unescaped. */
+    private static String unesc(String s) {
+        if (s.indexOf('\\') < 0) return s;
+        StringBuilder b = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length() && "\\nr".indexOf(s.charAt(i + 1)) >= 0) {
+                char n = s.charAt(++i);
+                b.append(n == 'n' ? '\n' : n == 'r' ? '\r' : '\\');
+            } else b.append(c);
+        }
+        return b.toString();
     }
 
     public static boolean toBool(String s) {
@@ -85,24 +108,24 @@ public class Rad {
     }
 
     // ------------------------------------------------------------------ GUI
-    public static void set(String obj, String prop, Object value) { send("SET " + obj + " " + prop + " " + str(value)); }
-    public static String get(String obj, String prop) { return ask("GET " + obj + " " + prop); }
+    public static void set(String obj, String prop, Object value) { send("ESC SET " + obj + " " + prop + " " + esc(value)); }
+    public static String get(String obj, String prop) { return ask("ESC GET " + obj + " " + prop); }
     public static double getNumber(String obj, String prop) { return toNumber(get(obj, prop)); }
 
     public static String call(String obj, String method, Object... args) {
-        StringBuilder b = new StringBuilder("CALL " + obj + " " + method);
+        StringBuilder b = new StringBuilder("ESC CALL " + obj + " " + method);
         if (args != null && args.length > 0) {
             b.append(' ');
             for (int k = 0; k < args.length; k++) {
                 if (k > 0) b.append('\t');
-                b.append(str(args[k]));
+                b.append(esc(args[k]));
             }
         }
         return ask(b.toString());
     }
 
-    public static int msgbox(Object text) { return toInt(ask("MSGBOX " + str(text))); }
-    public static String input(Object prompt) { return ask("INPUT " + str(prompt)); }
+    public static int msgbox(Object text) { return toInt(ask("ESC MSGBOX " + esc(text))); }
+    public static String input(Object prompt) { return ask("ESC INPUT " + esc(prompt)); }
     public static void show(String form) { send("SHOW " + form); }
     public static void hide(String form) { send("HIDE " + form); }
 

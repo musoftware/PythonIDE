@@ -583,6 +583,8 @@ class MonacoEditor(QWebEngineView):
             self._cursor = (line, 0)
 
     # ------------------------------------------------------------ IntelliSense
+    LSP_COMPLETION_WAIT_MS = 3000         # then the plugin's completions are shown without the server's
+
     def _complete(self, req: int, line: int, col: int):
         items = []
         extra = self._extra_completions(line, col)
@@ -591,7 +593,26 @@ class MonacoEditor(QWebEngineView):
             return
         try:
             if self.lsp is not None and self.lsp.running():
+                answered = []
+
+                def late(req=req, line=line, col=col):
+                    # the server did not answer in time (csharp-ls loading the project, a busy server): the
+                    # language's own completions now; the late answer is ignored (Monaco already has this request)
+                    if answered:
+                        return
+                    answered.append(True)
+                    try:
+                        items = self._plugin_items(line, col)
+                    except Exception:  # noqa: BLE001 - completion must never break typing
+                        items = []
+                    self._js(f"radResolve({req}, {json.dumps(self._merge_completions(extra, items))});")
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(self.LSP_COMPLETION_WAIT_MS, late)
+
                 def got(res, req=req, line=line, col=col):
+                    if answered:
+                        return
+                    answered.append(True)
                     if isinstance(res, dict):                 # a raw CompletionList
                         res = res.get("items") or []
                     res = [i for i in (res or []) if isinstance(i, dict) and i.get("label")]
@@ -658,11 +679,25 @@ class MonacoEditor(QWebEngineView):
         if lsp is not None and lsp.running() and hasattr(lsp, "signature_info") and (getattr(lsp, "capabilities", None) or {}).get("signatureHelpProvider"):
             try:          # language server: real signatures with parameter docs
                 lsp.did_change(self.path, self._text)
-                lsp.signature_info(self.path, line, col,
-                                   lambda res: self._js(f"radResolve({req}, {json.dumps(res or None)});"))
+                answered = []
+
+                def got(res, req=req, line=line, col=col):
+                    if answered:
+                        return
+                    answered.append(True)
+                    if res:
+                        self._js(f"radResolve({req}, {json.dumps(res)});")
+                    else:       # no answer (rust-analyzer without Cargo.toml / still indexing): the plugin's calltip
+                        self._plugin_signature(req, line, col)
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(self.LSP_COMPLETION_WAIT_MS, lambda: got(None))      # the server is silent
+                lsp.signature_info(self.path, line, col, got)
                 return
             except Exception:  # noqa: BLE001 - fall back to the plugin's calltip
                 pass
+        self._plugin_signature(req, line, col)
+
+    def _plugin_signature(self, req: int, line: int, col: int):
         tip = ""
         try:
             tip = self.plugin.calltip(self._text, line, col, self.path, self.names) or ""
@@ -679,12 +714,26 @@ class MonacoEditor(QWebEngineView):
         lsp = self.lsp
         if line >= 0 and lsp is not None and lsp.running() and (getattr(lsp, "capabilities", None) or {}).get("hoverProvider"):
             try:          # language server hover: signature + documentation (markdown)
-                lsp.hover(self.path, line, col, lambda text: self._js(f"radResolve({req}, {json.dumps(text or None)});"))
+                answered = []
+
+                def got(text, req=req, line=line, col=col):
+                    if answered:
+                        return
+                    answered.append(True)
+                    if not text:    # the server has nothing (no workspace yet, indexing): the plugin's own hover
+                        try:
+                            text = self.plugin.hover(self._text, line, col, self.path, self.names) or ""
+                        except Exception:  # noqa: BLE001 - hover must never break the editor
+                            text = ""
+                    self._js(f"radResolve({req}, {json.dumps(text or None)});")
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(self.LSP_COMPLETION_WAIT_MS, lambda: got(None))      # the server is silent
+                lsp.hover(self.path, line, col, got)
                 return
             except Exception:  # noqa: BLE001
                 pass
         text = ""
-        if line >= 0 and lsp is None:
+        if line >= 0:
             try:          # the plugin's own hover (Ring: radide/languages/ring_intel.py)
                 text = self.plugin.hover(self._text, line, col, self.path, self.names) or ""
             except Exception:  # noqa: BLE001 - hover must never break the editor

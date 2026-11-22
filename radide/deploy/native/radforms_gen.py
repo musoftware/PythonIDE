@@ -19,7 +19,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ...controls import CONTROL_TYPES, DIALOG_TYPES
+from ...controls import DIALOG_TYPES
 from ...layout import place_specs, tab_page
 from ...model import Form, Project
 
@@ -42,6 +42,7 @@ SUPPORTED_PROPS = {p.lower() for p in """
     Alignment Image Picture ToolTip ToolTipText SelStart SelectionStart SelLength SelectionLength SelText
     SelectedText Tag Name Interval Multiline hWnd Focused FileName FileTitle Filter Title InitialDirectory Color
     SelectedPath Description WindowState TopMost Icon Cancel ScaleWidth ScaleHeight StartPosition FormBorderStyle
+    Theme RightToLeft
     """.split()}
 SUPPORTED_METHODS = {m.lower() for m in """
     AddItem Add RemoveItem RemoveAt Clear List Item Items IndexOf FindString AppendText SelectAll TabCaption
@@ -67,6 +68,9 @@ def _val(v) -> str:
     if isinstance(v, float) and v.is_integer():
         return str(int(v))
     if isinstance(v, (list, tuple)):
+        if any(isinstance(x, (dict, list, tuple)) for x in v):    # nested items (ribbon, tree, nav): JSON
+            import json
+            return json.dumps(v, ensure_ascii=False, separators=(",", ":"))
         return ";".join(str(x) for x in v)
     return "" if v is None else str(v)
 
@@ -121,18 +125,33 @@ _CALL_RX = [re.compile(r"""\brad(?:_call|::call)\s*\(\s*["']([^"']*)["']\s*,\s*[
             re.compile(r"""\b(?:call\s+)?rad_callf?\s*\(\s*["']([^"']*)["']\s*,\s*["']([^"']+)["']""", re.I)]
 
 
+def module_members() -> tuple[set[str], set[str]]:
+    """(properties, methods) declared by the control modules (k.properties / k.methods), lower case."""
+    props, meths = set(), set()
+    for src in set(module_classes().values()):
+        text = src.read_text(encoding="utf-8", errors="replace")
+        for key, into in (("properties", props), ("methods", meths)):
+            for m in re.finditer(rf"\.{key}\s*=\s*((?:\"[^\"]*\"\s*)+)", text):
+                joined = "".join(re.findall(r'"([^"]*)"', m.group(1)))
+                into |= {x.strip().lower() for x in joined.split(",") if x.strip()}
+    return props, meths
+
+
 def code_reasons(texts: dict[str, str]) -> list[str]:
     """Properties / methods used with literal names in the program that radforms does not implement."""
     out, seen = [], set()
+    mprops, mmeths = module_members()
+    supported_props = SUPPORTED_PROPS | mprops
+    supported_methods = SUPPORTED_METHODS | mprops | mmeths
     for fname, text in texts.items():
         for rx in _SET_RX:
             for obj, prop in rx.findall(text):
-                if prop.lower() not in SUPPORTED_PROPS and (fname, prop.lower()) not in seen:
+                if prop.lower() not in supported_props and (fname, prop.lower()) not in seen:
                     seen.add((fname, prop.lower()))
                     out.append(f"{fname}: property '{prop}' ({obj}) is not supported by the native runtime")
         for rx in _CALL_RX:
             for obj, meth in rx.findall(text):
-                if meth.lower() not in SUPPORTED_METHODS and (fname, meth.lower()) not in seen:
+                if meth.lower() not in supported_methods and (fname, meth.lower()) not in seen:
                     seen.add((fname, meth.lower()))
                     out.append(f"{fname}: method '{meth}' ({obj}) is not supported by the native runtime")
     return out
@@ -359,10 +378,28 @@ def module_classes() -> dict[str, Path]:
     return out
 
 
+_REQUIRES_RX = re.compile(r"RF_REQUIRES:\s*([\w., ]+)")
+
+
+def module_requires(src: Path) -> list[Path]:
+    """Helper sources a module needs ("RF_REQUIRES: rm_kit.c" in a comment), found next to it."""
+    m = _REQUIRES_RX.search(Path(src).read_text(encoding="utf-8", errors="replace"))
+    names = m.group(1).replace(",", " ").split() if m else []
+    return [Path(src).parent / n for n in names if (Path(src).parent / n).is_file()]
+
+
 def modules_for(types) -> list[Path]:
-    """Module sources needed for these control type names (only what a project uses is linked)."""
+    """Module sources needed for these control type names (only what a project uses is linked), with the
+    helper sources they require."""
     mc = module_classes()
-    return sorted({mc[t] for t in types if t in mc})
+    out = {mc[t] for t in types if t in mc}
+    todo = list(out)
+    while todo:
+        for dep in module_requires(todo.pop()):
+            if dep not in out:
+                out.add(dep)
+                todo.append(dep)
+    return sorted(out)
 
 
 def modules_source(modules) -> str:
@@ -402,7 +439,7 @@ def build_static_lib(out_dir: Path, cc: str, ar: str = "", log=print) -> Path:
     for src in [RADFORMS_C, *mods, allsrc]:
         o = obj / (Path(src).stem + ".o")
         cmd = [cc, "-std=gnu99", "-c", "-Os", "-ffunction-sections", "-fno-asynchronous-unwind-tables", "-I",
-               str(RADFORMS_DIR), str(src), "-o", str(o)]
+               str(RADFORMS_DIR), "-I", str(MODULES_DIR), str(src), "-o", str(o)]
         r = subprocess.run(cmd, capture_output=True, text=True, env=_tool_env(cc))
         if r.returncode != 0:
             from ..build import BuildError
@@ -535,11 +572,18 @@ def api_description() -> dict:
     for cls, src in module_classes().items():
         text = src.read_text(encoding="utf-8", errors="replace")
 
-        def field(key):
-            m = re.search(rf"\.{key}\s*=\s*\"([^\"]*)\"", text) or re.search(rf"k\.{key}\s*=\s*\"([^\"]*)\"", text)
-            return [x for x in (m.group(1).split(",") if m else []) if x]
-        classes.append({"name": cls, "builtin": False, "module": src.name, "container": "RF_CLASS_CONTAINER" in text,
-                        "nonvisual": "RF_CLASS_NONVISUAL" in text, "ownerdraw": "RF_CLASS_OWNERDRAW" in text,
+        def field(key, text=text, cls=cls):
+            # the module's rf_class of this name: the k.<key> = "..." "..." after k.name = "<cls>"
+            i = text.find(f'.name = "{cls}"')
+            seg = text[i:] if i >= 0 else text
+            m = re.search(rf"\.{key}\s*=\s*((?:\"[^\"]*\"\s*)+)", seg)
+            joined = "".join(re.findall(r'"([^"]*)"', m.group(1))) if m else ""
+            return [x.strip() for x in joined.split(",") if x.strip()]
+        i = text.find(f'.name = "{cls}"')
+        fm = re.search(r"\.flags\s*=\s*([^;]*);", text[i:] if i >= 0 else text)
+        flags = fm.group(1) if fm else text
+        classes.append({"name": cls, "builtin": False, "module": src.name, "container": "RF_CLASS_CONTAINER" in flags,
+                        "nonvisual": "RF_CLASS_NONVISUAL" in flags, "ownerdraw": "RF_CLASS_OWNERDRAW" in flags,
                         "properties": COMMON_PROPS + field("properties"), "events": field("events"),
                         "methods": field("methods") + CONTROL_METHODS})
     return {"library": "radforms", "abi_version": int(ver.group(1)) if ver else 0, "header": "radforms.h",
@@ -575,7 +619,7 @@ def build_msvc_lib(out_dir: Path, log=print) -> Path | None:
     lib = out_dir / "radforms.lib"
     bat = obj / "build.bat"
     bat.write_text(f'@echo off\r\nset "PATH={VS_INSTALLER};%PATH%"\r\ncall "{vcvars}" >nul\r\n'
-                   f'cl /nologo /c /O1 /Gy /GS- /Zl /utf-8 /TC /W3 /I "{RADFORMS_DIR}" {srcs}\r\n'
+                   f'cl /nologo /c /O1 /Gy /GS- /Zl /utf-8 /TC /W3 /I "{RADFORMS_DIR}" /I "{MODULES_DIR}" {srcs}\r\n'
                    f'if errorlevel 1 exit /b 1\r\nlib /nologo /OUT:"{lib}" *.obj\r\n', encoding="utf-8")
     r = subprocess.run(["cmd", "/c", str(bat)], cwd=str(obj), capture_output=True, text=True, errors="replace")
     if r.returncode != 0 or not lib.is_file():

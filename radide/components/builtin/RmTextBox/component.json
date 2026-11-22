@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "name": "RmTextBox",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Text box with watermark, clear button, icon, validation border, password and multi-line modes.",
+  "category": "Modern (RAD)",
+  "order": 3040,
+  "builtin": true,
+  "prefix": "RmTextBox",
+  "defaultSize": [
+    200,
+    30
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": ""
+  },
+  "defaultEvent": "TextChanged",
+  "properties": [
+    {
+      "name": "Watermark",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Grey hint shown while the box is empty."
+    },
+    {
+      "name": "Icon",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Glyph name or image at the left (search, user, mail ...)."
+    },
+    {
+      "name": "ShowClear",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Shows an x that clears the text."
+    },
+    {
+      "name": "PasswordChar",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Character shown instead of the text (e.g. *)."
+    },
+    {
+      "name": "MultiLine",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Several lines."
+    },
+    {
+      "name": "ReadOnly",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "The user cannot change the text."
+    },
+    {
+      "name": "ErrorText",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Not empty = red border and error icon (validation)."
+    },
+    {
+      "name": "MaxLength",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Maximum characters (0 = no limit)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "TextChanged",
+      "description": "The text changed."
+    },
+    {
+      "name": "KeyPress",
+      "description": "A character was typed (e.KeyChar).",
+      "args": "key"
+    },
+    {
+      "name": "IconClick",
+      "description": "The icon was clicked."
+    }
+  ],
+  "methods": [
+    {
+      "name": "Clear",
+      "signature": "Clear()",
+      "description": "Empties the text."
+    },
+    {
+      "name": "SelectAll",
+      "signature": "SelectAll()",
+      "description": "Selects all the text."
+    },
+    {
+      "name": "AppendText",
+      "signature": "AppendText(text)",
+      "description": "Adds text at the end."
+    },
+    {
+      "name": "Focus",
+      "signature": "Focus()",
+      "description": "Moves the focus to the box."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmTextBox.py",
+      "class": "RmTextBox",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

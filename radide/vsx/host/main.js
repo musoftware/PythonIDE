@@ -32,6 +32,8 @@ const { Debug } = require('./debug');
 const { Webviews } = require('./webview');
 const { FileSystems, Tabs, Terminals, decode, encode } = require('./workbench');
 const S = require('./services');
+const { BuiltinCommands, NOT_HANDLED, knownVsCodeCommands } = require('./commands');
+const { TreeViews } = require('./treeview');
 
 const PROVIDER_TIMEOUT = 5000;
 
@@ -99,7 +101,7 @@ class Host {
     this.rpc = new Rpc(process.stdin, realStdoutWrite);
     this.docs = new DocumentStore();
     this.docs.saveHandler = (doc) => this.saveDocument(doc);
-    this.apiVersion = '1.90.0';
+    this.apiVersion = '1.147.0';
     this.extensions = new Map();          // id (lower) -> ext record
     this.commands = new Map();            // id -> {ext, callback, thisArg}
     this.providers = [];                  // {id, ext, kind, selector, provider, triggers, metadata}
@@ -124,6 +126,8 @@ class Host {
     this.tasksSvc = new S.Tasks(this);
     this.customEditors = new S.CustomEditors(this);
     this.notebooks = new S.Notebooks(this);
+    this.builtins = new BuiltinCommands(this);
+    this.treeViews = new TreeViews(this);
     this.windowState = { focused: true, active: true };
     this.uriScheme = 'radide';
     this.breakpoints = [];
@@ -310,8 +314,16 @@ class Host {
     if (c) return c.callback.apply(c.thisArg, args);
     const builtin = await this._builtinCommand(id, args);
     if (builtin !== undefined) return builtin === null ? undefined : builtin;
+    const own = await this.builtins.run(id, args);
+    if (own !== NOT_HANDLED) return own;
     const r = await this.rpc.request('commands/executeIde', { command: id, args: C.plain(args) });
     void ext;
+    if (r && typeof r === 'object' && r.$notFound) {
+      // CommandService.executeCommand: an unknown id rejects; a VS Code command RAD IDE has no UI for resolves
+      if (this.builtins.isKnown(id)) { this.unsupported(ext, 'command ' + id); return undefined; }
+      throw new Error(`command '${id}' not found`);
+    }
+    if (r && typeof r === 'object' && typeof r.$error === 'string') throw new Error(r.$error);
     return r === null ? undefined : r;
   }
 
@@ -462,11 +474,6 @@ class Host {
       }
       case 'cursorMove': case 'revealLine': case 'editorScroll': return undefined;      // Monaco commands (the IDE side)
       case 'notebook.cell.execute': case 'notebook.execute': return null;               // no notebook UI
-      case 'vscode.executeCompletionItemProvider': {
-        const doc = await docOf(args[0]);
-        const r = await this._lspCompletion(doc, args[1]);
-        return new T.CompletionList((r.items || []).map((i) => new T.CompletionItem(i.label, (i.kind || 1) - 1)), r.isIncomplete);
-      }
       case 'vscode.executeHoverProvider': {
         const doc = await docOf(args[0]);
         return this._collect('hover', doc, (p, tok) => p.provideHover(doc, args[1], tok));
@@ -510,20 +517,6 @@ class Host {
         }
         return out;
       }
-      case 'vscode.executeCodeActionProvider': {
-        const doc = await docOf(args[0]);
-        const range = args[1] instanceof T.Range ? args[1] : new T.Range(args[1].start || args[1], args[1].end || args[1]);
-        const ctx = { diagnostics: this.getDiagnostics(doc.uri).filter((d) => d.range.intersection(range)), only: args[2] ? new T.CodeActionKind(args[2]) : undefined, triggerKind: T.CodeActionTriggerKind.Invoke };
-        return (await this._collect('codeAction', doc, (p, tok) => p.provideCodeActions(doc, range, ctx, tok))).flat();
-      }
-      case 'vscode.executeCodeLensProvider': {
-        const doc = await docOf(args[0]);
-        return (await this._collect('codeLens', doc, (p, tok) => p.provideCodeLenses(doc, tok))).flat();
-      }
-      case 'vscode.executeLinkProvider': {
-        const doc = await docOf(args[0]);
-        return (await this._collect('documentLink', doc, (p, tok) => p.provideDocumentLinks(doc, tok))).flat();
-      }
       case 'vscode.executeFoldingRangeProvider': {
         const doc = await docOf(args[0]);
         return (await this._collect('foldingRange', doc, (p, tok) => p.provideFoldingRanges(doc, {}, tok))).flat();
@@ -554,8 +547,13 @@ class Host {
   }
 
   getCommands(filterInternal) {
-    const ids = [...this.commands.keys()].concat(BUILTIN_COMMANDS.filter((c) => !this.commands.has(c)));
-    return Promise.resolve(filterInternal ? ids.filter((i) => !i.startsWith('_')) : ids);
+    // like VS Code: every registered command - the extensions' and the built-in ones (radide/vsx/reference/commands.json)
+    const ids = new Set(this.commands.keys());
+    for (const c of BUILTIN_COMMANDS) ids.add(c);
+    for (const c of this.builtins.ids()) ids.add(c);
+    for (const c of knownVsCodeCommands()) ids.add(c);
+    const list = [...ids];
+    return Promise.resolve(filterInternal ? list.filter((i) => !i.startsWith('_')) : list);
   }
 
   // -------------------------------------------------------------------------- window: messages / pickers
@@ -603,7 +601,7 @@ class Host {
     const host = this;
     const em = { accept: new T.EventEmitter(), hide: new T.EventEmitter(), value: new T.EventEmitter(), active: new T.EventEmitter(), selection: new T.EventEmitter(), button: new T.EventEmitter(), itemButton: new T.EventEmitter() };
     const qp = {
-      items: [], activeItems: [], selectedItems: [], value: '', placeholder: '', title: '', busy: false, enabled: true,
+      items: [], activeItems: [], selectedItems: [], value: '', placeholder: '', prompt: undefined, title: '', busy: false, enabled: true,
       ignoreFocusOut: false, canSelectMany: false, matchOnDescription: false, matchOnDetail: false, keepScrollPosition: false, buttons: [], step: undefined, totalSteps: undefined, sortByLabel: true,
       onDidAccept: em.accept.event, onDidHide: em.hide.event, onDidChangeValue: em.value.event, onDidChangeActive: em.active.event,
       onDidChangeSelection: em.selection.event, onDidTriggerButton: em.button.event, onDidTriggerItemButton: em.itemButton.event,
@@ -612,7 +610,7 @@ class Host {
         if (this._shown) return;
         this._shown = true;
         for (let i = 0; i < 60 && (!this.items || !this.items.length); i++) await new Promise((r) => setTimeout(r, 50));
-        const res = await host.rpc.request('window/showQuickPick', { items: (this.items || []).map((x) => ({ label: x.label, description: x.description, detail: x.detail, picked: !!x.picked, kind: x.kind })), canPickMany: !!this.canSelectMany, placeHolder: this.placeholder || '', title: this.title || '', value: this.value || '' });
+        const res = await host.rpc.request('window/showQuickPick', { items: (this.items || []).map((x) => ({ label: x.label, description: x.description, detail: x.detail, picked: !!x.picked, kind: x.kind })), canPickMany: !!this.canSelectMany, placeHolder: this.placeholder || this.prompt || '', title: this.title || '', value: this.value || '' });
         this._shown = false;
         if (res !== null && res !== undefined) {
           const sel = (Array.isArray(res) ? res : [res]).map((i) => this.items[i]).filter(Boolean);
@@ -656,8 +654,8 @@ class Host {
       replace: (v) => send('output/replace', { text: String(v) }),
       clear: () => send('output/clear', {}),
       show: (a, b) => send('output/show', { preserveFocus: typeof a === 'boolean' ? a : !!b }),
-      hide: () => {},
-      dispose: () => {},
+      hide: () => send('output/hide', {}),
+      dispose: () => send('output/dispose', {}),
     };
     if (log) {
       const L = (lvl) => (msg, ...args) => {
@@ -826,40 +824,18 @@ class Host {
   terminals() { return this.terminalsSvc.list(); }
   async executeTask(ext, task) { return this.tasksSvc.execute(ext, task); }
 
+  // registrations RAD IDE keeps without a UI that would call them (Timeline, language model providers)
+  registerTimeline(ext, key, provider) {
+    this._kept = this._kept || new Map();
+    const k = (ext ? ext.id : '') + ':' + key;
+    this._kept.set(k, provider);
+    return new T.Disposable(() => { if (this._kept.get(k) === provider) this._kept.delete(k); });
+  }
+
   // -------------------------------------------------------------------------- tree views
-  registerTreeDataProvider(ext, viewId, provider) {
-    const entry = { ext, viewId, provider, handles: new Map(), n: 0 };
-    this.trees.set(viewId, entry);
-    if (provider.onDidChangeTreeData) provider.onDidChangeTreeData(() => this.rpc.notify('tree/changed', { viewId }));
-    this.rpc.notify('tree/registered', { viewId, ext: ext.id });
-    return new T.Disposable(() => { this.trees.delete(viewId); });
-  }
-
-  createTreeView(ext, viewId, options) {
-    const d = this.registerTreeDataProvider(ext, viewId, options.treeDataProvider);
-    const em = new T.EventEmitter();
-    return { visible: true, selection: [], message: undefined, title: undefined, description: undefined, badge: undefined,
-      onDidChangeSelection: em.event, onDidChangeVisibility: em.event, onDidExpandElement: em.event, onDidCollapseElement: em.event, onDidChangeCheckboxState: em.event,
-      reveal: () => Promise.resolve(), dispose: () => d.dispose() };
-  }
-
-  async treeChildren({ viewId, handle }) {
-    const t = this.trees.get(viewId);
-    if (!t) { await this.activateByEvent('onView:' + viewId); }
-    const tree = this.trees.get(viewId);
-    if (!tree) return [];
-    const parent = handle ? tree.handles.get(handle) : undefined;
-    const kids = (await withTimeout(tree.provider.getChildren(parent), PROVIDER_TIMEOUT, [])) || [];
-    const out = [];
-    for (const el of kids) {
-      const item = await tree.provider.getTreeItem(el);
-      const h = 'n' + (++tree.n);
-      tree.handles.set(h, el);
-      const label = typeof item.label === 'string' ? item.label : (item.label && item.label.label) || (item.resourceUri ? path.basename(item.resourceUri.fsPath) : '');
-      out.push({ handle: h, label, description: typeof item.description === 'string' ? item.description : '', tooltip: C.markdownText(item.tooltip), collapsible: item.collapsibleState || 0, command: item.command ? this.cmdCache.put(item.command) : undefined, icon: item.iconPath && item.iconPath.id ? item.iconPath.id : undefined, contextValue: item.contextValue, path: item.resourceUri && item.resourceUri.scheme === 'file' ? item.resourceUri.fsPath : undefined });
-    }
-    return out;
-  }
+  registerTreeDataProvider(ext, viewId, provider) { return this.treeViews.register(ext, viewId, provider); }
+  createTreeView(ext, viewId, options) { return this.treeViews.create(ext, viewId, options); }
+  treeChildren(p) { return this.treeViews.children(p); }
 
   // -------------------------------------------------------------------------- workspace
   workspaceFolders() { return this._folders; }
@@ -1514,6 +1490,7 @@ class Host {
 
     R('initialize', async (p) => {
       this.apiVersion = p.apiVersion || this.apiVersion;
+      this.portable = !!p.portable;
       this.storageRoot = p.storageRoot || this.storageRoot;
       this.appRoot = p.appRoot || this.appRoot;
       this.uiLanguage = p.language || 'en';
@@ -1556,7 +1533,7 @@ class Host {
     });
     R('commands/list', async () => [...this.commands.keys()]);
     R('lsp', (p) => this.lsp(p));
-    R('tree/children', (p) => this.treeChildren(p));
+    this.treeViews.register_rpc(R, N);
     R('debug/resolve', (p) => this.debug.resolve(p));
     R('debug/contributed', async () => this.debug.contributed().map((d) => ({ type: d.type, label: d.label, languages: d.languages, ext: d.ext.id, initialConfigurations: d.contribution.initialConfigurations || [], configurationAttributes: d.contribution.configurationAttributes || {}, hasProgram: !!(d.contribution.program || d.contribution.runtime || d.contribution.windows) })));
     N('debug/sessionStarted', (p) => this.debug.started(p));

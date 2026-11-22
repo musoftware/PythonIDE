@@ -79,6 +79,43 @@ static void rad_send(const char *a, const char *b, const char *c, const char *d)
     fflush(stdout);
 }
 
+/* "ESC <command> ..." line: \\ newline CR are escaped in the values, so multi-line text works; the host
+ * answers such a command escaped the same way (rad_reply) */
+static void rad_send_esc(const char *a, const char *b, const char *c, const char *d) {
+    const char *parts[4];
+    int i;
+    parts[0] = a; parts[1] = b; parts[2] = c; parts[3] = d;
+    fputs("ESC", stdout);
+    for (i = 0; i < 4; i++) {
+        const char *p = parts[i];
+        if (!p) break;
+        fputc(' ', stdout);
+        for (; *p; p++) {
+            if (*p == '\\') fputs("\\\\", stdout);
+            else if (*p == '\n') fputs("\\n", stdout);
+            else if (*p == '\r') fputs("\\r", stdout);
+            else fputc(*p, stdout);
+        }
+    }
+    fputc('\n', stdout);
+    fflush(stdout);
+}
+
+/* the answer to an ESC command, unescaped */
+static char *rad_reply(void) {
+    char *b = rad_readline(NULL), *r = b, *w = b;
+    while (*r) {
+        if (r[0] == '\\' && (r[1] == '\\' || r[1] == 'n' || r[1] == 'r')) {
+            *w++ = r[1] == 'n' ? '\n' : r[1] == 'r' ? '\r' : '\\';
+            r += 2;
+        } else {
+            *w++ = *r++;
+        }
+    }
+    *w = 0;
+    return b;
+}
+
 void rad_init(void) {
     setvbuf(stdout, NULL, _IOLBF, 4096);
 }
@@ -88,7 +125,7 @@ void rad_done(void) { rad_send("DONE", NULL, NULL, NULL); }
 void rad_end(void) { rad_send("END", NULL, NULL, NULL); }
 
 void rad_set(const char *obj, const char *prop, const char *value) {
-    rad_send("SET", obj, prop, value ? value : "");
+    rad_send_esc("SET", obj, prop, value ? value : "");
 }
 
 void rad_set_num(const char *obj, const char *prop, double value) {
@@ -96,26 +133,26 @@ void rad_set_num(const char *obj, const char *prop, double value) {
 }
 
 const char *rad_get(const char *obj, const char *prop) {
-    rad_send("GET", obj, prop, NULL);
-    return rad_readline(NULL);
+    rad_send_esc("GET", obj, prop, NULL);
+    return rad_reply();
 }
 
 double rad_get_num(const char *obj, const char *prop) { return rad_num(rad_get(obj, prop)); }
 
 const char *rad_call(const char *obj, const char *method, const char *args) {
-    if (args && *args) rad_send("CALL", obj, method, args);
-    else rad_send("CALL", obj, method, NULL);
-    return rad_readline(NULL);
+    if (args && *args) rad_send_esc("CALL", obj, method, args);
+    else rad_send_esc("CALL", obj, method, NULL);
+    return rad_reply();
 }
 
 void rad_msgbox(const char *text) {
-    rad_send("MSGBOX", text, NULL, NULL);
-    rad_readline(NULL);
+    rad_send_esc("MSGBOX", text, NULL, NULL);
+    rad_reply();
 }
 
 const char *rad_input(const char *prompt) {
-    rad_send("INPUT", prompt, NULL, NULL);
-    return rad_readline(NULL);
+    rad_send_esc("INPUT", prompt, NULL, NULL);
+    return rad_reply();
 }
 
 void rad_show(const char *form) { rad_send("SHOW", form, NULL, NULL); }

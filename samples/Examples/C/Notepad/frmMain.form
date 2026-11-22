@@ -1,0 +1,209 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "frmMain",
+    "Text": "Untitled - Notepad",
+    "Width": 640,
+    "Height": 460,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "mnuMain",
+        "Items": [
+          {
+            "Text": "&File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "&New",
+                "Name": "mnuNew"
+              },
+              {
+                "Text": "&Open...",
+                "Name": "mnuOpen"
+              },
+              {
+                "Text": "&Save",
+                "Name": "mnuSave"
+              },
+              {
+                "Text": "Save &As...",
+                "Name": "mnuSaveAs"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "E&xit",
+                "Name": "mnuExit"
+              }
+            ]
+          },
+          {
+            "Text": "&Edit",
+            "Name": "mnuEdit",
+            "Items": [
+              {
+                "Text": "Cu&t",
+                "Name": "mnuCut"
+              },
+              {
+                "Text": "&Copy",
+                "Name": "mnuCopy"
+              },
+              {
+                "Text": "&Paste",
+                "Name": "mnuPaste"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Select &All",
+                "Name": "mnuSelectAll"
+              },
+              {
+                "Text": "&Find...",
+                "Name": "mnuFind"
+              },
+              {
+                "Text": "Find &Next",
+                "Name": "mnuFindNext"
+              },
+              {
+                "Text": "&Replace...",
+                "Name": "mnuReplace"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Time/&Date",
+                "Name": "mnuTimeDate"
+              }
+            ]
+          },
+          {
+            "Text": "F&ormat",
+            "Name": "mnuFormat",
+            "Items": [
+              {
+                "Text": "&Font...",
+                "Name": "mnuFont"
+              },
+              {
+                "Text": "&Word count",
+                "Name": "mnuWordCount"
+              }
+            ]
+          },
+          {
+            "Text": "&Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "&About",
+                "Name": "mnuAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtDoc",
+        "Text": "",
+        "Left": 0,
+        "Top": 0,
+        "Width": 624,
+        "Height": 376,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Consolas",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "Multiline": true,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "StatusBar",
+      "props": {
+        "Name": "sbStatus",
+        "Text": "Ready",
+        "Left": 0,
+        "Top": 380,
+        "Width": 624,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Bottom, Left, Right",
+        "Dock": "Bottom",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "OpenFileDialog",
+      "props": {
+        "Name": "dlgOpen",
+        "Title": "Open a text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgSave",
+        "Title": "Save the text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "FontDialog",
+      "props": {
+        "Name": "dlgFont",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "Parent": ""
+      }
+    }
+  ]
+}

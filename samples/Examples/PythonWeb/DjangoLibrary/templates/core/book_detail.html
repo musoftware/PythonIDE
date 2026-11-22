@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{# (c) 2026 Musoftware - https://musoftwares.com - MIT License #}
+{% block title %}{{ book.title }} - {{ site_name }}{% endblock %}
+{% block content %}
+<h2>{{ book.title }}</h2>
+<dl>
+    <dt>Author</dt><dd>{{ book.author.name }}{% if book.author.country %} ({{ book.author.country }}){% endif %}</dd>
+    <dt>Year</dt><dd>{{ book.year|default:"-" }}</dd>
+    <dt>Genre</dt><dd>{{ book.get_genre_display }}</dd>
+    <dt>ISBN</dt><dd>{{ book.isbn|default:"-" }}</dd>
+    <dt>Status</dt><dd>{% if book.available %}available{% else %}lent to {{ book.borrower }}{% endif %}</dd>
+</dl>
+<form method="post" action="{% url 'core:book_borrow' book.pk %}" class="inline">{% csrf_token %}
+    {% if book.available %}{{ borrow_form.borrower }} <button>Lend</button>{% else %}<button>Mark as returned</button>{% endif %}
+</form>
+<p><a href="{% url 'core:book_edit' book.pk %}">Edit</a> | <a href="{% url 'core:book_delete' book.pk %}">Delete</a></p>
+{% endblock %}

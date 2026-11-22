@@ -1,0 +1,9 @@
+{
+  "name": "Calculator",
+  "language": "cpp-bridge",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": []
+}

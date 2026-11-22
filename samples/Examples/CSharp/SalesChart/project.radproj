@@ -1,0 +1,9 @@
+{
+  "name": "SalesChart",
+  "language": "csharp-bridge",
+  "forms": [
+    "frmChart"
+  ],
+  "startup": "frmChart",
+  "modules": []
+}

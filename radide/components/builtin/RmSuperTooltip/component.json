@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "name": "RmSuperTooltip",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Rich tooltips (title, image, text, footer) attached to controls.",
+  "category": "Modern (RAD)",
+  "order": 3260,
+  "builtin": true,
+  "prefix": "RmSuperTooltip",
+  "defaultSize": [
+    0,
+    0
+  ],
+  "kind": "nonvisual",
+  "hasText": false,
+  "commonEvents": false,
+  "properties": [
+    {
+      "name": "Delay",
+      "type": "int",
+      "default": 500,
+      "category": "Behavior",
+      "description": "Milliseconds before the tip shows."
+    },
+    {
+      "name": "MaxWidth",
+      "type": "int",
+      "default": 320,
+      "category": "Appearance",
+      "description": "Width limit."
+    },
+    {
+      "name": "Duration",
+      "type": "int",
+      "default": 8000,
+      "category": "Behavior",
+      "description": "Milliseconds shown (0 = until the mouse leaves)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [],
+  "methods": [
+    {
+      "name": "SetToolTip",
+      "signature": "SetToolTip(control, title, text, footer, image)",
+      "description": "Attaches a tip to a control (by name)."
+    },
+    {
+      "name": "Show",
+      "signature": "Show(control)",
+      "description": "Shows the control's tip now."
+    },
+    {
+      "name": "Hide",
+      "signature": "Hide()",
+      "description": "Hides the tip."
+    },
+    {
+      "name": "RemoveToolTip",
+      "signature": "RemoveToolTip(control)",
+      "description": "Removes a control's tip."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmSuperTooltip.py",
+      "class": "RmSuperTooltip",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

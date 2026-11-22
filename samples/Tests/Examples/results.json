@@ -1,0 +1,2096 @@
+[
+ {
+  "project": "Assembly/Emu8086BubbleSort",
+  "language": "emu8086",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: emu8086, modules ['main.asm']",
+   "build: 125 listing lines",
+   "run: 8086 emulator: descending + ascending sorts, invalid key rejected",
+   "publish: runs inside the IDE's 8086 emulator (no Windows exe)"
+  ],
+  "group": "lowlevel",
+  "seconds": 0.6
+ },
+ {
+  "project": "Assembly/FasmTemperature",
+  "language": "asm-fasm",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.92 MB (bridge, python inside: yes)",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 8/8 controls",
+   "build: _radapp.exe 0.2 MB",
+   "run: window 'Temperature Converter (FASM x64)'; [('100 C = 212 F', '87'), ('-40 C = -40 F', '0'), ('98 F = 37 C', '48')]; feel: 'Hot - drink some water!'",
+   "publish: FasmTemperature.exe 73.92 MB",
+   "published exe window: 'Temperature Converter (FASM x64)'"
+  ],
+  "group": "lowlevel",
+  "seconds": 79.4
+ },
+ {
+  "project": "Assembly/GasGuessNumber",
+  "language": "asm-gas",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.37 MB (bridge, python inside: yes)",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 8/8 controls",
+   "build: _radapp.exe 0.1 MB",
+   "run: window 'Guess the Number (GNU as)'; binary search won in 5 tries ('Correct! You found 28 in 5 tries.'); out-of-range MsgBox True; disabled True; new game resets True",
+   "publish: GasGuessNumber.exe 73.37 MB",
+   "published exe window: 'Guess the Number (GNU as)'"
+  ],
+  "group": "lowlevel",
+  "seconds": 84.8
+ },
+ {
+  "project": "Assembly/MasmTextTools",
+  "language": "asm-masm",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.66 MB (asm, python inside: no)",
+  "result": "ok",
+  "notes": [
+   "open: asm-masm, modules ['main.asm']",
+   "build: Build succeeded: _radapp.exe",
+   "run: 17 lines, all expected",
+   "publish: MasmTextTools.exe 0.66 MB"
+  ],
+  "group": "lowlevel",
+  "seconds": 12.0
+ },
+ {
+  "project": "Assembly/NasmBaseConverter",
+  "language": "asm-nasm",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.06 MB (asm, python inside: no)",
+  "result": "ok",
+  "notes": [
+   "open: asm-nasm, modules ['main.asm']",
+   "build: Build succeeded: _radapp.exe",
+   "run: 25 lines, all expected",
+   "publish: NasmBaseConverter.exe 0.06 MB"
+  ],
+  "group": "lowlevel",
+  "seconds": 5.6
+ },
+ {
+  "project": "Assembly/NasmCalculator",
+  "language": "asm-nasm",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.42 MB (bridge, python inside: yes)",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 15/15 controls",
+   "build: _radapp.exe 0.1 MB",
+   "run: window 'Assembly Calculator (NASM x64)'; results [True, True, True, True, True, True], history ['7 + 3 = 10', '7 - 3 = 4', '7 x 3 = 21', '7 / 3 = 2', '7 mod 3 = 1', '7 ^ 3 = 343'], divide-by-zero MsgBox True, cleared True",
+   "publish: NasmCalculator.exe 73.42 MB",
+   "published exe window: 'Assembly Calculator (NASM x64)'"
+  ],
+  "group": "lowlevel",
+  "seconds": 147.1
+ },
+ {
+  "project": "DOS/AsmSysInfo",
+  "language": "dos-asm",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-asm, modules ['MAIN.ASM']",
+   "build: ========== Build succeeded: ASMSYSIN.COM 0 error(s), 0 warning(s), 0.07 s ========== (903 bytes)",
+   "run: ASMSYSIN.COM is a DOS .COM: True; keys '12x5hi_dos~q': ok; keys '34q': ok",
+   "publish: a DOS program: the .EXE/.COM itself is the deliverable (runs in DOSBox-X)"
+  ],
+  "group": "lowlevel",
+  "seconds": 1.5
+ },
+ {
+  "project": "DOS/BatchToolbox",
+  "language": "dos-batch",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-batch, modules ['MAIN.BAT', 'NOTES.BAT']",
+   "build: ========== Build succeeded:  0 error(s), 0 warning(s), 0.04 s ========== (1553 bytes)",
+   "run: keys '1136': ok; keys '26': ok; NOTES.TXT has 2 added notes",
+   "publish: a DOS program: the .EXE/.COM itself is the deliverable (runs in DOSBox-X)"
+  ],
+  "group": "lowlevel",
+  "seconds": 1.6
+ },
+ {
+  "project": "DOS/CPixelPainter",
+  "language": "dos-c",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-c, modules ['MAIN.C']",
+   "build: ========== Build succeeded: CPIXELPA.EXE 0 error(s), 0 warning(s), 0.14 s ========== (10966 bytes)",
+   "run: CPIXELPA.EXE is a DOS MZ .EXE: True; keys '^R^R^R^D^D2rb^L^U`': ok; mode 13h frame 12 colours, 7127 pixels set",
+   "publish: a DOS program: the .EXE/.COM itself is the deliverable (runs in DOSBox-X)"
+  ],
+  "group": "lowlevel",
+  "seconds": 2.3
+ },
+ {
+  "project": "DOS/PascalPhoneBook",
+  "language": "dos-pascal",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-pascal, modules ['MAIN.PAS']",
+   "build: ========== Build succeeded: PASCALPH.EXE 0 error(s), 0 warning(s), 0.27 s ========== (25520 bytes)",
+   "run: PASCALPH.EXE is a DOS MZ .EXE: True; keys 'aZed~555~Giza~q': ok; keys 'aAli~777~Suez~q': ok; keys 'sq': ok; keys 'fal~q': ok",
+   "publish: a DOS program: the .EXE/.COM itself is the deliverable (runs in DOSBox-X)"
+  ],
+  "group": "lowlevel",
+  "seconds": 3.3
+ },
+ {
+  "project": "DOS/QBasicArtMenu",
+  "language": "dos-qbasic",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-qbasic, modules ['MAIN.BAS']",
+   "build: ========== Build succeeded: QBASICAR.EXE 0 error(s), 0 warning(s), 4.1 s ========== (251392 bytes)",
+   "run: QBASICAR.EXE is a DOS MZ .EXE: True; keys '1z`': ok; keys '397~z`': ok; keys '2z`': ok; keys '4z`': ok",
+   "publish: a DOS program: the .EXE/.COM itself is the deliverable (runs in DOSBox-X)"
+  ],
+  "group": "lowlevel",
+  "seconds": 8.2
+ },
+ {
+  "project": "DOS/TuiOrderForm",
+  "language": "dos-tuiforms",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: dos-pascal, modules ['MAIN.PAS', 'Main.tform']",
+   "open: 20 text-mode controls in Main.tform",
+   "build: ========== Build succeeded: TUIORDER.EXE 0 error(s), 0 warning(s), 0.2 s ==========",
+   "run: screen drawn; empty name -> message box; Ali Large + milk ordered -> list, total 23, progress 1/10",
+   "publish: a DOS program (TUIORDER.EXE) that runs in DOSBox-X"
+  ],
+  "group": "lowlevel",
+  "seconds": 3.3
+ },
+ {
+  "project": "Dart/TipCalculator",
+  "language": "dart-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.68 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 13/13 controls; Form2: 3/3 controls",
+   "run: window 'Tip Calculator (Dart)'; 200 @15% /2 -> 'Tip E£30.00  Total E£230.00  Each E£115.00'; 20% /3 rounded -> 'Tip E£40.00  Total E£240.00  Each E£80.00'; history 2; bad input -> MsgBox; Help>About opens Form2 True (bridge host)",
+   "build: dart analyze: No issues found!",
+   "publish: kind=bridge exe=TipCalculator.exe (11.69 MB) folder=73.68 MB python_inside=True; published exe shows 'Tip Calculator (Dart)'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "TipCalculator.exe",
+   "size_mb": 73.68,
+   "exe_mb": 11.69,
+   "python_inside": true
+  },
+  "seconds": 76.9
+ },
+ {
+  "project": "Dart/WordScramble",
+  "language": "dart-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.68 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 12/12 controls",
+   "run: window 'Word Scramble (Dart)'; IEGALLV -> village -> Score: 10; hint 'Starts with \"v\"'; Timer1.Tick 60->59 (bridge host)",
+   "build: dart analyze: No issues found!",
+   "publish: kind=bridge exe=WordScramble.exe (11.69 MB) folder=73.68 MB python_inside=True; published exe shows 'Word Scramble (Dart)'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "WordScramble.exe",
+   "size_mb": 73.68,
+   "exe_mb": 11.69,
+   "python_inside": true
+  },
+  "seconds": 70.1
+ },
+ {
+  "project": "Flutter/TodoDesigner",
+  "language": "flutter",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "27.51 MB",
+  "result": "ok",
+  "notes": [
+   "open: Settings: 17/17 widgets, names ['swtArabic', 'swtHideDone']; Todo: 19/19 widgets, names ['btnAdd', 'txtTask']",
+   "build: flutter pub get + analyze: No issues found! (ran in 2.4s)",
+   "run: flutter test (add task, tick it, Settings > Arabic -> RTL + Arabic labels): 00:02 +1: All tests passed!",
+   "publish: kind=flutter exe=todo_designer.exe (0.09 MB) folder=27.51 MB python_inside=False; published exe shows 'todo_designer'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "flutter",
+   "exe": "todo_designer.exe",
+   "size_mb": 27.51,
+   "exe_mb": 0.09,
+   "python_inside": false
+  },
+  "seconds": 93.3
+ },
+ {
+  "project": "Godot/GemHunter2D",
+  "language": "godot",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: Room1: 12 objects, .tscn exported",
+   "build: godot --check-only Room1.gd (Godot: Godot_v4.2.2-stable_win64.exe)",
+   "run: window='GemHunter2D (DEBUG)' exit=0 gem=True RADGAME_RESULT frames=200 score=10",
+   "publish: Godot games are exported with Godot's own export templates (Project > Export)"
+  ],
+  "group": "pyweb",
+  "seconds": 17.1
+ },
+ {
+  "project": "JavaScript/Calculator",
+  "language": "javascript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.14 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 25/25 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 8/8 checks",
+   "publish: kind=native exe=Calculator.exe size=83.14 MB python_inside=False; published exe shows 'Calculator - JavaScript'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "native",
+   "exe": "Calculator.exe",
+   "size_mb": 83.14,
+   "exe_mb": 83.13,
+   "python_inside": false
+  },
+  "seconds": 25.4
+ },
+ {
+  "project": "JavaScript/Contacts",
+  "language": "javascript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.03 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 18/18 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 10/10 checks",
+   "publish: kind=bridge exe=Contacts.exe size=73.03 MB python_inside=True; published exe shows 'Contacts - JavaScript + SQLite'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "Contacts.exe",
+   "size_mb": 73.03,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 113.1
+ },
+ {
+  "project": "JavaScript/FocusTimer",
+  "language": "javascript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.13 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 9/9 controls; Settings: 8/8 controls",
+   "build: 2 file(s) ok [2 form(s)]",
+   "run: 11/11 checks",
+   "publish: kind=native exe=FocusTimer.exe size=83.13 MB python_inside=False; published exe shows 'Focus Timer - JavaScript'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "native",
+   "exe": "FocusTimer.exe",
+   "size_mb": 83.13,
+   "exe_mb": 83.13,
+   "python_inside": false
+  },
+  "seconds": 29.9
+ },
+ {
+  "project": "JavaScript/Notepad",
+  "language": "javascript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.13 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 5/5 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 9/9 checks",
+   "publish: kept from an earlier run"
+  ],
+  "group": "js",
+  "seconds": 1.6
+ },
+ {
+  "project": "Lua/Calculator",
+  "language": "lua-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.3 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 23/23 controls",
+   "build: 3 file(s) checked with lua54.exe",
+   "run: window 'Calculator - Lua'; buttons build 7*6-2 ok, precedence = 40 ok, keyboard (1+2)*3 = 9 ok, division by zero MsgBox ok, history ok",
+   "publish: kind=native exe=Calculator.exe size=0.3 MB python_inside=False"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "native",
+   "exe": "Calculator.exe",
+   "size_mb": 0.3,
+   "exe_mb": 0.29,
+   "python_inside": false
+  },
+  "seconds": 13.9
+ },
+ {
+  "project": "Lua/GuessGame",
+  "language": "lua-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.29 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 11/11 controls",
+   "build: 3 file(s) checked with lua54.exe",
+   "run: window 'Guess the Number - Lua'; new game ok, higher hint ok, Enter + lower hint ok, Timer ok, win MsgBox ok, tries bar ok, best score saved ok, level menu ok",
+   "publish: kind=native exe=GuessGame.exe size=0.29 MB python_inside=False"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "native",
+   "exe": "GuessGame.exe",
+   "size_mb": 0.29,
+   "exe_mb": 0.29,
+   "python_inside": false
+  },
+  "seconds": 13.0
+ },
+ {
+  "project": "Lua/Notes",
+  "language": "lua-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.3 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 10/10 controls; FindForm: 5/5 controls",
+   "build: 5 file(s) checked with lua54.exe",
+   "run: window 'Notes - Lua'; 2 seed notes ok, multi-line body ok, save new note ok, Arabic note ok, Find dialog shown ok, found note ok, delete ok",
+   "publish: kind=native exe=Notes.exe size=0.3 MB python_inside=False"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "native",
+   "exe": "Notes.exe",
+   "size_mb": 0.3,
+   "exe_mb": 0.29,
+   "python_inside": false
+  },
+  "seconds": 15.2
+ },
+ {
+  "project": "Mobile/ShoppingListExpo",
+  "language": "expo",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "5.13 MB web bundle",
+  "result": "ok",
+  "notes": [
+   "open: MainScreen: 8/8 controls; ItemScreen: 7/7 controls",
+   "build: expo export --platform web ok",
+   "run: store.js in Node: {'rows': 1, 'summary': '2 items - 1 still to buy', 'removed': 1, 'qty': 2}; app UI: F5 in the IDE (expo start --web)",
+   "publish: web bundle = the expo export above"
+  ],
+  "group": "pyweb",
+  "seconds": 8.1
+ },
+ {
+  "project": "NodeWeb/QuickPoll",
+  "language": "node-web",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.04 MB",
+  "result": "ok",
+  "notes": [
+   "open: website project (node-web, root=.)",
+   "build: 3 file(s) ok",
+   "run: 10/10 checks",
+   "publish: kind=site folder: 10 file(s), 0.04 MB, python_inside=False (Uploaded 10 file(s) (43.8 KB), deleted 0, 0 unchanged in 0.1 s.)"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "site-folder",
+   "files": 10,
+   "size_mb": 0.04,
+   "python_inside": false
+  },
+  "seconds": 6.4
+ },
+ {
+  "project": "PHP/ContactsPDO",
+  "language": "php",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.69 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 16/16 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 10/10 checks",
+   "publish: kind=bridge exe=ContactsPDO.exe size=73.69 MB python_inside=True; published exe shows 'Contacts - PHP + PDO SQLite'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "ContactsPDO.exe",
+   "size_mb": 73.69,
+   "exe_mb": 11.69,
+   "python_inside": true
+  },
+  "seconds": 68.9
+ },
+ {
+  "project": "PHP/Invoice",
+  "language": "php",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.69 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 19/19 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 10/10 checks",
+   "publish: kind=bridge exe=Invoice.exe size=73.69 MB python_inside=True; published exe shows 'Invoice - PHP'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "Invoice.exe",
+   "size_mb": 73.69,
+   "exe_mb": 11.69,
+   "python_inside": true
+  },
+  "seconds": 69.8
+ },
+ {
+  "project": "PHP/TextTools",
+  "language": "php",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.68 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 10/10 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 9/9 checks",
+   "publish: kind=bridge exe=TextTools.exe size=73.68 MB python_inside=True; published exe shows 'Text Tools - PHP'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "TextTools.exe",
+   "size_mb": 73.68,
+   "exe_mb": 11.69,
+   "python_inside": true
+  },
+  "seconds": 92.0
+ },
+ {
+  "project": "PHPWeb/Guestbook",
+  "language": "php-web",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.01 MB",
+  "result": "ok",
+  "notes": [
+   "open: website project (php-web, root=public)",
+   "build: 3 file(s) ok",
+   "run: 13/13 checks",
+   "publish: kind=site folder: 5 file(s), 0.01 MB, python_inside=False (Uploaded 5 file(s) (12.4 KB), deleted 0, 0 unchanged in 0.0 s.)"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "site-folder",
+   "files": 5,
+   "size_mb": 0.01,
+   "python_inside": false
+  },
+  "seconds": 4.5
+ },
+ {
+  "project": "Perl/ExpenseTracker",
+  "language": "perl-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "skipped",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 16/16 controls",
+   "build: 3 file(s) checked with perl.EXE",
+   "run: window 'Expense Tracker - Perl'; loaded 3 rows ok, validation MsgBox ok, added row ok, total ok, by category ok, saved CSV ok, delete with InputBox ok"
+  ],
+  "group": "scripts",
+  "seconds": 1.4
+ },
+ {
+  "project": "Perl/LogViewer",
+  "language": "perl-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "skipped",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 10/10 controls",
+   "build: 2 file(s) checked with perl.EXE",
+   "run: window 'Log Viewer - Perl'; 6 lines ok, counts ok, level filter ok, text filter ok, Timer tail ok, simulate ok, go to line ok"
+  ],
+  "group": "scripts",
+  "seconds": 2.0
+ },
+ {
+  "project": "Perl/TextStats",
+  "language": "perl-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "skipped",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 14/14 controls",
+   "build: 3 file(s) checked with perl.EXE",
+   "run: window 'Text Statistics - Perl'; stats 3 lines ok, top-words grid ok, regex matches ok, Enter key ok, bad pattern MsgBox ok"
+  ],
+  "group": "scripts",
+  "seconds": 1.8
+ },
+ {
+  "project": "PowerShell/FileOrganizer",
+  "language": "powershell-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.02 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 11/11 controls",
+   "build: 3 file(s) checked with powershell.EXE",
+   "run: window 'File Organizer (preview) - PowerShell'; Documents default ok, FolderBrowserDialog + scan ok, targets ok, sub-folders (Enter) ok, CSV plan ok, missing folder MsgBox ok, nothing moved ok",
+   "publish: kind=bridge exe=FileOrganizer.exe size=73.02 MB python_inside=True notes=[\"The user's PC needs powershell (PowerShell (GUI Bridge) runtime) installed and on PATH.\"]"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "FileOrganizer.exe",
+   "size_mb": 73.02,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 109.7
+ },
+ {
+  "project": "PowerShell/PasswordGen",
+  "language": "powershell-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.07 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 14/14 controls",
+   "build: 3 file(s) checked with powershell.EXE",
+   "run: window 'Password Generator - PowerShell'; generated at load ok, 24 chars, all sets ok, strength ok, Arabic label ok, no set -> MsgBox ok, weak typed ok, copy (test clipboard file) ok, history ok",
+   "publish: kind=native-net48 exe=PasswordGen.exe size=0.07 MB python_inside=False notes=['Runs on the .NET Framework 4.8 that is part of Windows 10/11 (nothing to install).']"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "native-net48",
+   "exe": "PasswordGen.exe",
+   "size_mb": 0.07,
+   "exe_mb": 0.07,
+   "python_inside": false
+  },
+  "seconds": 9.4
+ },
+ {
+  "project": "PowerShell/SystemInfo",
+  "language": "powershell-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.02 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 14/14 controls",
+   "build: 3 file(s) checked with powershell.EXE",
+   "run: window 'System Info - PowerShell'; info grid ok, top processes ok, drives ok, memory bar ok, Timer clock ok, SaveFileDialog report ok, menu toggle ok",
+   "publish: kind=bridge exe=SystemInfo.exe size=73.02 MB python_inside=True notes=[\"The user's PC needs powershell (PowerShell (GUI Bridge) runtime) installed and on PATH.\"]"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "SystemInfo.exe",
+   "size_mb": 73.02,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 106.5
+ },
+ {
+  "project": "Python/Calculator",
+  "language": "python-tk",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "25.99 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmCalc: 27/27 controls",
+   "build: 3 files compiled",
+   "run: 12/12 checks; F5: window 'Calculator'",
+   "publish: kind=pyinstaller exe=Calculator.exe 25.99 MB (python); published exe window: Calculator"
+  ],
+  "group": "python",
+  "seconds": 38.6
+ },
+ {
+  "project": "Python/Contacts",
+  "language": "python-tk",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "27.73 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmContacts: 28/28 controls",
+   "build: 4 files compiled",
+   "run: 13/13 checks; F5: window 'Contacts (SQLite)'",
+   "publish: kind=pyinstaller exe=Contacts.exe 27.73 MB (python); published exe window: Contacts (SQLite)"
+  ],
+  "group": "python",
+  "seconds": 40.0
+ },
+ {
+  "project": "Python/DataNotebook",
+  "language": "notebook (.ipynb)",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: nbformat 4.5: 10 cells, validate() = None",
+   "build: File > Export as .py compiles",
+   "run: 6/6 checks"
+  ],
+  "group": "python",
+  "seconds": 4.6
+ },
+ {
+  "project": "Python/Notepad",
+  "language": "python-tk",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "26.02 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmNotepad: 12/12 controls",
+   "build: 2 files compiled",
+   "run: 17/17 checks; F5: window 'Untitled - RAD Notepad'",
+   "publish: kind=pyinstaller exe=Notepad.exe 26.02 MB (python); published exe window: Untitled - RAD Notepad"
+  ],
+  "group": "python",
+  "seconds": 43.4
+ },
+ {
+  "project": "Python/PaintChart",
+  "language": "python-tk",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "26.02 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmPaint: 23/23 controls",
+   "build: 2 files compiled",
+   "run: 12/12 checks; F5: window 'Paint & Live Chart'",
+   "publish: kind=pyinstaller exe=PaintChart.exe 26.02 MB (python); published exe window: Paint & Live Chart"
+  ],
+  "group": "python",
+  "seconds": 44.4
+ },
+ {
+  "project": "Python/SettingsMultiForm",
+  "language": "python-tk",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "26.02 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmMain: 9/9 controls; frmSettings: 9/9 controls",
+   "build: 5 files compiled",
+   "run: 15/15 checks; F5: window 'Greeting Card - multi-form'",
+   "publish: kind=pyinstaller exe=SettingsMultiForm.exe 26.02 MB (python); published exe window: Greeting Card - multi-form"
+  ],
+  "group": "python",
+  "seconds": 29.5
+ },
+ {
+  "project": "PythonGames/BreakoutGame",
+  "language": "pygame",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "64.42 MB",
+  "result": "ok",
+  "notes": [
+   "open: Arena: 55 objects",
+   "build: 6 files compiled",
+   "run: window='Breakout' exit=0 launch=True bricks_hit=1 score=10",
+   "publish: published exe window='Breakout' kind=pyinstaller exe=BreakoutGame.exe size=64.42MB python_inside=True"
+  ],
+  "group": "pyweb",
+  "seconds": 39.9
+ },
+ {
+  "project": "PythonGames/CapitalsQuiz",
+  "language": "kivy",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "92.88 MB",
+  "result": "ok",
+  "notes": [
+   "open: MainScreen: 12/12 controls; ResultScreen: 4/4 controls",
+   "build: 7 files compiled",
+   "run: window='CapitalsQuiz' exit=0 answers=8 result=True",
+   "publish: published exe window='(untitled window)' kind=pyinstaller exe=CapitalsQuiz.exe size=92.88MB python_inside=True"
+  ],
+  "group": "pyweb",
+  "seconds": 100.6
+ },
+ {
+  "project": "PythonGames/CoinCollector",
+  "language": "python-arcade",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "71.73 MB",
+  "result": "ok",
+  "notes": [
+   "open: arcade project (code only, no designer)",
+   "build: 1 files compiled",
+   "run: window='Coin Collector' exit=0 coin=True pause=True",
+   "publish: published exe window='Coin Collector' kind=pyinstaller exe=CoinCollector.exe size=71.73MB python_inside=True"
+  ],
+  "group": "pyweb",
+  "seconds": 53.0
+ },
+ {
+  "project": "PythonGames/CrystalMaze3D",
+  "language": "python-ursina",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "165.29 MB",
+  "result": "ok",
+  "notes": [
+   "open: Maze: 66 objects",
+   "build: 3 files compiled",
+   "run: window='Crystal Maze 3D' exit=0 crystal=True wall_blocks=True",
+   "publish: published exe window='Crystal Maze 3D' kind=pyinstaller exe=CrystalMaze3D.exe size=165.29MB python_inside=True"
+  ],
+  "group": "pyweb",
+  "seconds": 124.3
+ },
+ {
+  "project": "PythonQt/Dashboard",
+  "language": "python-qt",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "114.21 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmDashboard: 20/20 controls",
+   "build: 2 files compiled",
+   "run: 10/10 checks; F5: window 'System Dashboard - PySide6'",
+   "publish: kind=pyinstaller exe=Dashboard.exe 114.21 MB (python); published exe window: System Dashboard - PySide6"
+  ],
+  "group": "python",
+  "seconds": 98.4
+ },
+ {
+  "project": "PythonQt/Inventory",
+  "language": "python-qt",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "115.69 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmInventory: 11/11 controls; frmItem: 13/13 controls",
+   "build: 5 files compiled",
+   "run: 13/13 checks; F5: window 'Inventory (SQLite) - PySide6'",
+   "publish: kind=pyinstaller exe=Inventory.exe 115.69 MB (python); published exe window: Inventory (SQLite) - PySide6"
+  ],
+  "group": "python",
+  "seconds": 90.0
+ },
+ {
+  "project": "PythonQt/TextEditor",
+  "language": "python-qt",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "114.03 MB (python)",
+  "result": "ok",
+  "notes": [
+   "open: frmEditor: 11/11 controls",
+   "build: 2 files compiled",
+   "run: 13/13 checks; F5: window 'Untitled - Qt Text Editor'",
+   "publish: kind=pyinstaller exe=TextEditor.exe 114.03 MB (python); published exe window: Untitled - Qt Text Editor"
+  ],
+  "group": "python",
+  "seconds": 112.7
+ },
+ {
+  "project": "PythonWeb/DjangoLibrary",
+  "language": "python-django",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.02 MB / 28 files",
+  "result": "ok",
+  "notes": [
+   "open: 7 routes in the framework index",
+   "build: compileall in the project's .venv",
+   "run: GET / 200, add 200 (saved), lend 200, search found, api 1 books, admin 200",
+   "publish: kind=web folder, 28 files"
+  ],
+  "group": "pyweb",
+  "seconds": 10.1
+ },
+ {
+  "project": "PythonWeb/FastApiTasks",
+  "language": "python-fastapi",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.01 MB / 9 files",
+  "result": "ok",
+  "notes": [
+   "open: 7 routes in the framework index",
+   "build: compileall in the project's .venv",
+   "run: GET / 200, POST 201, PATCH 200, invalid 422, done-filter 1, stats {\"total\":1,\"done\":1,\"open\":0}, /docs 200, static 200",
+   "publish: kind=web folder, 9 files"
+  ],
+  "group": "pyweb",
+  "seconds": 4.1
+ },
+ {
+  "project": "PythonWeb/FlaskGuestbook",
+  "language": "python-flask",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.01 MB / 13 files",
+  "result": "ok",
+  "notes": [
+   "open: 6 routes in the framework index",
+   "build: compileall in the project's .venv",
+   "run: GET / 200, sign 200, validation ok, api POST 201, list 2, delete 200",
+   "publish: kind=web folder, 13 files"
+  ],
+  "group": "pyweb",
+  "seconds": 13.6
+ },
+ {
+  "project": "Retro/Atari2600Runner",
+  "language": "retro-atari2600",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: retro-atari2600, modules ['main.asm', 'atari2600.h']",
+   "build: Atari2600Runner.bin 4096 bytes",
+   "run: 4 KB ROM, reset vector $F000 True; Stella window 'Stella 7.0: \"Atari2600Runner\"', still running after 2 s True (Stella has no headless hook in the IDE: window check only)",
+   "publish: the .bin ROM is the deliverable"
+  ],
+  "group": "lowlevel",
+  "seconds": 3.2
+ },
+ {
+  "project": "Retro/C64RasterScroller",
+  "language": "retro-c64",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: retro-c64, modules ['main.s', 'c64.cfg']",
+   "build: C64RasterScroller.prg 757 bytes",
+   "run: PRG load address $0801 True; VICE window 'VICE (C64SC)'; frame counter running True; monitor keyboard feed 'D' x8: balloon x 160 -> 176, moves 0 -> 8",
+   "publish: the .prg is the deliverable (runs in VICE or on a real C64)"
+  ],
+  "group": "lowlevel",
+  "seconds": 4.7
+ },
+ {
+  "project": "Retro/GameBoyGarden",
+  "language": "retro-gameboy",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: retro-gameboy, modules ['main.asm', 'tiles.inc', 'gb.inc']",
+   "build: GameBoyGarden.gb 32768 bytes",
+   "run: header logo + checksums True; Mesen headless: count digits changed True, 76 garden pixels differ (walked + planted 2 flowers)",
+   "publish: the .gb ROM is the deliverable"
+  ],
+  "group": "lowlevel",
+  "seconds": 2.6
+ },
+ {
+  "project": "Retro/NesStarCatcher",
+  "language": "retro-nes",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: retro-nes, modules ['main.s', 'tiles.inc', 'nes.inc', 'nes.cfg']",
+   "build: NesStarCatcher.nes 40976 bytes",
+   "run: iNES header True; Mesen headless frames: basket x idle 128, Right 240, Left+B 16",
+   "publish: the .nes ROM is the deliverable (runs in any NES emulator)"
+  ],
+  "group": "lowlevel",
+  "seconds": 6.4
+ },
+ {
+  "project": "Retro/ZxBorderArt",
+  "language": "retro-zx",
+  "open": "ok",
+  "build": "ok",
+  "run": "skipped",
+  "publish": "n/a",
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "open: retro-zx, modules ['main.asm']",
+   "build: ZxBorderArt.tap 364 bytes",
+   "run: .tap: BASIC loader + CODE block True (364 bytes). No ZX Spectrum emulator in the IDE's emulator catalog; set RADIDE_ZX_EMULATOR (Fuse / ZEsarUX) to run it",
+   "publish: the .tap is the deliverable"
+  ],
+  "group": "lowlevel",
+  "seconds": 0.7
+ },
+ {
+  "project": "Ring/RingContacts",
+  "language": "ring-qt",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "285.23 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 18/18 controls; Form2: 6/6 controls",
+   "build: 4 files compiled",
+   "run: seeded 3 rows; Add -> db 4 rows; search 'Test' -> True; select fills fields True; Delete -> True; Settings form 'Settings - الإعدادات'; Arabic UI + settings.ini True (UI Automation + sqlite3)",
+   "publish: kind=ring2exe exe=RingContacts.exe (0.1 MB) folder=285.23 MB python_inside=False; published exe shows 'Contacts - جهات الاتصال'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "ring2exe",
+   "exe": "RingContacts.exe",
+   "size_mb": 285.23,
+   "exe_mb": 0.1,
+   "python_inside": false
+  },
+  "seconds": 54.0
+ },
+ {
+  "project": "Ring/RingDataTool",
+  "language": "ring-app",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "20.65 MB",
+  "result": "ok",
+  "notes": [
+   "open: ring-app, startup main",
+   "build: 1 files compiled",
+   "run: console output checked; report.txt 694 bytes",
+   "publish: kind=ring2exe exe=RingDataTool.exe (0.11 MB) folder=20.65 MB python_inside=False; published exe printed 'Median:           1375': True"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "ring2exe",
+   "exe": "RingDataTool.exe",
+   "size_mb": 20.65,
+   "exe_mb": 0.11,
+   "python_inside": false
+  },
+  "seconds": 3.9
+ },
+ {
+  "project": "Ring/RingGuestbook",
+  "language": "ring-app",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "21.38 MB",
+  "result": "ok",
+  "notes": [
+   "open: ring-app",
+   "build: 1 files compiled",
+   "run: GET / 200; POST /sign -> 303 -> 200 (escaped HTML, Arabic kept); /api/entries [{'id': 1, 'name': 'Mona منى', 'message': 'Hello <b>Ring</b>', 'created': '22/11/2026 03:47:39'}]; empty form -> validation message; db guestbook.db",
+   "publish: kind=ring2exe exe=RingGuestbook.exe (0.11 MB) folder=21.38 MB python_inside=False; published exe serves /api/entries: 200"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "ring2exe",
+   "exe": "RingGuestbook.exe",
+   "size_mb": 21.38,
+   "exe_mb": 0.11,
+   "python_inside": false
+  },
+  "seconds": 17.1
+ },
+ {
+  "project": "Ring/RingNotepad",
+  "language": "ring-qt",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "284.17 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 7/7 controls",
+   "build: 2 files compiled",
+   "run: window 'Ring Notepad - notes.txt'; status 'Lines: 2   Words: 4   Chars: 21'; toolbar ABC (Upper Case) dirty=True; Save wrote 'HELLO RING\\nسلام عليكم'; Time -> 'Lines: 2   Words: 5   Chars: 40' (UI Automation)",
+   "publish: kind=ring2exe exe=RingNotepad.exe (0.1 MB) folder=284.17 MB python_inside=False; published exe shows 'Ring Notepad - Untitled'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "ring2exe",
+   "exe": "RingNotepad.exe",
+   "size_mb": 284.17,
+   "exe_mb": 0.1,
+   "python_inside": false
+  },
+  "seconds": 18.2
+ },
+ {
+  "project": "Ring/RingPong",
+  "language": "ring-game",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "9.82 MB",
+  "result": "ok",
+  "notes": [
+   "open: scene Court: 6 objects ['Net', 'Player', 'Cpu', 'Ball', 'ScoreText', 'HelpText']",
+   "build: 3 files compiled",
+   "run: 900 frames (RADGAME hooks): 5 paddle hits, scores ['0:1', '0:2'], screenshot 16447 bytes; window 'Ring Pong'",
+   "publish: kind=ring2exe exe=RingPong.exe (0.1 MB) folder=9.82 MB python_inside=False; published exe shows 'Ring Pong'"
+  ],
+  "group": "ring",
+  "publish_info": {
+   "kind": "ring2exe",
+   "exe": "RingPong.exe",
+   "size_mb": 9.82,
+   "exe_mb": 0.1,
+   "python_inside": false
+  },
+  "seconds": 32.6
+ },
+ {
+  "project": "Ruby/Contacts",
+  "language": "ruby-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.02 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 17/17 controls",
+   "build: 3 file(s) checked with ruby.EXE",
+   "run: window 'Contacts - Ruby'; 3 seed contacts (Arabic) ok, email validation ok, add ok, search Arabic city ok, select row -> fields ok, update ok, delete ok, JSON saved ok, CSV export ok",
+   "publish: kind=bridge exe=Contacts.exe size=73.02 MB python_inside=True notes=[\"The user's PC needs ruby (Ruby (GUI Bridge) runtime) installed and on PATH.\"]"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "Contacts.exe",
+   "size_mb": 73.02,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 125.8
+ },
+ {
+  "project": "Ruby/Pomodoro",
+  "language": "ruby-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.02 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 11/11 controls; SettingsForm: 9/9 controls",
+   "build: 5 file(s) checked with ruby.EXE",
+   "run: window 'Pomodoro Timer - Ruby'; 25:00 ok, Timer runs ok, modal settings dialog ok, settings.json ok, Arabic UI ok, new length ok, session done + MsgBox ok, break phase ok",
+   "publish: kind=bridge exe=Pomodoro.exe size=73.02 MB python_inside=True notes=[\"The user's PC needs ruby (Ruby (GUI Bridge) runtime) installed and on PATH.\"]"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "Pomodoro.exe",
+   "size_mb": 73.02,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 113.0
+ },
+ {
+  "project": "Ruby/UnitConverter",
+  "language": "ruby-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "73.02 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 13/13 controls",
+   "build: 3 file(s) checked with ruby.EXE",
+   "run: window 'Unit Converter - Ruby'; categories ok, 1 m = 0.001 km ok, TextChanged 5 m ok, 100 C = 212 F ok, swap ok, not a number ok, history (Enter + Convert) ok",
+   "publish: kind=bridge exe=UnitConverter.exe size=73.02 MB python_inside=True notes=[\"The user's PC needs ruby (Ruby (GUI Bridge) runtime) installed and on PATH.\"]"
+  ],
+  "group": "scripts",
+  "publish_info": {
+   "kind": "bridge",
+   "exe": "UnitConverter.exe",
+   "size_mb": 73.02,
+   "exe_mb": 11.58,
+   "python_inside": true
+  },
+  "seconds": 127.4
+ },
+ {
+  "project": "RubyWeb/Guestbook",
+  "language": "rails-web",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "1.89 MB",
+  "result": "ok",
+  "notes": [
+   "open: Ruby on Rails / Sinatra Web App, framework sinatra",
+   "build: ruby -c + ERB compile ok",
+   "run: dev server http://127.0.0.1:65063/; home lists seed entries ok, form POST + redirect ok, validation 422 ok, JSON API POST 201 ok, JSON API list ok, search ok, Arabic RTL page ok, delete ok, JSON file ok",
+   "publish: Site > Publish (folder profile): 336 file(s), 1.89 MB, vendor/ included, python_inside=False"
+  ],
+  "group": "scripts",
+  "seconds": 22.7
+ },
+ {
+  "project": "TypeScript/QuizGame",
+  "language": "typescript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.28 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 12/12 controls; Results: 5/5 controls",
+   "build: 3 file(s) ok [2 form(s)]",
+   "run: 10/10 checks",
+   "publish: kind=native exe=QuizGame.exe size=83.28 MB python_inside=False; published exe shows 'Quiz Game - TypeScript'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "native",
+   "exe": "QuizGame.exe",
+   "size_mb": 83.28,
+   "exe_mb": 83.13,
+   "python_inside": false
+  },
+  "seconds": 20.4
+ },
+ {
+  "project": "TypeScript/TodoList",
+  "language": "typescript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.27 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 12/12 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 8/8 checks",
+   "publish: kind=native exe=TodoList.exe size=83.27 MB python_inside=False; published exe shows 'Todo List - TypeScript'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "native",
+   "exe": "TodoList.exe",
+   "size_mb": 83.27,
+   "exe_mb": 83.13,
+   "python_inside": false
+  },
+  "seconds": 20.2
+ },
+ {
+  "project": "TypeScript/UnitConverter",
+  "language": "typescript",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "83.27 MB",
+  "result": "ok",
+  "notes": [
+   "open: Form1: 16/16 controls",
+   "build: 2 file(s) ok [1 form(s)]",
+   "run: 7/7 checks",
+   "publish: kind=native exe=UnitConverter.exe size=83.27 MB python_inside=False; published exe shows 'Unit Converter - TypeScript'"
+  ],
+  "group": "js",
+  "publish_info": {
+   "kind": "native",
+   "exe": "UnitConverter.exe",
+   "size_mb": 83.27,
+   "exe_mb": 83.13,
+   "python_inside": false
+  },
+  "seconds": 18.8
+ },
+ {
+  "project": "Web/CityGuideSite",
+  "language": "static-web",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.02 MB / 10 files",
+  "result": "ok",
+  "notes": [
+   "open: 4 pages, 5 assets",
+   "build: node --check ok",
+   "run: 9/9 URLs 200, rtl=True, form+localStorage=True",
+   "publish: kind=web folder, 10 files"
+  ],
+  "group": "pyweb",
+  "seconds": 1.2
+ },
+ {
+  "project": "Web/SpaceDodgerHtml5",
+  "language": "html5-game",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "size": "0.05 MB / 5 files",
+  "result": "ok",
+  "notes": [
+   "open: Space: 6 objects",
+   "build: node --check Space.js",
+   "run: HTTP {'': 200, 'radgame.js': 200, 'scenes.js': 200, 'Space.js': 200}; headless play: html5-test: frames=900 score=40 lives=3",
+   "publish: kind=web folder, 5 files"
+  ],
+  "group": "pyweb",
+  "seconds": 1.2
+ },
+ {
+  "project": "C/Calculator",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 72,
+  "python_inside": false,
+  "size": "72 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/Contacts",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 83,
+  "python_inside": false,
+  "size": "83 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/Notepad",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 82,
+  "python_inside": false,
+  "size": "82 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/SalesChart",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 82,
+  "python_inside": false,
+  "size": "82 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/StarCatcher",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 70,
+  "python_inside": false,
+  "size": "70 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/WordStats",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 23,
+  "python_inside": false,
+  "size": "23 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Calculator",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 256,
+  "python_inside": false,
+  "size": "256 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Contacts",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "bridge",
+  "exe_kb": 11975,
+  "python_inside": true,
+  "size": "11975 KB (bridge)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Notepad",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1114,
+  "python_inside": false,
+  "size": "1114 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/SettingsDemo",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1052,
+  "python_inside": false,
+  "size": "1052 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/StarCatcher",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1034,
+  "python_inside": false,
+  "size": "1034 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/WordStats",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1009,
+  "python_inside": false,
+  "size": "1009 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Calculator",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Contacts",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Notepad",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/SalesChart",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/SettingsDemo",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/StarCatcher",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64304,
+  "python_inside": false,
+  "size": "64304 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Calculator",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Contacts",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Notepad",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "bridge",
+  "exe_kb": 11975,
+  "python_inside": true,
+  "size": "11975 KB (bridge)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/SettingsDemo",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/StarCatcher",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Calculator",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1792,
+  "python_inside": false,
+  "size": "1792 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Contacts",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 2841,
+  "python_inside": false,
+  "size": "2841 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Notepad",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1934,
+  "python_inside": false,
+  "size": "1934 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/SalesChart",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1859,
+  "python_inside": false,
+  "size": "1859 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/WordStats",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "console",
+  "exe_kb": 2686,
+  "python_inside": false,
+  "size": "2686 KB (console)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Calculator",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 350,
+  "python_inside": false,
+  "size": "350 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Contacts",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 382,
+  "python_inside": false,
+  "size": "382 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Notepad",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 376,
+  "python_inside": false,
+  "size": "376 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/StarCatcher",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 320,
+  "python_inside": false,
+  "size": "320 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/WordStats",
+  "language": "rust-cargo",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "cargo",
+  "exe_kb": 185,
+  "python_inside": false,
+  "size": "185 KB (cargo)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/Calculator",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 468,
+  "python_inside": false,
+  "size": "468 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/SalesChart",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 487,
+  "python_inside": false,
+  "size": "487 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/SettingsDemo",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 472,
+  "python_inside": false,
+  "size": "472 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/StarCatcher",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 482,
+  "python_inside": false,
+  "size": "482 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/WordStats",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 610,
+  "python_inside": false,
+  "size": "610 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "VBNet/Calculator",
+  "language": "vbnet-winforms",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "dotnet publish",
+  "exe_kb": 152,
+  "python_inside": false,
+  "size": "152 KB (dotnet publish)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "IDE/ExampleGallery",
+  "language": "IDE",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "-",
+  "kind": null,
+  "exe_kb": null,
+  "python_inside": false,
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ }
+]

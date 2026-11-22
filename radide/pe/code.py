@@ -23,8 +23,8 @@ BRANCH = {"call", "jmp", "ja", "jae", "jb", "jbe", "jc", "je", "jg", "jge", "jl"
 
 def capstone_available() -> bool:
     try:
-        import capstone  # noqa: F401
-        return True
+        import capstone
+        return bool(capstone)
     except ImportError:
         return False
 

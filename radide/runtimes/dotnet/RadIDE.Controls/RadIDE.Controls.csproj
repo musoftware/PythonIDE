@@ -1,0 +1,34 @@
+<!--
+  RadIDE.Controls - modern owner-drawn WinForms controls (RAD Modern, "Rm*").
+  (c) 2026 Musoftware - https://musoftwares.com - MIT License
+
+  Targets .NET 8 (Windows) and .NET Framework 4.8. The RAD IDE .NET builder (radide/deploy/native/dotnet_winforms.py)
+  references this project for the standalone / framework builds (merged into the single-file exe) and compiles the
+  same sources with csc into a cached net48 dll for the tiny netfx build; it passes RadIDEControlsTargets so only
+  the framework it needs is restored. Visual Studio / dotnet build without it builds both.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks Condition="'$(RadIDEControlsTargets)' == ''">net8.0-windows;net48</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RadIDEControlsTargets)' != ''">$(RadIDEControlsTargets)</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>RadIDE.Controls</RootNamespace>
+    <AssemblyName>RadIDE.Controls</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Musoftware</Company>
+    <Product>RadIDE.Controls</Product>
+    <Description>RAD Modern controls for WinForms: buttons, toggles, ribbon, side bar, tabs, grid, gauges, docking, toasts, themes.</Description>
+    <Copyright>(c) 2026 Musoftware - MIT License</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1416;CS1591;WFO1000;WFAC010</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src\*.cs" />
+  </ItemGroup>
+</Project>

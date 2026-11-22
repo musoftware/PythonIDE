@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "name": "RmSlider",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Track bar with a value tip.",
+  "category": "Modern (RAD)",
+  "order": 3060,
+  "builtin": true,
+  "prefix": "RmSlider",
+  "defaultSize": [
+    200,
+    44
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ValueChanged",
+  "properties": [
+    {
+      "name": "Value",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Current value."
+    },
+    {
+      "name": "Minimum",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Lowest value."
+    },
+    {
+      "name": "Maximum",
+      "type": "int",
+      "default": 100,
+      "category": "Behavior",
+      "description": "Highest value."
+    },
+    {
+      "name": "TickFrequency",
+      "type": "int",
+      "default": 0,
+      "category": "Appearance",
+      "description": "Tick every n (0 = none)."
+    },
+    {
+      "name": "SmallChange",
+      "type": "int",
+      "default": 1,
+      "category": "Behavior",
+      "description": "Arrow keys / wheel step."
+    },
+    {
+      "name": "LargeChange",
+      "type": "int",
+      "default": 10,
+      "category": "Behavior",
+      "description": "Page Up / Down step."
+    },
+    {
+      "name": "ShowValue",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "Always show the value above the thumb."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "ValueChanged",
+      "description": "Value changed."
+    }
+  ],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmSlider.py",
+      "class": "RmSlider",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

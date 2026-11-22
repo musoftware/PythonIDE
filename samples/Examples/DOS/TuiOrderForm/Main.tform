@@ -1,0 +1,351 @@
+{
+ "format": "radide-tform",
+ "version": 1,
+ "screen": {
+  "name": "Main",
+  "cols": 80,
+  "rows": 25,
+  "back_char": 176,
+  "back_fore": 7,
+  "back_color": 1,
+  "background": "",
+  "esc_quits": true,
+  "splash": "",
+  "splash_seconds": 0,
+  "ice_colors": false
+ },
+ "controls": [
+  {
+   "type": "MenuBar",
+   "name": "MenuBar1",
+   "x": 0,
+   "y": 0,
+   "w": 80,
+   "h": 1,
+   "fore": 0,
+   "back": 7,
+   "hot": 4,
+   "sel_fore": 15,
+   "sel_back": 0,
+   "menus": [
+    {
+     "text": "&File",
+     "items": [
+      {
+       "text": "&New order",
+       "name": "mnuNew",
+       "shortcut": "F2"
+      },
+      {
+       "text": "-"
+      },
+      {
+       "text": "E&xit",
+       "name": "mnuExit",
+       "shortcut": "Alt+X"
+      }
+     ]
+    },
+    {
+     "text": "&Help",
+     "items": [
+      {
+       "text": "&About...",
+       "name": "mnuAbout",
+       "shortcut": "F1"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StatusBar",
+   "name": "Status1",
+   "x": 0,
+   "y": 24,
+   "w": 80,
+   "h": 1,
+   "fore": 0,
+   "back": 7,
+   "text": " ~Alt+O~ Order  ~Alt+L~ Clear  ~F10~ Menu  ~Esc~ Quit",
+   "hot": 4
+  },
+  {
+   "type": "Window",
+   "name": "winMain",
+   "x": 2,
+   "y": 2,
+   "w": 76,
+   "h": 20,
+   "fore": 15,
+   "back": 1,
+   "text": " RAD Coffee - order form ",
+   "border": "double",
+   "shadow": true,
+   "title_align": "center"
+  },
+  {
+   "type": "Label",
+   "name": "lblName",
+   "x": 5,
+   "y": 4,
+   "w": 10,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Customer:",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "TextBox",
+   "name": "txtName",
+   "x": 16,
+   "y": 4,
+   "w": 13,
+   "h": 1,
+   "fore": 15,
+   "back": 0,
+   "text": "",
+   "max_length": 12,
+   "password": false,
+   "focus_fore": 14,
+   "focus_back": 0,
+   "tab_index": 0
+  },
+  {
+   "type": "Frame",
+   "name": "fraSize",
+   "x": 5,
+   "y": 6,
+   "w": 22,
+   "h": 5,
+   "fore": 15,
+   "back": 1,
+   "text": " Size ",
+   "border": "single",
+   "shadow": false,
+   "title_align": "left"
+  },
+  {
+   "type": "Option",
+   "name": "optSmall",
+   "x": 7,
+   "y": 7,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Small   10",
+   "value": false,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 1
+  },
+  {
+   "type": "Option",
+   "name": "optMedium",
+   "x": 7,
+   "y": 8,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Medium  15",
+   "value": true,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 2
+  },
+  {
+   "type": "Option",
+   "name": "optLarge",
+   "x": 7,
+   "y": 9,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "La&rge   20",
+   "value": false,
+   "group": "1",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 3
+  },
+  {
+   "type": "Frame",
+   "name": "fraExtras",
+   "x": 5,
+   "y": 12,
+   "w": 22,
+   "h": 5,
+   "fore": 15,
+   "back": 1,
+   "text": " Extras ",
+   "border": "single",
+   "shadow": false,
+   "title_align": "left"
+  },
+  {
+   "type": "CheckBox",
+   "name": "chkMilk",
+   "x": 7,
+   "y": 13,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "M&ilk     +3",
+   "value": false,
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 4
+  },
+  {
+   "type": "CheckBox",
+   "name": "chkShot",
+   "x": 7,
+   "y": 14,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "E&xtra shot +5",
+   "value": false,
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 5
+  },
+  {
+   "type": "CheckBox",
+   "name": "chkTakeaway",
+   "x": 7,
+   "y": 15,
+   "w": 18,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "&Take away",
+   "value": false,
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 3,
+   "tab_index": 6
+  },
+  {
+   "type": "Button",
+   "name": "btnOrder",
+   "x": 5,
+   "y": 18,
+   "w": 10,
+   "h": 1,
+   "fore": 0,
+   "back": 2,
+   "text": "&Order",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 2,
+   "shadow": true,
+   "cancel": false,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 7
+  },
+  {
+   "type": "Button",
+   "name": "btnClear",
+   "x": 18,
+   "y": 18,
+   "w": 10,
+   "h": 1,
+   "fore": 0,
+   "back": 2,
+   "text": "C&lear",
+   "hot": 14,
+   "focus_fore": 15,
+   "focus_back": 2,
+   "shadow": true,
+   "cancel": false,
+   "events": [
+    "Click"
+   ],
+   "tab_index": 8
+  },
+  {
+   "type": "Label",
+   "name": "lblOrders",
+   "x": 31,
+   "y": 4,
+   "w": 30,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Orders today:",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "ListBox",
+   "name": "lstOrders",
+   "x": 31,
+   "y": 5,
+   "w": 44,
+   "h": 11,
+   "fore": 0,
+   "back": 3,
+   "items": [],
+   "list_index": 0,
+   "border": "single",
+   "sel_fore": 15,
+   "sel_back": 1,
+   "tab_index": 9
+  },
+  {
+   "type": "ProgressBar",
+   "name": "prgOrders",
+   "x": 31,
+   "y": 17,
+   "w": 30,
+   "h": 1,
+   "fore": 10,
+   "back": 0,
+   "value": 0,
+   "max": 10
+  },
+  {
+   "type": "Label",
+   "name": "lblCount",
+   "x": 62,
+   "y": 17,
+   "w": 13,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "0 / 10",
+   "align": "left",
+   "hot": 14
+  },
+  {
+   "type": "Label",
+   "name": "lblTotal",
+   "x": 31,
+   "y": 19,
+   "w": 44,
+   "h": 1,
+   "fore": 15,
+   "back": 1,
+   "text": "Total: 0",
+   "align": "left",
+   "hot": 14
+  }
+ ]
+}

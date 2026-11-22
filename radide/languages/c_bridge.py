@@ -218,13 +218,35 @@ class CBridgePlugin(BridgeLanguagePlugin):
     def handlers_in_project(self, folder: Path, project: Project) -> list[str]:
         out: list[str] = []
         rx = re.compile(self.handler_regex, re.M)
+        owners = self._event_owners(folder, project)
         for f in self.form_files(project):
             p = folder / f
             if p.exists():
                 for h in rx.findall(p.read_text(encoding="utf-8", errors="replace")):
-                    if h not in out:
+                    # only <Form|Control|MenuItem>_<Event>: a helper such as "void update_title()" or a C++
+                    # member function "void memory_add()" is not an event handler (it would be declared and
+                    # called by the generated main program and fail to link)
+                    if h not in out and (owners is None or h.rsplit("_", 1)[0].lower() in owners):
                         out.append(h)
         return out
+
+    @staticmethod
+    def _event_owners(folder: Path, project: Project) -> set[str] | None:
+        """Lower-case names of the forms, their controls and menu items (None = the forms cannot be read)."""
+        from ..controls import menu_leaves
+        names: set[str] = set()
+        try:
+            for name in project.forms:
+                form = Form.load(Path(folder) / f"{name}.form")
+                names.add(form.name.lower())
+                names.add(name.lower())
+                for c in form.controls:
+                    names.add(c.name.lower())
+                    if c.type in ("MenuStrip", "ToolStrip", "ContextMenuStrip"):
+                        names.update(str(it.get("Name", "")).lower() for it in menu_leaves(c.props.get("Items", [])))
+        except Exception:  # noqa: BLE001 - keep the old behaviour (every match) when a form is broken
+            return None
+        return names
 
     @staticmethod
     def radfuncs(text: str) -> list[str]:

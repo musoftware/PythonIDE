@@ -1,0 +1,4144 @@
+{
+ "meta": {
+  "source": "https://github.com/microsoft/vscode",
+  "commit": "733a99842b0e0e14c3593dfab31fff2035478ba0",
+  "version": "1.148.0",
+  "license": "MIT",
+  "generatedBy": "radide/vsx/reference/extract.js",
+  "dtsVersionsCompared": [
+   "1.90.0",
+   "1.94.0",
+   "1.100.0",
+   "1.106.0",
+   "1.120.0",
+   "1.130.0",
+   "1.140.0",
+   "1.147.0"
+  ]
+ },
+ "menus": [
+  {
+   "key": "commandPalette",
+   "id": "MenuId.CommandPalette",
+   "description": "The Command Palette",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "touchBar",
+   "id": "MenuId.TouchBarContext",
+   "description": "The touch bar (macOS only)",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "editor/title",
+   "id": "MenuId.EditorTitle",
+   "description": "The editor title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "modalEditor/editorTitle",
+   "id": "MenuId.ModalEditorEditorTitle",
+   "description": "The editor title menu in the modal editor",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/title/run",
+   "id": "MenuId.EditorTitleRun",
+   "description": "Run submenu inside the editor title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/context",
+   "id": "MenuId.EditorContext",
+   "description": "The editor context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/context/copy",
+   "id": "MenuId.EditorContextCopy",
+   "description": "'Copy as' submenu in the editor context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/context/share",
+   "id": "MenuId.EditorContextShare",
+   "description": "'Share' submenu in the editor context menu",
+   "proposed": "contribShareMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "explorer/context",
+   "id": "MenuId.ExplorerContext",
+   "description": "The file explorer context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "explorer/context/share",
+   "id": "MenuId.ExplorerContextShare",
+   "description": "'Share' submenu in the file explorer context menu",
+   "proposed": "contribShareMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/title/context",
+   "id": "MenuId.EditorTitleContext",
+   "description": "The editor tabs context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/title/context/share",
+   "id": "MenuId.EditorTitleContextShare",
+   "description": "'Share' submenu inside the editor title context menu",
+   "proposed": "contribShareMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "debug/callstack/context",
+   "id": "MenuId.DebugCallStackContext",
+   "description": "The debug callstack view context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "debug/variables/context",
+   "id": "MenuId.DebugVariablesContext",
+   "description": "The debug variables view context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "debug/watch/context",
+   "id": "MenuId.DebugWatchContext",
+   "description": "The debug watch view context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "debug/toolBar",
+   "id": "MenuId.DebugToolBar",
+   "description": "The debug toolbar menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "debug/createConfiguration",
+   "id": "MenuId.DebugCreateConfiguration",
+   "description": "The debug create configuration menu",
+   "proposed": "contribDebugCreateConfiguration",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "notebook/variables/context",
+   "id": "MenuId.NotebookVariablesContext",
+   "description": "The notebook variables view context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "menuBar/home",
+   "id": "MenuId.MenubarHomeMenu",
+   "description": "The home indicator context menu (web only)",
+   "proposed": "contribMenuBarHome",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "menuBar/edit/copy",
+   "id": "MenuId.MenubarCopy",
+   "description": "'Copy as' submenu in the top level Edit menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "chat/input/status",
+   "id": "MenuId.ChatInputStatus",
+   "description": "The status indicator area at the rightmost end of the toolbar shown beneath the chat input",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "scm/title",
+   "id": "MenuId.SCMTitle",
+   "description": "The Source Control title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/sourceControl",
+   "id": "MenuId.SCMSourceControl",
+   "description": "The Source Control menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/repositories/title",
+   "id": "MenuId.SCMSourceControlTitle",
+   "description": "The Source Control Repositories title menu",
+   "proposed": "contribSourceControlTitleMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/repository",
+   "id": "MenuId.SCMSourceControlInline",
+   "description": "The Source Control repository menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/resourceState/context",
+   "id": "MenuId.SCMResourceContext",
+   "description": "The Source Control resource state context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/resourceFolder/context",
+   "id": "MenuId.SCMResourceFolderContext",
+   "description": "The Source Control resource folder context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/resourceGroup/context",
+   "id": "MenuId.SCMResourceGroupContext",
+   "description": "The Source Control resource group context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/change/title",
+   "id": "MenuId.SCMChangeContext",
+   "description": "The Source Control inline change menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/inputBox",
+   "id": "MenuId.SCMInputBox",
+   "description": "The Source Control input box menu",
+   "proposed": "contribSourceControlInputBoxMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/history/title",
+   "id": "MenuId.SCMHistoryTitle",
+   "description": "The Source Control History title menu",
+   "proposed": "contribSourceControlHistoryTitleMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/historyItem/context",
+   "id": "MenuId.SCMHistoryItemContext",
+   "description": "The Source Control history item context menu",
+   "proposed": "contribSourceControlHistoryItemMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/historyItemRef/context",
+   "id": "MenuId.SCMHistoryItemRefContext",
+   "description": "The Source Control history item reference context menu",
+   "proposed": "contribSourceControlHistoryItemMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/artifactGroup/context",
+   "id": "MenuId.SCMArtifactGroupContext",
+   "description": "The Source Control artifact group context menu",
+   "proposed": "contribSourceControlArtifactGroupMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "scm/artifact/context",
+   "id": "MenuId.SCMArtifactContext",
+   "description": "The Source Control artifact context menu",
+   "proposed": "contribSourceControlArtifactMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "statusBar/remoteIndicator",
+   "id": "MenuId.StatusBarRemoteIndicatorMenu",
+   "description": "The remote indicator menu in the status bar",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "terminal/context",
+   "id": "MenuId.TerminalInstanceContext",
+   "description": "The terminal context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "terminal/title/context",
+   "id": "MenuId.TerminalTabContext",
+   "description": "The terminal tabs context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "view/title",
+   "id": "MenuId.ViewTitle",
+   "description": "The contributed view title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "viewContainer/title",
+   "id": "MenuId.ViewContainerTitle",
+   "description": "The contributed view container title menu",
+   "proposed": "contribViewContainerTitle",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "view/item/context",
+   "id": "MenuId.ViewItemContext",
+   "description": "The contributed view item context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/comment/editorActions",
+   "id": "MenuId.CommentEditorActions",
+   "description": "The contributed comment editor actions",
+   "proposed": "contribCommentEditorActionsMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/commentThread/title",
+   "id": "MenuId.CommentThreadTitle",
+   "description": "The contributed comment thread title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/commentThread/context",
+   "id": "MenuId.CommentThreadActions",
+   "description": "The contributed comment thread context menu, rendered as buttons below the comment editor",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "comments/commentThread/additionalActions",
+   "id": "MenuId.CommentThreadAdditionalActions",
+   "description": "The contributed comment thread context menu, rendered as buttons below the comment editor",
+   "proposed": "contribCommentThreadAdditionalMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/commentThread/title/context",
+   "id": "MenuId.CommentThreadTitleContext",
+   "description": "The contributed comment thread title's peek context menu, rendered as a right click menu on the comment thread's peek title.",
+   "proposed": "contribCommentPeekContext",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/comment/title",
+   "id": "MenuId.CommentTitle",
+   "description": "The contributed comment title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "comments/comment/context",
+   "id": "MenuId.CommentActions",
+   "description": "The contributed comment context menu, rendered as buttons below the comment editor",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "comments/commentThread/comment/context",
+   "id": "MenuId.CommentThreadCommentContext",
+   "description": "The contributed comment context menu, rendered as a right click menu on the an individual comment in the comment thread's peek view.",
+   "proposed": "contribCommentPeekContext",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "commentsView/commentThread/context",
+   "id": "MenuId.CommentsViewThreadActions",
+   "description": "The contributed comment thread context menu in the comments view",
+   "proposed": "contribCommentsViewThreadMenus",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "notebook/toolbar",
+   "id": "MenuId.NotebookToolbar",
+   "description": "The contributed notebook toolbar menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "notebook/kernelSource",
+   "id": "MenuId.NotebookKernelSource",
+   "description": "The contributed notebook kernel sources menu",
+   "proposed": "notebookKernelSource",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "notebook/cell/title",
+   "id": "MenuId.NotebookCellTitle",
+   "description": "The contributed notebook cell title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "notebook/cell/execute",
+   "id": "MenuId.NotebookCellExecute",
+   "description": "The contributed notebook cell execution menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "interactive/toolbar",
+   "id": "MenuId.InteractiveToolbar",
+   "description": "The contributed interactive toolbar menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "interactive/cell/title",
+   "id": "MenuId.InteractiveCellTitle",
+   "description": "The contributed interactive cell title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "issue/reporter",
+   "id": "MenuId.IssueReporter",
+   "description": "The contributed issue reporter menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/item/context",
+   "id": "MenuId.TestItem",
+   "description": "The contributed test item menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/item/gutter",
+   "id": "MenuId.TestItemGutter",
+   "description": "The menu for a gutter decoration for a test item",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/profiles/context",
+   "id": "MenuId.TestProfilesContext",
+   "description": "The menu for configuring testing profiles.",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/item/result",
+   "id": "MenuId.TestPeekElement",
+   "description": "The menu for an item in the Test Results view or peek.",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/message/context",
+   "id": "MenuId.TestMessageContext",
+   "description": "A prominent button overlaying editor content where the message is displayed",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "testing/message/content",
+   "id": "MenuId.TestMessageContent",
+   "description": "Context menu for the message in the results tree",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "extension/context",
+   "id": "MenuId.ExtensionContext",
+   "description": "The extension context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "timeline/title",
+   "id": "MenuId.TimelineTitle",
+   "description": "The Timeline view title menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "timeline/item/context",
+   "id": "MenuId.TimelineItemContext",
+   "description": "The Timeline view item context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "ports/item/context",
+   "id": "MenuId.TunnelContext",
+   "description": "The Ports view item context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "ports/item/origin/inline",
+   "id": "MenuId.TunnelOriginInline",
+   "description": "The Ports view item origin inline menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "ports/item/port/inline",
+   "id": "MenuId.TunnelPortInline",
+   "description": "The Ports view item port inline menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "file/newFile",
+   "id": "MenuId.NewFile",
+   "description": "The 'New File...' quick pick, shown on welcome page and File menu.",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "webview/context",
+   "id": "MenuId.WebviewContext",
+   "description": "The webview context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "file/share",
+   "id": "MenuId.MenubarShare",
+   "description": "Share submenu shown in the top level File menu.",
+   "proposed": "contribShareMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/inlineCompletions/actions",
+   "id": "MenuId.InlineCompletionsActions",
+   "description": "The actions shown when hovering on an inline completion",
+   "proposed": "inlineCompletionsAdditions",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "editor/content",
+   "id": "MenuId.EditorContent",
+   "description": "The prominent button in an editor, overlays its content",
+   "proposed": "contribEditorContentMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/lineNumber/context",
+   "id": "MenuId.EditorLineNumberContext",
+   "description": "The contributed editor line number context menu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "mergeEditor/result/title",
+   "id": "MenuId.MergeInputResultToolbar",
+   "description": "The result toolbar of the merge editor",
+   "proposed": "contribMergeEditorMenus",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "multiDiffEditor/content",
+   "id": "MenuId.MultiDiffEditorContent",
+   "description": "A prominent button overlaying the multi diff editor",
+   "proposed": "contribEditorContentMenu",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "multiDiffEditor/resource/title",
+   "id": "MenuId.MultiDiffEditorFileToolbar",
+   "description": "The resource toolbar in the multi diff editor",
+   "proposed": "contribMultiDiffEditorMenus",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "diffEditor/gutter/hunk",
+   "id": "MenuId.DiffEditorHunkToolbar",
+   "description": "The gutter toolbar in the diff editor",
+   "proposed": "contribDiffEditorGutterToolBarMenus",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "diffEditor/gutter/selection",
+   "id": "MenuId.DiffEditorSelectionToolbar",
+   "description": "The gutter toolbar in the diff editor",
+   "proposed": "contribDiffEditorGutterToolBarMenus",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "searchPanel/aiResults/commands",
+   "id": "MenuId.SearchActionMenu",
+   "description": "The commands that will contribute to the menu rendered as buttons next to the AI search title",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "editor/context/chat",
+   "id": "MenuId.ChatTextEditorMenu",
+   "description": "The Chat submenu in the text editor context menu.",
+   "proposed": "chatParticipantPrivate",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/input/editing/sessionToolbar",
+   "id": "MenuId.ChatEditingSessionChangesToolbar",
+   "description": "The Chat Editing widget toolbar menu for session changes.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "chat/input/editing/sessionTitleToolbar",
+   "id": "MenuId.ChatEditingSessionTitleToolbar",
+   "description": "The Chat Editing widget toolbar menu for session title.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "chat/chatSessions",
+   "id": "MenuId.AgentSessionsContext",
+   "description": "The Chat Sessions menu.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chatSessions/item/context",
+   "id": "MenuId.SessionItemContextMenu",
+   "description": "The context menu for items in the Sessions window's session list.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chatSessions/newSession",
+   "id": "MenuId.AgentSessionsCreateSubMenu",
+   "description": "Menu for new chat sessions.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/multiDiff/context",
+   "id": "MenuId.ChatMultiDiffContext",
+   "description": "The Chat Multi-Diff context menu.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/customizations/create",
+   "id": "MenuId.for('AICustomizationManagementCreate')",
+   "description": "The create button in the Chat Customizations management editor.",
+   "proposed": "chatSessionCustomizationProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/customizations/item",
+   "id": "MenuId.for('AICustomizationManagementEditorItem')",
+   "description": "The item context menu in the Chat Customizations management editor, including inline actions.",
+   "proposed": "chatSessionCustomizationProvider",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/editor/inlineGutter",
+   "id": "MenuId.ChatEditorInlineMenu",
+   "description": "The inline gutter menu in the chat editor.",
+   "proposed": "contribChatEditorInlineGutterMenu",
+   "supportsSubmenus": false
+  },
+  {
+   "key": "chat/contextUsage/actions",
+   "id": "MenuId.ChatContextUsageActions",
+   "description": "Actions in the chat context usage details popup.",
+   "proposed": "chatParticipantAdditions",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "chat/newSession",
+   "id": "MenuId.ChatNewMenu",
+   "description": "The Chat new session menu.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "agents/changes/actions",
+   "id": "MenuId.AgentsChangesToolbar",
+   "description": "The Changes view toolbar of the agents window.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "agents/changes/actions/primary",
+   "id": "MenuId.AgentsChangesPrimaryActionSubMenu",
+   "description": "The Changes view toolbar primary action submenu in the agents window.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "agents/change/inline",
+   "id": "MenuId.AgentsChangeInlineToolbar",
+   "description": "The Changes view inline menu in the agents window.",
+   "proposed": "chatSessionsProvider",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "titleBar",
+   "id": "MenuId.TitleBar",
+   "description": "The title bar of the editor window.",
+   "proposed": "contribTitleBar",
+   "supportsSubmenus": true
+  },
+  {
+   "key": "agents/titleBar",
+   "id": "MenuId.AgentsTitleBar",
+   "description": "The title bar of the agents window.",
+   "proposed": "contribTitleBar",
+   "supportsSubmenus": true
+  }
+ ],
+ "contributionPoints": [
+  {
+   "extensionPoint": "authentication",
+   "file": "src/vs/workbench/services/authentication/browser/authenticationService.ts",
+   "description": "Contributes authentication",
+   "jsonSchema": {
+    "description": "Contributes authentication",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "The id of the authentication provider."
+      },
+      "label": {
+       "type": "string",
+       "description": "The human readable name of the authentication provider."
+      },
+      "authorizationServerGlobs": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "description": "A list of globs that match the authorization servers that this provider supports."
+       },
+       "description": "A list of globs that match the authorization servers that this provider supports."
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "breakpoints",
+   "file": "src/vs/workbench/contrib/debug/common/debugSchemas.ts",
+   "description": "Contributes breakpoints.",
+   "jsonSchema": {
+    "description": "Contributes breakpoints.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "language": ""
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "defaultSnippets": [
+      {
+       "body": {
+        "language": ""
+       }
+      }
+     ],
+     "properties": {
+      "language": {
+       "description": "Allow breakpoints for this language.",
+       "type": "string"
+      },
+      "when": {
+       "description": "Condition which must be true to enable breakpoints in this language. Consider matching this to the debugger when clause as appropriate.",
+       "type": "string",
+       "default": ""
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "chatContext",
+   "file": "src/vs/workbench/contrib/chat/browser/contextContrib/chatContext.contribution.ts",
+   "description": "Contributes chat context integrations to the chat widget.",
+   "jsonSchema": {
+    "description": "Contributes chat context integrations to the chat widget.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "description": "A unique identifier for this item.",
+       "type": "string"
+      },
+      "icon": {
+       "description": "The icon associated with this chat context item.",
+       "type": "string"
+      },
+      "displayName": {
+       "description": "A user-friendly name for this item which is used for display in menus.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "id",
+      "icon",
+      "displayName"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "chatOutputRenderers",
+   "file": "src/vs/workbench/contrib/chat/browser/chatOutputItemRenderer.ts",
+   "description": "Contributes a renderer for specific MIME types and code block language identifiers in chat outputs",
+   "jsonSchema": {
+    "description": "Contributes a renderer for specific MIME types and code block language identifiers in chat outputs",
+    "type": "array",
+    "items": "<chatOutputRendererContributionSchema>"
+   }
+  },
+  {
+   "extensionPoint": "chatParticipants",
+   "file": "src/vs/workbench/contrib/chat/browser/chatParticipant.contribution.ts",
+   "description": "Contributes a chat participant",
+   "jsonSchema": {
+    "description": "Contributes a chat participant",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "name": "",
+        "description": ""
+       }
+      }
+     ],
+     "required": [
+      "name",
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "description": "A unique id for this chat participant.",
+       "type": "string"
+      },
+      "name": {
+       "description": "User-facing name for this chat participant. The user will use '@' with this name to invoke the participant. Name must not contain whitespace.",
+       "type": "string",
+       "pattern": "^[\\w-]+$"
+      },
+      "fullName": {
+       "markdownDescription": "The full name of this chat participant, which is shown as the label for responses coming from this participant. If not provided, {0} is used.",
+       "type": "string"
+      },
+      "description": {
+       "description": "A description of this chat participant, shown in the UI.",
+       "type": "string"
+      },
+      "isSticky": {
+       "description": "Whether invoking the command puts the chat into a persistent mode, where the command is automatically added to the chat input for the next message.",
+       "type": "boolean"
+      },
+      "sampleRequest": {
+       "description": "When the user clicks this participant in `/help`, this text will be submitted to the participant.",
+       "type": "string"
+      },
+      "when": {
+       "description": "A condition which must be true to enable this participant.",
+       "type": "string"
+      },
+      "disambiguation": {
+       "description": "Metadata to help with automatically routing user questions to this chat participant.",
+       "type": "array",
+       "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "defaultSnippets": [
+         {
+          "body": {
+           "category": "",
+           "description": "",
+           "examples": []
+          }
+         }
+        ],
+        "required": [
+         "category",
+         "description",
+         "examples"
+        ],
+        "properties": {
+         "category": {
+          "markdownDescription": "A detailed name for this category, e.g. `workspace_questions` or `web_questions`.",
+          "type": "string"
+         },
+         "description": {
+          "description": "A detailed description of the kinds of questions that are suitable for this chat participant.",
+          "type": "string"
+         },
+         "examples": {
+          "description": "A list of representative example questions that are suitable for this chat participant.",
+          "type": "array"
+         }
+        }
+       }
+      },
+      "commands": {
+       "markdownDescription": "Commands available for this chat participant, which the user can invoke with a `/`.",
+       "type": "array",
+       "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "defaultSnippets": [
+         {
+          "body": {
+           "name": "",
+           "description": ""
+          }
+         }
+        ],
+        "required": [
+         "name"
+        ],
+        "properties": {
+         "name": {
+          "description": "A short name by which this command is referred to in the UI, e.g. `fix` or `explain` for commands that fix an issue or explain code. The name should be unique among the commands provided by this participant.",
+          "type": "string"
+         },
+         "description": {
+          "description": "A description of this command.",
+          "type": "string"
+         },
+         "when": {
+          "description": "A condition which must be true to enable this command.",
+          "type": "string"
+         },
+         "sampleRequest": {
+          "description": "When the user clicks this command in `/help`, this text will be submitted to the participant.",
+          "type": "string"
+         },
+         "isSticky": {
+          "description": "Whether invoking the command puts the chat into a persistent mode, where the command is automatically added to the chat input for the next message.",
+          "type": "boolean"
+         },
+         "disambiguation": {
+          "description": "Metadata to help with automatically routing user questions to this chat command.",
+          "type": "array",
+          "items": {
+           "additionalProperties": false,
+           "type": "object",
+           "defaultSnippets": [
+            {
+             "body": {
+              "category": "",
+              "description": "",
+              "examples": []
+             }
+            }
+           ],
+           "required": [
+            "category",
+            "description",
+            "examples"
+           ],
+           "properties": {
+            "category": {
+             "markdownDescription": "A detailed name for this category, e.g. `workspace_questions` or `web_questions`.",
+             "type": "string"
+            },
+            "description": {
+             "description": "A detailed description of the kinds of questions that are suitable for this chat command.",
+             "type": "string"
+            },
+            "examples": {
+             "description": "A list of representative example questions that are suitable for this chat command.",
+             "type": "array"
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "chatPlugins",
+   "file": "src/vs/workbench/contrib/chat/common/plugins/agentPluginServiceImpl.ts",
+   "description": "Contributes agent plugins for chat.",
+   "jsonSchema": {
+    "description": "Contributes agent plugins for chat.",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "path": "./relative/path/to/plugin/"
+       }
+      }
+     ],
+     "required": [
+      "path"
+     ],
+     "properties": {
+      "path": {
+       "description": "Path to the agent plugin root directory relative to the extension root.",
+       "type": "string"
+      },
+      "when": {
+       "description": "(Optional) A condition which must be true to enable this plugin.",
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "chatResources",
+   "file": "src/vs/workbench/contrib/chat/browser/chatResources/chatResourceContributions.ts",
+   "description": "Contributes resources that every chat lists while they exist, for example a per-chat todo list rendered by a custom editor.",
+   "jsonSchema": {
+    "description": "Contributes resources that every chat lists while they exist, for example a per-chat todo list rendered by a custom editor.",
+    "type": "array",
+    "items": "<chatResourceSchema>"
+   }
+  },
+  {
+   "extensionPoint": "chatSessions",
+   "file": "src/vs/workbench/contrib/chat/browser/chatSessions/chatSessions.contribution.ts",
+   "description": "Contributes chat session integrations to the chat widget.",
+   "jsonSchema": {
+    "description": "Contributes chat session integrations to the chat widget.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "type": {
+       "description": "Unique identifier for the type of chat session.",
+       "type": "string"
+      },
+      "name": {
+       "description": "Name of the dynamically registered chat participant (eg: @agent). Must not contain whitespace.",
+       "type": "string",
+       "pattern": "^[\\w-]+$"
+      },
+      "displayName": {
+       "description": "A longer name for this item which is used for display in menus.",
+       "type": "string"
+      },
+      "description": {
+       "description": "Description of the chat session for use in menus and tooltips.",
+       "type": "string"
+      },
+      "when": {
+       "description": "Condition which must be true to show this item.",
+       "type": "string"
+      },
+      "icon": {
+       "description": "Icon identifier (codicon ID) for the chat session editor tab. For example, \"{0}\" or \"{1}\".",
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "object",
+         "properties": {
+          "light": {
+           "description": "Icon path when a light theme is used",
+           "type": "string"
+          },
+          "dark": {
+           "description": "Icon path when a dark theme is used",
+           "type": "string"
+          }
+         }
+        }
+       ]
+      },
+      "order": {
+       "description": "Order in which this item should be displayed.",
+       "type": "integer"
+      },
+      "alternativeIds": {
+       "description": "Alternative identifiers for backward compatibility.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "welcomeTitle": {
+       "description": "Title text to display in the chat welcome view for this session type.",
+       "type": "string"
+      },
+      "welcomeMessage": {
+       "description": "Message text (supports markdown) to display in the chat welcome view for this session type.",
+       "type": "string"
+      },
+      "welcomeTips": {
+       "description": "Tips text (supports markdown and theme icons) to display in the chat welcome view for this session type.",
+       "type": "string"
+      },
+      "inputPlaceholder": {
+       "description": "Placeholder text to display in the chat input box for this session type.",
+       "type": "string"
+      },
+      "capabilities": {
+       "description": "Optional capabilities for this chat session.",
+       "type": "object",
+       "additionalProperties": false,
+       "properties": {
+        "supportsFileAttachments": {
+         "description": "Whether this chat session supports attaching files or file references.",
+         "type": "boolean"
+        },
+        "supportsToolAttachments": {
+         "description": "Whether this chat session supports attaching tools or tool references.",
+         "type": "boolean"
+        },
+        "supportsMCPAttachments": {
+         "description": "Whether this chat session supports attaching MCP resources.",
+         "type": "boolean"
+        },
+        "supportsImageAttachments": {
+         "description": "Whether this chat session supports attaching images.",
+         "type": "boolean"
+        },
+        "supportsSearchResultAttachments": {
+         "description": "Whether this chat session supports attaching search results.",
+         "type": "boolean"
+        },
+        "supportsInstructionAttachments": {
+         "description": "Whether this chat session supports attaching instructions.",
+         "type": "boolean"
+        },
+        "supportsSourceControlAttachments": {
+         "description": "Whether this chat session supports attaching source control changes.",
+         "type": "boolean"
+        },
+        "supportsProblemAttachments": {
+         "description": "Whether this chat session supports attaching problems.",
+         "type": "boolean"
+        },
+        "supportsSymbolAttachments": {
+         "description": "Whether this chat session supports attaching symbols.",
+         "type": "boolean"
+        },
+        "supportsPromptAttachments": {
+         "description": "Whether this chat session supports attaching prompts.",
+         "type": "boolean"
+        },
+        "supportsHandOffs": {
+         "description": "Whether this chat session supports hand-off prompts.",
+         "type": "boolean"
+        }
+       }
+      },
+      "commands": {
+       "markdownDescription": "Commands available for this chat session, which the user can invoke with a `/`.",
+       "type": "array",
+       "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "defaultSnippets": [
+         {
+          "body": {
+           "name": "",
+           "description": ""
+          }
+         }
+        ],
+        "required": [
+         "name"
+        ],
+        "properties": {
+         "name": {
+          "description": "A short name by which this command is referred to in the UI, e.g. `fix` or `explain` for commands that fix an issue or explain code. The name should be unique among the commands provided by this participant.",
+          "type": "string"
+         },
+         "description": {
+          "description": "A description of this command.",
+          "type": "string"
+         },
+         "when": {
+          "description": "A condition which must be true to enable this command.",
+          "type": "string"
+         }
+        }
+       }
+      },
+      "canDelegate": {
+       "description": "Whether delegation is supported. Default is false. Note that enabling this is experimental and may not be respected at all times.",
+       "type": "boolean",
+       "default": false
+      },
+      "customAgentTarget": {
+       "description": "When set, the chat session will show a filtered mode picker that prefers custom agents whose target property matches this value. Custom agents without a target property are still shown in all session types. This enables the use of standard agent/mode with contributed sessions.",
+       "type": "string"
+      },
+      "requiresCustomModels": {
+       "description": "When set, the chat session will show a filtered model picker that prefers custom models. This enables the use of standard model picker with contributed sessions.",
+       "type": "boolean",
+       "default": false
+      },
+      "supportsAutoModel": {
+       "description": "Whether the chat session supports the synthetic \"Auto\" model fallback. Defaults to false. When true and no models are available, the picker shows \"Auto\" instead of a \"No models available\" state.",
+       "type": "boolean",
+       "default": false
+      },
+      "requiresCopilotSignIn": {
+       "description": "Whether the chat session relies on a GitHub Copilot account and so cannot be used until the user signs in. Defaults to false.",
+       "type": "boolean",
+       "default": false
+      },
+      "autoAttachReferences": {
+       "description": "Whether to automatically attach instruction files to chat requests for this session type.",
+       "type": "boolean",
+       "default": false
+      },
+      "useRequestToPopulateBuiltInPickers": {
+       "description": "Whether to use ChatRequestTurn2 to populate built-in pickers such as the Agent and Model pickers.",
+       "type": "boolean",
+       "default": false
+      }
+     },
+     "required": [
+      "type",
+      "name",
+      "displayName",
+      "description"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "chatViewsWelcome",
+   "file": "src/vs/workbench/contrib/chat/browser/viewsWelcome/chatViewsWelcomeHandler.ts",
+   "description": "Contributes a welcome message to a chat view",
+   "jsonSchema": {
+    "description": "Contributes a welcome message to a chat view",
+    "type": "array",
+    "items": "<chatViewsWelcomeJsonSchema>"
+   }
+  },
+  {
+   "extensionPoint": "colors",
+   "file": "src/vs/workbench/services/themes/common/colorExtensionPoint.ts",
+   "description": "Contributes extension defined themable colors",
+   "jsonSchema": {
+    "description": "Contributes extension defined themable colors",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "The identifier of the themable color",
+       "pattern": "^\\w+[.\\w+]*$",
+       "patternErrorMessage": "Identifiers must only contain letters, digits and dots and can not start with a dot"
+      },
+      "description": {
+       "type": "string",
+       "description": "The description of the themable color"
+      },
+      "defaults": {
+       "type": "object",
+       "properties": {
+        "light": {
+         "description": "The default color for light themes. Either a color value in hex (#RRGGBB[AA]) or the identifier of a themable color which provides the default.",
+         "type": "string",
+         "anyOf": [
+          "<colorReferenceSchema>",
+          {
+           "type": "string",
+           "format": "color-hex"
+          }
+         ]
+        },
+        "dark": {
+         "description": "The default color for dark themes. Either a color value in hex (#RRGGBB[AA]) or the identifier of a themable color which provides the default.",
+         "type": "string",
+         "anyOf": [
+          "<colorReferenceSchema>",
+          {
+           "type": "string",
+           "format": "color-hex"
+          }
+         ]
+        },
+        "highContrast": {
+         "description": "The default color for high contrast dark themes. Either a color value in hex (#RRGGBB[AA]) or the identifier of a themable color which provides the default. If not provided, the `dark` color is used as default for high contrast dark themes.",
+         "type": "string",
+         "anyOf": [
+          "<colorReferenceSchema>",
+          {
+           "type": "string",
+           "format": "color-hex"
+          }
+         ]
+        },
+        "highContrastLight": {
+         "description": "The default color for high contrast light themes. Either a color value in hex (#RRGGBB[AA]) or the identifier of a themable color which provides the default. If not provided, the `light` color is used as default for high contrast light themes.",
+         "type": "string",
+         "anyOf": [
+          "<colorReferenceSchema>",
+          {
+           "type": "string",
+           "format": "color-hex"
+          }
+         ]
+        }
+       },
+       "required": [
+        "light",
+        "dark"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "commands",
+   "file": "src/vs/workbench/services/actions/common/menusExtensionPoint.ts",
+   "jsonSchema": "<schema.commandsContribution>"
+  },
+  {
+   "extensionPoint": "configuration",
+   "file": "src/vs/workbench/api/common/configurationExtensionPoint.ts",
+   "description": "Contributes configuration settings.",
+   "deps": "[defaultConfigurationExtPoint]",
+   "jsonSchema": {
+    "description": "Contributes configuration settings.",
+    "oneOf": [
+     {
+      "type": "object",
+      "defaultSnippets": [
+       {
+        "body": {
+         "title": "",
+         "properties": {}
+        }
+       }
+      ],
+      "properties": {
+       "title": {
+        "description": "A title for the current category of settings. This label will be rendered in the Settings editor as a subheading. If the title is the same as the extension display name, then the category will be grouped under the main extension heading.",
+        "type": "string"
+       },
+       "order": {
+        "description": "When specified, gives the order of this category of settings relative to other categories.",
+        "type": "integer"
+       },
+       "properties": {
+        "description": "Description of the configuration properties.",
+        "type": "object",
+        "propertyNames": {
+         "pattern": "\\S+",
+         "patternErrorMessage": "Property should not be empty."
+        },
+        "additionalProperties": {
+         "anyOf": [
+          {
+           "title": "Schema of the configuration property.",
+           "$ref": "http://json-schema.org/draft-07/schema#"
+          },
+          {
+           "type": "object",
+           "properties": {
+            "scope": {
+             "type": "string",
+             "enum": [
+              "application",
+              "machine",
+              "window",
+              "resource",
+              "language-overridable",
+              "machine-overridable"
+             ],
+             "default": "window",
+             "enumDescriptions": [
+              "Configuration that can be configured only in the user settings.",
+              "Configuration that can be configured only in the user settings or only in the remote settings.",
+              "Configuration that can be configured in the user, remote or workspace settings.",
+              "Configuration that can be configured in the user, remote, workspace or folder settings.",
+              "Resource configuration that can be configured in language specific settings.",
+              "Machine configuration that can be configured also in workspace or folder settings."
+             ],
+             "markdownDescription": "Scope in which the configuration is applicable. Available scopes are `application`, `machine`, `window`, `resource`, and `machine-overridable`."
+            },
+            "enumDescriptions": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "description": "Descriptions for enum values"
+            },
+            "markdownEnumDescriptions": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "description": "Descriptions for enum values in the markdown format."
+            },
+            "enumItemLabels": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "markdownDescription": "Labels for enum values to be displayed in the Settings editor. When specified, the {0} values still show after the labels, but less prominently."
+            },
+            "markdownDescription": {
+             "type": "string",
+             "description": "The description in the markdown format."
+            },
+            "deprecationMessage": {
+             "type": "string",
+             "description": "If set, the property is marked as deprecated and the given message is shown as an explanation."
+            },
+            "markdownDeprecationMessage": {
+             "type": "string",
+             "description": "If set, the property is marked as deprecated and the given message is shown as an explanation in the markdown format."
+            },
+            "deprecationMessageSeverity": {
+             "type": "string",
+             "enum": [
+              "warning",
+              "info"
+             ],
+             "enumDescriptions": [
+              "Shows the deprecation message using the standard warning treatment.",
+              "Shows the deprecation message using an informational treatment."
+             ],
+             "default": "warning",
+             "description": "Controls the severity used to display the deprecation message."
+            },
+            "editPresentation": {
+             "type": "string",
+             "enum": [
+              "singlelineText",
+              "multilineText"
+             ],
+             "enumDescriptions": [
+              "The value will be shown in an inputbox.",
+              "The value will be shown in a textarea."
+             ],
+             "default": "singlelineText",
+             "description": "When specified, controls the presentation format of the string setting."
+            },
+            "order": {
+             "type": "integer",
+             "description": "When specified, gives the order of this setting relative to other settings within the same category. Settings with an order property will be placed before settings without this property set."
+            },
+            "ignoreSync": {
+             "type": "boolean",
+             "description": "When enabled, Settings Sync will not sync the user value of this configuration by default."
+            },
+            "keywords": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "description": "A list of keywords that help users find this setting in the Settings editor. These are not shown to the user."
+            },
+            "tags": {
+             "type": "array",
+             "items": {
+              "type": "string",
+              "enum": [
+               null,
+               null,
+               null,
+               null,
+               null
+              ],
+              "enumDescriptions": [
+               null,
+               null,
+               null,
+               null,
+               null,
+               null
+              ]
+             },
+             "additionalItems": true,
+             "markdownDescription": "A list of tags under which to place the setting. The tag can then be searched up in the Settings editor. For example, specifying the `experimental` tag allows one to find the setting by searching `@tag:experimental`."
+            },
+            "agentsWindow": {
+             "type": "object",
+             "markdownDescription": "Configuration overrides for the Agents window. Allows specifying a different default value and read-only behavior for this setting when running in the Agents window.\n\n**Note**: This is a proposed API. To use it, extensions must include `agentsWindowConfiguration` in their `enabledApiProposals`.",
+             "properties": {
+              "default": {},
+              "readOnly": {}
+             },
+             "additionalProperties": false
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
+     {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "defaultSnippets": [
+        {
+         "body": {
+          "title": "",
+          "properties": {}
+         }
+        }
+       ],
+       "properties": {
+        "title": {
+         "description": "A title for the current category of settings. This label will be rendered in the Settings editor as a subheading. If the title is the same as the extension display name, then the category will be grouped under the main extension heading.",
+         "type": "string"
+        },
+        "order": {
+         "description": "When specified, gives the order of this category of settings relative to other categories.",
+         "type": "integer"
+        },
+        "properties": {
+         "description": "Description of the configuration properties.",
+         "type": "object",
+         "propertyNames": {
+          "pattern": "\\S+",
+          "patternErrorMessage": "Property should not be empty."
+         },
+         "additionalProperties": {
+          "anyOf": [
+           {
+            "title": "Schema of the configuration property.",
+            "$ref": "http://json-schema.org/draft-07/schema#"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "scope": {
+              "type": "string",
+              "enum": [
+               null,
+               null,
+               null,
+               null,
+               null,
+               null
+              ],
+              "default": "window",
+              "enumDescriptions": [
+               null,
+               null,
+               null,
+               null,
+               null,
+               null
+              ],
+              "markdownDescription": "Scope in which the configuration is applicable. Available scopes are `application`, `machine`, `window`, `resource`, and `machine-overridable`."
+             },
+             "enumDescriptions": {
+              "type": "array",
+              "items": {},
+              "description": "Descriptions for enum values"
+             },
+             "markdownEnumDescriptions": {
+              "type": "array",
+              "items": {},
+              "description": "Descriptions for enum values in the markdown format."
+             },
+             "enumItemLabels": {
+              "type": "array",
+              "items": {},
+              "markdownDescription": "Labels for enum values to be displayed in the Settings editor. When specified, the {0} values still show after the labels, but less prominently."
+             },
+             "markdownDescription": {
+              "type": "string",
+              "description": "The description in the markdown format."
+             },
+             "deprecationMessage": {
+              "type": "string",
+              "description": "If set, the property is marked as deprecated and the given message is shown as an explanation."
+             },
+             "markdownDeprecationMessage": {
+              "type": "string",
+              "description": "If set, the property is marked as deprecated and the given message is shown as an explanation in the markdown format."
+             },
+             "deprecationMessageSeverity": {
+              "type": "string",
+              "enum": [
+               null,
+               null
+              ],
+              "enumDescriptions": [
+               null,
+               null
+              ],
+              "default": "warning",
+              "description": "Controls the severity used to display the deprecation message."
+             },
+             "editPresentation": {
+              "type": "string",
+              "enum": [
+               null,
+               null
+              ],
+              "enumDescriptions": [
+               null,
+               null
+              ],
+              "default": "singlelineText",
+              "description": "When specified, controls the presentation format of the string setting."
+             },
+             "order": {
+              "type": "integer",
+              "description": "When specified, gives the order of this setting relative to other settings within the same category. Settings with an order property will be placed before settings without this property set."
+             },
+             "ignoreSync": {
+              "type": "boolean",
+              "description": "When enabled, Settings Sync will not sync the user value of this configuration by default."
+             },
+             "keywords": {
+              "type": "array",
+              "items": {},
+              "description": "A list of keywords that help users find this setting in the Settings editor. These are not shown to the user."
+             },
+             "tags": {
+              "type": "array",
+              "items": {},
+              "additionalItems": true,
+              "markdownDescription": "A list of tags under which to place the setting. The tag can then be searched up in the Settings editor. For example, specifying the `experimental` tag allows one to find the setting by searching `@tag:experimental`."
+             },
+             "agentsWindow": {
+              "type": "object",
+              "markdownDescription": "Configuration overrides for the Agents window. Allows specifying a different default value and read-only behavior for this setting when running in the Agents window.\n\n**Note**: This is a proposed API. To use it, extensions must include `agentsWindowConfiguration` in their `enabledApiProposals`.",
+              "properties": {},
+              "additionalProperties": false
+             }
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "configurationDefaults",
+   "file": "src/vs/workbench/api/common/configurationExtensionPoint.ts",
+   "jsonSchema": {
+    "$ref": "vscode://schemas/settings/configurationDefaults"
+   }
+  },
+  {
+   "extensionPoint": "continueEditSession",
+   "file": "src/vs/workbench/contrib/editSessions/browser/editSessions.contribution.ts",
+   "description": "Contributes options for continuing the current edit session in a different environment",
+   "jsonSchema": {
+    "description": "Contributes options for continuing the current edit session in a different environment",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "command": {
+       "description": "Identifier of the command to execute. The command must be declared in the 'commands'-section and return a URI representing a different environment where the current edit session can be continued.",
+       "type": "string"
+      },
+      "group": {
+       "description": "Group into which this item belongs.",
+       "type": "string"
+      },
+      "qualifiedName": {
+       "description": "A fully qualified name for this item which is used for display in menus.",
+       "type": "string"
+      },
+      "description": {
+       "description": "The url, or a command that returns the url, to the option's documentation page.",
+       "type": "string"
+      },
+      "remoteGroup": {
+       "description": "Group into which this item belongs in the remote indicator.",
+       "type": "string"
+      },
+      "when": {
+       "description": "Condition which must be true to show this item.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "command"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "css",
+   "file": "src/vs/workbench/services/themes/browser/cssExtensionPoint.ts",
+   "description": "Contributes CSS files to be loaded in the workbench.",
+   "jsonSchema": {
+    "description": "Contributes CSS files to be loaded in the workbench.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "path": {
+       "description": "Path to the CSS file. The path is relative to the extension folder.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "path"
+     ]
+    },
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "path": "${1:styles.css}"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "customEditors",
+   "file": "src/vs/workbench/contrib/customEditor/common/extensionPoint.ts",
+   "description": "Contributed custom editors.",
+   "deps": "[languagesExtPoint]",
+   "jsonSchema": {
+    "description": "Contributed custom editors.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "[Fields.viewType]": "$1",
+        "[Fields.displayName]": "$2",
+        "[Fields.selector]": [
+         {
+          "filenamePattern": "$3"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "items": "<customEditorsContributionSchema>"
+   }
+  },
+  {
+   "extensionPoint": "debugVisualizers",
+   "file": "src/vs/workbench/contrib/debug/common/debugVisualizers.ts",
+   "jsonSchema": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "Name of the debug visualizer"
+      },
+      "when": {
+       "type": "string",
+       "description": "Condition when the debug visualizer is applicable"
+      }
+     },
+     "required": [
+      "id",
+      "when"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "debuggers",
+   "file": "src/vs/workbench/contrib/debug/common/debugSchemas.ts",
+   "description": "Contributes debug adapters.",
+   "jsonSchema": {
+    "description": "Contributes debug adapters.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "type": ""
+       }
+      ]
+     }
+    ],
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "type": "",
+        "program": "",
+        "runtime": ""
+       }
+      }
+     ],
+     "properties": {
+      "type": {
+       "description": "Unique identifier for this debug adapter.",
+       "type": "string"
+      },
+      "label": {
+       "description": "Display name for this debug adapter.",
+       "type": "string"
+      },
+      "program": {
+       "description": "Path to the debug adapter program. Path is either absolute or relative to the extension folder.",
+       "type": "string"
+      },
+      "args": {
+       "description": "Optional arguments to pass to the adapter.",
+       "type": "array"
+      },
+      "runtime": {
+       "description": "Optional runtime in case the program attribute is not an executable but requires a runtime.",
+       "type": "string"
+      },
+      "runtimeArgs": {
+       "description": "Optional runtime arguments.",
+       "type": "array"
+      },
+      "variables": {
+       "description": "Mapping from interactive variables (e.g. ${action.pickProcess}) in `launch.json` to a command.",
+       "type": "object"
+      },
+      "initialConfigurations": {
+       "description": "Configurations for generating the initial 'launch.json'.",
+       "type": [
+        "array",
+        "string"
+       ]
+      },
+      "languages": {
+       "description": "List of languages for which the debug extension could be considered the \"default debugger\".",
+       "type": "array"
+      },
+      "configurationSnippets": {
+       "description": "Snippets for adding new configurations in 'launch.json'.",
+       "type": "array"
+      },
+      "configurationAttributes": {
+       "description": "JSON schema configurations for validating 'launch.json'.",
+       "type": "object"
+      },
+      "when": {
+       "description": "Condition which must be true to enable this type of debugger. Consider using 'shellExecutionSupported', 'virtualWorkspace', 'resourceScheme' or an extension-defined context key as appropriate for this.",
+       "type": "string",
+       "default": ""
+      },
+      "hiddenWhen": {
+       "description": "When this condition is true, this debugger type is hidden from the debugger list, but is still enabled.",
+       "type": "string",
+       "default": ""
+      },
+      "deprecated": {
+       "description": "Optional message to mark this debug type as being deprecated.",
+       "type": "string",
+       "default": ""
+      },
+      "windows": {
+       "description": "Windows specific settings.",
+       "type": "object",
+       "properties": {
+        "runtime": {
+         "description": "Runtime used for Windows.",
+         "type": "string"
+        }
+       }
+      },
+      "osx": {
+       "description": "macOS specific settings.",
+       "type": "object",
+       "properties": {
+        "runtime": {
+         "description": "Runtime used for macOS.",
+         "type": "string"
+        }
+       }
+      },
+      "linux": {
+       "description": "Linux specific settings.",
+       "type": "object",
+       "properties": {
+        "runtime": {
+         "description": "Runtime used for Linux.",
+         "type": "string"
+        }
+       }
+      },
+      "strings": {
+       "description": "UI strings contributed by this debug adapter.",
+       "type": "object",
+       "properties": {
+        "unverifiedBreakpoints": {
+         "description": "When there are unverified breakpoints in a language supported by this debug adapter, this message will appear on the breakpoint hover and in the breakpoints view. Markdown and command links are supported.",
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "grammars",
+   "file": "src/vs/workbench/services/textMate/common/TMGrammars.ts",
+   "description": "Contributes textmate tokenizers.",
+   "deps": "[languagesExtPoint]",
+   "jsonSchema": {
+    "description": "Contributes textmate tokenizers.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "language": "${1:id}",
+        "scopeName": "source.${2:id}",
+        "path": "./syntaxes/${3:id}.tmLanguage."
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "language": "${1:id}",
+        "scopeName": "source.${2:id}",
+        "path": "./syntaxes/${3:id}.tmLanguage."
+       }
+      }
+     ],
+     "properties": {
+      "language": {
+       "description": "Language identifier for which this syntax is contributed to.",
+       "type": "string"
+      },
+      "scopeName": {
+       "description": "Textmate scope name used by the tmLanguage file.",
+       "type": "string"
+      },
+      "path": {
+       "description": "Path of the tmLanguage file. The path is relative to the extension folder and typically starts with './syntaxes/'.",
+       "type": "string"
+      },
+      "embeddedLanguages": {
+       "description": "A map of scope name to language id if this grammar contains embedded languages.",
+       "type": "object"
+      },
+      "tokenTypes": {
+       "description": "A map of scope name to token types.",
+       "type": "object",
+       "additionalProperties": {
+        "enum": [
+         "string",
+         "comment",
+         "other",
+         "regex"
+        ]
+       }
+      },
+      "injectTo": {
+       "description": "List of language scope names to which this grammar is injected to.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "balancedBracketScopes": {
+       "description": "Defines which scope names contain balanced brackets.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "default": [
+        "*"
+       ]
+      },
+      "unbalancedBracketScopes": {
+       "description": "Defines which scope names do not contain balanced brackets.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "default": []
+      }
+     },
+     "required": [
+      "scopeName",
+      "path"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "iconThemes",
+   "file": "src/vs/workbench/services/themes/common/themeExtensionPoints.ts",
+   "description": "Contributes file icon themes.",
+   "jsonSchema": {
+    "description": "Contributes file icon themes.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "id": "${1:id}",
+        "label": "${2:label}",
+        "path": "./fileicons/${3:id}-icon-theme.json"
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "description": "Id of the file icon theme as used in the user settings.",
+       "type": "string"
+      },
+      "label": {
+       "description": "Label of the file icon theme as shown in the UI.",
+       "type": "string"
+      },
+      "path": {
+       "description": "Path of the file icon theme definition file. The path is relative to the extension folder and is typically './fileicons/awesome-icon-theme.json'.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "path",
+      "id"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "icons",
+   "file": "src/vs/workbench/services/themes/common/iconExtensionPoint.ts",
+   "description": "Contributes extension defined themable icons",
+   "jsonSchema": {
+    "description": "Contributes extension defined themable icons",
+    "type": "object",
+    "propertyNames": {
+     "pattern": "<iconIdPattern>",
+     "description": "The identifier of the themable icon",
+     "patternErrorMessage": "Identifiers can only contain letters, digits and minuses and need to consist of at least two segments in the form `component-iconname`."
+    },
+    "additionalProperties": {
+     "type": "object",
+     "properties": {
+      "description": {
+       "type": "string",
+       "description": "The description of the themable icon"
+      },
+      "default": {
+       "anyOf": [
+        "<iconReferenceSchema>",
+        {
+         "type": "object",
+         "properties": {
+          "fontPath": {
+           "description": "The path of the icon font that defines the icon.",
+           "type": "string"
+          },
+          "fontCharacter": {
+           "description": "The character for the icon in the icon font.",
+           "type": "string"
+          }
+         },
+         "required": [
+          "fontPath",
+          "fontCharacter"
+         ],
+         "defaultSnippets": [
+          {
+           "body": {
+            "fontPath": "${1:myiconfont.woff}",
+            "fontCharacter": "${2:\\\\E001}"
+           }
+          }
+         ]
+        }
+       ],
+       "description": "The default of the icon. Either a reference to an existing ThemeIcon or an icon in an icon font."
+      }
+     },
+     "required": [
+      "description",
+      "default"
+     ],
+     "defaultSnippets": [
+      {
+       "body": {
+        "description": "${1:my icon}",
+        "default": {
+         "fontPath": "${2:myiconfont.woff}",
+         "fontCharacter": "${3:\\\\E001}"
+        }
+       }
+      }
+     ]
+    },
+    "defaultSnippets": [
+     {
+      "body": {
+       "${1:my-icon-id}": {
+        "description": "${2:my icon}",
+        "default": {
+         "fontPath": "${3:myiconfont.woff}",
+         "fontCharacter": "${4:\\\\E001}"
+        }
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "jsonValidation",
+   "file": "src/vs/workbench/api/common/jsonValidationExtensionPoint.ts",
+   "description": "Contributes json schema configuration.",
+   "jsonSchema": {
+    "description": "Contributes json schema configuration.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "fileMatch": "${1:file.json}",
+        "url": "${2:url}"
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "fileMatch": "${1:file.json}",
+        "url": "${2:url}"
+       }
+      }
+     ],
+     "properties": {
+      "fileMatch": {
+       "type": [
+        "string",
+        "array"
+       ],
+       "description": "The file pattern (or an array of patterns) to match, for example \"package.json\" or \"*.launch\". Exclusion patterns start with '!'",
+       "items": {
+        "type": [
+         "string"
+        ]
+       }
+      },
+      "url": {
+       "description": "A schema URL ('http:', 'https:') or relative path to the extension folder ('./').",
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "jsonValidationRegistry",
+   "file": "src/vs/workbench/api/common/jsonValidationExtensionPoint.ts",
+   "description": "Contributes a JSON validation registry. The registry can be a dynamic resource from a filesystem provider and allows associations to change at runtime.",
+   "jsonSchema": {
+    "description": "Contributes a JSON validation registry. The registry can be a dynamic resource from a filesystem provider and allows associations to change at runtime.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "url": "${1:url}"
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "url": "${1:url}"
+       }
+      }
+     ],
+     "properties": {
+      "url": {
+       "description": "A registry URI or relative path to the extension folder ('./').",
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "keybindings",
+   "file": "src/vs/workbench/services/keybinding/browser/keybindingService.ts",
+   "description": "Contributes keybindings.",
+   "deps": "[commandsExtensionPoint]",
+   "jsonSchema": {
+    "description": "Contributes keybindings.",
+    "oneOf": [
+     "<keybindingType>",
+     {
+      "type": "array",
+      "items": "<keybindingType>"
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "languageModelChatProviders",
+   "file": "src/vs/workbench/contrib/chat/common/languageModels.ts",
+   "description": "Contribute language model chat providers of a specific vendor.",
+   "jsonSchema": {
+    "description": "Contribute language model chat providers of a specific vendor.",
+    "oneOf": [
+     "<languageModelChatProviderType>",
+     {
+      "type": "array",
+      "items": "<languageModelChatProviderType>"
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "languageModelToolSets",
+   "file": "src/vs/workbench/contrib/chat/common/tools/languageModelToolsContribution.ts",
+   "description": "Contributes a set of language model tools that can be used together.",
+   "deps": "[languageModelToolsExtensionPoint]",
+   "jsonSchema": {
+    "description": "Contributes a set of language model tools that can be used together.",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "name": "${1}",
+        "description": "${2}",
+        "tools": [
+         "${3}"
+        ]
+       }
+      }
+     ],
+     "required": [
+      "name",
+      "description",
+      "tools"
+     ],
+     "properties": {
+      "name": {
+       "description": "A name for this tool set. Used as reference and should not contain whitespace.",
+       "type": "string",
+       "pattern": "^[\\w-]+$"
+      },
+      "description": {
+       "description": "A description of this tool set.",
+       "type": "string"
+      },
+      "icon": {
+       "markdownDescription": "An icon that represents this tool set, like {0}",
+       "type": "string"
+      },
+      "tools": {
+       "markdownDescription": "A list of tools or tool sets to include in this tool set. Cannot be empty and must reference tools by their `toolReferenceName`.",
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "languageModelTools",
+   "file": "src/vs/workbench/contrib/chat/common/tools/languageModelToolsContribution.ts",
+   "description": "Contributes a tool that can be invoked by a language model in a chat session, or from a standalone command. Registered tools can be used by all extensions.",
+   "jsonSchema": {
+    "description": "Contributes a tool that can be invoked by a language model in a chat session, or from a standalone command. Registered tools can be used by all extensions.",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "name": "${1}",
+        "modelDescription": "${2}",
+        "inputSchema": {
+         "type": "object",
+         "properties": {
+          "${3:name}": {
+           "type": "string",
+           "description": "${4:description}"
+          }
+         }
+        }
+       }
+      }
+     ],
+     "required": [
+      "name",
+      "displayName",
+      "modelDescription"
+     ],
+     "properties": {
+      "name": {
+       "description": "A unique name for this tool. This name must be a globally unique identifier, and is also used as a name when presenting this tool to a language model.",
+       "type": "string",
+       "pattern": "^(?!copilot_|vscode_)[\\w-]+$"
+      },
+      "toolReferenceName": {
+       "markdownDescription": "If {0} is enabled for this tool, the user may use '#' with this name to invoke the tool in a query. Otherwise, the name is not required. Name must not contain whitespace.",
+       "type": "string",
+       "pattern": "^[\\w-]+$"
+      },
+      "displayName": {
+       "description": "A human-readable name for this tool that may be used to describe it in the UI.",
+       "type": "string"
+      },
+      "userDescription": {
+       "description": "A description of this tool that may be shown to the user.",
+       "type": "string"
+      },
+      "modelDescription": {
+       "description": "A description of this tool that may be used by a language model to select it.",
+       "type": "string"
+      },
+      "inputSchema": {
+       "description": "A JSON schema for the input this tool accepts. The input must be an object at the top level. A particular language model may not support all JSON schema features. See the documentation for the language model family you are using for more information.",
+       "$ref": "vscode://schemas/toolsParameters"
+      },
+      "canBeReferencedInPrompt": {
+       "markdownDescription": "If true, this tool shows up as an attachment that the user can add manually to their request. Chat participants will receive the tool in {0}.",
+       "type": "boolean"
+      },
+      "icon": {
+       "markdownDescription": "An icon that represents this tool. Either a file path, an object with file paths for dark and light themes, or a theme icon reference, like \"\\$(zap)\"",
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "object",
+         "properties": {
+          "light": {
+           "description": "Icon path when a light theme is used",
+           "type": "string"
+          },
+          "dark": {
+           "description": "Icon path when a dark theme is used",
+           "type": "string"
+          }
+         }
+        }
+       ]
+      },
+      "when": {
+       "markdownDescription": "Condition which must be true for this tool to be enabled. Note that a tool may still be invoked by another extension even when its `when` condition is false.",
+       "type": "string"
+      },
+      "tags": {
+       "description": "A set of tags that roughly describe the tool's capabilities. A tool user may use these to filter the set of tools to just ones that are relevant for the task at hand, or they may want to pick a tag that can be used to identify just the tools contributed by this extension.",
+       "type": "array",
+       "items": {
+        "type": "string",
+        "pattern": "^(?!copilot_|vscode_)"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "languages",
+   "file": "src/vs/workbench/services/language/common/languageService.ts",
+   "description": "Contributes language declarations.",
+   "jsonSchema": {
+    "description": "Contributes language declarations.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "id": "${1:languageId}",
+        "aliases": [
+         "${2:label}"
+        ],
+        "extensions": [
+         "${3:extension}"
+        ],
+        "configuration": "./language-configuration.json"
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "description": "ID of the language.",
+       "type": "string"
+      },
+      "aliases": {
+       "description": "Name aliases for the language.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "extensions": {
+       "description": "File extensions associated to the language.",
+       "default": [
+        ".foo"
+       ],
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "filenames": {
+       "description": "File names associated to the language.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "filenamePatterns": {
+       "description": "File name glob patterns associated to the language.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "mimetypes": {
+       "description": "Mime types associated to the language.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "firstLine": {
+       "description": "A regular expression matching the first line of a file of the language.",
+       "type": "string"
+      },
+      "configuration": {
+       "description": "A relative path to a file containing configuration options for the language.",
+       "type": "string",
+       "default": "./language-configuration.json"
+      },
+      "icon": {
+       "type": "object",
+       "description": "A icon to use as file icon, if no icon theme provides one for the language.",
+       "properties": {
+        "light": {
+         "description": "Icon path when a light theme is used",
+         "type": "string"
+        },
+        "dark": {
+         "description": "Icon path when a dark theme is used",
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "linkPresentationProviders",
+   "file": "src/vs/workbench/services/dataChannel/browser/dataChannelService.ts",
+   "description": "Contributes link presentation providers selected by URI regular expressions.",
+   "jsonSchema": {
+    "description": "Contributes link presentation providers selected by URI regular expressions.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "id",
+      "uriPattern",
+      "kind"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "Unique identifier used to register this link presentation provider."
+      },
+      "uriPattern": {
+       "type": "string",
+       "description": "Anchored regular expression matched against the canonical URI string before the extension is activated."
+      },
+      "kind": {
+       "type": "string",
+       "enum": "<linkPresentationProviderKinds>",
+       "description": "The semantic kind produced by this provider."
+      },
+      "enablement": {
+       "type": "string",
+       "description": "Configuration key that must be enabled before this provider is selected."
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "localizations",
+   "file": "src/vs/workbench/contrib/localization/common/localization.contribution.ts",
+   "description": "Contributes localizations to the editor",
+   "jsonSchema": {
+    "description": "Contributes localizations to the editor",
+    "type": "array",
+    "default": [],
+    "items": {
+     "type": "object",
+     "required": [
+      "languageId",
+      "translations"
+     ],
+     "defaultSnippets": [
+      {
+       "body": {
+        "languageId": "",
+        "languageName": "",
+        "localizedLanguageName": "",
+        "translations": [
+         {
+          "id": "vscode",
+          "path": ""
+         }
+        ]
+       }
+      }
+     ],
+     "properties": {
+      "languageId": {
+       "description": "Id of the language into which the display strings are translated.",
+       "type": "string"
+      },
+      "languageName": {
+       "description": "Name of the language in English.",
+       "type": "string"
+      },
+      "localizedLanguageName": {
+       "description": "Name of the language in contributed language.",
+       "type": "string"
+      },
+      "translations": {
+       "description": "List of translations associated to the language.",
+       "type": "array",
+       "default": [
+        {
+         "id": "vscode",
+         "path": ""
+        }
+       ],
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "path"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "description": "Id of VS Code or Extension for which this translation is contributed to. Id of VS Code is always `vscode` and of extension should be in format `publisherId.extensionName`.",
+          "pattern": "^((vscode)|([a-z0-9A-Z][a-z0-9A-Z-]*)\\.([a-z0-9A-Z][a-z0-9A-Z-]*))$",
+          "patternErrorMessage": "Id should be `vscode` or in format `publisherId.extensionName` for translating VS code or an extension respectively."
+         },
+         "path": {
+          "type": "string",
+          "description": "A relative path to a file containing translations for the language."
+         }
+        },
+        "defaultSnippets": [
+         {
+          "body": {
+           "id": "",
+           "path": ""
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "menus",
+   "file": "src/vs/workbench/services/actions/common/menusExtensionPoint.ts",
+   "deps": "[submenusExtensionPoint]",
+   "jsonSchema": "<schema.menusContribution>"
+  },
+  {
+   "extensionPoint": "notebookPreload",
+   "file": "src/vs/workbench/contrib/notebook/browser/notebookExtensionPoint.ts",
+   "description": "Contributes notebook preloads.",
+   "jsonSchema": {
+    "description": "Contributes notebook preloads.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "type": "",
+        "entrypoint": ""
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "required": [
+      "<NotebookPreloadContribution.type>",
+      "<NotebookPreloadContribution.entrypoint>"
+     ],
+     "properties": {
+      "[NotebookPreloadContribution.type]": {
+       "type": "string",
+       "description": "Type of the notebook."
+      },
+      "[NotebookPreloadContribution.entrypoint]": {
+       "type": "string",
+       "description": "Path to file loaded in the webview."
+      },
+      "[NotebookPreloadContribution.localResourceRoots]": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Paths to additional resources that should be allowed in the webview."
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "notebookRenderer",
+   "file": "src/vs/workbench/contrib/notebook/browser/notebookExtensionPoint.ts",
+   "description": "Contributes notebook output renderer provider.",
+   "jsonSchema": {
+    "description": "Contributes notebook output renderer provider.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       "<defaultRendererSnippet>"
+      ]
+     }
+    ],
+    "items": {
+     "defaultSnippets": [
+      {
+       "body": "<defaultRendererSnippet>"
+      }
+     ],
+     "allOf": [
+      {
+       "type": "object",
+       "required": [
+        "<NotebookRendererContribution.id>",
+        "<NotebookRendererContribution.displayName>"
+       ],
+       "properties": {
+        "[NotebookRendererContribution.id]": {
+         "type": "string",
+         "description": "Unique identifier of the notebook output renderer."
+        },
+        "[NotebookRendererContribution.displayName]": {
+         "type": "string",
+         "description": "Human readable name of the notebook output renderer."
+        },
+        "[NotebookRendererContribution.hardDependencies]": {
+         "type": "array",
+         "uniqueItems": true,
+         "items": {
+          "type": "string"
+         },
+         "markdownDescription": "List of kernel dependencies the renderer requires. If any of the dependencies are present in the `NotebookKernel.preloads`, the renderer can be used."
+        },
+        "[NotebookRendererContribution.optionalDependencies]": {
+         "type": "array",
+         "uniqueItems": true,
+         "items": {
+          "type": "string"
+         },
+         "markdownDescription": "List of soft kernel dependencies the renderer can make use of. If any of the dependencies are present in the `NotebookKernel.preloads`, the renderer will be preferred over renderers that don't interact with the kernel."
+        },
+        "[NotebookRendererContribution.requiresMessaging]": {
+         "default": "never",
+         "enum": [
+          "always",
+          "optional",
+          "never"
+         ],
+         "enumDescriptions": [
+          "Messaging is required. The renderer will only be used when it's part of an extension that can be run in an extension host.",
+          "The renderer is better with messaging available, but it's not required.",
+          "The renderer does not require messaging."
+         ],
+         "description": "Defines how and if the renderer needs to communicate with an extension host, via `createRendererMessaging`. Renderers with stronger messaging requirements may not work in all environments."
+        }
+       }
+      },
+      {
+       "oneOf": [
+        {
+         "required": [
+          "<NotebookRendererContribution.entrypoint>",
+          "<NotebookRendererContribution.mimeTypes>"
+         ],
+         "properties": {
+          "[NotebookRendererContribution.mimeTypes]": {
+           "type": "array",
+           "description": "Set of globs that the notebook is for.",
+           "items": {
+            "type": "string"
+           }
+          },
+          "[NotebookRendererContribution.entrypoint]": {
+           "description": "File to load in the webview to render the extension.",
+           "type": "string"
+          }
+         }
+        },
+        {
+         "required": [
+          "<NotebookRendererContribution.entrypoint>"
+         ],
+         "properties": {
+          "[NotebookRendererContribution.entrypoint]": {
+           "description": "File to load in the webview to render the extension.",
+           "type": "object",
+           "required": [
+            "extends",
+            "path"
+           ],
+           "properties": {
+            "extends": {
+             "type": "string",
+             "description": "Existing renderer that this one extends."
+            },
+            "path": {
+             "type": "string",
+             "description": "File to load in the webview to render the extension."
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "notebooks",
+   "file": "src/vs/workbench/contrib/notebook/browser/notebookExtensionPoint.ts",
+   "description": "Contributes notebook document provider.",
+   "jsonSchema": {
+    "description": "Contributes notebook document provider.",
+    "type": "array",
+    "defaultSnippets": [
+     {
+      "body": [
+       {
+        "type": "",
+        "displayName": "",
+        "selector": [
+         {
+          "filenamePattern": ""
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "items": {
+     "type": "object",
+     "required": [
+      "<NotebookEditorContribution.type>",
+      "<NotebookEditorContribution.displayName>",
+      "<NotebookEditorContribution.selector>"
+     ],
+     "properties": {
+      "[NotebookEditorContribution.type]": {
+       "type": "string",
+       "description": "Type of the notebook."
+      },
+      "[NotebookEditorContribution.displayName]": {
+       "type": "string",
+       "description": "Human readable name of the notebook."
+      },
+      "[NotebookEditorContribution.selector]": {
+       "type": "array",
+       "description": "Set of globs that the notebook is for.",
+       "items": {
+        "type": "object",
+        "properties": {
+         "filenamePattern": {
+          "type": "string",
+          "description": "Glob that the notebook is enabled for."
+         },
+         "excludeFileNamePattern": {
+          "type": "string",
+          "description": "Glob that the notebook is disabled for."
+         }
+        }
+       }
+      },
+      "[NotebookEditorContribution.priority]": {
+       "type": "string",
+       "markdownDeprecationMessage": "Controls if the custom editor is enabled automatically when the user opens a file. This may be overridden by users using the `workbench.editorAssociations` setting.",
+       "enum": [
+        "default",
+        "option"
+       ],
+       "markdownEnumDescriptions": [
+        "The editor is automatically used when the user opens a resource, provided that no other default custom editors are registered for that resource.",
+        "The editor is not automatically used when the user opens a resource, but a user can switch to the editor using the `Reopen With` command."
+       ],
+       "default": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "problemMatchers",
+   "file": "src/vs/workbench/contrib/tasks/common/problemMatcher.ts",
+   "description": "Contributes problem matchers",
+   "deps": "[problemPatternExtPoint]",
+   "jsonSchema": {
+    "description": "Contributes problem matchers",
+    "type": "array",
+    "items": "<Schemas.NamedProblemMatcher>"
+   }
+  },
+  {
+   "extensionPoint": "problemPatterns",
+   "file": "src/vs/workbench/contrib/tasks/common/problemMatcher.ts",
+   "description": "Contributes problem patterns",
+   "jsonSchema": {
+    "description": "Contributes problem patterns",
+    "type": "array",
+    "items": {
+     "anyOf": [
+      "<Schemas.NamedProblemPattern>",
+      "<Schemas.NamedMultiLineProblemPattern>"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "productIconThemes",
+   "file": "src/vs/workbench/services/themes/common/themeExtensionPoints.ts",
+   "description": "Contributes product icon themes.",
+   "jsonSchema": {
+    "description": "Contributes product icon themes.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "id": "${1:id}",
+        "label": "${2:label}",
+        "path": "./producticons/${3:id}-product-icon-theme.json"
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "description": "Id of the product icon theme as used in the user settings.",
+       "type": "string"
+      },
+      "label": {
+       "description": "Label of the product icon theme as shown in the UI.",
+       "type": "string"
+      },
+      "path": {
+       "description": "Path of the product icon theme definition file. The path is relative to the extension folder and is typically './producticons/awesome-product-icon-theme.json'.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "path",
+      "id"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "remoteCodingAgents",
+   "file": "src/vs/workbench/contrib/remoteCodingAgents/browser/remoteCodingAgents.contribution.ts",
+   "description": "Contributes remote coding agent integrations to the chat widget.",
+   "jsonSchema": {
+    "description": "Contributes remote coding agent integrations to the chat widget.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "description": "A unique identifier for this item.",
+       "type": "string"
+      },
+      "command": {
+       "description": "Identifier of the command to execute. The command must be declared in the \"commands\" section.",
+       "type": "string"
+      },
+      "displayName": {
+       "description": "A user-friendly name for this item which is used for display in menus.",
+       "type": "string"
+      },
+      "description": {
+       "description": "Description of the remote agent for use in menus and tooltips.",
+       "type": "string"
+      },
+      "followUpRegex": {
+       "description": "The last occurrence of pattern in an existing chat conversation is sent to the contributing extension to facilitate follow-up responses.",
+       "type": "string"
+      },
+      "when": {
+       "description": "Condition which must be true to show this item.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "command",
+      "displayName"
+     ]
+    }
+   }
+  },
+  {
+   "extensionPoint": "remoteHelp",
+   "file": "src/vs/workbench/services/remote/common/remoteExplorerService.ts",
+   "description": "Contributes help information for Remote",
+   "jsonSchema": {
+    "description": "Contributes help information for Remote",
+    "type": "object",
+    "properties": {
+     "getStarted": {
+      "description": "The url, or a command that returns the url, to your project's Getting Started page, or a walkthrough ID contributed by your project's extension",
+      "oneOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "required": [
+         "id"
+        ],
+        "properties": {
+         "id": {
+          "description": "The ID of a Get Started walkthrough to open.",
+          "type": "string"
+         }
+        }
+       }
+      ]
+     },
+     "documentation": {
+      "description": "The url, or a command that returns the url, to your project's documentation page",
+      "type": "string"
+     },
+     "feedback": {
+      "description": "The url, or a command that returns the url, to your project's feedback reporter",
+      "type": "string",
+      "markdownDeprecationMessage": "Use {0} instead"
+     },
+     "reportIssue": {
+      "description": "The url, or a command that returns the url, to your project's issue reporter",
+      "type": "string"
+     },
+     "issues": {
+      "description": "The url, or a command that returns the url, to your project's issues list",
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "resourceLabelFormatters",
+   "file": "src/vs/workbench/services/label/common/labelService.ts",
+   "description": "Contributes resource label formatting rules.",
+   "jsonSchema": {
+    "description": "Contributes resource label formatting rules.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "required": [
+      "scheme",
+      "formatting"
+     ],
+     "properties": {
+      "scheme": {
+       "type": "string",
+       "description": "URI scheme on which to match the formatter on. For example \"file\". Simple glob patterns are supported."
+      },
+      "authority": {
+       "type": "string",
+       "description": "URI authority on which to match the formatter on. Simple glob patterns are supported."
+      },
+      "formatting": {
+       "description": "Rules for formatting uri resource labels.",
+       "type": "object",
+       "properties": {
+        "label": {
+         "type": "string",
+         "description": "Label rules to display. For example: myLabel:/${path}. ${path}, ${scheme}, ${authority} and ${authoritySuffix} are supported as variables."
+        },
+        "separator": {
+         "type": "string",
+         "description": "Separator to be used in the uri label display. '/' or '' as an example."
+        },
+        "stripPathStartingSeparator": {
+         "type": "boolean",
+         "description": "Controls whether `${path}` substitutions should have starting separator characters stripped."
+        },
+        "tildify": {
+         "type": "boolean",
+         "description": "Controls if the start of the uri label should be tildified when possible."
+        },
+        "workspaceSuffix": {
+         "type": "string",
+         "description": "Suffix appended to the workspace label."
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "semanticTokenModifiers",
+   "file": "src/vs/workbench/services/themes/common/tokenClassificationExtensionPoint.ts",
+   "description": "Contributes semantic token modifiers.",
+   "jsonSchema": {
+    "description": "Contributes semantic token modifiers.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "The identifier of the semantic token modifier",
+       "pattern": "<typeAndModifierIdPattern>",
+       "patternErrorMessage": "Identifiers should be in the form letterOrDigit[_-letterOrDigit]*"
+      },
+      "description": {
+       "description": "The description of the semantic token modifier"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "semanticTokenScopes",
+   "file": "src/vs/workbench/services/themes/common/tokenClassificationExtensionPoint.ts",
+   "description": "Contributes semantic token scope maps.",
+   "jsonSchema": {
+    "description": "Contributes semantic token scope maps.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "language": {
+       "description": "Lists the languge for which the defaults are.",
+       "type": "string"
+      },
+      "scopes": {
+       "description": "Maps a semantic token (described by semantic token selector) to one or more textMate scopes used to represent that token.",
+       "type": "object",
+       "additionalProperties": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "semanticTokenTypes",
+   "file": "src/vs/workbench/services/themes/common/tokenClassificationExtensionPoint.ts",
+   "description": "Contributes semantic token types.",
+   "jsonSchema": {
+    "description": "Contributes semantic token types.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "The identifier of the semantic token type",
+       "pattern": "<typeAndModifierIdPattern>",
+       "patternErrorMessage": "Identifiers should be in the form letterOrDigit[_-letterOrDigit]*"
+      },
+      "superType": {
+       "type": "string",
+       "description": "The super type of the semantic token type",
+       "pattern": "<typeAndModifierIdPattern>",
+       "patternErrorMessage": "Super types should be in the form letterOrDigit[_-letterOrDigit]*"
+      },
+      "description": {
+       "type": "string",
+       "description": "The description of the semantic token type"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "snippets",
+   "file": "src/vs/workbench/contrib/snippets/browser/snippetsService.ts",
+   "deps": "[languagesExtPoint]",
+   "jsonSchema": "<snippetExt.snippetsContribution>"
+  },
+  {
+   "extensionPoint": "speechProviders",
+   "file": "src/vs/workbench/contrib/speech/browser/speechService.ts",
+   "description": "Contributes a Speech Provider",
+   "jsonSchema": {
+    "description": "Contributes a Speech Provider",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "name": "",
+        "description": ""
+       }
+      }
+     ],
+     "required": [
+      "name"
+     ],
+     "properties": {
+      "name": {
+       "description": "Unique name for this Speech Provider.",
+       "type": "string"
+      },
+      "description": {
+       "description": "A description of this Speech Provider, shown in the UI.",
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "statusBarItems",
+   "file": "src/vs/workbench/api/browser/statusBarExtensionPoint.ts",
+   "description": "Contributes items to the status bar.",
+   "jsonSchema": {
+    "description": "Contributes items to the status bar.",
+    "oneOf": [
+     "<statusBarItemSchema>",
+     {
+      "type": "array",
+      "items": "<statusBarItemSchema>"
+     }
+    ]
+   }
+  },
+  {
+   "extensionPoint": "submenus",
+   "file": "src/vs/workbench/services/actions/common/menusExtensionPoint.ts",
+   "jsonSchema": "<schema.submenusContribution>"
+  },
+  {
+   "extensionPoint": "taskDefinitions",
+   "file": "src/vs/workbench/contrib/tasks/common/taskDefinitionRegistry.ts",
+   "description": "Contributes task kinds",
+   "jsonSchema": {
+    "description": "Contributes task kinds",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "type": {
+       "type": "string",
+       "description": "The actual task type. Please note that types starting with a '$' are reserved for internal usage."
+      },
+      "required": {
+       "type": "array",
+       "markdownDescription": "The names of the properties from the `properties` object that must be provided for a task of this type to be considered a match. Used by VS Code to associate a `tasks.json` entry with a registered task provider.",
+       "items": {
+        "type": "string"
+       }
+      },
+      "properties": {
+       "type": "object",
+       "description": "Additional properties of the task type",
+       "additionalProperties": {
+        "$ref": "http://json-schema.org/draft-07/schema#"
+       }
+      },
+      "when": {
+       "type": "string",
+       "markdownDescription": "Condition which must be true to enable this type of task. Consider using `shellExecutionSupported`, `processExecutionSupported`, and `customExecutionSupported` as appropriate for this task definition. See the [API documentation](https://code.visualstudio.com/api/extension-guides/task-provider#when-clause) for more information.",
+       "default": ""
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "terminalQuickFixes",
+   "file": "src/vs/workbench/contrib/terminalContrib/quickFix/browser/terminalQuickFixService.ts",
+   "description": "Contributes terminal quick fixes.",
+   "jsonSchema": {
+    "description": "Contributes terminal quick fixes.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "id",
+      "commandLineMatcher",
+      "outputMatcher",
+      "commandExitResult"
+     ],
+     "defaultSnippets": [
+      {
+       "body": {
+        "id": "$1",
+        "commandLineMatcher": "$2",
+        "outputMatcher": "$3",
+        "exitStatus": "$4"
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "description": "The ID of the quick fix provider",
+       "type": "string"
+      },
+      "commandLineMatcher": {
+       "description": "A regular expression or string to test the command line against",
+       "type": "string"
+      },
+      "outputMatcher": {
+       "markdownDescription": "A regular expression or string to match a single line of the output against, which provides groups to be referenced in terminalCommand and uri.\n\nFor example:\n\n `lineMatcher: /git push --set-upstream origin (?<branchName>[^s]+)/;`\n\n`terminalCommand: 'git push --set-upstream origin ${group:branchName}';`\n",
+       "type": "object",
+       "required": [
+        "lineMatcher",
+        "anchor",
+        "offset",
+        "length"
+       ],
+       "properties": {
+        "lineMatcher": {
+         "description": "A regular expression or string to test the command line against",
+         "type": "string"
+        },
+        "anchor": {
+         "description": "Where the search should begin in the buffer",
+         "enum": [
+          "top",
+          "bottom"
+         ]
+        },
+        "offset": {
+         "description": "The number of lines vertically from the anchor in the buffer to start matching against",
+         "type": "number"
+        },
+        "length": {
+         "description": "The number of rows to match against, this should be as small as possible for performance reasons",
+         "type": "number"
+        }
+       }
+      },
+      "commandExitResult": {
+       "description": "The command exit result to match on",
+       "enum": [
+        "success",
+        "error"
+       ],
+       "enumDescriptions": [
+        "The command exited with an exit code of zero.",
+        "The command exited with a non-zero exit code."
+       ]
+      },
+      "kind": {
+       "description": "The kind of the resulting quick fix. This changes how the quick fix is presented. Defaults to {0}.",
+       "enum": [
+        "default",
+        "explain"
+       ],
+       "enumDescriptions": [
+        "A high confidence quick fix.",
+        "An explanation of the problem."
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "themes",
+   "file": "src/vs/workbench/services/themes/common/themeExtensionPoints.ts",
+   "description": "Contributes textmate color themes.",
+   "jsonSchema": {
+    "description": "Contributes textmate color themes.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "label": "${1:label}",
+        "id": "${2:id}",
+        "uiTheme": "vs-dark",
+        "path": "./themes/${3:id}.tmTheme."
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "description": "Id of the color theme as used in the user settings.",
+       "type": "string"
+      },
+      "label": {
+       "description": "Label of the color theme as shown in the UI.",
+       "type": "string"
+      },
+      "uiTheme": {
+       "markdownDescription": "Base theme defining the colors around the editor: `vs` is the light color theme, `vs-dark` is the dark color theme. `hc-black` is the dark high contrast theme, `hc-light` is the light high contrast theme.",
+       "enum": [
+        "vs",
+        "vs-dark",
+        "hc-black",
+        "hc-light"
+       ]
+      },
+      "path": {
+       "markdownDescription": "Path of the tmTheme file. The path is relative to the extension folder and is typically `./colorthemes/awesome-color-theme.json`.",
+       "type": "string"
+      }
+     },
+     "required": [
+      "path",
+      "uiTheme"
+     ]
+    }
+   }
+  },
+  {
+   "file": "src/vs/workbench/contrib/chat/common/promptSyntax/chatPromptFilesContribution.ts",
+   "description": "Contributes {0} for chat prompts.",
+   "jsonSchema": {
+    "description": "Contributes {0} for chat prompts.",
+    "type": "array",
+    "items": {
+     "additionalProperties": false,
+     "type": "object",
+     "defaultSnippets": [
+      {
+       "body": {
+        "path": "<point === ChatContributionPoint.chatSkills ? './relative/path/to/skill-name/SKILL.md' : './relative/path/to/file.md'>"
+       }
+      }
+     ],
+     "required": [
+      "path"
+     ],
+     "properties": {
+      "path": {
+       "description": "<point === ChatContributionPoint.chatSkills ? localize('chatContribution.property.path.skills', 'Path to the SKILL.md file relative to the extension root. The folder name must match the \"name\" property in SKILL.md.') : localize('chatContribution.property.path', 'Path to the file relative to the extension root.')>",
+       "type": "string"
+      },
+      "name": {
+       "description": "(Optional) Name for this entry.",
+       "deprecationMessage": "Specify \"name\" in the prompt file itself instead.",
+       "type": "string"
+      },
+      "description": {
+       "description": "(Optional) Description of the entry.",
+       "deprecationMessage": "Specify \"description\" in the prompt file itself instead.",
+       "type": "string"
+      },
+      "when": {
+       "description": "(Optional) A condition which must be true to enable this entry.",
+       "type": "string"
+      },
+      "sessionTypes": {
+       "description": "(Optional) The chat session types where this entry should be offered.",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "extensionPoint": "views",
+   "file": "src/vs/workbench/api/browser/viewsExtensionPoint.ts",
+   "description": "Contributes views to the editor",
+   "deps": "[viewsContainersExtensionPoint]",
+   "jsonSchema": {
+    "description": "Contributes views to the editor",
+    "type": "object",
+    "properties": {
+     "explorer": {
+      "description": "Contributes views to Explorer container in the Activity bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "name",
+        "icon"
+       ],
+       "defaultSnippets": [
+        {
+         "body": {
+          "id": "${1:id}",
+          "name": "${2:name}",
+          "icon": "${3:icon}"
+         }
+        }
+       ],
+       "properties": {
+        "type": {
+         "markdownDescription": "Type of the view. This can either be `tree` for a tree view based view or `webview` for a webview based view. The default is `tree`.",
+         "type": "string",
+         "enum": [
+          "tree",
+          "webview"
+         ],
+         "markdownEnumDescriptions": [
+          "The view is backed by a `TreeView` created by `createTreeView`.",
+          "The view is backed by a `WebviewView` registered by `registerWebviewViewProvider`."
+         ]
+        },
+        "id": {
+         "markdownDescription": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+         "type": "string"
+        },
+        "name": {
+         "description": "The human-readable name of the view. Will be shown",
+         "type": "string"
+        },
+        "when": {
+         "description": "Condition which must be true to show this view",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the view icon. View icons are displayed when the name of the view cannot be shown. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        },
+        "contextualTitle": {
+         "description": "Human-readable context for when the view is moved out of its original location. By default, the view's container name will be used.",
+         "type": "string"
+        },
+        "visibility": {
+         "description": "Initial state of the view when the extension is first installed. Once the user has changed the view state by collapsing, moving, or hiding the view, the initial state will not be used again.",
+         "type": "string",
+         "enum": [
+          "visible",
+          "hidden",
+          "collapsed"
+         ],
+         "default": "visible",
+         "enumDescriptions": [
+          "The default initial state for the view. In most containers the view will be expanded, however; some built-in containers (explorer, scm, and debug) show all contributed views collapsed regardless of the `visibility`.",
+          "The view will not be shown in the view container, but will be discoverable through the views menu and other view entry points and can be un-hidden by the user.",
+          "The view will show in the view container, but will be collapsed."
+         ]
+        },
+        "initialSize": {
+         "type": "number",
+         "description": "The initial size of the view. The size will behave like the css 'flex' property, and will set the initial size when the view is first shown. In the side bar, this is the height of the view. This value is only respected when the same extension owns both the view and the view container."
+        },
+        "accessibilityHelpContent": {
+         "type": "string",
+         "markdownDescription": "When the accessibility help dialog is invoked in this view, this content will be presented to the user as a markdown string. Keybindings will be resolved when provided in the format of <keybinding:commandId>. If there is no keybinding, that will be indicated and this command will be included in a quickpick for easy configuration."
+        }
+       }
+      },
+      "default": []
+     },
+     "debug": {
+      "description": "Contributes views to Debug container in the Activity bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "name",
+        "icon"
+       ],
+       "defaultSnippets": [
+        {
+         "body": {
+          "id": "${1:id}",
+          "name": "${2:name}",
+          "icon": "${3:icon}"
+         }
+        }
+       ],
+       "properties": {
+        "type": {
+         "markdownDescription": "Type of the view. This can either be `tree` for a tree view based view or `webview` for a webview based view. The default is `tree`.",
+         "type": "string",
+         "enum": [
+          "tree",
+          "webview"
+         ],
+         "markdownEnumDescriptions": [
+          "The view is backed by a `TreeView` created by `createTreeView`.",
+          "The view is backed by a `WebviewView` registered by `registerWebviewViewProvider`."
+         ]
+        },
+        "id": {
+         "markdownDescription": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+         "type": "string"
+        },
+        "name": {
+         "description": "The human-readable name of the view. Will be shown",
+         "type": "string"
+        },
+        "when": {
+         "description": "Condition which must be true to show this view",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the view icon. View icons are displayed when the name of the view cannot be shown. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        },
+        "contextualTitle": {
+         "description": "Human-readable context for when the view is moved out of its original location. By default, the view's container name will be used.",
+         "type": "string"
+        },
+        "visibility": {
+         "description": "Initial state of the view when the extension is first installed. Once the user has changed the view state by collapsing, moving, or hiding the view, the initial state will not be used again.",
+         "type": "string",
+         "enum": [
+          "visible",
+          "hidden",
+          "collapsed"
+         ],
+         "default": "visible",
+         "enumDescriptions": [
+          "The default initial state for the view. In most containers the view will be expanded, however; some built-in containers (explorer, scm, and debug) show all contributed views collapsed regardless of the `visibility`.",
+          "The view will not be shown in the view container, but will be discoverable through the views menu and other view entry points and can be un-hidden by the user.",
+          "The view will show in the view container, but will be collapsed."
+         ]
+        },
+        "initialSize": {
+         "type": "number",
+         "description": "The initial size of the view. The size will behave like the css 'flex' property, and will set the initial size when the view is first shown. In the side bar, this is the height of the view. This value is only respected when the same extension owns both the view and the view container."
+        },
+        "accessibilityHelpContent": {
+         "type": "string",
+         "markdownDescription": "When the accessibility help dialog is invoked in this view, this content will be presented to the user as a markdown string. Keybindings will be resolved when provided in the format of <keybinding:commandId>. If there is no keybinding, that will be indicated and this command will be included in a quickpick for easy configuration."
+        }
+       }
+      },
+      "default": []
+     },
+     "scm": {
+      "description": "Contributes views to SCM container in the Activity bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "name",
+        "icon"
+       ],
+       "defaultSnippets": [
+        {
+         "body": {
+          "id": "${1:id}",
+          "name": "${2:name}",
+          "icon": "${3:icon}"
+         }
+        }
+       ],
+       "properties": {
+        "type": {
+         "markdownDescription": "Type of the view. This can either be `tree` for a tree view based view or `webview` for a webview based view. The default is `tree`.",
+         "type": "string",
+         "enum": [
+          "tree",
+          "webview"
+         ],
+         "markdownEnumDescriptions": [
+          "The view is backed by a `TreeView` created by `createTreeView`.",
+          "The view is backed by a `WebviewView` registered by `registerWebviewViewProvider`."
+         ]
+        },
+        "id": {
+         "markdownDescription": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+         "type": "string"
+        },
+        "name": {
+         "description": "The human-readable name of the view. Will be shown",
+         "type": "string"
+        },
+        "when": {
+         "description": "Condition which must be true to show this view",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the view icon. View icons are displayed when the name of the view cannot be shown. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        },
+        "contextualTitle": {
+         "description": "Human-readable context for when the view is moved out of its original location. By default, the view's container name will be used.",
+         "type": "string"
+        },
+        "visibility": {
+         "description": "Initial state of the view when the extension is first installed. Once the user has changed the view state by collapsing, moving, or hiding the view, the initial state will not be used again.",
+         "type": "string",
+         "enum": [
+          "visible",
+          "hidden",
+          "collapsed"
+         ],
+         "default": "visible",
+         "enumDescriptions": [
+          "The default initial state for the view. In most containers the view will be expanded, however; some built-in containers (explorer, scm, and debug) show all contributed views collapsed regardless of the `visibility`.",
+          "The view will not be shown in the view container, but will be discoverable through the views menu and other view entry points and can be un-hidden by the user.",
+          "The view will show in the view container, but will be collapsed."
+         ]
+        },
+        "initialSize": {
+         "type": "number",
+         "description": "The initial size of the view. The size will behave like the css 'flex' property, and will set the initial size when the view is first shown. In the side bar, this is the height of the view. This value is only respected when the same extension owns both the view and the view container."
+        },
+        "accessibilityHelpContent": {
+         "type": "string",
+         "markdownDescription": "When the accessibility help dialog is invoked in this view, this content will be presented to the user as a markdown string. Keybindings will be resolved when provided in the format of <keybinding:commandId>. If there is no keybinding, that will be indicated and this command will be included in a quickpick for easy configuration."
+        }
+       }
+      },
+      "default": []
+     },
+     "test": {
+      "description": "Contributes views to Test container in the Activity bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "name",
+        "icon"
+       ],
+       "defaultSnippets": [
+        {
+         "body": {
+          "id": "${1:id}",
+          "name": "${2:name}",
+          "icon": "${3:icon}"
+         }
+        }
+       ],
+       "properties": {
+        "type": {
+         "markdownDescription": "Type of the view. This can either be `tree` for a tree view based view or `webview` for a webview based view. The default is `tree`.",
+         "type": "string",
+         "enum": [
+          "tree",
+          "webview"
+         ],
+         "markdownEnumDescriptions": [
+          "The view is backed by a `TreeView` created by `createTreeView`.",
+          "The view is backed by a `WebviewView` registered by `registerWebviewViewProvider`."
+         ]
+        },
+        "id": {
+         "markdownDescription": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+         "type": "string"
+        },
+        "name": {
+         "description": "The human-readable name of the view. Will be shown",
+         "type": "string"
+        },
+        "when": {
+         "description": "Condition which must be true to show this view",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the view icon. View icons are displayed when the name of the view cannot be shown. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        },
+        "contextualTitle": {
+         "description": "Human-readable context for when the view is moved out of its original location. By default, the view's container name will be used.",
+         "type": "string"
+        },
+        "visibility": {
+         "description": "Initial state of the view when the extension is first installed. Once the user has changed the view state by collapsing, moving, or hiding the view, the initial state will not be used again.",
+         "type": "string",
+         "enum": [
+          "visible",
+          "hidden",
+          "collapsed"
+         ],
+         "default": "visible",
+         "enumDescriptions": [
+          "The default initial state for the view. In most containers the view will be expanded, however; some built-in containers (explorer, scm, and debug) show all contributed views collapsed regardless of the `visibility`.",
+          "The view will not be shown in the view container, but will be discoverable through the views menu and other view entry points and can be un-hidden by the user.",
+          "The view will show in the view container, but will be collapsed."
+         ]
+        },
+        "initialSize": {
+         "type": "number",
+         "description": "The initial size of the view. The size will behave like the css 'flex' property, and will set the initial size when the view is first shown. In the side bar, this is the height of the view. This value is only respected when the same extension owns both the view and the view container."
+        },
+        "accessibilityHelpContent": {
+         "type": "string",
+         "markdownDescription": "When the accessibility help dialog is invoked in this view, this content will be presented to the user as a markdown string. Keybindings will be resolved when provided in the format of <keybinding:commandId>. If there is no keybinding, that will be indicated and this command will be included in a quickpick for easy configuration."
+        }
+       }
+      },
+      "default": []
+     },
+     "remote": {
+      "description": "Contributes views to Remote container in the Activity bar. To contribute to this container, the 'contribViewsRemote' API proposal must be enabled.",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "name"
+       ],
+       "properties": {
+        "id": {
+         "description": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+         "type": "string"
+        },
+        "name": {
+         "description": "The human-readable name of the view. Will be shown",
+         "type": "string"
+        },
+        "when": {
+         "description": "Condition which must be true to show this view",
+         "type": "string"
+        },
+        "group": {
+         "description": "Nested group in the viewlet",
+         "type": "string"
+        },
+        "remoteName": {
+         "description": "The name of the remote type associated with this view",
+         "type": [
+          "string",
+          "array"
+         ],
+         "items": {
+          "type": "string"
+         }
+        }
+       }
+      },
+      "default": []
+     }
+    },
+    "additionalProperties": {
+     "description": "Contributes views to contributed views container",
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "id",
+       "name",
+       "icon"
+      ],
+      "defaultSnippets": [
+       {
+        "body": {
+         "id": "${1:id}",
+         "name": "${2:name}",
+         "icon": "${3:icon}"
+        }
+       }
+      ],
+      "properties": {
+       "type": {
+        "markdownDescription": "Type of the view. This can either be `tree` for a tree view based view or `webview` for a webview based view. The default is `tree`.",
+        "type": "string",
+        "enum": [
+         "tree",
+         "webview"
+        ],
+        "markdownEnumDescriptions": [
+         "The view is backed by a `TreeView` created by `createTreeView`.",
+         "The view is backed by a `WebviewView` registered by `registerWebviewViewProvider`."
+        ]
+       },
+       "id": {
+        "markdownDescription": "Identifier of the view. This should be unique across all views. It is recommended to include your extension id as part of the view id. Use this to register a data provider through `vscode.window.registerTreeDataProviderForView` API. Also to trigger activating your extension by registering `onView:${id}` event to `activationEvents`.",
+        "type": "string"
+       },
+       "name": {
+        "description": "The human-readable name of the view. Will be shown",
+        "type": "string"
+       },
+       "when": {
+        "description": "Condition which must be true to show this view",
+        "type": "string"
+       },
+       "icon": {
+        "description": "Path to the view icon. View icons are displayed when the name of the view cannot be shown. It is recommended that icons be in SVG, though any image file type is accepted.",
+        "type": "string"
+       },
+       "contextualTitle": {
+        "description": "Human-readable context for when the view is moved out of its original location. By default, the view's container name will be used.",
+        "type": "string"
+       },
+       "visibility": {
+        "description": "Initial state of the view when the extension is first installed. Once the user has changed the view state by collapsing, moving, or hiding the view, the initial state will not be used again.",
+        "type": "string",
+        "enum": [
+         "visible",
+         "hidden",
+         "collapsed"
+        ],
+        "default": "visible",
+        "enumDescriptions": [
+         "The default initial state for the view. In most containers the view will be expanded, however; some built-in containers (explorer, scm, and debug) show all contributed views collapsed regardless of the `visibility`.",
+         "The view will not be shown in the view container, but will be discoverable through the views menu and other view entry points and can be un-hidden by the user.",
+         "The view will show in the view container, but will be collapsed."
+        ]
+       },
+       "initialSize": {
+        "type": "number",
+        "description": "The initial size of the view. The size will behave like the css 'flex' property, and will set the initial size when the view is first shown. In the side bar, this is the height of the view. This value is only respected when the same extension owns both the view and the view container."
+       },
+       "accessibilityHelpContent": {
+        "type": "string",
+        "markdownDescription": "When the accessibility help dialog is invoked in this view, this content will be presented to the user as a markdown string. Keybindings will be resolved when provided in the format of <keybinding:commandId>. If there is no keybinding, that will be indicated and this command will be included in a quickpick for easy configuration."
+       }
+      }
+     },
+     "default": []
+    }
+   }
+  },
+  {
+   "extensionPoint": "viewsContainers",
+   "file": "src/vs/workbench/api/browser/viewsExtensionPoint.ts",
+   "description": "Contributes views containers to the editor",
+   "jsonSchema": {
+    "description": "Contributes views containers to the editor",
+    "type": "object",
+    "properties": {
+     "activitybar": {
+      "description": "Contribute views containers to Activity Bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "description": "Unique id used to identify the container in which views can be contributed using 'views' contribution point",
+         "type": "string",
+         "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "title": {
+         "description": "Human readable string used to render the container",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the container icon. Icons are 24x24 centered on a 50x40 block and have a fill color of 'rgb(215, 218, 224)' or '#d7dae0'. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "title",
+        "icon"
+       ]
+      }
+     },
+     "panel": {
+      "description": "Contribute views containers to Panel",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "description": "Unique id used to identify the container in which views can be contributed using 'views' contribution point",
+         "type": "string",
+         "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "title": {
+         "description": "Human readable string used to render the container",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the container icon. Icons are 24x24 centered on a 50x40 block and have a fill color of 'rgb(215, 218, 224)' or '#d7dae0'. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "title",
+        "icon"
+       ]
+      }
+     },
+     "secondarySidebar": {
+      "description": "Contribute views containers to Secondary Side Bar",
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "description": "Unique id used to identify the container in which views can be contributed using 'views' contribution point",
+         "type": "string",
+         "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "title": {
+         "description": "Human readable string used to render the container",
+         "type": "string"
+        },
+        "icon": {
+         "description": "Path to the container icon. Icons are 24x24 centered on a 50x40 block and have a fill color of 'rgb(215, 218, 224)' or '#d7dae0'. It is recommended that icons be in SVG, though any image file type is accepted.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "title",
+        "icon"
+       ]
+      }
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "extensionPoint": "walkthroughs",
+   "file": "src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStartedExtensionPoint.ts",
+   "description": "Contribute walkthroughs to help users getting started with your extension.",
+   "jsonSchema": {
+    "description": "Contribute walkthroughs to help users getting started with your extension.",
+    "type": "array",
+    "items": {
+     "type": "object",
+     "required": [
+      "id",
+      "title",
+      "description",
+      "steps"
+     ],
+     "defaultSnippets": [
+      {
+       "body": {
+        "id": "$1",
+        "title": "$2",
+        "description": "$3",
+        "steps": []
+       }
+      }
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "description": "Unique identifier for this walkthrough."
+      },
+      "title": {
+       "type": "string",
+       "description": "Title of walkthrough."
+      },
+      "icon": {
+       "type": "string",
+       "description": "Relative path to the icon of the walkthrough. The path is relative to the extension location. If not specified, the icon defaults to the extension icon if available."
+      },
+      "description": {
+       "type": "string",
+       "description": "Description of walkthrough."
+      },
+      "featuredFor": {
+       "type": "array",
+       "description": "Walkthroughs that match one of these glob patterns appear as 'featured' in workspaces with the specified files. For example, a walkthrough for TypeScript projects might specify `tsconfig.json` here.",
+       "items": {
+        "type": "string"
+       }
+      },
+      "when": {
+       "type": "string",
+       "description": "Context key expression to control the visibility of this walkthrough."
+      },
+      "steps": {
+       "type": "array",
+       "description": "Steps to complete as part of this walkthrough.",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "title",
+         "media"
+        ],
+        "defaultSnippets": [
+         {
+          "body": {
+           "id": "$1",
+           "title": "$2",
+           "description": "$3",
+           "completionEvents": [
+            "$5"
+           ],
+           "media": {}
+          }
+         }
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "description": "Unique identifier for this step. This is used to keep track of which steps have been completed."
+         },
+         "title": {
+          "type": "string",
+          "description": "Title of step."
+         },
+         "description": {
+          "type": "string",
+          "description": "Description of step. Supports ``preformatted``, __italic__, and **bold** text. Use markdown-style links for commands or external links: {0}, {1}, or {2}. Links on their own line will be rendered as buttons."
+         },
+         "button": {
+          "deprecationMessage": "Deprecated. Use markdown links in the description instead, i.e. {0}, {1}, or {2}"
+         },
+         "media": {
+          "type": "object",
+          "description": "Media to show alongside this step, either an image or markdown content.",
+          "oneOf": [
+           {
+            "required": [
+             "image",
+             "altText"
+            ],
+            "additionalProperties": false,
+            "properties": {
+             "path": {
+              "deprecationMessage": "Deprecated. Please use `image` or `markdown` instead"
+             },
+             "image": {
+              "description": "Path to an image - or object consisting of paths to light, dark, and hc images - relative to extension directory. Depending on context, the image will be displayed from 400px to 800px wide, with similar bounds on height. To support HIDPI displays, the image will be rendered at 1.5x scaling, for example a 900 physical pixels wide image will be displayed as 600 logical pixels wide.",
+              "oneOf": [
+               {},
+               {}
+              ]
+             },
+             "altText": {
+              "type": "string",
+              "description": "Alternate text to display when the image cannot be loaded or in screen readers."
+             }
+            }
+           },
+           {
+            "required": [
+             "svg",
+             "altText"
+            ],
+            "additionalProperties": false,
+            "properties": {
+             "svg": {
+              "description": "Path to an svg, color tokens are supported in variables to support theming to match the workbench.",
+              "type": "string"
+             },
+             "altText": {
+              "type": "string",
+              "description": "Alternate text to display when the image cannot be loaded or in screen readers."
+             }
+            }
+           },
+           {
+            "required": [
+             "markdown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+             "path": {
+              "deprecationMessage": "Deprecated. Please use `image` or `markdown` instead"
+             },
+             "markdown": {
+              "description": "Path to the markdown document, relative to extension directory.",
+              "type": "string"
+             }
+            }
+           }
+          ]
+         },
+         "completionEvents": {
+          "description": "Events that should trigger this step to become checked off. If empty or not defined, the step will check off when any of the step's buttons or links are clicked; if the step has no buttons or links it will check on when it is selected.",
+          "type": "array",
+          "items": {
+           "type": "string",
+           "defaultSnippets": [
+            {
+             "label": "onCommand",
+             "description": "Check off step when a given command is executed anywhere in VS Code.",
+             "body": "onCommand:${1:commandId}"
+            },
+            {
+             "label": "onLink",
+             "description": "Check off step when a given link is opened via a walkthrough step.",
+             "body": "onLink:${2:linkId}"
+            },
+            {
+             "label": "onView",
+             "description": "Check off step when a given view is opened",
+             "body": "onView:${2:viewId}"
+            },
+            {
+             "label": "onSettingChanged",
+             "description": "Check off step when a given setting is changed",
+             "body": "onSettingChanged:${2:settingName}"
+            },
+            {
+             "label": "onContext",
+             "description": "Check off step when a context key expression is true.",
+             "body": "onContext:${2:key}"
+            },
+            {
+             "label": "onExtensionInstalled",
+             "description": "Check off step when an extension with the given id is installed. If the extension is already installed, the step will start off checked.",
+             "body": "onExtensionInstalled:${3:extensionId}"
+            },
+            {
+             "label": "onStepSelected",
+             "description": "Check off step as soon as it is selected.",
+             "body": "onStepSelected"
+            }
+           ]
+          }
+         },
+         "doneOn": {
+          "description": "Signal to mark step as complete.",
+          "deprecationMessage": "doneOn is deprecated. By default steps will be checked off when their buttons are clicked, to configure further use completionEvents",
+          "type": "object",
+          "required": [
+           "command"
+          ],
+          "defaultSnippets": [
+           {
+            "body": {
+             "command": "$1"
+            }
+           }
+          ],
+          "properties": {
+           "command": {
+            "description": "Mark step done when the specified command is executed.",
+            "type": "string"
+           }
+          }
+         },
+         "when": {
+          "type": "string",
+          "description": "Context key expression to control the visibility of this step."
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}

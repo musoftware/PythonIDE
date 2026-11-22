@@ -1,0 +1,90 @@
+[
+ {
+  "key": "PythonGames/BreakoutGame",
+  "lang": "pygame",
+  "title_en": "Breakout (pygame)",
+  "title_ar": "لعبة تكسير الطوب (pygame)",
+  "desc_en": "Paddle, ball and 50 bricks drawn from a scene; score, lives, saved best score.",
+  "desc_ar": "مضرب وكرة و50 طوبة مرسومة في مصمم المشاهد؛ نقاط وأرواح وحفظ أعلى نتيجة."
+ },
+ {
+  "key": "PythonGames/CoinCollector",
+  "lang": "python-arcade",
+  "title_en": "Coin Collector (arcade)",
+  "title_ar": "جامع العملات (arcade)",
+  "desc_en": "arcade.Window game: collect coins, dodge meteors, countdown, pause, high score file.",
+  "desc_ar": "لعبة بمكتبة arcade: اجمع العملات وتجنب النيازك مع عدّ تنازلي وإيقاف مؤقت وحفظ أعلى نتيجة."
+ },
+ {
+  "key": "PythonGames/CapitalsQuiz",
+  "lang": "kivy",
+  "title_en": "Capitals Quiz (Kivy)",
+  "title_ar": "مسابقة العواصم (Kivy)",
+  "desc_en": "Two-screen mobile quiz designed in the phone designer: buttons, progress bar, timer, result list.",
+  "desc_ar": "مسابقة للموبايل من شاشتين مصممة في مصمم الهاتف: أزرار وشريط تقدم ومؤقت وقائمة نتائج."
+ },
+ {
+  "key": "PythonGames/CrystalMaze3D",
+  "lang": "python-ursina",
+  "title_en": "Crystal Maze 3D (Ursina)",
+  "title_ar": "متاهة الكريستال ثلاثية الأبعاد (Ursina)",
+  "desc_en": "3D maze from the 3D scene view: solid walls, spinning collectible crystals, exit pad, HUD.",
+  "desc_ar": "متاهة ثلاثية الأبعاد من عارض المشاهد ثلاثية الأبعاد: جدران صلبة وكريستال يدور ومنصة خروج."
+ },
+ {
+  "key": "PythonWeb/FlaskGuestbook",
+  "lang": "python-flask",
+  "title_en": "Flask Guestbook (SQLite)",
+  "title_ar": "دفتر الزوار بـ Flask (SQLite)",
+  "desc_en": "Sign/list/search/delete messages with validation, flash messages, SQLite and a JSON API.",
+  "desc_ar": "إضافة الرسائل وعرضها والبحث والحذف مع التحقق ورسائل التنبيه وقاعدة SQLite وواجهة JSON."
+ },
+ {
+  "key": "PythonWeb/DjangoLibrary",
+  "lang": "python-django",
+  "title_en": "Django Library",
+  "title_ar": "مكتبة Django",
+  "desc_en": "Books and authors: models, admin, ModelForm add/edit, lend/return with CSRF, search, JSON.",
+  "desc_ar": "كتب ومؤلفون: نماذج وإدارة ونموذج إضافة وتعديل وإعارة وإرجاع وبحث وواجهة JSON."
+ },
+ {
+  "key": "PythonWeb/FastApiTasks",
+  "lang": "python-fastapi",
+  "title_en": "FastAPI Tasks (REST + SQLite)",
+  "title_ar": "مهام FastAPI (REST و SQLite)",
+  "desc_en": "To-do REST API with Pydantic validation, SQLite and a fetch() page; /docs.",
+  "desc_ar": "واجهة REST لقائمة المهام مع تحقق Pydantic وقاعدة SQLite وصفحة تستخدم fetch()."
+ },
+ {
+  "key": "Web/CityGuideSite",
+  "lang": "static-web",
+  "title_en": "City Guide (static site, Arabic RTL page)",
+  "title_ar": "دليل المدينة (موقع ثابت وصفحة عربية)",
+  "desc_en": "Multi-page HTML/CSS/JS site: filterable list, favourites in localStorage, validated contact form, RTL Arabic page.",
+  "desc_ar": "موقع HTML/CSS/JS متعدد الصفحات: قائمة قابلة للتصفية ومفضلة محفوظة ونموذج اتصال وصفحة عربية من اليمين لليسار."
+ },
+ {
+  "key": "Web/SpaceDodgerHtml5",
+  "lang": "html5-game",
+  "title_en": "Space Dodger (HTML5 canvas game)",
+  "title_ar": "مراوغة الفضاء (لعبة HTML5)",
+  "desc_en": "Canvas shooter from the scene designer: cloned bullets/meteors, spawn timer, lives, best score.",
+  "desc_ar": "لعبة إطلاق على Canvas من مصمم المشاهد: نسخ الطلقات والنيازك ومؤقت ظهور وأرواح وأعلى نتيجة."
+ },
+ {
+  "key": "Godot/GemHunter2D",
+  "lang": "godot",
+  "title_en": "Gem Hunter 2D (Godot 4)",
+  "title_ar": "صائد الجواهر (Godot 4)",
+  "desc_en": "Top-down Godot game from a RAD IDE scene: walls, gems, patrolling guards, countdown, lives, best score.",
+  "desc_ar": "لعبة Godot من أعلى مصممة في RAD IDE: جدران وجواهر وحراس ومؤقت وأرواح وأعلى نتيجة."
+ },
+ {
+  "key": "Mobile/ShoppingListExpo",
+  "lang": "expo",
+  "title_en": "Shopping List (React Native / Expo)",
+  "title_ar": "قائمة التسوق (React Native / Expo)",
+  "desc_en": "Two-screen Expo app from the phone designer: list with icons, item editor with slider, shared store module.",
+  "desc_ar": "تطبيق Expo من شاشتين مصمم في مصمم الهاتف: قائمة بأيقونات وشاشة تعديل وشريط تمرير ووحدة بيانات مشتركة."
+ }
+]

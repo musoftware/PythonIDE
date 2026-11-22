@@ -1,0 +1,188 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Notepad - JavaScript",
+    "Width": 640,
+    "Height": 480,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "New",
+                "Name": "mnuNew"
+              },
+              {
+                "Text": "Open...",
+                "Name": "mnuOpen"
+              },
+              {
+                "Text": "Save",
+                "Name": "mnuSave"
+              },
+              {
+                "Text": "Save As...",
+                "Name": "mnuSaveAs"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuExit"
+              }
+            ]
+          },
+          {
+            "Text": "Edit",
+            "Name": "mnuEdit",
+            "Items": [
+              {
+                "Text": "Find...",
+                "Name": "mnuFind"
+              },
+              {
+                "Text": "Replace All...",
+                "Name": "mnuReplace"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Insert Date/Time",
+                "Name": "mnuDate"
+              }
+            ]
+          },
+          {
+            "Text": "Format",
+            "Name": "mnuFormat",
+            "Items": [
+              {
+                "Text": "UPPER CASE",
+                "Name": "mnuUpper"
+              },
+              {
+                "Text": "lower case",
+                "Name": "mnuLower"
+              },
+              {
+                "Text": "Sort Lines",
+                "Name": "mnuSort"
+              }
+            ]
+          },
+          {
+            "Text": "Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "Statistics",
+                "Name": "mnuStats"
+              },
+              {
+                "Text": "About",
+                "Name": "mnuAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtDoc",
+        "Text": "",
+        "Left": 4,
+        "Top": 4,
+        "Width": 616,
+        "Height": 386,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Consolas",
+        "FontSize": 10,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": true,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblStatus",
+        "Text": "Ready",
+        "Left": 6,
+        "Top": 396,
+        "Width": 610,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "OpenFileDialog",
+      "props": {
+        "Name": "dlgOpen",
+        "Title": "Open a text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgSave",
+        "Title": "Save the text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

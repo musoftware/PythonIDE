@@ -237,6 +237,7 @@ def _emit_module(pkg, rel: str):
 
 
 _MODS: dict = {}
+_RESOLVED: dict = {}          # str(path) -> str(path.resolve())
 
 
 def load_module_file(path: Path, owner: str = "pkg"):
@@ -248,7 +249,9 @@ def load_module_file(path: Path, owner: str = "pkg"):
     if not path.is_file():
         return None
     mtime = path.stat().st_mtime
-    key = str(path.resolve())
+    key = _RESOLVED.get(str(path))
+    if key is None:          # resolve() (realpath) for every control of a big form was ~40% of a Save
+        key = _RESOLVED[str(path)] = str(path.resolve())
     cached = _MODS.get(key)
     if cached and cached[0] == mtime:
         return cached[1]

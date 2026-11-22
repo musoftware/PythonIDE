@@ -12,6 +12,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..controls import CONTROL_TYPES, FORM_EVENTS, menu_leaves
+
+
+_RX_CACHE: dict = {}
+
+
+def _compiled(pattern: str, flags=0):
+    """re.compile with a cache larger than re's own 512 entries: generating a big form's code asks
+    find_handler for every event of every control (5000+ patterns, recompiled each time = seconds)."""
+    key = (pattern, flags)
+    rx = _RX_CACHE.get(key)
+    if rx is None:
+        if len(_RX_CACHE) > 20000:
+            _RX_CACHE.clear()
+        rx = _RX_CACHE[key] = re.compile(pattern, flags)
+    return rx
 from ..model import Control, Form
 from ..references import ExportedFunction
 from ..references import proxy_header as _proxy_header
@@ -138,7 +153,7 @@ class LanguagePlugin:
         return "\n".join(l for l in code.splitlines() if not rx.match(l)) + "\n"
 
     def _find_line(self, code: str, pattern: str, flags=0) -> int:
-        rx = re.compile(pattern, flags)
+        rx = _compiled(pattern, flags)
         for i, line in enumerate(code.splitlines()):
             if rx.search(line):
                 return i

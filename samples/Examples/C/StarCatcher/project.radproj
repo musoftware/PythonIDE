@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "c-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

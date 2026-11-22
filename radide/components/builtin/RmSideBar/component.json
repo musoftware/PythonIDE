@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "name": "RmSideBar",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Vertical side bar with groups and items, badges and an icon-only collapsed mode.",
+  "category": "Modern (RAD)",
+  "order": 3130,
+  "builtin": true,
+  "prefix": "RmSideBar",
+  "defaultSize": [
+    200,
+    320
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": ""
+  },
+  "defaultEvent": "ItemClick",
+  "properties": [
+    {
+      "name": "Items",
+      "type": "multiline",
+      "default": "[{\"Text\":\"Home\",\"Image\":\"home\"},{\"Text\":\"Mail\",\"Image\":\"mail\",\"Count\":3},{\"Text\":\"Settings\",\"Image\":\"settings\"}]",
+      "category": "Data",
+      "description": "JSON [{Text, Name, Image, Count, Items:[...]}] (an item with Items is a group) or a;b;c."
+    },
+    {
+      "name": "SelectedItem",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Name of the selected item."
+    },
+    {
+      "name": "Collapsed",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Narrow, icons only."
+    },
+    {
+      "name": "ShowToggle",
+      "type": "bool",
+      "default": true,
+      "category": "Appearance",
+      "description": "Shows the menu button that collapses the bar."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "ItemClick",
+      "description": "An item was clicked (EventItem = its Name, EventIndex)."
+    },
+    {
+      "name": "CollapsedChanged",
+      "description": "Collapsed changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "SelectItem",
+      "signature": "SelectItem(name)",
+      "description": "Selects an item."
+    },
+    {
+      "name": "SetBadge",
+      "signature": "SetBadge(name, count)",
+      "description": "Badge number (0 = none)."
+    },
+    {
+      "name": "SetItemText",
+      "signature": "SetItemText(name, text)",
+      "description": "Changes an item's text."
+    },
+    {
+      "name": "Toggle",
+      "signature": "Toggle()",
+      "description": "Collapses / expands."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmSideBar.py",
+      "class": "RmSideBar",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

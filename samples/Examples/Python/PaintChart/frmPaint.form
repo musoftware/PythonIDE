@@ -1,0 +1,590 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "frmPaint",
+    "Text": "Paint & Live Chart",
+    "Width": 820,
+    "Height": 520,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "&File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "Save Drawing as PostScript...",
+                "Name": "mnuFileSave"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "&Edit",
+            "Name": "mnuEdit",
+            "Items": [
+              {
+                "Text": "Clear Drawing",
+                "Name": "mnuEditClear"
+              },
+              {
+                "Text": "Undo Last Stroke",
+                "Name": "mnuEditUndo"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TabControl",
+      "props": {
+        "Name": "tabMain",
+        "Left": 6,
+        "Top": 6,
+        "Width": 806,
+        "Height": 480,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Bottom, Left, Right",
+        "Dock": "None",
+        "TabPages": "Paint;Live Chart",
+        "SelectedIndex": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblColor",
+        "Text": "Color:",
+        "Left": 8,
+        "Top": 10,
+        "Width": 44,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "ComboBox",
+      "props": {
+        "Name": "cboColor",
+        "Left": 54,
+        "Top": 8,
+        "Width": 110,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "Black;Red;Green;Blue;Orange;Purple",
+        "DropDownStyle": "DropDownList",
+        "DataSource": "",
+        "DisplayMember": "",
+        "ValueMember": "",
+        "DataMember": "",
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnPickColor",
+        "Text": "More...",
+        "Left": 170,
+        "Top": 6,
+        "Width": 80,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblSize",
+        "Text": "Size:",
+        "Left": 262,
+        "Top": 10,
+        "Width": 40,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "TrackBar",
+      "props": {
+        "Name": "trkSize",
+        "Left": 302,
+        "Top": 2,
+        "Width": 150,
+        "Height": 34,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 1,
+        "Maximum": 20,
+        "Value": 3,
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optPen",
+        "Text": "Pen",
+        "Left": 470,
+        "Top": 8,
+        "Width": 60,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": true,
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optLine",
+        "Text": "Line",
+        "Left": 530,
+        "Top": 8,
+        "Width": 60,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optRect",
+        "Text": "Box",
+        "Left": 590,
+        "Top": 8,
+        "Width": 60,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "RadioButton",
+      "props": {
+        "Name": "optOval",
+        "Text": "Oval",
+        "Left": 650,
+        "Top": 8,
+        "Width": 60,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "PictureBox",
+      "props": {
+        "Name": "picCanvas",
+        "Left": 8,
+        "Top": 40,
+        "Width": 784,
+        "Height": 400,
+        "BackColor": "#FFFFFF",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Image": "",
+        "Parent": "tabMain",
+        "TabPage": 0
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnStart",
+        "Text": "Start",
+        "Left": 8,
+        "Top": 6,
+        "Width": 80,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnStop",
+        "Text": "Stop",
+        "Left": 94,
+        "Top": 6,
+        "Width": 80,
+        "Height": 26,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Center",
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblSpeed",
+        "Text": "Interval (ms):",
+        "Left": 190,
+        "Top": 10,
+        "Width": 90,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "NumericUpDown",
+      "props": {
+        "Name": "numInterval",
+        "Left": 282,
+        "Top": 8,
+        "Width": 70,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 50,
+        "Maximum": 2000,
+        "Value": 200,
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblStats",
+        "Text": "",
+        "Left": 370,
+        "Top": 10,
+        "Width": 300,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "ProgressBar",
+      "props": {
+        "Name": "prgLevel",
+        "Left": 680,
+        "Top": 8,
+        "Width": 110,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Minimum": 0,
+        "Maximum": 100,
+        "Value": 0,
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "PictureBox",
+      "props": {
+        "Name": "picChart",
+        "Left": 8,
+        "Top": 40,
+        "Width": 784,
+        "Height": 400,
+        "BackColor": "#10151F",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Image": "",
+        "Parent": "tabMain",
+        "TabPage": 1
+      }
+    },
+    {
+      "type": "StatusBar",
+      "props": {
+        "Name": "sbInfo",
+        "Text": "Draw with the left mouse button",
+        "Left": 0,
+        "Top": 0,
+        "Width": 200,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Bottom",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Timer",
+      "props": {
+        "Name": "tmrChart",
+        "Interval": 200,
+        "Enabled": false,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ColorDialog",
+      "props": {
+        "Name": "dlgColor",
+        "Color": "#000000",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgSave",
+        "Title": "Save the drawing",
+        "Filter": "PostScript|*.ps|All files|*.*",
+        "FileName": "drawing.ps",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    }
+  ]
+}

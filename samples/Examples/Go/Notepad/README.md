@@ -1,0 +1,70 @@
+# Notepad - Go
+
+A small text editor: open and save UTF-8 text files, cut / copy / paste with the Windows clipboard, find, find next and replace, insert the time, change the font and count words.
+
+## What it shows
+
+* MenuStrip with File / Edit / Format / Help menus (each item is a `<Item>_Click` handler)
+* OpenFileDialog, SaveFileDialog and FontDialog (`ShowOpen` / `ShowSave` / `ShowFont`, then `FileName` / `FontName` / `FontSize`)
+* a multi-line TextBox: the whole document goes through `Text` (line breaks included)
+* `SelStart` / `SelLength` / `SelText` for Find, Replace, Cut / Copy / Paste and Time/Date
+* a StatusBar, the window title (`*` when the text changed) and "discard the changes?" questions
+* file I/O and error handling in the language itself
+* Clipboard: user32 / kernel32 through the `syscall` package (no cgo).
+
+## IDE features
+
+* GUI Bridge: the IDE draws the form(s) from the .form files; the Go code only handles the events (handlers named `<Control>_<Event>`) and talks to the controls with `Set` / `Get` / `Call` / `MsgBox` / `Input` (radlib.go)
+* the form designer: open the project and double-click a form (every control is in the .form file)
+* Build > Publish makes a native exe (go build + radforms), about 1.8-2.9 MB, no Python
+
+## Run it
+
+1. File > Open Project... and choose this folder (or Help > Example Projects...).
+2. Press F5. Needs Go (go.exe; found or downloaded by the IDE).
+3. Try: F5, File > Open (any .txt), Edit > Find (`hello`), Edit > Replace, Format > Word count, File > Save As.
+
+## Publish
+
+Build > Publish: a native exe (go build + radforms), about 1.8-2.9 MB, no Python. The test `samples/Tests/Examples/test_examples_compiled.py` builds, runs and publishes this project and starts the published exe.
+
+## Files
+
+* `frmMain.form`
+* `frmMain.go`
+* `frmMain_designer.go`
+* `project.radproj`
+
+---
+
+## المفكرة - Go
+
+محرر نصوص صغير: فتح وحفظ ملفات نصية UTF-8، قص ونسخ ولصق عبر حافظة ويندوز، بحث وبحث عن التالي واستبدال، إدراج الوقت، تغيير الخط وعدّ الكلمات.
+
+### ماذا يعرض
+
+* قائمة MenuStrip بقوائم ملف / تحرير / تنسيق / مساعدة (كل عنصر له معالج `<Item>_Click`)
+* حوارات فتح وحفظ الملفات واختيار الخط (`ShowOpen` / `ShowSave` / `ShowFont`)
+* مربع نص متعدد الأسطر: النص كله يمر عبر `Text` مع فواصل الأسطر
+* `SelStart` / `SelLength` / `SelText` للبحث والاستبدال والقص والنسخ واللصق
+* شريط الحالة، وعنوان النافذة (`*` عند تغيّر النص)، وسؤال "تجاهل التغييرات؟"
+* قراءة وكتابة الملفات ومعالجة الأخطاء باللغة نفسها
+* الحافظة: user32 وkernel32 عبر حزمة `syscall` (بدون cgo).
+
+### مزايا الـ IDE المستخدمة
+
+* جسر الواجهة (GUI Bridge): الـ IDE يرسم النماذج من ملفات ‎.form‎، وكود Go يعالج الأحداث فقط (معالجات باسم `<Control>_<Event>`) ويتعامل مع العناصر عبر `Set` / `Get` / `Call` / `MsgBox` / `Input` (radlib.go)
+* مصمم النماذج: افتح المشروع وانقر نقرًا مزدوجًا على النموذج (كل العناصر محفوظة في ملف ‎.form‎)
+* البناء > النشر يصنع ملف exe أصلي (go build + radforms) بحجم 1.8-2.9 م.ب تقريبًا، بدون بايثون
+
+### التشغيل
+
+1. ملف > فتح مشروع... واختر هذا المجلد (أو مساعدة > أمثلة المشاريع...).
+2. اضغط F5. يحتاج Go (يجده الـ IDE أو ينزّله).
+3. جرّب: F5 ثم ملف > فتح (أي ملف txt)، تحرير > بحث، تحرير > استبدال، تنسيق > عدد الكلمات، ملف > حفظ باسم.
+
+### النشر
+
+البناء > النشر: ملف exe أصلي (go build + radforms) بحجم 1.8-2.9 م.ب تقريبًا، بدون بايثون.
+
+(c) 2026 Musoftware - https://musoftwares.com - MIT License

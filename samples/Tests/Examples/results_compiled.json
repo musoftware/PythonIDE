@@ -1,0 +1,642 @@
+[
+ {
+  "project": "C/Calculator",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 72,
+  "python_inside": false,
+  "size": "72 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/Contacts",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 83,
+  "python_inside": false,
+  "size": "83 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/Notepad",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 82,
+  "python_inside": false,
+  "size": "82 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/SalesChart",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 82,
+  "python_inside": false,
+  "size": "82 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/StarCatcher",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 70,
+  "python_inside": false,
+  "size": "70 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "C/WordStats",
+  "language": "c-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 23,
+  "python_inside": false,
+  "size": "23 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Calculator",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 256,
+  "python_inside": false,
+  "size": "256 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Contacts",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "bridge",
+  "exe_kb": 11975,
+  "python_inside": true,
+  "size": "11975 KB (bridge)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/Notepad",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1114,
+  "python_inside": false,
+  "size": "1114 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/SettingsDemo",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1052,
+  "python_inside": false,
+  "size": "1052 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/StarCatcher",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1034,
+  "python_inside": false,
+  "size": "1034 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Cpp/WordStats",
+  "language": "cpp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1009,
+  "python_inside": false,
+  "size": "1009 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Calculator",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Contacts",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/Notepad",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/SalesChart",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/SettingsDemo",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64306,
+  "python_inside": false,
+  "size": "64306 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "CSharp/StarCatcher",
+  "language": "csharp-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-standalone",
+  "exe_kb": 64304,
+  "python_inside": false,
+  "size": "64304 KB (native-standalone)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Calculator",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Contacts",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/Notepad",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "bridge",
+  "exe_kb": 11975,
+  "python_inside": true,
+  "size": "11975 KB (bridge)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/SettingsDemo",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Java/StarCatcher",
+  "language": "java-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native-jlink",
+  "exe_kb": 457,
+  "python_inside": false,
+  "size": "457 KB (native-jlink)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Calculator",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1792,
+  "python_inside": false,
+  "size": "1792 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Contacts",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 2841,
+  "python_inside": false,
+  "size": "2841 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/Notepad",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1934,
+  "python_inside": false,
+  "size": "1934 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/SalesChart",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 1859,
+  "python_inside": false,
+  "size": "1859 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Go/WordStats",
+  "language": "go-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "console",
+  "exe_kb": 2686,
+  "python_inside": false,
+  "size": "2686 KB (console)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Calculator",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 350,
+  "python_inside": false,
+  "size": "350 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Contacts",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 382,
+  "python_inside": false,
+  "size": "382 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/Notepad",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 376,
+  "python_inside": false,
+  "size": "376 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/StarCatcher",
+  "language": "rust-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 320,
+  "python_inside": false,
+  "size": "320 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Rust/WordStats",
+  "language": "rust-cargo",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "cargo",
+  "exe_kb": 185,
+  "python_inside": false,
+  "size": "185 KB (cargo)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/Calculator",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 468,
+  "python_inside": false,
+  "size": "468 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/SalesChart",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 487,
+  "python_inside": false,
+  "size": "487 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/SettingsDemo",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 472,
+  "python_inside": false,
+  "size": "472 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/StarCatcher",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 482,
+  "python_inside": false,
+  "size": "482 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "Fortran/WordStats",
+  "language": "fortran-bridge",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "native",
+  "exe_kb": 610,
+  "python_inside": false,
+  "size": "610 KB (native)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "VBNet/Calculator",
+  "language": "vbnet-winforms",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "ok",
+  "kind": "dotnet publish",
+  "exe_kb": 152,
+  "python_inside": false,
+  "size": "152 KB (dotnet publish)",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ },
+ {
+  "project": "IDE/ExampleGallery",
+  "language": "IDE",
+  "open": "ok",
+  "build": "ok",
+  "run": "ok",
+  "publish": "-",
+  "kind": null,
+  "exe_kb": null,
+  "python_inside": false,
+  "size": "-",
+  "result": "ok",
+  "notes": [
+   "reconstructed from the run log of 2026-11-22"
+  ]
+ }
+]

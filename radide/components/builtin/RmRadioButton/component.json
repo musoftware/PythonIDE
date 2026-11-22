@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "name": "RmRadioButton",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Themed radio button (one checked per container).",
+  "category": "Modern (RAD)",
+  "order": 3030,
+  "builtin": true,
+  "prefix": "RmRadioButton",
+  "defaultSize": [
+    150,
+    24
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": "Option"
+  },
+  "defaultEvent": "CheckedChanged",
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Checked (the others of the same container are cleared)."
+    },
+    {
+      "name": "CheckAlign",
+      "type": "enum",
+      "default": "Left",
+      "category": "Appearance",
+      "description": "Side of the circle.",
+      "choices": [
+        "Left",
+        "Right"
+      ]
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "CheckedChanged",
+      "description": "Checked changed."
+    },
+    {
+      "name": "Click",
+      "description": "The button was clicked."
+    }
+  ],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmRadioButton.py",
+      "class": "RmRadioButton",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

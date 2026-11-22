@@ -1,0 +1,9 @@
+{
+  "name": "Calculator",
+  "language": "c-bridge",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": []
+}

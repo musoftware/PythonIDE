@@ -1,0 +1,9 @@
+{
+  "name": "PaintChart",
+  "language": "python-tk",
+  "forms": [
+    "frmPaint"
+  ],
+  "startup": "frmPaint",
+  "modules": []
+}

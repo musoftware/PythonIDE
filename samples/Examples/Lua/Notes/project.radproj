@@ -1,0 +1,12 @@
+{
+  "name": "Notes",
+  "language": "lua-bridge",
+  "forms": [
+    "Form1",
+    "FindForm"
+  ],
+  "startup": "Form1",
+  "modules": [
+    "notestore.lua"
+  ]
+}

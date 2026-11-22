@@ -1,0 +1,10 @@
+{
+  "name": "RingContacts",
+  "language": "ring-qt",
+  "forms": [
+    "Form1",
+    "Form2"
+  ],
+  "startup": "Form1",
+  "modules": []
+}

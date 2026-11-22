@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{# (c) 2026 Musoftware - https://musoftwares.com - MIT License #}
+{% block content %}
+<p class="stats">{{ stats.books }} books by {{ stats.authors }} authors - {{ stats.out }} lent out.
+{% if top %}Most books: {% for a in top %}{{ a.name }} ({{ a.n }}){% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</p>
+<form class="search">
+    <input name="q" value="{{ q }}" placeholder="Title, author or ISBN">
+    <select name="genre"><option value="">All genres</option>
+        {% for v, label in genres %}<option value="{{ v }}" {% if v == genre %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button>Search</button>
+</form>
+<table>
+    <tr><th>Title</th><th>Author</th><th>Year</th><th>Genre</th><th>Status</th></tr>
+    {% for b in page %}
+    <tr>
+        <td><a href="{{ b.get_absolute_url }}">{{ b.title }}</a></td><td>{{ b.author.name }}</td>
+        <td>{{ b.year|default:"" }}</td><td>{{ b.get_genre_display }}</td>
+        <td>{% if b.available %}<span class="ok">available</span>{% else %}<span class="out">lent to {{ b.borrower }}</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">No books yet. <a href="{% url 'core:book_new' %}">Add one</a> or run <code>manage.py seed_library</code>.</td></tr>
+    {% endfor %}
+</table>
+{% if page.has_other_pages %}
+<nav class="pages">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&q={{ q|urlencode }}&genre={{ genre }}">&laquo; Previous</a>{% endif %}
+    Page {{ page.number }} of {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}&q={{ q|urlencode }}&genre={{ genre }}">Next &raquo;</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

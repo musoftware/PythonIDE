@@ -567,7 +567,8 @@ def needs_import(folder: Path) -> bool:
     if not stamp.exists():
         return True
     t = stamp.stat().st_mtime
-    return any(p.stat().st_mtime > t for p in folder.rglob("*")
+    # an asset without its <file>.import sidecar (copied / cloned project, sidecars not kept) was never imported here
+    return any(p.stat().st_mtime > t or not p.with_name(p.name + ".import").exists() for p in folder.rglob("*")
                if p.suffix.lower() in (".png", ".jpg", ".jpeg", ".wav", ".ogg", ".mp3", ".webp")
                and ".godot" not in p.parts)
 

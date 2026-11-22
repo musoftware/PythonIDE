@@ -1,0 +1,245 @@
+{
+  "version": 2,
+  "props": {
+    "Name": "Form1",
+    "Text": "Ring Notepad - Untitled",
+    "Width": 640,
+    "Height": 440,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "&File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "New",
+                "Name": "mnuFileNew"
+              },
+              {
+                "Text": "Open...",
+                "Name": "mnuFileOpen"
+              },
+              {
+                "Text": "Save",
+                "Name": "mnuFileSave"
+              },
+              {
+                "Text": "Save As...",
+                "Name": "mnuFileSaveAs"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "&Edit",
+            "Name": "mnuEdit",
+            "Items": [
+              {
+                "Text": "Cut",
+                "Name": "mnuEditCut"
+              },
+              {
+                "Text": "Copy",
+                "Name": "mnuEditCopy"
+              },
+              {
+                "Text": "Paste",
+                "Name": "mnuEditPaste"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Select All",
+                "Name": "mnuEditSelectAll"
+              },
+              {
+                "Text": "Upper Case",
+                "Name": "mnuEditUpper"
+              },
+              {
+                "Text": "Insert Date/Time",
+                "Name": "mnuEditTime"
+              }
+            ]
+          },
+          {
+            "Text": "F&ormat",
+            "Name": "mnuFormat",
+            "Items": [
+              {
+                "Text": "Font...",
+                "Name": "mnuFormatFont"
+              },
+              {
+                "Text": "Word Wrap",
+                "Name": "mnuFormatWrap"
+              }
+            ]
+          },
+          {
+            "Text": "&Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "About",
+                "Name": "mnuHelpAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ToolStrip",
+      "props": {
+        "Name": "tsMain",
+        "Items": [
+          {
+            "Text": "New",
+            "Name": "tbNew"
+          },
+          {
+            "Text": "Open",
+            "Name": "tbOpen"
+          },
+          {
+            "Text": "Save",
+            "Name": "tbSave"
+          },
+          {
+            "Text": "-"
+          },
+          {
+            "Text": "Cut",
+            "Name": "tbCut"
+          },
+          {
+            "Text": "Copy",
+            "Name": "tbCopy"
+          },
+          {
+            "Text": "Paste",
+            "Name": "tbPaste"
+          },
+          {
+            "Text": "-"
+          },
+          {
+            "Text": "ABC",
+            "Name": "tbUpper"
+          },
+          {
+            "Text": "Time",
+            "Name": "tbTime"
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtEditor",
+        "Text": "",
+        "Left": 0,
+        "Top": 0,
+        "Width": 640,
+        "Height": 396,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Consolas",
+        "FontSize": 11,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Fill",
+        "Multiline": true,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "DataSource": "",
+        "DataMember": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "StatusBar",
+      "props": {
+        "Name": "lblStatus",
+        "Text": "Lines: 1   Words: 0   Chars: 0",
+        "Left": 0,
+        "Top": 396,
+        "Width": 640,
+        "Height": 22,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "Bottom",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "OpenFileDialog",
+      "props": {
+        "Name": "dlgOpen",
+        "Title": "Open a text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "SaveFileDialog",
+      "props": {
+        "Name": "dlgSave",
+        "Title": "Save the text file",
+        "Filter": "Text files|*.txt|All files|*.*",
+        "FileName": "",
+        "InitialDirectory": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "FontDialog",
+      "props": {
+        "Name": "dlgFont",
+        "FontName": "Consolas",
+        "FontSize": 11,
+        "Parent": ""
+      }
+    }
+  ]
+}

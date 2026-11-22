@@ -1,0 +1,9 @@
+{
+  "name": "Notepad",
+  "language": "c-bridge",
+  "forms": [
+    "frmMain"
+  ],
+  "startup": "frmMain",
+  "modules": []
+}

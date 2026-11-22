@@ -22,7 +22,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -390,8 +389,9 @@ def build(folder, project, cfg, work, log):
     shutil.copy2(rg.RADFORMS_H, nat / "radforms.h")
     # MinGW links default-manifest.o (asInvoker, no visual styles) when it finds one: an empty object of
     # that name found first through -B keeps our manifest the only one
-    nomf = nat / "nomanifest"
-    nomf.mkdir(exist_ok=True)
+    from ._ffi import nomanifest_dir                     # a folder without spaces (gcc -B + ld)
+    nomf = nomanifest_dir(nat)
+    nomf.mkdir(parents=True, exist_ok=True)
     (nomf / "empty.c").write_text("/* replaces MinGW's default-manifest.o */\n", encoding="utf-8")
     if _run([tc["cc"], "-c", str(nomf / "empty.c"), "-o", str(nomf / "default-manifest.o")], nat, log, env) != 0:
         raise BuildError("gcc does not work (see the output above)")
@@ -410,7 +410,7 @@ def build(folder, project, cfg, work, log):
             for src in [*mods, nat / "_radmodules.c"]:
                 o = nat / (Path(src).stem + ".o")
                 if _run([tc["cc"], "-std=gnu99", "-c", "-Os", "-ffunction-sections", "-fno-asynchronous-unwind-tables",
-                         "-I", str(nat), str(src), "-o", str(o)], nat, log, env) != 0:
+                         "-I", str(nat), "-I", str(rg.MODULES_DIR), str(src), "-o", str(o)], nat, log, env) != 0:
                     raise BuildError(f"{Path(src).name} did not compile (see the output above)")
                 objs.append(str(o))
 

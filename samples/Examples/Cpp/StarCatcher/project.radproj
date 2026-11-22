@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "cpp-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

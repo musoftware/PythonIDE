@@ -1,0 +1,178 @@
+{
+ "version": 1,
+ "name": "Todo",
+ "route": "/todo",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "imports": [
+  "../app_store.dart",
+  "settings.dart"
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w8",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w9",
+      "type": "Text",
+      "props": {
+       "data": {
+        "$code": "store.t('My tasks', 'مهامي')"
+       }
+      }
+     },
+     "actions": [
+      {
+       "id": "w10",
+       "type": "IconButton",
+       "props": {
+        "tooltip": "Settings"
+       },
+       "slots": {
+        "icon": {
+         "id": "w11",
+         "type": "Icon",
+         "props": {
+          "icon": "Icons.settings"
+         }
+        }
+       },
+       "events": {
+        "onPressed": "onSettings"
+       }
+      }
+     ]
+    }
+   },
+   "body": {
+    "id": "w12",
+    "type": "Padding",
+    "props": {
+     "padding": {
+      "all": 16
+     }
+    },
+    "slots": {
+     "child": {
+      "id": "w13",
+      "type": "Column",
+      "props": {
+       "crossAxisAlignment": "CrossAxisAlignment.stretch"
+      },
+      "children": [
+       {
+        "id": "w14",
+        "type": "Row",
+        "children": [
+         {
+          "id": "w15",
+          "type": "Expanded",
+          "slots": {
+           "child": {
+            "id": "w16",
+            "type": "TextField",
+            "name": "txtTask",
+            "props": {
+             "decoration": {
+              "hintText": "New task / مهمة جديدة",
+              "border": "outline"
+             }
+            },
+            "events": {
+             "onSubmitted": "onSubmitted"
+            }
+           }
+          }
+         },
+         {
+          "id": "w17",
+          "type": "SizedBox",
+          "props": {
+           "width": 12
+          }
+         },
+         {
+          "id": "w18",
+          "type": "ElevatedButton",
+          "name": "btnAdd",
+          "slots": {
+           "child": {
+            "id": "w19",
+            "type": "Text",
+            "props": {
+             "data": {
+              "$code": "store.t('Add', 'إضافة')"
+             }
+            }
+           }
+          },
+          "events": {
+           "onPressed": "onAdd"
+          }
+         }
+        ]
+       },
+       {
+        "id": "w20",
+        "type": "SizedBox",
+        "props": {
+         "height": 12
+        }
+       },
+       {
+        "id": "w21",
+        "type": "Text",
+        "props": {
+         "data": {
+          "$code": "store.summary()"
+         },
+         "style": {
+          "fontSize": 13,
+          "color": "#FF6B7385"
+         }
+        }
+       },
+       {
+        "id": "w22",
+        "type": "SizedBox",
+        "props": {
+         "height": 8
+        }
+       },
+       {
+        "id": "w23",
+        "type": "Expanded",
+        "slots": {
+         "child": {
+          "id": "w24",
+          "type": "ListView",
+          "ctor": "builder",
+          "props": {
+           "itemCount": {
+            "$code": "store.visible().length"
+           }
+          },
+          "slots": {
+           "itemBuilder": {
+            "id": "w25",
+            "type": "Code",
+            "props": {
+             "code": "ListTile(\n  leading: Icon(store.visible()[index].done ? Icons.check_box : Icons.check_box_outline_blank),\n  title: Text(store.visible()[index].title, style: TextStyle(decoration: store.visible()[index].done ? TextDecoration.lineThrough : null)),\n  onTap: () => onToggle(index),\n  trailing: IconButton(icon: const Icon(Icons.delete_outline), tooltip: store.t('Delete', 'حذف'), onPressed: () => onDelete(index)),\n)"
+            }
+           }
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

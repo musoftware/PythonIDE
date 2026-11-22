@@ -1,0 +1,12 @@
+{
+  "name": "WordStats",
+  "language": "rust-cargo",
+  "forms": [],
+  "startup": "bin: wordstats",
+  "modules": [
+    "Cargo.toml",
+    "README.md",
+    "sample.txt",
+    "src/main.rs"
+  ]
+}

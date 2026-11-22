@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{# (c) 2026 Musoftware - https://musoftwares.com - MIT License #}
+{% block content %}
+<h2>{% if book %}Edit {{ book.title }}{% else %}Add a book{% endif %}</h2>
+<form method="post" class="form">{% csrf_token %}
+    {{ form.as_p }}
+    <button>Save</button>
+</form>
+{% endblock %}

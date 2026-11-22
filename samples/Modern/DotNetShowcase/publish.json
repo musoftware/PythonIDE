@@ -1,0 +1,7 @@
+{
+  "app_name": "RAD Modern Showcase",
+  "version": "1.0.0",
+  "publisher": "Musoftware",
+  "make_installer": false,
+  "dotnet_target": "standalone"
+}

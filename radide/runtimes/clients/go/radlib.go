@@ -53,6 +53,37 @@ func radClean(v any) string {
 	return strings.ReplaceAll(s, "\n", " ")
 }
 
+// radEsc: a value for an "ESC" command (\\ newline CR escaped: multi-line text survives the line protocol)
+func radEsc(v any) string {
+	s := strings.ReplaceAll(fmt.Sprint(v), `\`, `\\`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	return strings.ReplaceAll(s, "\r", `\r`)
+}
+
+// radUnesc: the answer to an "ESC" command, unescaped
+func radUnesc(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) && strings.IndexByte(`\nr`, s[i+1]) >= 0 {
+			i++
+			switch s[i] {
+			case 'n':
+				b.WriteByte('\n')
+			case 'r':
+				b.WriteByte('\r')
+			default:
+				b.WriteByte('\\')
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 func radSend(line string) {
 	if radWorker {
 		fmt.Fprintln(os.Stderr, line)
@@ -76,15 +107,15 @@ func radReadLine() string {
 func Set(obj, prop string, value any) {
 	radMu.Lock()
 	defer radMu.Unlock()
-	radSend("SET " + obj + " " + prop + " " + radClean(value))
+	radSend("ESC SET " + obj + " " + prop + " " + radEsc(value))
 }
 
 // Get reads a property as text: Get("txtA", "Text").
 func Get(obj, prop string) string {
 	radMu.Lock()
 	defer radMu.Unlock()
-	radSend("GET " + obj + " " + prop)
-	return radReadLine()
+	radSend("ESC GET " + obj + " " + prop)
+	return radUnesc(radReadLine())
 }
 
 // GetNum reads a property as a number (0 when it is not numeric).
@@ -107,32 +138,32 @@ func GetNum(obj, prop string) float64 {
 func Call(obj, method string, args ...any) string {
 	radMu.Lock()
 	defer radMu.Unlock()
-	line := "CALL " + obj + " " + method
+	line := "ESC CALL " + obj + " " + method
 	if len(args) > 0 {
 		parts := make([]string, len(args))
 		for i, a := range args {
-			parts[i] = radClean(a)
+			parts[i] = radEsc(a)
 		}
 		line += " " + strings.Join(parts, "\t")
 	}
 	radSend(line)
-	return radReadLine()
+	return radUnesc(radReadLine())
 }
 
 // MsgBox shows a message box and waits for OK.
 func MsgBox(text any) string {
 	radMu.Lock()
 	defer radMu.Unlock()
-	radSend("MSGBOX " + radClean(text))
-	return radReadLine()
+	radSend("ESC MSGBOX " + radEsc(text))
+	return radUnesc(radReadLine())
 }
 
 // Input shows an input box and returns the text.
 func Input(prompt any) string {
 	radMu.Lock()
 	defer radMu.Unlock()
-	radSend("INPUT " + radClean(prompt))
-	return radReadLine()
+	radSend("ESC INPUT " + radEsc(prompt))
+	return radUnesc(radReadLine())
 }
 
 // Show shows a form.
@@ -255,6 +286,16 @@ func radRun(handlers map[string]func(RadEvent)) {
 	lower := map[string]func(RadEvent){}
 	for k, v := range handlers {
 		lower[strings.ToLower(k)] = v
+	}
+	// started without RAD IDE (double-clicked): nobody on stdin draws the forms - say so
+	if st, err := os.Stdin.Stat(); err == nil && st.Mode()&os.ModeCharDevice != 0 && os.Getenv("RAD_HANDLERS") == "" {
+		fmt.Println("This program is a RAD IDE GUI Bridge client: its forms are drawn by RAD IDE.")
+		fmt.Println("Run it from the IDE (F5), or make a standalone exe with the forms inside:")
+		fmt.Println("Build > Build Native Exe (or Build > Publish).")
+		fmt.Println()
+		fmt.Println("Press Enter to close.")
+		radIn.ReadString('\n')
+		os.Exit(0)
 	}
 	for {
 		line, err := radIn.ReadString('\n')

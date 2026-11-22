@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "name": "RmGroupPanel",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Collapsible group with a header (container).",
+  "category": "Modern (RAD)",
+  "order": 3110,
+  "builtin": true,
+  "prefix": "RmGroupPanel",
+  "defaultSize": [
+    240,
+    140
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "CollapsedChanged",
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "Group",
+      "category": "Appearance",
+      "description": "Header text."
+    },
+    {
+      "name": "Collapsed",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Only the header is shown."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "CollapsedChanged",
+      "description": "Collapsed changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "Toggle",
+      "signature": "Toggle()",
+      "description": "Collapses / expands."
+    },
+    {
+      "name": "Expand",
+      "signature": "Expand()",
+      "description": "Shows the content."
+    },
+    {
+      "name": "Collapse",
+      "signature": "Collapse()",
+      "description": "Hides the content."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmGroupPanel.py",
+      "class": "RmGroupPanel",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

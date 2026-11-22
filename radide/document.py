@@ -10,7 +10,7 @@ from pathlib import Path
 from PyQt6.QtCore import QMimeData, QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-from .controls import CONTROL_TYPES, MENU_TYPES
+from .controls import CONTROL_TYPES, MENU_TYPES, PAGED_TYPES
 from .layout import client_size, relayout, resize_children
 from .model import Control, Form
 from .preview import REBUILD_PROPS
@@ -273,7 +273,7 @@ class FormDocument(QObject):
     def _set_tab_page(self, ctrl: Control) -> None:
         """Controls dropped on a TabControl go to its selected page."""
         parent = self.form.find(ctrl.parent) if ctrl.parent else None
-        if parent is not None and parent.type == "TabControl":
+        if parent is not None and parent.type in PAGED_TYPES:
             ctrl.props["TabPage"] = int(parent.props.get("SelectedIndex", 0) or 0)
         else:
             ctrl.props.pop("TabPage", None)

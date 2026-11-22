@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "name": "RmDockPanel",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Docking host: RmDockWindow children dock left / right / top / bottom / fill, tab, float and auto-hide.",
+  "category": "Modern (RAD)",
+  "order": 3230,
+  "builtin": true,
+  "prefix": "RmDockPanel",
+  "defaultSize": [
+    500,
+    320
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ActiveWindowChanged",
+  "properties": [
+    {
+      "name": "Layout",
+      "type": "multiline",
+      "default": "",
+      "category": "Behavior",
+      "description": "Saved layout (JSON from SaveLayout) applied at start."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "WindowClosed",
+      "description": "A window was closed (EventItem = its name)."
+    },
+    {
+      "name": "ActiveWindowChanged",
+      "description": "Another window became active."
+    }
+  ],
+  "methods": [
+    {
+      "name": "SaveLayout",
+      "signature": "SaveLayout()",
+      "description": "The layout as JSON."
+    },
+    {
+      "name": "LoadLayout",
+      "signature": "LoadLayout(json)",
+      "description": "Applies a layout."
+    },
+    {
+      "name": "ShowWindow",
+      "signature": "ShowWindow(name)",
+      "description": "Shows a closed window."
+    },
+    {
+      "name": "CloseWindow",
+      "signature": "CloseWindow(name)",
+      "description": "Closes a window."
+    },
+    {
+      "name": "DockWindow",
+      "signature": "DockWindow(name, side)",
+      "description": "Docks a window (Left, Right, Top, Bottom, Fill, Float)."
+    },
+    {
+      "name": "Refresh",
+      "signature": "Refresh()",
+      "description": "Lays the windows out again."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmDockPanel.py",
+      "class": "RmDockPanel",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

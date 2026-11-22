@@ -1,0 +1,9 @@
+{
+  "name": "CoinCollector",
+  "language": "python-arcade",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.py"
+  ]
+}

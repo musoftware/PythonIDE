@@ -1,0 +1,12 @@
+{
+  "name": "SettingsMultiForm",
+  "language": "python-tk",
+  "forms": [
+    "frmMain",
+    "frmSettings"
+  ],
+  "startup": "frmMain",
+  "modules": [
+    "AppSettings.py"
+  ]
+}

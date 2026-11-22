@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<%# (c) 2026 Musoftware - https://musoftwares.com - MIT License %>
+<html lang="<%= lang %>" dir="<%= lang == "ar" ? "rtl" : "ltr" %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= t(:title) %></title>
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<header>
+  <h1><%= t(:title) %></h1>
+  <nav><a href="/?lang=<%= lang == "ar" ? "en" : "ar" %>"><%= t(:other) %></a> <a href="/api/entries">JSON API</a></nav>
+</header>
+<main><%= yield %></main>
+</body>
+</html>

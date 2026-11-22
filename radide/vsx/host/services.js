@@ -168,6 +168,7 @@ class Tasks {
 
   async execute(ext, task) {
     task = await this._resolve(task);
+    this.last = { ext, task };                 // workbench.action.tasks.reRunTask
     const ex = task.execution;
     const host = this.host;
     const execution = { task, terminate: () => {} };

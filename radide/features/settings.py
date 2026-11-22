@@ -89,10 +89,13 @@ def light_palette() -> QPalette:
 
 
 # ===================================================================== apply
-def _editors(win):
+def _editors(win, widgets=None):
+    """Code editors (CodeEditor, MonacoEditor) of the window; *widgets*: win.findChildren(QWidget) when the caller
+    already has it (PyQt's typed findChildren is slower than one untyped search + isinstance)."""
     from .. import editor as E
-    out = list(win.findChildren(E.CodeEditor))
-    for w in win.findChildren(QWidget):
+    widgets = win.findChildren(QWidget) if widgets is None else widgets
+    out = [w for w in widgets if isinstance(w, E.CodeEditor)]
+    for w in widgets:
         if type(w).__name__ == "MonacoEditor" and hasattr(w, "_js"):
             out.append(w)
     return out
@@ -250,11 +253,12 @@ def _on_tab_changed(win, *_):
     gen = _generation(win)
     if gen == 0:
         return
-    for e in _editors(win):
+    widgets = win.findChildren(QWidget)     # one search per tab switch (it was three, ~0.1-0.4 s together)
+    for e in _editors(win, widgets):
         if getattr(e, "_rad_options", -1) != gen:
             if isinstance(e, E.CodeEditor) or hasattr(e, "_js"):
                 apply_editor(win, e)
-    for v in win.findChildren(D.DesignerView):
+    for v in [w for w in widgets if isinstance(w, D.DesignerView)]:
         if getattr(v, "_rad_options", -1) != gen:
             apply_designer(win, v)
 

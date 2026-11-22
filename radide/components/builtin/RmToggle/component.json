@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "name": "RmToggle",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "On / off switch with animated knob.",
+  "category": "Modern (RAD)",
+  "order": 3010,
+  "builtin": true,
+  "prefix": "RmToggle",
+  "defaultSize": [
+    150,
+    26
+  ],
+  "kind": "visual",
+  "hasText": true,
+  "commonEvents": true,
+  "overrides": {
+    "Text": "Toggle"
+  },
+  "defaultEvent": "CheckedChanged",
+  "properties": [
+    {
+      "name": "Checked",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "On / off."
+    },
+    {
+      "name": "OnText",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Caption while on (empty = Text)."
+    },
+    {
+      "name": "OffText",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Caption while off (empty = Text)."
+    },
+    {
+      "name": "CheckAlign",
+      "type": "enum",
+      "default": "Left",
+      "category": "Appearance",
+      "description": "Side of the switch.",
+      "choices": [
+        "Left",
+        "Right"
+      ]
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [
+    {
+      "name": "CheckedChanged",
+      "description": "Checked changed."
+    },
+    {
+      "name": "Click",
+      "description": "The switch was clicked."
+    }
+  ],
+  "methods": [
+    {
+      "name": "Toggle",
+      "signature": "Toggle()",
+      "description": "Switches Checked."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmToggle.py",
+      "class": "RmToggle",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

@@ -108,7 +108,12 @@ class LegacyFortranPlugin(LanguagePlugin):
         return sys.executable or "python"
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
-        return RunSpec(sys.executable, ["-m", "radide.retro.legacy_fortran", "run", str(Path(folder))], Path(folder))
+        # started in the project folder: radide must be importable from there (python -m radide....)
+        import os
+        from ..paths import python_root
+        env = dict(os.environ, PYTHONPATH=str(python_root()) + os.pathsep + os.environ.get("PYTHONPATH", ""))
+        return RunSpec(sys.executable, ["-m", "radide.retro.legacy_fortran", "run", str(Path(folder))], Path(folder),
+                       env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:
         return self.run_spec(folder, startup_form, interpreter)

@@ -1,0 +1,9 @@
+{
+  "name": "StarCatcher",
+  "language": "rust-bridge",
+  "forms": [
+    "frmGame"
+  ],
+  "startup": "frmGame",
+  "modules": []
+}

@@ -334,11 +334,43 @@ class PropertiesPanel(QWidget):
             else:
                 name_item.setData(Qt.ItemDataRole.ForegroundRole, None)
 
+    @staticmethod
+    def _row_key(d):
+        """What a row's cells are built from: the editor widget of a value cell is kept while this stays."""
+        if isinstance(d, str):
+            return d
+        return (d.name, d.kind, tuple(d.choices or ()), d.editor, d.category)
+
+    def _reuse_rows(self, rows: list) -> bool:
+        """Selecting another control of the same type (or a form after a form ...) shows the same rows: keep
+        the table and its editor widgets (combo boxes, font lists ...) and update the cells only - building
+        them again cost ~100-200 ms per click."""
+        key = tuple(self._row_key(d) for d in rows)
+        if key != getattr(self, "_rows_key", None) or self.props.rowCount() != len(rows):
+            self._rows_key = key
+            return False
+        label_of = getattr(self.plugin, "property_label", None)
+        for row, d in enumerate(rows):
+            if isinstance(d, str):
+                continue
+            item = self.props.item(row, 0)
+            if item is None:
+                self._rows_key = None
+                return False
+            label = label_of(d.name, self._owner()) if callable(label_of) else None
+            text = "(Name)" if d.name == "Name" else (label or (d.meta or {}).get("displayName") or d.name)
+            item.setData(Qt.ItemDataRole.UserRole, d)
+            if item.data(LABEL_ROLE) != text:
+                item.setText(text)
+                item.setData(LABEL_ROLE, text)
+        return True
+
     def refresh(self) -> None:
         self._updating = True
-        self.props.setRowCount(0)
-        self.events.setRowCount(0)
         if not self.doc:
+            self.props.setRowCount(0)
+            self.events.setRowCount(0)
+            self._rows_key = None
             self._updating = False
             self.help.setText("")         # no stale description (game scene / web page tabs have no form)
             return
@@ -349,6 +381,16 @@ class PropertiesPanel(QWidget):
                 rows.append(d.category)
                 last_cat = d.category
             rows.append(d)
+        if self._reuse_rows(rows):
+            self._refresh_values()
+            if not self.plugin:
+                self.events.setRowCount(0)
+            self._refresh_events()
+            self._updating = False
+            self._describe_owner()
+            return
+        self.props.setRowCount(0)
+        self.events.setRowCount(0)
         self.props.setRowCount(len(rows))
         bold = QFont()
         bold.setBold(True)

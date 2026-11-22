@@ -205,7 +205,11 @@ class AgcPlugin(LanguagePlugin):
 
     def run_spec(self, folder: Path, startup_form: str, interpreter: str) -> RunSpec:
         f = self.startup_file(folder, startup_form)
-        return RunSpec(sys.executable, ["-m", "radide.agc", f, "--seconds", "3"], Path(folder))
+        # started in the project folder: radide must be importable from there (python -m radide....)
+        import os
+        from ..paths import python_root
+        env = dict(os.environ, PYTHONPATH=str(python_root()) + os.pathsep + os.environ.get("PYTHONPATH", ""))
+        return RunSpec(sys.executable, ["-m", "radide.agc", f, "--seconds", "3"], Path(folder), env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:
         spec = self.run_spec(folder, startup_form, interpreter)

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "name": "RmRibbon",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Ribbon: application button, quick access toolbar, tabs, groups, large / small buttons, toggles, combos, drop-downs.",
+  "category": "Modern (RAD)",
+  "order": 3150,
+  "builtin": true,
+  "prefix": "RmRibbon",
+  "defaultSize": [
+    600,
+    154
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "ItemClick",
+  "properties": [
+    {
+      "name": "Tabs",
+      "type": "multiline",
+      "default": "[{\"Text\": \"Home\", \"Groups\": [{\"Text\": \"Clipboard\", \"Items\": [{\"Text\": \"Paste\", \"Name\": \"btnPaste\", \"Image\": \"paste\", \"Size\": \"Large\"}, {\"Text\": \"Cut\", \"Name\": \"btnCut\", \"Image\": \"cut\"}, {\"Text\": \"Copy\", \"Name\": \"btnCopy\", \"Image\": \"copy\"}]}]}, {\"Text\": \"View\", \"Groups\": [{\"Text\": \"Show\", \"Items\": [{\"Text\": \"Grid\", \"Name\": \"chkGrid\", \"Image\": \"grid\", \"Kind\": \"Check\"}]}]}]",
+      "category": "Data",
+      "description": "JSON tabs [{Text, Groups:[{Text, Items:[{Text, Name, Image, Size: Large|Small, Kind: Button|Check|Combo|DropDown, Items}]}]}]."
+    },
+    {
+      "name": "QuickAccess",
+      "type": "list",
+      "default": "save;undo;redo",
+      "category": "Data",
+      "description": "Quick access buttons: item names or glyphs (a;b;c)."
+    },
+    {
+      "name": "AppMenu",
+      "type": "multiline",
+      "default": "",
+      "category": "Data",
+      "description": "Items of the application button's menu (JSON / a;b;c; empty = ItemClick AppButton)."
+    },
+    {
+      "name": "AppButtonText",
+      "type": "str",
+      "default": "File",
+      "category": "Appearance",
+      "description": "Caption of the application button (empty = none)."
+    },
+    {
+      "name": "SelectedTab",
+      "type": "int",
+      "default": 0,
+      "category": "Behavior",
+      "description": "Index of the tab shown."
+    },
+    {
+      "name": "Collapsed",
+      "type": "bool",
+      "default": false,
+      "category": "Behavior",
+      "description": "Only the tab row is shown."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "ItemClick",
+      "description": "A ribbon item was clicked (EventItem = its Name, EventIndex)."
+    },
+    {
+      "name": "TabChanged",
+      "description": "Another tab was selected."
+    },
+    {
+      "name": "CollapsedChanged",
+      "description": "Collapsed changed."
+    }
+  ],
+  "methods": [
+    {
+      "name": "SetChecked",
+      "signature": "SetChecked(name, checked)",
+      "description": "Checks a Check item."
+    },
+    {
+      "name": "GetChecked",
+      "signature": "GetChecked(name)",
+      "description": "Is it checked?"
+    },
+    {
+      "name": "SetEnabled",
+      "signature": "SetEnabled(name, enabled)",
+      "description": "Enables / disables an item."
+    },
+    {
+      "name": "SetItemText",
+      "signature": "SetItemText(name, text)",
+      "description": "Changes an item's caption."
+    },
+    {
+      "name": "SetValue",
+      "signature": "SetValue(name, text)",
+      "description": "Text of a Combo item."
+    },
+    {
+      "name": "GetValue",
+      "signature": "GetValue(name)",
+      "description": "Text of a Combo item."
+    },
+    {
+      "name": "SelectTab",
+      "signature": "SelectTab(name)",
+      "description": "Shows a tab."
+    },
+    {
+      "name": "Toggle",
+      "signature": "Toggle()",
+      "description": "Collapses / expands."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmRibbon.py",
+      "class": "RmRibbon",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

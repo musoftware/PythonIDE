@@ -1,0 +1,12 @@
+{
+  "name": "PascalPhoneBook",
+  "language": "dos-pascal",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.PAS"
+  ],
+  "dos": {
+    "kind": "pascal"
+  }
+}

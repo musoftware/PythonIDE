@@ -1,0 +1,9 @@
+{
+  "name": "Contacts",
+  "language": "java-bridge",
+  "forms": [
+    "frmContacts"
+  ],
+  "startup": "frmContacts",
+  "modules": []
+}

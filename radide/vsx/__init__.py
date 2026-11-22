@@ -5,7 +5,13 @@ Subsystems:
     registry.py       Open VSX REST client (search, details, versions, download + SHA256, compatibility)
     manager.py        install / uninstall / update / enable / disable with dependency + pack resolution
     contrib_*.py      declarative contributions (themes, grammars, snippets, languages, icons, keys, config)
-    host/, bridge.py  the Node extension host for extensions with code
+    host/, bridge.py  the Node extension host for extensions with code (host/commands.js: VS Code's built-in
+                      commands, host/treeview.js: tree views)
+    views_ui.py, menus.py, context_keys.py, ide_commands.py, codicon.py
+                      view containers / tree views, contributed menus, when-clause context keys, workbench
+                      commands run by the IDE, codicons
+    reference/        inventories extracted from microsoft/vscode (commands, vscode.d.ts, context keys,
+                      contribution points) + COVERAGE.md
     features/vsx_market.py   the Extensions view (Activity Bar, View menu, Tools > Extensions)
 
 Event API for the contrib and host subsystems (callbacks run on the GUI thread when a Qt application
@@ -32,7 +38,8 @@ __all__ = ["API_LEVEL", "Event", "Extension", "VsixError", "on_installed", "on_r
            "on_changed", "on_reload_requested", "root", "list_installed", "list_enabled", "get",
            "mark_restart", "restart_required", "request_reload", "init_gui"]
 
-API_LEVEL = "1.90.0"          # the VS Code API level RAD IDE emulates (engines.vscode is checked against it)
+API_LEVEL = "1.147.0"         # the VS Code API level RAD IDE emulates (engines.vscode is checked against it):
+                              # every stable vscode.d.ts declaration of 1.147 exists (radide/vsx/reference/COVERAGE.md)
 
 
 class Event:

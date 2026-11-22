@@ -465,6 +465,29 @@ def fasm_pe_units(fas: FasInfo, exe, folder) -> list[Unit]:
     return units
 
 
+def coff_public_names(obj) -> set[str]:
+    """Names of the external (public) symbols defined in a COFF object (empty when it cannot be read)."""
+    import struct
+    try:
+        data = Path(obj).read_bytes()
+        symtab, nsyms = struct.unpack_from("<II", data, 8)
+        strtab = symtab + nsyms * 18
+        out, i = set(), 0
+        while i < nsyms:
+            raw = data[symtab + i * 18: symtab + i * 18 + 18]
+            sect, _typ, cls, aux = struct.unpack_from("<hHBB", raw, 12)
+            if raw[:4] == bytes(4):
+                name = _cstr(data, strtab + struct.unpack_from("<I", raw, 4)[0])
+            else:
+                name = raw[:8].rstrip(bytes(1)).decode("utf-8", "replace")
+            if cls == 2 and sect > 0:
+                out.add(name)
+            i += 1 + aux
+        return out
+    except (OSError, struct.error, ValueError):
+        return set()
+
+
 def fasm_coff_units(fas: FasInfo, folder) -> list[Unit]:
     """Units of a FASM ``format MS64 COFF`` object: addresses relative to a public label of the code section
     (the section itself has no symbol another object can refer to)."""
@@ -473,6 +496,9 @@ def fasm_coff_units(fas: FasInfo, folder) -> list[Unit]:
     code_secs = {i + 1 for i, n in enumerate(fas.sections) if n.lower().startswith((".text", "code", ".code"))}
     for sec in sorted(code_secs):
         anchors = [(n, v) for n, v, s in fas.symbols if s == sec and re.fullmatch(r"[A-Za-z_][\w@$?]*", n)]
+        public = coff_public_names(fas.output_file)
+        if public:              # a label that is not public cannot be referred to from the debug object
+            anchors = [a for a in anchors if a[0] in public]
         if not anchors:
             continue
         sym, base = anchors[0]

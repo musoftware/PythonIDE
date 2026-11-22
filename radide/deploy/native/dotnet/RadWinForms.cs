@@ -24,8 +24,12 @@ public class RadEvent
     public string Args = "";        // raw argument text (as the GUI Bridge sends it)
     public int X, Y, Button, KeyCode, Delta;
     public string KeyChar = "";
-    /// <summary>FormClosing: set true to keep the form open.</summary>
+    /// <summary>FormClosing / -ing events of library controls (TabClosing ...): set true to cancel.</summary>
     public bool Cancel;
+    /// <summary>Item-level events of library controls (ribbon / side bar / status bar items, tabs, nodes, grid
+    /// buttons): the item's name and index. Args = "name index" ("row col" for grid cells), as the radforms controls send.</summary>
+    public string ItemName = "";
+    public int Index = -1;
 
     public static RadEvent Parse(string sender, string name, string args)
     {
@@ -205,6 +209,7 @@ namespace RadNative
         public readonly Dictionary<string, object> Items = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         /// <summary>the design client area (below the menu)</summary>
         protected readonly Panel Client = new Panel();
+        internal Panel ClientPanel { get { return Client; } }
         protected readonly ToolTip Tips = new ToolTip();
         internal bool Closing2;
 
@@ -318,6 +323,7 @@ namespace RadNative
                     case "Click":
                         if (target is ToolStripItem) ((ToolStripItem)target).Click += (s, a) => Fire(owner, ev, null);
                         else if (c != null) c.Click += (s, a) => Fire(owner, ev, null);
+                        else RadRelay.Attach(target, owner, ev);
                         break;
                     case "DoubleClick":
                         if (c != null) c.DoubleClick += (s, a) => Fire(owner, ev, null);
@@ -363,27 +369,83 @@ namespace RadNative
                     case "CheckedChanged":
                         if (c is CheckBox) ((CheckBox)c).CheckedChanged += (s, a) => Fire(owner, ev, null);
                         else if (c is RadioButton) ((RadioButton)c).CheckedChanged += (s, a) => Fire(owner, ev, null);
+                        else RadRelay.Attach(target, owner, ev);
                         break;
                     case "SelectedIndexChanged":
                         if (c is ListBox) ((ListBox)c).SelectedIndexChanged += (s, a) => Fire(owner, ev, null);
                         else if (c is ComboBox) ((ComboBox)c).SelectedIndexChanged += (s, a) => Fire(owner, ev, null);
                         else if (c is TabControl) ((TabControl)c).SelectedIndexChanged += (s, a) => Fire(owner, ev, null);
+                        else RadRelay.Attach(target, owner, ev);
                         break;
                     case "ValueChanged":
                         if (c is NumericUpDown) ((NumericUpDown)c).ValueChanged += (s, a) => Fire(owner, ev, null);
                         else if (c is TrackBar) ((TrackBar)c).ValueChanged += (s, a) => Fire(owner, ev, null);
                         else if (c is DateTimePicker) ((DateTimePicker)c).ValueChanged += (s, a) => Fire(owner, ev, null);
+                        else RadRelay.Attach(target, owner, ev);
                         break;
                     case "Tick":
                         if (target is Timer) ((Timer)target).Tick += (s, a) => Fire(owner, ev, null);
                         break;
                     default:
-                        // a control of a referenced library (controls.json "events"): any EventHandler-shaped event
-                        var info = target.GetType().GetEvent(ev);
-                        if (info != null && info.EventHandlerType == typeof(EventHandler))
-                            info.AddEventHandler(target, new EventHandler((s, a) => Fire(owner, ev, null)));
+                        // a control of a referenced library (controls.json "events"): any (sender, EventArgs)-shaped event
+                        RadRelay.Attach(target, owner, ev);
                         break;
                 }
+            }
+        }
+    }
+
+    /// <summary>Connects any event of the form (object sender, SomeEventArgs e) - EventHandler, EventHandler&lt;T&gt; or a
+    /// WinForms delegate - to a handler. Item data of the event args (ItemName / Index / Text, grid RowIndex /
+    /// ColumnIndex) goes into RadEvent; Cancel set by the handler is copied back.</summary>
+    public sealed class RadRelay
+    {
+        readonly string owner, ev;
+        RadRelay(string owner, string ev) { this.owner = owner; this.ev = ev; }
+
+        public static bool Attach(object target, string owner, string ev)
+        {
+            var info = target.GetType().GetEvent(ev);
+            if (info == null) return false;
+            var invoke = info.EventHandlerType.GetMethod("Invoke");
+            var ps = invoke != null ? invoke.GetParameters() : new ParameterInfo[0];
+            if (ps.Length != 2 || !typeof(EventArgs).IsAssignableFrom(ps[1].ParameterType) || invoke.ReturnType != typeof(void)) return false;
+            var relay = new RadRelay(owner, ev);
+            var d = Delegate.CreateDelegate(info.EventHandlerType, relay, typeof(RadRelay).GetMethod("On"), false);
+            if (d == null) return false;
+            info.AddEventHandler(target, d);
+            return true;
+        }
+
+        static object P(object o, string name)
+        {
+            var p = o.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+            return p != null && p.GetIndexParameters().Length == 0 ? p.GetValue(o, null) : null;
+        }
+
+        public void On(object sender, EventArgs a)
+        {
+            RadEvent e = null;
+            if (a != null && a.GetType() != typeof(EventArgs))
+            {
+                e = new RadEvent { Sender = owner, Name = ev };
+                var item = P(a, "ItemName") as string;
+                var idx = P(a, "Index");
+                var row = P(a, "RowIndex");
+                var col = P(a, "ColumnIndex");
+                if (idx is int) e.Index = (int)idx;
+                if (!string.IsNullOrEmpty(item)) e.ItemName = item;
+                // same argument text as the radforms (C) controls: "name index" for items, "row col" for grid cells
+                if (row is int && col is int) { e.X = (int)row; e.Y = (int)col; e.Index = (int)row; e.Args = row + " " + col; }
+                else if (item != null || idx is int) e.Args = (e.ItemName.Length > 0 ? e.ItemName : "-") + " " + e.Index.ToString(CultureInfo.InvariantCulture);
+                var me = a as MouseEventArgs;
+                if (me != null) { e.X = me.X; e.Y = me.Y; e.Delta = me.Delta; e.MakeArgs(); }
+            }
+            RadApp.Fire(owner, ev, e);
+            if (e != null && e.Cancel)
+            {
+                var cp = a.GetType().GetProperty("Cancel", BindingFlags.Public | BindingFlags.Instance);
+                if (cp != null && cp.CanWrite && cp.PropertyType == typeof(bool)) cp.SetValue(a, true, null);
             }
         }
     }
@@ -617,7 +679,12 @@ namespace RadNative
         {
             var o = Resolve(path);
             if (o == null) { Warn("unknown object '" + path + "'"); return ""; }
-            try { return Get(o, path, (prop ?? "").Trim().ToLowerInvariant()); }
+            try
+            {
+                string r;
+                if (Ext.TryGet(o, prop, out r)) return r;
+                return Get(o, path, (prop ?? "").Trim().ToLowerInvariant());
+            }
             catch (Exception ex) { Warn(path + "." + prop + ": " + ex.Message); return ""; }
         }
 
@@ -625,7 +692,11 @@ namespace RadNative
         {
             var o = Resolve(path);
             if (o == null) { Warn("unknown object '" + path + "'"); return; }
-            try { Set(o, (prop ?? "").Trim().ToLowerInvariant(), value ?? ""); }
+            try
+            {
+                if (Ext.TrySet(o, prop, value ?? "")) return;
+                Set(o, (prop ?? "").Trim().ToLowerInvariant(), value ?? "");
+            }
             catch (Exception ex) { Warn(path + "." + prop + ": " + ex.Message); }
         }
 
@@ -633,13 +704,179 @@ namespace RadNative
         {
             var o = Resolve(path);
             if (o == null) { Warn("unknown object '" + path + "'"); return ""; }
-            try { return Call(o, path, (method ?? "").Trim().ToLowerInvariant(), args ?? new string[0]); }
+            try
+            {
+                string r;
+                if (Ext.TryCall(o, method, args ?? new string[0], out r)) return r;
+                return Call(o, path, (method ?? "").Trim().ToLowerInvariant(), args ?? new string[0]);
+            }
             catch (Exception ex) { Warn(path + "." + method + ": " + ex.Message); return ""; }
         }
 
         static void Warn(string msg)
         {
             try { Console.Error.WriteLine("[rad] " + msg); } catch (Exception) { }
+        }
+
+        /// <summary>Objects of control libraries (RadIDE.Controls ...) answer the property protocol themselves through
+        /// public RadGet(prop) / RadSet(prop, value) / RadCall(method, args) methods (found by reflection, no reference
+        /// needed); null / false = not handled (the common properties below still apply). The form property Theme goes
+        /// to RadIDE.Controls.RmThemeManager when the library is part of the program.</summary>
+        static class Ext
+        {
+            static readonly Dictionary<Type, MethodInfo[]> cache = new Dictionary<Type, MethodInfo[]>();
+
+            static MethodInfo[] Of(object o)
+            {
+                MethodInfo[] m;
+                var t = o.GetType();
+                if (!cache.TryGetValue(t, out m))
+                {
+                    m = new[] { t.GetMethod("RadGet", new[] { typeof(string) }), t.GetMethod("RadSet", new[] { typeof(string), typeof(string) }),
+                                t.GetMethod("RadCall", new[] { typeof(string), typeof(string[]) }) };
+                    cache[t] = m;
+                }
+                return m;
+            }
+
+            static object Inv(MethodInfo m, object o, object[] a)
+            {
+                try { return m.Invoke(o, a); }
+                catch (TargetInvocationException ex) { throw ex.InnerException ?? ex; }
+            }
+
+            public static bool TryGet(object o, string prop, out string r)
+            {
+                r = null;
+                if (o is Form && string.Equals(prop, "Theme", StringComparison.OrdinalIgnoreCase)) { r = ThemeCall("CurrentName", null) as string ?? "Light"; return true; }
+                var m = Of(o)[0];
+                if (m == null) return false;
+                r = Inv(m, o, new object[] { prop }) as string;
+                return r != null;
+            }
+
+            public static bool TrySet(object o, string prop, string value)
+            {
+                if (o is Form && (string.Equals(prop, "Theme", StringComparison.OrdinalIgnoreCase) || string.Equals(prop, "AccentColor", StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (string.Equals(prop, "Theme", StringComparison.OrdinalIgnoreCase)) return ThemeCall("ApplyFormTheme", new object[] { o, value }) != null || ThemeType() != null;
+                    var t = ThemeType();
+                    if (t == null) return false;
+                    var p = t.GetProperty("AccentColor");
+                    var c = ToColor(value);
+                    p.SetValue(null, c, null);
+                    return true;
+                }
+                if (o is Form && string.Equals(prop, "RightToLeft", StringComparison.OrdinalIgnoreCase))
+                {
+                    var f = (Form)o;
+                    var rtl = Rad.ToBool(value) || value.Trim().Equals("Yes", StringComparison.OrdinalIgnoreCase) ? RightToLeft.Yes : RightToLeft.No;
+                    if (f.RightToLeft != rtl)
+                    {
+                        f.RightToLeft = rtl;
+                        MirrorLayout(f);
+                    }
+                    return true;
+                }
+                var m = Of(o)[1];
+                if (m == null) return false;
+                var res = Inv(m, o, new object[] { prop, value });
+                return res is bool && (bool)res;
+            }
+
+            public static bool TryCall(object o, string method, string[] args, out string r)
+            {
+                r = null;
+                var m = Of(o)[2];
+                if (m == null) return false;
+                r = Inv(m, o, new object[] { method, args }) as string;
+                return r != null;
+            }
+
+            static Type themeType;
+            static bool themeLooked;
+
+            static Type ThemeType()
+            {
+                if (themeLooked) return themeType;
+                themeLooked = true;
+                foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    var t = a.GetType("RadIDE.Controls.RmThemeManager", false);
+                    if (t != null) { themeType = t; break; }
+                }
+                return themeType;
+            }
+
+            static object ThemeCall(string member, object[] args)
+            {
+                var t = ThemeType();
+                if (t == null) return null;
+                if (args == null) { var p = t.GetProperty(member); return p != null ? p.GetValue(null, null) : null; }
+                var m = t.GetMethod(member);
+                if (m == null) return null;
+                m.Invoke(null, args);
+                return true;
+            }
+        }
+
+        /// <summary>Right-to-left forms (Arabic): the layout is mirrored - Left = width - Right, Dock and Anchor Left/Right
+        /// swapped - for every control, recursively (controls that place their children themselves, such as the pages of
+        /// a tab strip, have a RadNoMirror property and only their children are mirrored).</summary>
+        public static void MirrorLayout(Control root)
+        {
+            var f = root as RadFormBase;
+            var host = f != null ? (Control)f.ClientPanel : root;
+            host.SuspendLayout();
+            foreach (Control c in host.Controls) Mirror(c, host);
+            host.ResumeLayout(true);
+        }
+
+        static void Mirror(Control c, Control parent)
+        {
+            bool self = c.GetType().GetProperty("RadNoMirror") != null;
+            if (!self)
+            {
+                if (c.Dock == DockStyle.Left) c.Dock = DockStyle.Right;
+                else if (c.Dock == DockStyle.Right) c.Dock = DockStyle.Left;
+                else if (c.Dock == DockStyle.None)
+                {
+                    var a = c.Anchor;
+                    bool l = (a & AnchorStyles.Left) != 0, r = (a & AnchorStyles.Right) != 0;
+                    if (l != r) c.Anchor = (a & ~(AnchorStyles.Left | AnchorStyles.Right)) | (l ? AnchorStyles.Right : AnchorStyles.Left);
+                    c.Left = parent.ClientSize.Width - c.Right;
+                }
+            }
+            if (c.Controls.Count > 0)
+            {
+                c.SuspendLayout();
+                foreach (Control k in c.Controls) Mirror(k, c);
+                c.ResumeLayout(true);
+            }
+        }
+
+        /// <summary>netfx builds embed referenced control libraries as resources "radlib.&lt;Name&gt;.dll" (one exe);
+        /// they are loaded from there when the runtime asks for them.</summary>
+        public static void LoadEmbedded()
+        {
+            var exe = typeof(RadApp).Assembly;
+            if (!exe.GetManifestResourceNames().Any(n => n.StartsWith("radlib.", StringComparison.Ordinal))) return;
+            var loaded = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
+            AppDomain.CurrentDomain.AssemblyResolve += (s, a) =>
+            {
+                var name = new AssemblyName(a.Name).Name;
+                Assembly asm;
+                if (loaded.TryGetValue(name, out asm)) return asm;
+                using (var st = exe.GetManifestResourceStream("radlib." + name + ".dll"))
+                {
+                    if (st == null) return null;
+                    var ms = new MemoryStream();
+                    st.CopyTo(ms);
+                    asm = Assembly.Load(ms.ToArray());
+                }
+                loaded[name] = asm;
+                return asm;
+            };
         }
 
         static string Get(object o, string path, string p)

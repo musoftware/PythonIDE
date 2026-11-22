@@ -1,0 +1,13 @@
+{
+  "name": "AsmSysInfo",
+  "language": "dos-asm",
+  "forms": [],
+  "startup": "MAIN",
+  "modules": [
+    "MAIN.ASM"
+  ],
+  "dos": {
+    "kind": "asm",
+    "output": "com"
+  }
+}

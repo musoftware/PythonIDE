@@ -1,0 +1,9 @@
+{
+  "name": "Contacts",
+  "language": "rust-bridge",
+  "forms": [
+    "frmContacts"
+  ],
+  "startup": "frmContacts",
+  "modules": []
+}

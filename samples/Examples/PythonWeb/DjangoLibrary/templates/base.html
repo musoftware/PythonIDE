@@ -1,0 +1,26 @@
+{% load static %}<!DOCTYPE html>
+<!-- (c) 2026 Musoftware - https://musoftwares.com - MIT License -->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+<header>
+    <h1><a href="{% url 'core:book_list' %}">{{ site_name }}</a></h1>
+    <nav>
+        <a href="{% url 'core:book_list' %}">Books</a>
+        <a href="{% url 'core:book_new' %}">Add a book</a>
+        <a href="{% url 'core:api_books' %}">JSON</a>
+        <a href="{% url 'admin:index' %}">Admin</a>
+    </nav>
+</header>
+<main>
+{% for m in messages %}<p class="msg {{ m.tags }}">{{ m }}</p>{% endfor %}
+{% block content %}{% endblock %}
+</main>
+<footer>Made with Django {{ django_version }} and RAD IDE</footer>
+</body>
+</html>

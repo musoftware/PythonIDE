@@ -1,0 +1,106 @@
+[
+ {
+  "key": "Perl/TextStats",
+  "lang": "perl-bridge",
+  "title_en": "Text Statistics",
+  "title_ar": "إحصاءات النص",
+  "desc_en": "Counts words, lines and characters, lists the most frequent words and searches the text with Perl regular expressions.",
+  "desc_ar": "يعدّ الكلمات والأسطر والحروف، ويعرض أكثر الكلمات تكرارًا، ويبحث في النص بالتعابير النمطية في بيرل."
+ },
+ {
+  "key": "Perl/ExpenseTracker",
+  "lang": "perl-bridge",
+  "title_en": "Expense Tracker",
+  "title_ar": "متابعة المصروفات",
+  "desc_en": "Records expenses with a category, shows them in a grid with totals per category and saves them to a CSV file.",
+  "desc_ar": "يسجّل المصروفات مع التصنيف ويعرضها في جدول مع الإجمالي لكل تصنيف ويحفظها في ملف CSV."
+ },
+ {
+  "key": "Perl/LogViewer",
+  "lang": "perl-bridge",
+  "title_en": "Log Viewer",
+  "title_ar": "عارض السجلات",
+  "desc_en": "Follows a growing log file like `tail -f`, with a text filter, a level filter and live counters.",
+  "desc_ar": "يتابع ملف سجل يكبر باستمرار مثل `tail -f` مع تصفية بالنص وبالمستوى وعدّادات مباشرة."
+ },
+ {
+  "key": "Lua/Calculator",
+  "lang": "lua-bridge",
+  "title_en": "Calculator",
+  "title_ar": "الآلة الحاسبة",
+  "desc_en": "A calculator with operator precedence and parentheses, keyboard input and a history list.",
+  "desc_ar": "آلة حاسبة تحترم أولوية العمليات والأقواس، مع إدخال من لوحة المفاتيح وسجل للعمليات."
+ },
+ {
+  "key": "Lua/GuessGame",
+  "lang": "lua-bridge",
+  "title_en": "Guess the Number",
+  "title_ar": "خمّن الرقم",
+  "desc_en": "A small game: guess the secret number with hints, a timer, a limited number of tries and saved best scores.",
+  "desc_ar": "لعبة صغيرة: خمّن الرقم السري مع تلميحات ومؤقت وعدد محاولات محدود وحفظ أفضل النتائج."
+ },
+ {
+  "key": "Lua/Notes",
+  "lang": "lua-bridge",
+  "title_en": "Notes",
+  "title_ar": "الملاحظات",
+  "desc_en": "A notes app with a list, a multi-line editor, a modal Find dialog and UTF-8 storage (Arabic notes included).",
+  "desc_ar": "تطبيق ملاحظات بقائمة ومحرر متعدد الأسطر ونافذة بحث مشروطة وحفظ UTF-8 (يشمل ملاحظات عربية)."
+ },
+ {
+  "key": "Ruby/Contacts",
+  "lang": "ruby-bridge",
+  "title_en": "Contacts",
+  "title_ar": "جهات الاتصال",
+  "desc_en": "An address book: add, edit, delete and search contacts, stored as JSON, with Arabic and English names.",
+  "desc_ar": "دفتر عناوين: إضافة وتعديل وحذف والبحث في جهات الاتصال، محفوظة بصيغة JSON، بأسماء عربية وإنجليزية."
+ },
+ {
+  "key": "Ruby/UnitConverter",
+  "lang": "ruby-bridge",
+  "title_en": "Unit Converter",
+  "title_ar": "محوّل الوحدات",
+  "desc_en": "Converts length, mass, temperature, data and speed units while you type.",
+  "desc_ar": "يحوّل وحدات الطول والكتلة والحرارة والبيانات والسرعة أثناء الكتابة."
+ },
+ {
+  "key": "Ruby/Pomodoro",
+  "lang": "ruby-bridge",
+  "title_en": "Pomodoro Timer",
+  "title_ar": "مؤقت بومودورو",
+  "desc_en": "A work/break timer with a progress bar, a modal settings dialog, saved settings and an English or Arabic interface.",
+  "desc_ar": "مؤقت للعمل والاستراحة مع شريط تقدم ونافذة إعدادات مشروطة وحفظ الإعدادات وواجهة إنجليزية أو عربية."
+ },
+ {
+  "key": "PowerShell/SystemInfo",
+  "lang": "powershell-bridge",
+  "title_en": "System Info",
+  "title_ar": "معلومات النظام",
+  "desc_en": "A read-only dashboard of this PC: Windows, hardware, memory, drives and the processes that use the most memory.",
+  "desc_ar": "لوحة معلومات للقراءة فقط عن الجهاز: ويندوز والعتاد والذاكرة والأقراص والعمليات الأكثر استهلاكًا للذاكرة."
+ },
+ {
+  "key": "PowerShell/FileOrganizer",
+  "lang": "powershell-bridge",
+  "title_en": "File Organizer (preview)",
+  "title_ar": "منظّم الملفات (معاينة)",
+  "desc_en": "Shows how the files of a folder would be sorted into Images, Documents, Music... folders - as a preview only.",
+  "desc_ar": "يعرض كيف ستُرتّب ملفات مجلد في مجلدات الصور والمستندات والموسيقى... كمعاينة فقط."
+ },
+ {
+  "key": "PowerShell/PasswordGen",
+  "lang": "powershell-bridge",
+  "title_en": "Password Generator",
+  "title_ar": "مولّد كلمات المرور",
+  "desc_en": "Generates strong passwords with a cryptographic random generator and shows their strength in English and Arabic.",
+  "desc_ar": "يولّد كلمات مرور قوية بمولد أرقام عشوائية آمن ويعرض قوتها بالإنجليزية والعربية."
+ },
+ {
+  "key": "RubyWeb/Guestbook",
+  "lang": "rails-web",
+  "title_en": "Guestbook (Sinatra)",
+  "title_ar": "سجل الزوار (Sinatra)",
+  "desc_en": "A Sinatra web app: sign a guestbook with a form, search the messages, a JSON API and an Arabic right-to-left page.",
+  "desc_ar": "تطبيق ويب بإطار Sinatra: توقيع سجل الزوار بنموذج، والبحث في الرسائل، وواجهة JSON، وصفحة عربية من اليمين لليسار."
+ }
+]

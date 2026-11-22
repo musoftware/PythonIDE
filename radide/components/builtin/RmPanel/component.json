@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "name": "RmPanel",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Rounded / shadowed / gradient card that holds controls, optional title bar.",
+  "category": "Modern (RAD)",
+  "order": 3100,
+  "builtin": true,
+  "prefix": "RmPanel",
+  "defaultSize": [
+    240,
+    160
+  ],
+  "kind": "container",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "Click",
+  "properties": [
+    {
+      "name": "Title",
+      "type": "str",
+      "default": "",
+      "category": "Appearance",
+      "description": "Title bar text (empty = none)."
+    },
+    {
+      "name": "CornerRadius",
+      "type": "int",
+      "default": -1,
+      "category": "Appearance",
+      "description": "Corner radius (-1 = the theme's)."
+    },
+    {
+      "name": "Shadow",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "Drop shadow."
+    },
+    {
+      "name": "GradientTo",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Second colour of a vertical gradient (empty = none)."
+    },
+    {
+      "name": "BorderColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Border colour (empty = the theme's)."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    }
+  ],
+  "events": [],
+  "methods": [],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmPanel.py",
+      "class": "RmPanel",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

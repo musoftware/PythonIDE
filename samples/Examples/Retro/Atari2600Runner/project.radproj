@@ -1,0 +1,15 @@
+{
+  "name": "Atari2600Runner",
+  "language": "retro-atari2600",
+  "forms": [],
+  "startup": "main",
+  "modules": [
+    "main.asm",
+    "atari2600.h"
+  ],
+  "retro": {
+    "system": "atari2600",
+    "lang": "asm",
+    "main": "main.asm"
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "name": "RmTreeView",
+  "version": "1.0.0",
+  "publisher": "RAD IDE",
+  "description": "Themed tree with images, check boxes and lazy nodes.",
+  "category": "Modern (RAD)",
+  "order": 3190,
+  "builtin": true,
+  "prefix": "RmTreeView",
+  "defaultSize": [
+    220,
+    260
+  ],
+  "kind": "visual",
+  "hasText": false,
+  "commonEvents": true,
+  "defaultEvent": "NodeClick",
+  "properties": [
+    {
+      "name": "Nodes",
+      "type": "multiline",
+      "default": "[{\"Text\":\"Root\",\"Image\":\"folder\",\"Expanded\":true,\"Nodes\":[{\"Text\":\"Child 1\"},{\"Text\":\"Child 2\"}]}]",
+      "category": "Data",
+      "description": "JSON [{Text, Name, Image, Expanded, Checked, Lazy, Nodes:[...]}] or a;b;c."
+    },
+    {
+      "name": "CheckBoxes",
+      "type": "bool",
+      "default": false,
+      "category": "Appearance",
+      "description": "Check boxes on the nodes."
+    },
+    {
+      "name": "ShowLines",
+      "type": "bool",
+      "default": true,
+      "category": "Appearance",
+      "description": "Connecting lines."
+    },
+    {
+      "name": "SelectedNode",
+      "type": "str",
+      "default": "",
+      "category": "Behavior",
+      "description": "Name of the selected node."
+    },
+    {
+      "name": "Style",
+      "type": "enum",
+      "default": "Inherit",
+      "category": "Appearance",
+      "description": "Theme of this control: Inherit = the form's / application's Theme.",
+      "choices": [
+        "Inherit",
+        "Light",
+        "Dark",
+        "Office",
+        "Metro"
+      ]
+    },
+    {
+      "name": "AccentColor",
+      "type": "color",
+      "default": "",
+      "category": "Appearance",
+      "description": "Accent colour (empty = the theme's accent)."
+    },
+    {
+      "name": "EventItem",
+      "type": "str",
+      "default": "",
+      "category": "Data",
+      "description": "Name of the item of the last item event (ItemClick, NodeClick ...).",
+      "browsable": false
+    },
+    {
+      "name": "EventIndex",
+      "type": "int",
+      "default": -1,
+      "category": "Data",
+      "description": "Index of the item of the last item event.",
+      "browsable": false
+    }
+  ],
+  "events": [
+    {
+      "name": "NodeClick",
+      "description": "A node was clicked (EventItem = its Name)."
+    },
+    {
+      "name": "NodeDoubleClick",
+      "description": "A node was double-clicked."
+    },
+    {
+      "name": "NodeExpanding",
+      "description": "A node opens (lazy nodes: add the children with AddNode here)."
+    },
+    {
+      "name": "NodeCollapsed",
+      "description": "A node closed."
+    },
+    {
+      "name": "NodeChecked",
+      "description": "A node's check box changed."
+    },
+    {
+      "name": "SelectedIndexChanged",
+      "description": "Another node was selected."
+    }
+  ],
+  "methods": [
+    {
+      "name": "AddNode",
+      "signature": "AddNode(parent, text, name, image)",
+      "description": "Adds a node (parent \"\" = root); returns its name."
+    },
+    {
+      "name": "RemoveNode",
+      "signature": "RemoveNode(name)",
+      "description": "Removes a node."
+    },
+    {
+      "name": "Clear",
+      "signature": "Clear()",
+      "description": "Removes every node."
+    },
+    {
+      "name": "ExpandNode",
+      "signature": "ExpandNode(name)",
+      "description": "Opens a node."
+    },
+    {
+      "name": "CollapseNode",
+      "signature": "CollapseNode(name)",
+      "description": "Closes a node."
+    },
+    {
+      "name": "ExpandAll",
+      "signature": "ExpandAll()",
+      "description": "Opens every node."
+    },
+    {
+      "name": "CollapseAll",
+      "signature": "CollapseAll()",
+      "description": "Closes every node."
+    },
+    {
+      "name": "SetChecked",
+      "signature": "SetChecked(name, checked)",
+      "description": "Checks a node and its children."
+    },
+    {
+      "name": "GetChecked",
+      "signature": "GetChecked(name)",
+      "description": "Is it checked?"
+    },
+    {
+      "name": "SelectNode",
+      "signature": "SelectNode(name)",
+      "description": "Selects a node."
+    },
+    {
+      "name": "GetNodeText",
+      "signature": "GetNodeText(name)",
+      "description": "Text of a node."
+    },
+    {
+      "name": "SetNodeText",
+      "signature": "SetNodeText(name, text)",
+      "description": "Changes a node's text."
+    },
+    {
+      "name": "SetNodeImage",
+      "signature": "SetNodeImage(name, image)",
+      "description": "Changes a node's image."
+    }
+  ],
+  "targets": {
+    "python-tk": {
+      "file": "runtime/rmtk_RmTreeView.py",
+      "class": "RmTreeView",
+      "notes": "also draws the control for VB6 (vb-basic) and every GUI Bridge language; native C / C++ / Fortran exes use radforms/controls/rm_*.c"
+    }
+  },
+  "designer": "designer.py",
+  "help": "help.md"
+}

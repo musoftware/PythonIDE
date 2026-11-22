@@ -1,0 +1,9 @@
+{
+  "name": "Notepad",
+  "language": "csharp-bridge",
+  "forms": [
+    "frmMain"
+  ],
+  "startup": "frmMain",
+  "modules": []
+}

@@ -1,0 +1,141 @@
+{
+ "version": 1,
+ "name": "Settings",
+ "route": "/settings",
+ "theme": {},
+ "assets": [],
+ "fonts": [],
+ "imports": [
+  "../app_store.dart"
+ ],
+ "tree": {
+  "id": "w7",
+  "type": "Scaffold",
+  "slots": {
+   "appBar": {
+    "id": "w8",
+    "type": "AppBar",
+    "slots": {
+     "title": {
+      "id": "w9",
+      "type": "Text",
+      "props": {
+       "data": {
+        "$code": "store.t('Settings', 'الإعدادات')"
+       }
+      }
+     }
+    }
+   },
+   "body": {
+    "id": "w10",
+    "type": "ListView",
+    "children": [
+     {
+      "id": "w11",
+      "type": "SwitchListTile",
+      "name": "swtArabic",
+      "slots": {
+       "title": {
+        "id": "w12",
+        "type": "Text",
+        "props": {
+         "data": "العربية (من اليمين لليسار) / Arabic (right to left)"
+        }
+       },
+       "subtitle": {
+        "id": "w13",
+        "type": "Text",
+        "props": {
+         "data": "Mirrors the screens and translates the labels"
+        }
+       }
+      },
+      "events": {
+       "onChanged": "onArabicChanged"
+      }
+     },
+     {
+      "id": "w14",
+      "type": "SwitchListTile",
+      "name": "swtHideDone",
+      "slots": {
+       "title": {
+        "id": "w15",
+        "type": "Text",
+        "props": {
+         "data": {
+          "$code": "store.t('Hide finished tasks', 'إخفاء المهام المنتهية')"
+         }
+        }
+       }
+      },
+      "events": {
+       "onChanged": "onHideDoneChanged"
+      }
+     },
+     {
+      "id": "w16",
+      "type": "Divider"
+     },
+     {
+      "id": "w17",
+      "type": "ListTile",
+      "slots": {
+       "leading": {
+        "id": "w18",
+        "type": "Icon",
+        "props": {
+         "icon": "Icons.info_outline"
+        }
+       },
+       "title": {
+        "id": "w19",
+        "type": "Text",
+        "props": {
+         "data": "TodoDesigner - a RAD IDE example"
+        }
+       },
+       "subtitle": {
+        "id": "w20",
+        "type": "Text",
+        "props": {
+         "data": "(c) 2026 Musoftware - https://musoftwares.com - MIT License"
+        }
+       }
+      }
+     },
+     {
+      "id": "w21",
+      "type": "Padding",
+      "props": {
+       "padding": {
+        "all": 16
+       }
+      },
+      "slots": {
+       "child": {
+        "id": "w22",
+        "type": "FilledButton",
+        "slots": {
+         "child": {
+          "id": "w23",
+          "type": "Text",
+          "props": {
+           "data": {
+            "$code": "store.t('Clear all tasks', 'حذف كل المهام')"
+           }
+          }
+         }
+        },
+        "events": {
+         "onPressed": "onClearAll"
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

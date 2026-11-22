@@ -66,11 +66,27 @@ class ToolState(QObject):
 TOOL_STATE = ToolState()
 
 
+_DRAWN_ICONS: dict[str, QIcon] = {}
+
+
 def control_icon(type_name: str) -> QIcon:
     """Small drawn icons, so the app needs no image files."""
     icon = package_icon(type_name)          # a component package's own icon file
     if icon is not None:
         return icon
+    # drawn once per type: the Document Outline / component tray ask for one icon per control, and a
+    # drawText costs several ms (a 400-control form spent ~4 s here on every Undo)
+    if type_name in MOBILE_CONTROL_TYPES:      # drawn in the (changeable) Material colours: not cached
+        return _draw_control_icon(type_name)
+    cached = _DRAWN_ICONS.get(type_name)
+    if cached is not None:
+        return cached
+    icon = _draw_control_icon(type_name)
+    _DRAWN_ICONS[type_name] = icon
+    return icon
+
+
+def _draw_control_icon(type_name: str) -> QIcon:
     pm = QPixmap(20, 20)
     pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)

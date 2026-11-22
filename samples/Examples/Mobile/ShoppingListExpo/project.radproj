@@ -1,0 +1,15 @@
+{
+  "name": "ShoppingListExpo",
+  "language": "expo",
+  "forms": [
+    "MainScreen",
+    "ItemScreen"
+  ],
+  "startup": "MainScreen",
+  "modules": [
+    "store.js"
+  ],
+  "expo": {
+    "device": "web"
+  }
+}

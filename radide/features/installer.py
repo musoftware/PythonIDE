@@ -379,6 +379,80 @@ class Publisher:
         elif b_run is not None and box.clickedButton() is b_run:
             subprocess.Popen([str(res.setup)])
 
+    # ------------------------------------------------------------ Build > Build Native Exe
+    def build_native(self, wait: bool = False):
+        """Build only the program (no installer) as a standalone native exe with the forms inside, into
+        <project>\\Publish\\build\\dist (radide/deploy/native). Falls back like Publish (reasons in the Output)."""
+        folder, name = self.project_folder()
+        if folder is None:
+            QMessageBox.information(self.win, "Build Native Exe", "Open a project first (File > Open Project).")
+            return None
+        if self.running:
+            QMessageBox.information(self.win, "Build Native Exe", "A build is already running - see the Output window.")
+            return None
+        from ..deploy import build as B
+        from ..deploy.native import builder_for
+        cfg = C.load(folder, name)
+        try:
+            from ..model import Project
+            lang = B.startup_language(Project.load(folder))
+        except Exception:  # noqa: BLE001
+            lang = ""
+        if builder_for(lang) is None:
+            QMessageBox.information(self.win, "Build Native Exe",
+                                    f"There is no native build for this project's language ({lang}). "
+                                    "Use Build > Publish / Create Installer.")
+            return None
+        cfg.build_kind = "native"
+        try:
+            self.win.save_all()
+            self.win.dock_output.show()
+            self.win.dock_output.raise_()
+        except Exception:  # noqa: BLE001
+            pass
+        self.running = True
+        self.win.statusBar().showMessage("Building the native exe... (see the Output window)")
+        sig = _Signals()
+        sig.line.connect(self._line)
+        sig.done.connect(self._native_done)
+        self._native_sig = sig
+
+        def work():
+            res, err = None, ""
+            try:
+                res = B.build(folder, cfg, log=lambda s: sig.line.emit(str(s)))
+            except Exception as ex:  # noqa: BLE001
+                err = str(ex) or type(ex).__name__
+                if type(ex).__name__ != "BuildError":
+                    sig.line.emit(traceback.format_exc())
+            try:
+                sig.done.emit(res, err)
+            except RuntimeError:
+                pass
+        t = threading.Thread(target=work, daemon=True, name="build-native")
+        t.start()
+        if wait:
+            from PyQt6.QtWidgets import QApplication
+            while t.is_alive():
+                QApplication.processEvents()
+                t.join(0.05)
+            QApplication.processEvents()
+        return t
+
+    def _native_done(self, res, err: str):
+        self.running = False
+        self.last_native = (res, err)
+        if err:
+            self.win.log(f"========== Build Native Exe failed: {err} ==========")
+            self.win.statusBar().showMessage("Build Native Exe failed", 5000)
+            return
+        exe = Path(res.dist) / res.exe
+        if res.kind != "native":
+            self.win.log("Note: a native build was not possible (reasons above): the program needs the files of its "
+                         f"folder ({res.dist}).")
+        self.win.log(f"========== Build Native Exe succeeded: {exe} ==========")
+        self.win.statusBar().showMessage(f"Built: {exe.name}", 8000)
+
     def open_output(self):
         folder, name = self.project_folder()
         if folder is None:
@@ -404,6 +478,12 @@ def _attach(win, pub: Publisher) -> None:
     if menu is None:
         return
     menu.addSeparator()
+    n = QAction("Build &Native Exe", win)
+    n.setToolTip("Build the program as one standalone exe with its forms inside (no IDE, no Python) into "
+                 "the project's Publish\\build\\dist folder")
+    n.triggered.connect(lambda _c=False: pub.build_native())
+    menu.addAction(n)
+    win.a_build_native = n
     a = QAction("P&ublish / Create Installer...", win)
     a.setShortcut(QKeySequence("Ctrl+Alt+F5"))
     a.setToolTip("Build the program and a Windows setup (Inno Setup) into the project's Publish folder")
@@ -416,6 +496,7 @@ def _attach(win, pub: Publisher) -> None:
     try:
         from .command_palette import register_command
         register_command("build.publish", "Build: Publish / Create Installer...", pub.open_dialog, "Build")
+        register_command("build.native", "Build: Build Native Exe", pub.build_native, "Build")
     except Exception:  # noqa: BLE001
         pass
 

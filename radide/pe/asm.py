@@ -18,8 +18,8 @@ class AsmError(ValueError):
 
 def keystone_available() -> bool:
     try:
-        import keystone  # noqa: F401
-        return True
+        import keystone
+        return bool(keystone)
     except Exception:  # noqa: BLE001 - also a broken DLL
         return False
 

@@ -474,7 +474,6 @@ class Translator:
         self.collect()
         title = self.project.name
         tr = Translation(title=title, images=list(self.images), uses_forms=bool(self.forms))
-        body: list[str] = []
         saved = self.out
         # procedures first (they register event wrappers, used names, implicit vars ...)
         proc_out: list[str] = []
@@ -2201,7 +2200,6 @@ class Translator:
     # builtins -------------------------------------------------------------
     def statement_builtin(self, name, args, ctx, line):
         A = lambda i, t: self.conv(self.expr(args[i], ctx), t)
-        n = len(args)
         if name == "msgbox":
             return self.builtin("msgbox", args, ctx, line).code
         if name in ("randomize",):

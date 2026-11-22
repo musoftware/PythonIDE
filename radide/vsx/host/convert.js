@@ -92,6 +92,7 @@ function completionItem(it, cmds) {
   if (it.additionalTextEdits) out.additionalTextEdits = it.additionalTextEdits.map((e) => ({ range: range(e.range), newText: e.newText }));
   if (it.command) out.command = cmds.put(it.command);
   if (it.commitCharacters) out.commitCharacters = it.commitCharacters;
+  if (it.keepWhitespace) out.insertTextMode = 1;          // LSP InsertTextMode.asIs = CompletionItem.keepWhitespace
   return out;
 }
 

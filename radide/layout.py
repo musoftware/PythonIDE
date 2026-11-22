@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .controls import TAB_PAGE_X, TAB_PAGE_Y, parse_anchor
+from .controls import PAGED_TYPES, TAB_PAGE_X, TAB_PAGE_Y, parse_anchor
 
 
 @dataclass(frozen=True)
@@ -75,11 +75,11 @@ def dock_of(ctrl) -> str:
     return d if d in ("Top", "Bottom", "Left", "Right", "Fill") else "None"
 
 
-def _groups(form, parent: str) -> list[list]:
+def _groups(form, parent: str, kids_map: dict | None = None) -> list[list]:
     """Children of *parent* grouped by layout area (TabControl: one group per page)."""
-    kids = form.children(parent)
+    kids = list(kids_map.get(parent, ())) if kids_map is not None else form.children(parent)
     pc = form.find(parent) if parent else None
-    if pc is None or pc.type != "TabControl":
+    if pc is None or pc.type not in PAGED_TYPES:
         return [kids] if kids else []
     pages: dict[int, list] = {}
     for c in kids:
@@ -160,9 +160,14 @@ def relayout(form) -> list:
     Containers whose size changes pass the change on to their anchored children.
     Returns the controls that changed."""
     changed = []
-    for parent in [None, *[c for c in form.ordered() if c.ctype.container]]:
+    # only docked controls move here: without any (the usual WinForms form) there is nothing to snap -
+    # the designer calls this on every drag step, and the scan below is a pass per container
+    parents = [None, *[c for c in form.ordered() if c.ctype.container]]     # (also re-homes orphans)
+    docked = any(dock_of(c) != "None" for c in form.controls if not c.ctype.nonvisual)
+    kids_map = form.children_map() if docked else {}
+    for parent in (parents if docked else []):
         cw, ch = client_size(form, parent)
-        for group in _groups(form, parent.name if parent else ""):
+        for group in _groups(form, parent.name if parent else "", kids_map):
             places = group_places(group, cw, ch)
             for c in group:
                 if dock_of(c) == "None":

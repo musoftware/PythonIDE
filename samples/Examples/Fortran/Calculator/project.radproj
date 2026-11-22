@@ -1,0 +1,9 @@
+{
+  "name": "Calculator",
+  "language": "fortran-bridge",
+  "forms": [
+    "frmCalc"
+  ],
+  "startup": "frmCalc",
+  "modules": []
+}
