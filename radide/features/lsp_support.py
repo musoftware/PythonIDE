@@ -96,10 +96,11 @@ def install(win) -> None:
     orig_open_module = win.open_module
 
     def open_module(filename):
-        orig_open_module(filename)
+        result = orig_open_module(filename)     # the editor of a report / scene ... opened below: keep it
         mv = win.modviews.get(filename)
         if mv is not None:
             QTimer.singleShot(0, lambda: attach(mv.editor))
+        return result
     win.open_module = open_module
 
     orig_reset = win._reset
