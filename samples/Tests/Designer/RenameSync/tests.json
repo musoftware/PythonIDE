@@ -1,0 +1,3 @@
+{"tests": {"test_rename_sync.py": {"tier": "fast", "area": "designer", "timeout": 300, "needs": ["qt"],
+                                   "args": ["{scratch}"],
+                                   "note": "control rename keeps the code in step: strings / comments untouched (8 languages), Undo / Redo of a rename renames the code back (real IDE, offscreen)"}}}

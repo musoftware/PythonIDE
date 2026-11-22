@@ -1240,6 +1240,7 @@ class MainWindow(QMainWindow):
             doc.eventRequested.connect(lambda owner, ev, n=name: self.goto_event(n, owner, ev))
             doc.modifiedChanged.connect(lambda _m, n=name: self._update_tab_titles(n))
             doc.renamed.connect(lambda old, new, n=name: self._on_control_renamed(n, old, new))
+            doc.codeRenamed.connect(lambda old, new, n=name: self._on_control_renamed(n, old, new))
             doc.formRenameRequested.connect(self._on_form_rename)
             doc.undoStateChanged.connect(self._update_actions)
             doc.selectionChanged.connect(lambda _c: self._update_actions())
@@ -1332,7 +1333,8 @@ class MainWindow(QMainWindow):
         cv = self._codeview(form_name)
         code = cv.editor.text()
         fp = self.plugin_for_form(form_name)
-        updated = fp.rename_symbol(code, old, new)
+        rename = getattr(fp, "rename_control", None) or fp.rename_symbol    # code only, not strings / comments
+        updated = rename(code, old, new)
         if updated != code:
             self._replace_code(cv, updated)
             self.log(f"Renamed '{old}' to '{new}' in {fp.code_file(form_name)}")

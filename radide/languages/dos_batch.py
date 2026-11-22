@@ -14,6 +14,7 @@ class DosBatchPlugin(DosPluginBase):
     line_comments = ["REM ", "::"]
     block_comment = None
     string_quotes = ['"']
+    string_escapes = False
     keywords = sorted({k.lower() for k in BATCH} | {"errorlevel", "exist", "not", "in", "do", "on", "off"})
     builtins = []
     supports_debug = False

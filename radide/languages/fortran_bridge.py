@@ -68,6 +68,7 @@ class FortranBridgePlugin(BridgeLanguagePlugin):
     line_comments = ["!"]
     block_comment = None
     string_quotes = ['"', "'"]
+    string_escapes = False
     handler_regex = SUB_RX
     install_hint = ("Install gfortran (MSYS2: pacman -S mingw-w64-ucrt-x86_64-gcc-fortran, or WinLibs into "
                     "%LOCALAPPDATA%\\RADIDE\\toolchains\\mingw64) and add it to PATH.")

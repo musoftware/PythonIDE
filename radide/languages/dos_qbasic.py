@@ -19,6 +19,7 @@ class DosQBasicPlugin(DosPluginBase):
     line_comments = ["'", "REM "]
     block_comment = None
     string_quotes = ['"']
+    string_escapes = False
     keywords = sorted({w for k in QBASIC for w in k.split()} | {"THEN", "ELSE", "ELSEIF", "END", "TO", "STEP",
                                                                 "NEXT", "LOOP", "UNTIL", "WEND", "AS", "SHARED",
                                                                 "INTEGER", "LONG", "SINGLE", "DOUBLE", "STRING",

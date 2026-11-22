@@ -27,6 +27,87 @@ def _compiled(pattern: str, flags=0):
             _RX_CACHE.clear()
         rx = _RX_CACHE[key] = re.compile(pattern, flags)
     return rx
+def code_segments(code: str, line_comments=("#",), block_comment=None, quotes=('"', "'"),
+                  escapes: bool = True) -> list[tuple[str, bool]]:
+    """Split source text into [(text, is_code)] runs: comments and string literals are not code, except
+    the holes of interpolated strings (f"{x}", $"{x}", `${x}`, "#{x}"), which are. ``"".join`` of the texts
+    gives the code back unchanged. escapes=False: a backslash does not escape the quote (VB, Pascal ...);
+    C# verbatim strings (@"...") never escape. A string that is not closed ends at the end of its line
+    (a triple-quoted one at the end of the text)."""
+    out: list[tuple[str, bool]] = []
+    n, i, start = len(code), 0, 0
+
+    def emit(j: int, is_code: bool) -> None:
+        nonlocal start
+        if j > start:
+            if out and out[-1][1] == is_code:
+                out[-1] = (out[-1][0] + code[start:j], is_code)
+            else:
+                out.append((code[start:j], is_code))
+            start = j
+
+    def word_before(k: int) -> bool:
+        return k > 0 and (code[k - 1].isalnum() or code[k - 1] == "_")
+
+    while i < n:
+        if block_comment and code.startswith(block_comment[0], i):
+            emit(i, True)
+            end = code.find(block_comment[1], i + len(block_comment[0]))
+            i = n if end < 0 else end + len(block_comment[1])
+            emit(i, False)
+            continue
+        if any(code.startswith(c, i) and not (c[:1].isalpha() and word_before(i)) for c in line_comments):
+            emit(i, True)                         # ("REM " only at the start of a word)
+            end = code.find("\n", i)
+            i = n if end < 0 else end
+            emit(i, False)
+            continue
+        ch = code[i]
+        if ch in quotes:
+            emit(i, True)
+            triple = ch * 3 if ch in "\"'" and code.startswith(ch * 3, i) else ""
+            raw = not escapes or (i > 0 and code[i - 1] == "@")
+            j = i + (3 if triple else 1)
+            while j < n:
+                c = code[j]
+                if triple and code.startswith(triple, j):
+                    j += 3
+                    break
+                if not triple and c == ch:
+                    j += 1
+                    break
+                if not triple and c == "\n":
+                    break
+                if c == "\\" and not raw:
+                    j += 2
+                    continue
+                if c == "{":
+                    if code.startswith("{{", j):
+                        j += 2
+                        continue
+                    k, depth = j + 1, 1
+                    while k < n and depth:
+                        if code[k] == "{":
+                            depth += 1
+                        elif code[k] == "}":
+                            depth -= 1
+                        elif code[k] == "\n" and not triple:
+                            break
+                        k += 1
+                    if depth == 0:
+                        emit(j + 1, False)        # the string up to and with "{"
+                        emit(k - 1, True)         # the hole
+                        j = k - 1                 # "}" belongs to the string again
+                        continue
+                j += 1
+            i = min(j, n)
+            emit(i, False)
+            continue
+        i += 1
+    emit(n, True)
+    return out
+
+
 from ..model import Control, Form
 from ..references import ExportedFunction
 from ..references import proxy_header as _proxy_header
@@ -78,6 +159,7 @@ class LanguagePlugin:
     line_comments: list[str] = ["#"]
     block_comment: tuple[str, str] | None = None
     string_quotes: list[str] = ['"', "'"]
+    string_escapes: bool = True  # False: a backslash in a string is just a character (VB, Pascal, Fortran)
 
     # ------------------------------------------------------------------ files
     def code_file(self, form_name: str) -> str:
@@ -125,6 +207,15 @@ class LanguagePlugin:
         """Rename an object in user code: `old`, `old_Event`, `oldDesigner`."""
         flags = 0 if self.case_sensitive else re.I
         return re.sub(rf"\b{re.escape(old)}(?=\b|_|Designer\b)", new, code, flags=flags)
+
+    def rename_control(self, code: str, old: str, new: str) -> str:
+        """A control was renamed in the designer: rename_symbol, but only in code - text in string
+        literals and comments stays as the user wrote it (MsgBox("Press Button1") keeps its text), like
+        Visual Studio. Holes of interpolated strings are code (f"{Button1.text}" is renamed). Renaming a
+        form uses rename_symbol on everything: file names in strings (load "Form1.ring") must follow."""
+        segs = code_segments(code, self.line_comments, self.block_comment, self.string_quotes,
+                             getattr(self, "string_escapes", True))
+        return "".join(self.rename_symbol(t, old, new) if is_code else t for t, is_code in segs)
 
     def find_handler(self, code: str, name: str) -> int:
         """Return 0-based line of the handler definition, or -1."""

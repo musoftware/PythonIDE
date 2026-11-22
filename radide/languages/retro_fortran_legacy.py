@@ -45,6 +45,7 @@ class LegacyFortranPlugin(LanguagePlugin):
     line_comments = ["!"]
     block_comment = None
     string_quotes = ["'"]
+    string_escapes = False
     supports_debug = False
     has_forms = False
     project_name_base = "Fortran77_"

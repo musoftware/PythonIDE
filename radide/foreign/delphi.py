@@ -443,6 +443,7 @@ def _plugin_class():
         line_comments = ["//"]
         block_comment = ("{", "}")
         string_quotes = ["'"]
+        string_escapes = False
         keywords = ("and array as asm begin case class const constructor destructor div do downto else end "
                     "except exports file finalization finally for function goto if implementation in inherited "
                     "initialization inline interface is label library mod nil not object of on or out packed "

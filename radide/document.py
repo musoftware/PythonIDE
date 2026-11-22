@@ -45,6 +45,9 @@ class FormDocument(QObject):
     modifiedChanged = pyqtSignal(bool)
     eventRequested = pyqtSignal(object, str)   # owner (Control | None), event name
     renamed = pyqtSignal(str, str)             # old name, new name (control)
+    # an undo / redo gave a control its other name back: the code must follow (the form's own data -
+    # localization keys, states, bindings - is already in the snapshot, so `renamed` does not fire)
+    codeRenamed = pyqtSignal(str, str)         # old name, new name
     formRenameRequested = pyqtSignal(str, str) # old, new (form)
     undoStateChanged = pyqtSignal()
     # a mouse drag in the designer (move / resize a control, resize the form) is in progress: only
@@ -135,7 +138,9 @@ class FormDocument(QObject):
     def _restore(self, snap: str) -> None:
         self._live = None                       # an undo replaces every control: nothing left to commit
         names = [c.name for c in self.selection]
+        before = [(c.type, c.name) for c in self.form.controls]
         restored = Form.from_dict(json.loads(snap))
+        renames = self._renames(before, [(c.type, c.name) for c in restored.controls])
         self.form.props = restored.props
         self.form.controls = restored.controls
         self.form.extra = restored.extra          # Blend states / storyboards / data bindings
@@ -149,8 +154,23 @@ class FormDocument(QObject):
             self.selectionChanged.emit(self.selected)
         finally:
             self.restoring = False
+        for old, new in renames:
+            self.codeRenamed.emit(old, new)
         self.set_modified()
         self.undoStateChanged.emit()
+
+    @staticmethod
+    def _renames(before: list, after: list) -> list[tuple[str, str]]:
+        """(old, new) names of the controls an undo / redo renames. A rename keeps the order and the types
+        of the controls, so the lists line up; any other step (add, delete, paste ...) renames nothing.
+        A swap (A -> B while B -> A) cannot be done one name at a time in the code: left alone."""
+        if len(before) != len(after) or any(b[0] != a[0] for b, a in zip(before, after)):
+            return []
+        pairs = [(b[1], a[1]) for b, a in zip(before, after) if b[1] != a[1]]
+        olds = {o.lower() for o, _ in pairs}
+        if any(n.lower() in olds for _, n in pairs):
+            return []
+        return pairs
 
     # ------------------------------------------------------------ edits
     def add_control(self, type_name: str, x: int, y: int, parent: str = "") -> Control:

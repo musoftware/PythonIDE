@@ -579,6 +579,7 @@ class WinFormsVBPlugin(WinFormsCSPlugin):
     line_comments = ["'"]
     block_comment = None
     string_quotes = ['"']
+    string_escapes = False
     dialect_lang = "vb"
 
     def events_for(self, ctrl):

@@ -18,6 +18,7 @@ class DosPascalPlugin(DosPluginBase):
     line_comments = ["//"]
     block_comment = ("{", "}")
     string_quotes = ["'"]
+    string_escapes = False
     keywords = PASCAL_KEYWORDS
     builtins = sorted(PASCAL)
 

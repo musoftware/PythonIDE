@@ -133,7 +133,7 @@ class Flutter(Provider):
         self.f(ctx, *argv)
 
     def build_items(self) -> list:
-        return [Action(f"build-{t}", f"Build {label}", lambda c, t=t: self.f(c, "build", t, *extra), opens="none")
+        return [Action(f"build-{t}", f"Build {label}", lambda c, t=t, extra=extra: self.f(c, "build", t, *extra), opens="none")
                 for t, label, extra in (("apk", "APK (Android)", ["--release"]),
                                         ("appbundle", "App Bundle (Google Play)", []),
                                         ("windows", "Windows", ["--release"]),

@@ -121,6 +121,7 @@ class VBBasicPlugin(LanguagePlugin):
     line_comments = ["'"]
     block_comment = None
     string_quotes = ['"']
+    string_escapes = False
     keywords = """Dim Private Public Const Sub Function End If Then Else ElseIf For To Step Next Each In Do
         Loop While Wend Until Select Case Is With Exit Call Set Let New Nothing True False And Or Not Xor Mod
         Option Explicit As Integer Long String Double Single Boolean Variant Object Date Currency Byte
