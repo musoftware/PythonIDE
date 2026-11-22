@@ -35,8 +35,8 @@ from PyQt6.QtCore import QCoreApplication, QSettings  # noqa: E402
 from PyQt6.QtGui import QCloseEvent  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
-QCoreApplication.setOrganizationName("RADIDE-TEST")
-QCoreApplication.setApplicationName("RADIDE-TEST")
+QCoreApplication.setOrganizationName("RADIDE-TEST-ARCH-CLOSE_FLOW")      # own store: tests run in parallel
+QCoreApplication.setApplicationName("RADIDE-TEST-ARCH-CLOSE_FLOW")
 app = QApplication(sys.argv[:1])
 QSettings().clear()
 SB = QMessageBox.StandardButton

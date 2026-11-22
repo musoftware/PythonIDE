@@ -36,8 +36,8 @@ __import__("PyQt6.QtWebEngineWidgets")          # must come before the QApplicat
 from PyQt6.QtCore import QCoreApplication, QSettings, pyqtSignal  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget  # noqa: E402
 
-QCoreApplication.setOrganizationName("RADIDE-TEST")
-QCoreApplication.setApplicationName("RADIDE-TEST")
+QCoreApplication.setOrganizationName("RADIDE-TEST-ARCH-SAVE_PARTICIPANTS")      # own store: tests run in parallel
+QCoreApplication.setApplicationName("RADIDE-TEST-ARCH-SAVE_PARTICIPANTS")
 app = QApplication(sys.argv[:1])
 QSettings().clear()
 QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Discard)

@@ -35,8 +35,8 @@ from PyQt6.QtCore import QCoreApplication, QSettings  # noqa: E402
 from PyQt6.QtGui import QColor, QImage  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
-QCoreApplication.setOrganizationName("RADIDE-TEST")
-QCoreApplication.setApplicationName("RADIDE-TEST")
+QCoreApplication.setOrganizationName("RADIDE-TEST-ARCH-DOCUMENT_PROVIDERS")      # own store: tests run in parallel
+QCoreApplication.setApplicationName("RADIDE-TEST-ARCH-DOCUMENT_PROVIDERS")
 app = QApplication(sys.argv[:1])
 QSettings().clear()
 ASKED: list[str] = []
