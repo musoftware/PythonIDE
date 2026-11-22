@@ -81,8 +81,12 @@ def fallback_kind(lang: str) -> str:
         return "ring2exe"
     if lang == "flutter":
         return "flutter"
+    if lang in ("asm-nasm", "asm-fasm", "asm-masm", "asm-gas"):
+        return "asm"
     if lang.endswith("-bridge") or lang in ("javascript", "typescript", "php"):
         return "bridge"
+    if lang == "rust-cargo":
+        return "cargo"
     return "folder"
 
 
@@ -94,7 +98,9 @@ KIND_NAMES = {
     "bridge": "GUI Bridge program (language build + bridge host)",
     "ring2exe": "Ring program (ring2exe)",
     "flutter": "Flutter Windows app (flutter build windows)",
+    "asm": "Assembly program (console exe as built; forms through the bridge host)",
     "folder": "Already built program folder",
+    "cargo": "Rust program (cargo build --release)",
 }
 
 
@@ -219,8 +225,9 @@ def pyinstaller(python: str, script: Path, folder: Path, cfg: PublishConfig, wor
         args += ["--exclude-module", e]
     for h in hooks:
         args += ["--runtime-hook", str(h)]
-    for c in collect:
-        args += ["--collect-all", c]
+    for c in collect:                       # "data:<pkg>" / "bin:<pkg>" = only the package's data / DLLs
+        kind, _, pkg = c.rpartition(":")
+        args += [{"data": "--collect-data", "bin": "--collect-binaries"}.get(kind, "--collect-all"), pkg]
     if icon:
         args += ["--icon", str(icon)]
     args.append(str(script))
@@ -242,6 +249,36 @@ def _update_args(cfg: PublishConfig, gen: Path):
     return [mod.parent], ["radupdate"], [hook] if hook else []
 
 
+DB_DRIVERS = {"mysql": ["pymysql"], "postgresql": ["psycopg", "psycopg_binary", "psycopg_c", "psycopg_pool"],
+              "odbc": ["pyodbc"]}
+
+
+def unused_db_drivers(folder: Path, project: Project) -> list[str]:
+    """Database driver packages the data-binding runtime only imports for a connection kind the project's forms
+    do not use (Data Sources, radide/databinding_sql.py) - excluded from PyInstaller, unless the project's own
+    code imports them.  A SQLite-only program would otherwise carry psycopg + numpy + cryptography (~50 MB)."""
+    kinds: set[str] = set()
+    for name in project.forms:
+        try:
+            data = json.loads(project.form_path(name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []                   # cannot tell: exclude nothing
+        for src in data.get("dbsources") or []:
+            kinds.add(str((src.get("connection") or {}).get("kind", "")))
+    code = ""
+    for p in Path(folder).glob("*.py"):
+        if not p.name.endswith("_designer.py"):
+            try:
+                code += p.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+    out = []
+    for kind, mods in DB_DRIVERS.items():
+        if kind not in kinds:
+            out += [m for m in mods if f"import {m}" not in code and f"from {m}" not in code]
+    return out
+
+
 # ------------------------------------------------------------------ kinds
 def build_python(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
     from ..languages import get_plugin
@@ -257,6 +294,9 @@ def build_python(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     gen = work / "gen"
     upaths, uhidden, uhooks = _update_args(cfg, gen)
     hidden = [Path(m).stem for m in project.modules if m.endswith(".py")]
+    # every top-level module of the project: games load their scenes with importlib (rad3d.load_scene ->
+    # "Scene1_designer", pygame / arcade scenes), which PyInstaller cannot see ("No module named 'Scene1_designer'")
+    hidden += [f.stem for f in Path(folder).glob("*.py") if f.stem.isidentifier() and f.stem != "setup"]
     for f in project.forms:
         try:
             fp = get_plugin(project.form_languages.get(f, project.language))
@@ -266,9 +306,16 @@ def build_python(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     datas = [(p, p.name if p.is_dir() else ".") for p in data_entries(folder, cfg)]
     collect = []
     if lang == "kivy":
-        collect.append("kivy")
+        # PyInstaller's own hook-kivy brings the modules + SDL2/GLEW DLLs; --collect-all kivy failed on
+        # kivy.garden (its __path__ is a str, pkgutil.iter_modules raises "path must be None or list")
+        collect.append("data:kivy")
+    elif lang == "python-ursina":
+        # Panda3D loads its display module (libpandagl.dll) and etc/Config.prc at run time - PyInstaller does not
+        # see them; ursina needs its built-in models / textures / fonts ("No graphics pipe is available!")
+        collect += ["data:ursina", "data:panda3d", "bin:panda3d"]
     out = pyinstaller(python, script, folder, cfg, work, log, paths=[folder, *upaths], datas=datas,
-                      hidden=sorted(set(hidden) | set(uhidden)), excludes=PY_EXCLUDES, hooks=uhooks,
+                      hidden=sorted(set(hidden) | set(uhidden)),
+                      excludes=PY_EXCLUDES + unused_db_drivers(folder, project), hooks=uhooks,
                       icon=make_icon(folder, cfg, gen, log), collect=collect)
     return BuildResult(out, cfg.exe_base() + ".exe", "pyinstaller", python_based=True)
 
@@ -389,6 +436,11 @@ def build_bridge(folder: Path, project: Project, cfg: PublishConfig, work: Path,
         if i == 0 and not a.startswith("{app}"):
             notes.append(f"The user's PC needs {Path(a).stem} ({plugin.display_name} runtime) installed and on PATH.")
             rel[0] = Path(a).name if Path(a).is_absolute() else a
+    if not project.forms and rel and rel[0].startswith("{app}") and str(program[0]).lower().endswith(".exe") \
+            and Path(str(program[0])).is_file():
+        # a console program (no forms, its own main) needs no bridge host: the windowed launcher would hide its
+        # output and its exit code - publish the compiled exe itself (+ the toolchain DLLs it imports)
+        return _publish_console_exe(Path(str(program[0])), plugin, cfg, work, log, notes)
     out = _host_build(folder, cfg, work, LAUNCH_BRIDGE, log)
     app = out / "app"
     copy_tree(folder, app)
@@ -418,6 +470,73 @@ def build_bridge(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     return BuildResult(out, cfg.exe_base() + ".exe", "bridge", notes, python_based=True)
 
 
+def _publish_console_exe(exe: Path, plugin, cfg: PublishConfig, work: Path, log, notes) -> BuildResult:
+    """A GUI Bridge language's console program: the language's own exe, renamed to the app name."""
+    out = work / "dist" / cfg.exe_base()
+    if out.exists():
+        shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / (cfg.exe_base() + ".exe")
+    shutil.copy2(exe, target)
+    search = []
+    gcc = getattr(plugin, "gcc", None)
+    if callable(gcc) and gcc():
+        search.append(Path(gcc()).parent)
+    search += [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep)
+               if p and "mingw" in p.lower() and Path(p).is_dir()]
+    copy_runtime_dlls(target, search, out, log)
+    log(f"Console program: {target.name} ({target.stat().st_size:,} bytes) - no bridge host, no Python")
+    return BuildResult(out, target.name, "console", list(notes), python_based=False)
+
+
+# Ring library file (load "...") -> ring2exe runtime libraries (ring/tools/ring2exe/libs/*.ring)
+RING_LIBS = {"guilib.ring": ["qt"], "lightguilib.ring": ["lightguilib"], "qtcore.ring": ["qtcore"],
+             "sqlitelib.ring": ["sqlite"], "httplib.ring": ["httplib"], "raylib.ring": ["raylib"],
+             "mysqllib.ring": ["mysql"], "odbclib.ring": ["odbc"], "postgresqllib.ring": ["postgresql"],
+             "openssllib.ring": ["openssl"], "internetlib.ring": ["internetlib"], "libcurl.ring": ["libcurl"],
+             "jsonlib.ring": ["jsonlib"], "cjson.ring": ["jsonlib"], "sockets.ring": ["sockets"],
+             "threads.ring": ["threads"], "stbimage.ring": ["stbimage"], "libuv.ring": ["libuv"],
+             "libui.ring": ["libui"], "consolecolors.ring": ["consolecolors"], "murmurhashlib.ring": ["murmurhash"],
+             "fastpro.ring": ["fastpro"], "freeglut.ring": ["freeglut"], "allegro.ring": ["allegro"],
+             "gamelib.ring": ["allegro"], "gameengine.ring": ["allegro"],
+             # the standard library loads the database / internet extensions
+             "stdlib.ring": ["odbc", "mysql", "sqlite", "internetlib", "openssl", "postgresql"]}
+RING_PURE = {"stdlibcore.ring", "stdfunctions.ring", "stdlibclasses.ring", "matrixlib.ring", "csvlib.ring",
+             "objectslib.ring", "naturallib.ring", "naturalsyntaxon.ring", "naturalsyntaxoff.ring", "codegenlib.ring"}
+RING_GUI_LIBS = {"qt", "lightguilib", "raylib", "allegro", "freeglut", "libui"}
+
+
+def ring2exe_options(folder: Path, main: str) -> list[str]:
+    """ring2exe options for a project: only the runtime libraries its files load (instead of -allruntime, which
+    copies every Ring extension: ~320 MB) and -gui only for GUI programs, so console / web programs keep their
+    console.  An unknown extension falls back to -allruntime."""
+    import re as _re
+    libs, seen, todo, unknown = {"cruntime"}, set(), [Path(folder) / main], False
+    while todo:
+        f = todo.pop()
+        if f in seen or not f.is_file():
+            continue
+        seen.add(f)
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for m in _re.finditer(r'^\s*load\s+(?:package\s+)?["\']([^"\']+)["\']', text, _re.I | _re.M):
+            name = m.group(1).replace("\\", "/")
+            local = (f.parent / name)
+            if local.is_file() and not name.startswith("/"):
+                todo.append(local.resolve())
+                continue
+            base = name.rsplit("/", 1)[-1].lower()
+            if base in RING_LIBS:
+                libs.update(RING_LIBS[base])
+            elif base not in RING_PURE:
+                unknown = True
+    if unknown:
+        return ["-dist", "-allruntime", "-gui", "-qt"]
+    opts = ["-dist"] + [f"-{n}" for n in sorted(libs)]
+    if libs & RING_GUI_LIBS:
+        opts.append("-gui")
+    return opts
+
+
 def build_ring(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
     from ..languages import get_plugin
     plugin = get_plugin(startup_language(project))
@@ -430,8 +549,10 @@ def build_ring(folder: Path, project: Project, cfg: PublishConfig, work: Path, i
     if named.exists() and named.name != main:
         raise BuildError(f"{named.name} already exists: choose another exe name")
     shutil.copy2(folder / main, named)
+    opts = ring2exe_options(folder, main)
+    log("ring2exe options: " + " ".join(opts))
     try:
-        if run([str(ring2exe), named.name, "-dist", "-allruntime", "-gui", "-qt"], folder, log) != 0:
+        if run([str(ring2exe), named.name, *opts], folder, log) != 0:
             raise BuildError("ring2exe failed")
     finally:
         named.unlink(missing_ok=True)
@@ -459,6 +580,10 @@ def build_flutter(folder: Path, project: Project, cfg: PublishConfig, work: Path
     fl = interpreter or flutter_exe()
     if not fl:
         raise BuildError("The Flutter SDK was not found (flutter.bat)")
+    if not (folder / "windows").is_dir():      # designer / mobile projects have no Windows runner yet
+        log("No windows/ folder: adding the Windows desktop runner (flutter create --platforms=windows .)")
+        if run([fl, "create", "--platforms=windows", "."], folder, log, shell=fl.lower().endswith(".bat")) != 0:
+            raise BuildError("flutter create --platforms=windows failed")
     if run([fl, "build", "windows", "--release"], folder, log, shell=fl.lower().endswith(".bat")) != 0:
         raise BuildError("flutter build windows failed")
     rel = next((p for p in (folder / "build" / "windows").glob("*/runner/Release") if p.is_dir()), None) \
@@ -473,6 +598,38 @@ def build_flutter(folder: Path, project: Project, cfg: PublishConfig, work: Path
     return BuildResult(out, exes[0].name, "flutter")
 
 
+def build_cargo(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
+    """A plain Rust (Cargo) project: ``cargo build --release`` and the binary of the startup target ("bin: name",
+    else the package name) copied under the app name. No Python inside."""
+    import re as _re
+    from ..languages import get_plugin
+    cargo = get_plugin("rust-cargo").tool() or shutil.which("cargo")
+    if not cargo:
+        raise BuildError("cargo was not found - install Rust from https://rustup.rs")
+    if run([cargo, "build", "--release"], folder, log) != 0:
+        raise BuildError("cargo build --release failed")
+    m = _re.match(r"\s*bin:\s*(\S+)", project.startup or "")
+    names = [m.group(1)] if m else []
+    toml = Path(folder) / "Cargo.toml"
+    pm = _re.search(r'(?ms)^\[package\].*?^name\s*=\s*"([^"]+)"', toml.read_text(encoding="utf-8")) \
+        if toml.is_file() else None
+    if pm:
+        names.append(pm.group(1))
+    release = Path(folder) / "target" / "release"
+    exe = next((release / f"{n}.exe" for n in names if (release / f"{n}.exe").is_file()), None) or \
+        next(iter(sorted(release.glob("*.exe"))), None)
+    if exe is None:
+        raise BuildError(f"cargo built no .exe in {release}")
+    out = work / "dist" / cfg.exe_base()
+    if out.exists():
+        shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / (cfg.exe_base() + ".exe")
+    shutil.copy2(exe, target)
+    log(f"Rust program: {target.name} ({target.stat().st_size:,} bytes) from {exe.name}")
+    return BuildResult(out, target.name, "cargo")
+
+
 def build_folder(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
     src = resolve(folder, cfg.prebuilt_dir)
     if not src or not src.is_dir():
@@ -481,6 +638,40 @@ def build_folder(folder: Path, project: Project, cfg: PublishConfig, work: Path,
     if not exe or not (src / exe).is_file():
         raise BuildError("Choose the program's main .exe")
     return BuildResult(src, exe, "folder")
+
+
+def build_asm(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
+    """Assembly (NASM / FASM / MASM / GNU as): a console program is the exe the assembler + linker made (no Python
+    inside); a project with forms is a GUI Bridge program (bridge host + the assembled exe)."""
+    if project.forms:
+        return build_bridge(folder, project, cfg, work, interpreter, log)
+    from ..languages import get_plugin
+    plugin = get_plugin(startup_language(project))
+    if not plugin.tool():
+        raise BuildError(f"{plugin.display_name}: the assembler was not found. {plugin.install_hint}")
+    env = dict(os.environ, PYTHONPATH=str(IDE_ROOT))
+    if run(plugin.build_command(folder, project), folder, log, env=env, shell=True) != 0:
+        raise BuildError(f"The {plugin.display_name} build failed")
+    if plugin.settings(project).get("output") == "dll":
+        raise BuildError("A class library (DLL) is not a program: reference it from an app project instead")
+    built = Path(folder) / "_radapp.exe"
+    if not built.is_file():
+        raise BuildError("The build did not create _radapp.exe")
+    out = work / "dist" / cfg.exe_base()
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    exe = out / (cfg.exe_base() + ".exe")
+    shutil.copy2(built, exe)
+    from ..asm import toolchain as tc
+    gcc = tc.mingw("gcc")
+    copy_runtime_dlls(exe, [Path(gcc).parent] if gcc else [], out, log)
+    for item in data_entries(folder, cfg, skip_ext=SKIP_FILES_PY | {".asm", ".s", ".inc", ".nasm", ".fasm", ".obj",
+                                                                    ".o", ".lst", ".exe", ".gitignore"}):
+        if item.name.startswith("_build"):
+            continue
+        (copy_tree(item, out / item.name) if item.is_dir() else shutil.copy2(item, out / item.name))
+    return BuildResult(out, exe.name, "asm", ["Console program: run it from a command prompt."])
 
 
 def build_native(folder: Path, project: Project, cfg: PublishConfig, work: Path, interpreter: str, log) -> BuildResult:
@@ -503,7 +694,7 @@ def build_native(folder: Path, project: Project, cfg: PublishConfig, work: Path,
 
 
 BUILDERS = {"native": build_native, "pyinstaller": build_python, "vbrun": build_vbrun, "bridge": build_bridge, "ring2exe": build_ring,
-            "flutter": build_flutter, "folder": build_folder}
+            "flutter": build_flutter, "folder": build_folder, "asm": build_asm, "cargo": build_cargo}
 
 
 def build(folder: Path, cfg: PublishConfig, log=print, interpreter: str = "") -> BuildResult:

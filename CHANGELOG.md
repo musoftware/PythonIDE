@@ -20,6 +20,9 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   with them (MDI events, public form members, ItemData, DAO LastModified, Data control Reposition, ...).
 
 ### Fixed
+- Build > Publish of Python games: Ursina exes stopped with "No graphics pipe is available!" (Panda3D's display
+  library and Config.prc were missing) and then with "No module named 'Scene1_designer'" (scenes loaded with
+  importlib) - fixed and checked by running the exes; pygame / Arcade / Kivy publish verified too.
 - Rust WinForms projects: the toolbar's Run no longer runs `cargo run` (which shows no window - the forms are
   drawn through the IDE); it runs the project with its forms like F5. Code completion no longer comes back empty
   while rust-analyzer (or any language server) is still indexing, and the IDE's own helpers (msgbox, set, get,
