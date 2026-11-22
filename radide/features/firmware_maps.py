@@ -46,21 +46,24 @@ class FirmwareMapsFeature:
         win.firmware_maps = self
 
     # ------------------------------------------------------------------ window glue
+    # DocumentProvider (radide/extension_points.py): Save All / closing question; maps open by own commands
+    def can_open(self, path: Path) -> bool:
+        return False
+
+    def open_document(self, path: Path):
+        return None
+
+    def save_documents(self) -> None:
+        for d in self.alive():
+            if d.is_modified():
+                d.save()
+
+    def has_modified_documents(self) -> bool:
+        return any(d.is_modified() for d in self.alive())
+
     def _glue(self) -> None:
         win = self.win
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-
-        def save_all(*a, **k):
-            for d in self.alive():
-                if d.is_modified():
-                    d.save()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return any(d.is_modified() for d in self.alive()) or orig_any_modified(*a, **k)
-        win.save_all = save_all
-        win._any_modified = any_modified
+        win.extension_points.add_document_provider(self)
         orig_update = getattr(win, "_update_actions", None)
         if callable(orig_update):
             def update_actions(*a, **k):
