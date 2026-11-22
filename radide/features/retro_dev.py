@@ -753,16 +753,7 @@ def _install_hints_ui(win) -> None:
         solution_ui.MENU_HOOKS.append(lambda w, item, m: hints_tree_menu(win, item, m) if w is win else None)
     except Exception:  # noqa: BLE001
         pass
-    orig_fill = getattr(win, "_fill_solution", None)
-    if callable(orig_fill):
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                _add_hint_nodes(win)
-            except Exception as e:  # noqa: BLE001 - never break Solution Explorer
-                win.log(f"[retro dev] {e}")
-            return r
-        win._fill_solution = fill_solution
+    win.extension_points.add_solution_contributor(lambda: _add_hint_nodes(win), "retro dev")
     try:
         win.solution.itemDoubleClicked.connect(lambda item, col: _tree_dclick(win, item, col))
     except Exception:  # noqa: BLE001

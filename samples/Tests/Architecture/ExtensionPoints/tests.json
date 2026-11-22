@@ -29,6 +29,17 @@
     "{scratch}"
    ],
    "note": "characterization of Save All / closing-question participants without File > Open (firmware workbench, map editor, PE workbench: not saved by Save All)"
+  },
+  "test_solution_contributors.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "Solution Explorer contributors (databases, firmware, git colours, retro hints, web docks / preview, VB6): each runs once per refill, a failing one is logged"
   }
  }
 }

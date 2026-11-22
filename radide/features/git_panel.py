@@ -725,13 +725,9 @@ def install(win) -> None:
         return r
     win.open_project = open_project
 
-    orig_fill = win._fill_solution
-
-    def fill_solution(*args, **kw):
-        r = orig_fill(*args, **kw)
-        safe(lambda: panel.colour_solution(panel._project_states() if panel.git and panel.statuses else {}))()
-        return r
-    win._fill_solution = fill_solution
+    win.extension_points.add_solution_contributor(       # git colours after every refill
+        lambda: safe(lambda: panel.colour_solution(panel._project_states() if panel.git and panel.statuses
+                                                   else {}))(), "git")
     win.a_save.triggered.connect(lambda: QTimer.singleShot(300, safe(panel.refresh_async)))
     d.visibilityChanged.connect(lambda vis: vis and safe(panel.refresh_async)())
     # keep the branch / colours current while the IDE is in use (one git status, in the background)

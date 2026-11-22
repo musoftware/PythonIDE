@@ -46,16 +46,7 @@ class FirmwareAnalysisFeature:
     # ================================================================== glue
     def _wrap(self) -> None:
         win = self.win
-        orig_fill = win._fill_solution
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self._add_tree_nodes()
-            except Exception as e:  # noqa: BLE001 - never break Solution Explorer
-                win.log(f"[firmware analysis] {e}")
-            return r
-        win._fill_solution = fill_solution
+        win.extension_points.add_solution_contributor(lambda: self._add_tree_nodes(), "firmware analysis")
         win.firmware_analysis = self
 
     def _log(self, text: str) -> None:

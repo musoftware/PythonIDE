@@ -1446,6 +1446,16 @@ DESIGNER_DOCKS = ("dock_toolbox", "dock_props", "dock_data", "dock_states", "doc
 HIDDEN_DOCKS_KEY = "web/designer_docks_hidden"     # docks hidden for a web site (survives an IDE restart)
 
 
+def _reset_preview_on_new_solution(win) -> None:
+    """Another solution opened / the solution closed: the Preview stops the last page."""
+    sln = getattr(win, "sln", None)
+    key = None if sln is None else os.path.normcase(str(getattr(sln, "file", None) or
+                                                        getattr(sln, "folder", "") or id(sln)))
+    if getattr(win, "_web_preview_sln", None) != key:
+        win._web_preview_sln = key
+        reset_preview(win)
+
+
 def update_designer_docks(win) -> None:
     """A solution made only of web sites has no forms: hide the form-designer docks - Toolbox, Properties and
     the Blend panels (Data, States, Objects and Timeline) - and show them again, as they were, when a solution
@@ -1526,25 +1536,8 @@ def install(win) -> None:
     win.solution.itemCollapsed.connect(lambda it: _on_collapsed(win, it))
     # Toolbox / Properties follow the kind of the open solution (web sites only -> hidden)
     win._web_docks_hidden = None
-    orig_fill = win._fill_solution
-
-    def fill_solution(*args, **kw):
-        r = orig_fill(*args, **kw)
-        try:
-            update_designer_docks(win)
-        except Exception as e:  # noqa: BLE001 - never break Solution Explorer
-            win.log(f"[web] {e}")
-        try:        # another solution opened / the solution closed: the Preview stops the last page
-            sln = getattr(win, "sln", None)
-            key = None if sln is None else os.path.normcase(str(getattr(sln, "file", None) or
-                                                                getattr(sln, "folder", "") or id(sln)))
-            if getattr(win, "_web_preview_sln", None) != key:
-                win._web_preview_sln = key
-                reset_preview(win)
-        except Exception as e:  # noqa: BLE001
-            win.log(f"[web] {e}")
-        return r
-    win._fill_solution = fill_solution
+    win.extension_points.add_solution_contributor(lambda: update_designer_docks(win), "web docks")
+    win.extension_points.add_solution_contributor(lambda: _reset_preview_on_new_solution(win), "web preview")
     # live reload right after Save All (the watcher would see it a moment later anyway)
     win.a_save.triggered.connect(lambda: win.web_server is not None and QTimer.singleShot(
         0, lambda: win.web_server is not None and win.web_server.check_now()))

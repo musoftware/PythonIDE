@@ -2789,16 +2789,7 @@ def install(win) -> None:
     QTimer.singleShot(0, follow_web_server)
 
     # follow the open projects (open / close / add to solution all refill Solution Explorer)
-    orig_fill = win._fill_solution
-
-    def fill_solution(*a, **k):
-        r = orig_fill(*a, **k)
-        try:
-            panel.refresh()
-        except Exception as e:  # noqa: BLE001 - never break the Solution Explorer
-            win.log(f"[databases] {e}")
-        return r
-    win._fill_solution = fill_solution
+    win.extension_points.add_solution_contributor(lambda: panel.refresh(), "databases")
 
     app = QApplication.instance()
     if app is not None:

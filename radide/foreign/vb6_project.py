@@ -688,7 +688,6 @@ def install_hooks(win) -> None:
     win._vb6_hooks = True
     orig_save_proj = win._save_active_project
     orig_save_current = win.save_current
-    orig_fill = win._fill_solution
     orig_props = win.project_properties
 
     def save_active():
@@ -701,20 +700,13 @@ def install_hooks(win) -> None:
         sync_project_of(win, win.project)
         return ok
 
-    def fill():
-        orig_fill()
-        try:
-            decorate_tree(win)
-        except Exception as e:  # noqa: BLE001
-            _log(win, f"[VB6] Solution Explorer: {e}")
-
     def props():
         if win.project is not None and is_mirror(win.project.folder):
             return project_properties_dialog(win)
         return orig_props()
     win._save_active_project = save_active
     win.save_current = save_current
-    win._fill_solution = fill
+    win.extension_points.add_solution_contributor(lambda: decorate_tree(win), "VB6")
     win.project_properties = props
     try:
         win.solution.customContextMenuRequested.disconnect(win._solution_menu)

@@ -93,19 +93,14 @@ class FirmwareProjectFeature:
         return str(p.folder) if p is not None else ""
 
     # ================================================================== window glue
+    def _after_fill(self) -> None:
+        """Solution Explorer was filled (radide/extension_points.py): ECU project nodes, then the notice."""
+        self._add_tree_nodes()
+        self._maybe_notice()
+
     def _wrap(self) -> None:
         win = self.win
-        orig_fill = win._fill_solution
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self._add_tree_nodes()
-                self._maybe_notice()
-            except Exception as e:  # noqa: BLE001 - never break Solution Explorer
-                win.log(f"[ecu project] {e}")
-            return r
-        win._fill_solution = fill_solution
+        win.extension_points.add_solution_contributor(self._after_fill, "ecu project")
         win.ecu_project_feature = self
 
     def _maybe_notice(self) -> None:
