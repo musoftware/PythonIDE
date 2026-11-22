@@ -1871,22 +1871,14 @@ def install(win) -> None:
     if isinstance(geo, QByteArray) and not geo.isEmpty():
         win.restoreGeometry(geo)
     wb.set_mode(mode, save=False)
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            try:
-                wb.save()
-            except Exception:  # noqa: BLE001
-                pass
-            try:
-                QApplication.instance().removeEventFilter(wb._keys)
-            except Exception:  # noqa: BLE001
-                pass
+    def on_close() -> None:
+        try:
+            wb.save()
+        finally:                          # the key filter / registry go even when the layout save failed
+            QApplication.instance().removeEventFilter(wb._keys)
             if wb in _WORKBENCHES:
                 _WORKBENCHES.remove(wb)
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(on_close, "workbench")        # errors are logged
     # AI features installed after us (or creating their docks lazily) are picked up once the loop runs
     QTimer.singleShot(0, wb.refresh)
     QTimer.singleShot(1500, wb.refresh)

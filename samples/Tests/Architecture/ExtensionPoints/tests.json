@@ -40,6 +40,17 @@
     "{scratch}"
    ],
    "note": "Solution Explorer contributors (databases, firmware, git colours, retro hints, web docks / preview, VB6): each runs once per refill, a failing one is logged"
+  },
+  "test_close_flow.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "closing the IDE: save question Cancel / agent tasks No keep it open and shut nothing down; Yes + Discard closes and runs every shutdown step once"
   }
  }
 }

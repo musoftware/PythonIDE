@@ -908,13 +908,4 @@ def install(win) -> None:
                                 tooltip="Live Share - real-time collaboration")
     except Exception:  # noqa: BLE001 - the layouts feature is optional
         pass
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            try:
-                ctl.end()
-            except Exception:  # noqa: BLE001
-                pass
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(lambda: ctl.end(), "Live Share")

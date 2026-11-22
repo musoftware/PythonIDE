@@ -1686,13 +1686,7 @@ def install(win) -> None:
                 pass
         win._editor_menu = editor_menu
 
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            p.shutdown()
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(lambda: p.shutdown(), "AI web")
     app = QCoreApplication.instance()
     if app is not None and not getattr(app, "_radide_webchat_hook", False):
         app._radide_webchat_hook = True

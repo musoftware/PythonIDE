@@ -118,13 +118,7 @@ class NotebookFeature:
         win = self.win
         win.extension_points.add_document_provider(self)
 
-        orig_close = win.closeEvent
-
-        def close_event(e):
-            orig_close(e)
-            if e.isAccepted():
-                self.shutdown_all()
-        win.closeEvent = close_event
+        win.extension_points.add_shutdown_step(lambda: self.shutdown_all(), "notebooks")
         win.open_notebook = self.open_notebook
         win.notebook_feature = self
         if getattr(win, "a_save_file", None) is not None:

@@ -111,10 +111,4 @@ def install(win) -> None:
         orig_reset()
     win._reset = reset
 
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            win.lsp_manager.stop_all()
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(lambda: win.lsp_manager.stop_all(), "language servers")

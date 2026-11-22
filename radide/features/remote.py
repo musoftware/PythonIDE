@@ -1566,22 +1566,18 @@ def install(win) -> None:
 
     win.extension_points.add_document_provider(RemoteDocuments(win))       # Save All (radide/extension_points.py)
 
-    orig_close = win.closeEvent
-
-    def close_event(e):
+    def may_close() -> bool:
         mods = [v for s in sessions(win).values() for v in s.views.values() if v.editor.isModified()]
         if mods:
             a = ask(win, "close_ide", "Remote", f"Save changes to {len(mods)} remote file(s)?",
                     ("Save", "Discard", "Cancel"))
             if a == "Cancel" or (a == "Save" and not all(v.save() for v in mods)):
-                e.ignore()
-                return
+                return False
             for v in mods:
                 v.editor.setModified(False)
-        orig_close(e)
-        if e.isAccepted():
-            shutdown(win)
-    win.closeEvent = close_event
+        return True
+    win.extension_points.add_close_guard(may_close, "remote")             # radide/extension_points.py
+    win.extension_points.add_shutdown_step(lambda: shutdown(win), "remote")
 
 
 def shutdown(win) -> None:

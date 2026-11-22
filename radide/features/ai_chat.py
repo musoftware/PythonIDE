@@ -2089,17 +2089,10 @@ def install(win) -> None:
             win.log(f"[ai chat] {e}")
         return r
     win.open_project = open_project
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            try:
-                panel.stop()
-                panel.save()
-            except Exception:  # noqa: BLE001
-                pass
-    win.closeEvent = close_event
+    def stop_on_close() -> None:
+        panel.stop()
+        panel.save()
+    win.extension_points.add_shutdown_step(stop_on_close, "AI chat")      # errors are logged
 
 
 __all__ = ["ChatPanel", "render_markdown", "smart_apply", "text_dir", "fence_path", "ask", "attach",

@@ -351,13 +351,7 @@ def install(win) -> None:
             pass
         return r
     win.open_project = open_project
-    orig_close = win.closeEvent
-
-    def close_event(e):
-        orig_close(e)
-        if e.isAccepted():
-            win.terminal.stop()
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(lambda: win.terminal.stop(), "terminal")
 
 
 __all__ = ["TerminalWidget", "available_shells", "child_pids", "show_terminal"]

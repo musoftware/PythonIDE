@@ -1565,25 +1565,26 @@ def install(win) -> None:
             return r
         win._update_title = update_title
 
-    orig_close = win.closeEvent
+    closing: list = []                 # the agent tasks to stop once the IDE closes
 
-    def close_event(e):
-        running = w.mgr.running()
-        mine = [t for t in running if t.parent() is w.mgr]
+    def may_close() -> bool:
+        mine = [t for t in w.mgr.running() if t.parent() is w.mgr]
         if mine:
             r = QMessageBox.question(win, TITLE, f"{len(mine)} agent task(s) are still running. Stop them and close?")
             if r != QMessageBox.StandardButton.Yes:
-                e.ignore()
-                return
-        orig_close(e)
-        if e.isAccepted():
-            for t in mine:
-                t.stop()
-            try:
-                A._written_hooks.remove(on_written)
-            except ValueError:
-                pass
-    win.closeEvent = close_event
+                return False
+        closing[:] = mine
+        return True
+
+    def stop_on_close() -> None:
+        for t in closing:
+            t.stop()
+        try:
+            A._written_hooks.remove(on_written)
+        except ValueError:
+            pass
+    win.extension_points.add_close_guard(may_close, "agents")             # radide/extension_points.py
+    win.extension_points.add_shutdown_step(stop_on_close, "agents")
 
 
 __all__ = ["AgentManagerWidget", "TaskView", "Conversation", "Composer", "md_to_html", "is_rtl", "show", "install"]

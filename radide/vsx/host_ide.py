@@ -1817,13 +1817,7 @@ def install(win) -> VsxService:
     except Exception:  # noqa: BLE001
         pass
 
-    orig_close = win.closeEvent
-
-    def close_event(e, _orig=orig_close):
-        _orig(e)
-        if e.isAccepted():
-            svc.stop()
-    win.closeEvent = close_event
+    win.extension_points.add_shutdown_step(lambda: svc.stop(), "VS Code extension host")
     if os.environ.get("RADIDE_NO_VSX"):          # headless agent commands (radide/agent_cli.py)
         svc._folders_timer.stop()
         return svc
