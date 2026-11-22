@@ -450,12 +450,17 @@ def _options_page(dlg):
     def install_prettier():
         inst.setEnabled(False)
         status.setText("Installing Prettier with npm...")
+        from .. import progress
+        task = progress.track("Installing Prettier", win)     # status-bar progress (radide/progress.py)
 
         def work():
             npm = shutil.which("npm")
             LSP_HOME.mkdir(parents=True, exist_ok=True)
-            p = subprocess.run(["cmd.exe", "/d", "/c", npm, "install", "--prefix", str(LSP_HOME), "--no-fund",
-                                "--no-audit", "prettier@3"], capture_output=True, text=True, creationflags=NOWIN)
+            try:
+                p = subprocess.run(["cmd.exe", "/d", "/c", npm, "install", "--prefix", str(LSP_HOME), "--no-fund",
+                                    "--no-audit", "prettier@3"], capture_output=True, text=True, creationflags=NOWIN)
+            finally:
+                task.complete()
             _sig().done.emit(lambda ok, msg: status.setText(msg), (True, "Prettier installed." if p.returncode == 0
                                                                      else "npm failed: " + p.stderr[-300:]))
         threading.Thread(target=work, daemon=True).start()

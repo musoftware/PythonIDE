@@ -346,8 +346,9 @@ class FlutterDesignerManager:
                 return None
         from ..flutterdesign import importer
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-        try:
-            res = importer.import_file(dart_file)
+        try:                               # first use compiles the Dart importer (minutes): off the GUI thread
+            from .. import progress
+            res = progress.run_blocking(win, "Importing the Dart screen", lambda r: importer.import_file(dart_file))
         except Exception as e:  # noqa: BLE001
             QApplication.restoreOverrideCursor()
             QMessageBox.warning(win, "Import", f"The Dart file could not be imported:\n{e}")

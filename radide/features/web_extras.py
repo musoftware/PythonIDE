@@ -284,8 +284,15 @@ def build_production(win, wait: bool = False):
     proc = QProcess(win)
     proc.setWorkingDirectory(str(p.folder))
     proc.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
-    proc.readyReadStandardOutput.connect(
-        lambda: win.log(bytes(proc.readAllStandardOutput()).decode("utf-8", "replace").rstrip()))
+    from .. import progress
+    task = progress.track_process(proc, f"Build {p.name}", win)      # status bar: bar + Cancel
+
+    def read():
+        text = bytes(proc.readAllStandardOutput()).decode("utf-8", "replace").rstrip()
+        win.log(text)
+        for line in text.splitlines()[-20:]:
+            task.reporter.log(line)
+    proc.readyReadStandardOutput.connect(read)
 
     def done(code, _st):
         from ..web_site.project import web_config
@@ -298,8 +305,15 @@ def build_production(win, wait: bool = False):
     win.log(f"------ Build {p.name}: {cmd} ------")
     proc.start("cmd", ["/c", cmd])
     win._web_build = proc
-    if wait:
-        proc.waitForFinished(600000)
+    if wait:                     # keep the GUI responsive (no waitForFinished on the GUI thread)
+        from PyQt6.QtCore import QEventLoop
+        loop = QEventLoop()
+        proc.finished.connect(loop.quit)
+        proc.errorOccurred.connect(lambda _e: loop.quit() if proc.state() == QProcess.ProcessState.NotRunning
+                                   else None)
+        QTimer.singleShot(600000, loop.quit)
+        if proc.state() != QProcess.ProcessState.NotRunning:
+            loop.exec()
     return proc
 
 

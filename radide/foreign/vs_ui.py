@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
+from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
                              QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox,
                              QStyle, QTabWidget, QToolBar, QTreeWidgetItem, QVBoxLayout, QWidget)
 
@@ -967,9 +967,17 @@ def create_project(win, sln: VsSolution, template: str, language: str, name: str
         _info(win, "New Project", "The .NET SDK (dotnet) was not found.")
         return None
     out = sln.folder / name
-    r = subprocess.run([dn, "new", template, "-lang", language, "-n", name, "-o", str(out)], capture_output=True,
-                       text=True, cwd=str(sln.folder), creationflags=NO_WINDOW, timeout=300,
-                       env={**os.environ, "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1"})
+
+    def work(_r=None):                     # dotnet new + restore: off the GUI thread (radide.progress)
+        return subprocess.run([dn, "new", template, "-lang", language, "-n", name, "-o", str(out)],
+                              capture_output=True, text=True, cwd=str(sln.folder), creationflags=NO_WINDOW,
+                              timeout=300, env={**os.environ, "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1"})
+    import threading
+    if QApplication.instance() is not None and threading.current_thread() is threading.main_thread():
+        from ..progress import run_blocking
+        r = run_blocking(win, f"dotnet new {template}: {name}", work)
+    else:
+        r = work()
     _log(win, (r.stdout or "") + (r.stderr or ""))
     pf = next((p for p in out.glob(f"{name}.*proj")), None) if out.exists() else None
     if r.returncode != 0 or pf is None:

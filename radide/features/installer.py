@@ -328,15 +328,22 @@ class Publisher:
         self.win.log(f"========== Publish {cfg.app_name} {cfg.version} ==========")
         self.win.statusBar().showMessage("Publishing... (see the Output window)")
         sig = self.sig
+        from .. import progress
+        task = progress.track("Publishing", self.win)      # status-bar progress (radide/progress.py)
+
+        def log(s):
+            task.reporter.log(str(s))
+            sig.line.emit(str(s))
 
         def work():
             res, err = None, ""
             try:
-                res = inno.publish(folder, cfg, log=lambda s: sig.line.emit(str(s)))
+                res = inno.publish(folder, cfg, log=log)
             except Exception as ex:  # noqa: BLE001 - BuildError / SetupError / anything: shown to the user
                 err = str(ex) or type(ex).__name__
                 if not isinstance(ex, (inno.SetupError,)) and type(ex).__name__ != "BuildError":
                     sig.line.emit(traceback.format_exc())
+            task.complete(res, RuntimeError(err) if err else None)
             try:
                 sig.done.emit(res, err)
             except RuntimeError:            # the IDE was closed meanwhile
@@ -416,15 +423,22 @@ class Publisher:
         sig.line.connect(self._line)
         sig.done.connect(self._native_done)
         self._native_sig = sig
+        from .. import progress
+        task = progress.track("Building the native exe", self.win)    # status-bar progress
+
+        def log(s):
+            task.reporter.log(str(s))
+            sig.line.emit(str(s))
 
         def work():
             res, err = None, ""
             try:
-                res = B.build(folder, cfg, log=lambda s: sig.line.emit(str(s)))
+                res = B.build(folder, cfg, log=log)
             except Exception as ex:  # noqa: BLE001
                 err = str(ex) or type(ex).__name__
                 if type(ex).__name__ != "BuildError":
                     sig.line.emit(traceback.format_exc())
+            task.complete(res, RuntimeError(err) if err else None)
             try:
                 sig.done.emit(res, err)
             except RuntimeError:

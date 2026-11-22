@@ -642,6 +642,8 @@ class GitPanel(QWidget):
             self.win.statusBar().showMessage(f"git {op} {'finished' if code == 0 else 'failed'}", 5000)
             self.refresh()
         p.finished.connect(done)
+        from .. import progress
+        progress.track_process(p, f"git {op}", self.win)       # status-bar progress (radide/progress.py)
         p.start(self.git.exe, args)
 
     # ------------------------------------------------------------ solution explorer

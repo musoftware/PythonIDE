@@ -596,8 +596,15 @@ def rebuild_check(win) -> None:
         return
     from ..retro.dev.build import Builder
     lines: list[str] = []
-    b = Builder(Path(project.folder), project, log=lines.append)
-    ok = b.build()
+    from .. import progress
+
+    def work(r):                           # worker thread: assembler run (+ a toolchain download the first time)
+        def say(t):
+            lines.append(t)
+            r.log(t)
+        b = Builder(Path(project.folder), project, log=say)
+        return b, b.build()
+    b, ok = progress.run_blocking(win, "Rebuild Check", work)
     render_build_rows(win)
     for ln in lines:
         win.log(ln)

@@ -228,6 +228,44 @@ needs a real Qt window. Isolation: a portable copy of the build (`portable.flag`
 new journeys interactively. `samples/Tests/E2E/run_e2e.py` runs the journeys (see its docstring and
 `samples/Tests/E2E/README.md`); tier `manual` (needs a release build).
 
+## Progress for long-running operations (UI rule)
+
+**Any operation expected to take time must have a progress bar, and must not freeze the GUI.** Downloads,
+installs (pip / npm / composer / cargo / dotnet / flutter ...), builds and publish, New Project for web / mobile
+frameworks, git network operations, imports, test runs: run the work off the GUI thread through the shared API
+`radide/progress.py` (see its docstring):
+
+```python
+from radide import progress
+
+# user-initiated, the caller needs the result now: modal dialog (status line, bar, elapsed, log, Cancel)
+result = progress.run_blocking(win, "Creating the project", work, cancellable=True, show_log=True)
+
+# background: VS-style indicator in the main window's status bar (several tasks; click = list + Cancel)
+progress.run_task(work, "Installing Prettier", win, on_done=done, on_error=failed)
+
+def work(p):                                   # worker thread; p is a thread-safe progress.Reporter
+    p.set_total(3); p.step("dotnet new mvc")   # determinate step N/M (no total = busy bar)
+    progress.download(url, dest, p)            # bytes against Content-Length, cancellable
+    progress.run_command(["npm", "install"], p, cwd=folder)   # output lines -> log, "NN%" parsed
+    p.check()                                  # raises progress.Cancelled after Cancel
+
+task = progress.track_process(qprocess, "npm run build", win)   # an existing async QProcess
+task = progress.track("Publishing", win)       # async work you drive: task.reporter.*, task.complete()
+```
+
+Nothing is shown for tasks that end within `progress.DELAY_MS` (400 ms), so quick operations do not flicker.
+Prefer determinate progress where the data exists (Content-Length, file counts, step N/M, tool output). Titles are
+English and go through the Arabic translation (`radide/i18n/ar.json`, `strings` / `patterns`).
+
+`samples/Tests/UX/test_progress_rule.py` (tier `fast`) tests the API and runs the static scan
+`samples/Tests/UX/progress_rule_scan.py`. The scan flags `urlopen` / `urlretrieve`, `subprocess.run /
+check_output` of build and package tools, and `QProcess.waitForFinished()` without a short timeout, unless the call
+is inside a function given to `run_task` / `run_blocking` or one that takes a `reporter` parameter. A justified
+exception (it already runs in a worker thread with progress, CLI only, localhost probe ...) goes into
+`samples/Tests/UX/progress_allowlist.json` with its reason. `python samples/Tests/UX/progress_rule_scan.py --write`
+adds the new keys and keeps the existing reasons; replace each `TODO` with a reason.
+
 ---
 
 ## ملخص بالعربية
@@ -256,3 +294,7 @@ new journeys interactively. `samples/Tests/E2E/run_e2e.py` runs the journeys (se
 * **التقارير:** `results.json` و `summary.md` و `junit.xml` وسجل لكل اختبار؛ في GitHub تظهر في صفحة التشغيل
   وكـ artifacts. سير العمل `ci.yml` لكل push/PR، و `nightly.yml` كل ليلة لكل الطبقات مع تثبيت الأدوات من مصادرها
   الرسمية وتقرير مجمّع.
+* **قاعدة شريط التقدم:** أي عملية يُتوقع أن تستغرق وقتًا يجب أن يكون لها شريط تقدم، ولا تجمّد الواجهة. استخدم الواجهة
+  المشتركة `radide/progress.py`: `run_blocking` (نافذة تقدم مع إلغاء) أو `run_task` / `track` (شريط الحالة أسفل
+  النافذة الرئيسية). لا يظهر شيء للمهام الأقصر من 400 مللي ثانية. يفحص `samples/Tests/UX/test_progress_rule.py` ذلك،
+  والاستثناءات المبررة في `progress_allowlist.json`.

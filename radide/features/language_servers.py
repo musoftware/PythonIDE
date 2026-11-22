@@ -117,13 +117,20 @@ class LanguageServersDialog(QDialog):
         self._busy = True
         self.refresh()
         self.log.appendPlainText(f"--- Installing {lsp_servers.NAMES.get(language, language)} ...")
+        from .. import progress
+        task = progress.track(f"Installing {lsp_servers.NAMES.get(language, language)}", self)
+
+        def log(text):
+            task.reporter.log(str(text))
+            self.relay.log.emit(text)
 
         def work():
             try:
-                ok = lsp_servers.install(language, log=self.relay.log.emit)
+                ok = lsp_servers.install(language, log=log)
             except Exception as e:  # noqa: BLE001
                 self.relay.log.emit(f"failed: {e}")
                 ok = False
+            task.complete(ok)
             self.relay.done.emit(language, ok)
         threading.Thread(target=work, daemon=True).start()
 

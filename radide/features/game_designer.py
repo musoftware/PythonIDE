@@ -248,18 +248,26 @@ class GameDesigner:
         win.save_all()
         from PyQt6.QtGui import QGuiApplication
         from ..games import godot_export
-        QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-        try:
+        from .. import progress
+
+        def work(r):                       # worker thread: export + headless Godot import (up to minutes)
+            r.set_total(2, "Writing the Godot project")
             out, report = godot_export.export_from_pygame(Path(p.folder), dest)
+            r.step("Importing the assets with Godot")
             exe = godot_export.godot_exe()
             if exe:
-                r = godot_export.import_assets(out, exe)
-                text = (r.stdout or "") + (r.stderr or "")
+                res = godot_export.import_assets(out, exe)
+                text = (res.stdout or "") + (res.stderr or "")
                 errs = [ln.strip() for ln in text.splitlines() if "ERROR" in ln]
                 report.append(f"Godot imported the project: {len(errs) or 'no'} error line(s)")
                 report += errs[:20]
             else:
                 report.append("Godot was not found: open the folder with Godot 4 (it imports the assets)")
+            r.step()
+            return out, report
+        QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            out, report = progress.run_blocking(win, "Export to Godot", work)
         except Exception as e:  # noqa: BLE001
             win.log(f"*** Export to Godot failed: {e}")
             return None

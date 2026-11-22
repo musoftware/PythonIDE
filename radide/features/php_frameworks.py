@@ -216,8 +216,20 @@ def project_php(win, project) -> str:
 
 
 # ============================================================================ step runner (setup)
+class Background:
+    """A Python step of a StepRunner that is slow and does not touch the GUI: ``fn(log)`` runs in a worker
+    thread (radide.progress), *log* is thread-safe (lines go to the Output window)."""
+
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __call__(self, log=print):
+        return self.fn(log)
+
+
 class StepRunner(QObject):
-    """Runs commands one after the other (QProcess), output to the IDE's Output window."""
+    """Runs commands one after the other (QProcess), output to the IDE's Output window; the status bar shows
+    'title  N/M' with Cancel (radide.progress)."""
     finished = pyqtSignal(bool)
 
     def __init__(self, win, steps: list[tuple[str, list[str], str, dict]], title: str = ""):
@@ -228,17 +240,47 @@ class StepRunner(QObject):
         self.ok = True
         self.proc: QProcess | None = None
         self.output = ""
+        self.task = None
+        self.cancelled = False
 
     def start(self) -> None:
         self.win.dock_output.show()
+        from .. import progress
+        self.task = progress.track(self.title or "Setup", self.win, cancellable=True, total=len(self.steps),
+                                   on_cancel=self.cancel)
         self._next()
+
+    def cancel(self) -> None:
+        """Skip the remaining steps and stop the running command."""
+        self.cancelled = True
+        self.ok = False
+        self.steps.clear()
+        if self.proc is not None and self.proc.state() != QProcess.ProcessState.NotRunning:
+            self.proc.kill()
 
     def _next(self) -> None:
         if not self.steps:
             self.win.log(f"------ {self.title}: {'done' if self.ok else 'finished with errors'} ------")
+            if self.task is not None:
+                self.task.complete(self.ok)
             self.finished.emit(self.ok)
             return
         title, argv, cwd, env = self.steps.pop(0)
+        if self.task is not None:
+            self.task.reporter.step(title)
+        if isinstance(argv, Background):        # a slow Python step: worker thread
+            from .. import progress
+
+            def done(_res, err):
+                if err is not None and not isinstance(err, progress.Cancelled):
+                    self.ok = False
+                    self.win.log(f"*** [{self.title}] {title}: {err}")
+                elif err is None:
+                    self.win.log(f"[{self.title}] {title}: done")
+                QTimer.singleShot(0, self._next)
+            t = progress.run_task(lambda r: argv.fn(r.log), title, self.win, on_finished=done)
+            t.line.connect(self.win.log)
+            return
         if callable(argv):                      # a Python step
             try:
                 argv()
@@ -327,7 +369,7 @@ def setup_steps(win, project, needs: list[str]) -> list:
     if npm and ("build" in needs or "npm" in needs) and (folder / "package.json").is_file():
         steps.append(("npm run build", [npm, "run", "build"], str(folder), env))
     if "vendor" in needs and lv.composer_requires(folder, "barryvdh/laravel-ide-helper"):
-        steps.append(("IDE helper files", lambda: lv.generate_ide_helper(folder, php, None), "", {}))
+        steps.append(("IDE helper files", Background(lambda _log: lv.generate_ide_helper(folder, php, None)), "", {}))
     return steps
 
 
@@ -801,8 +843,9 @@ class LaravelPanel(QWidget):
             if _offscreen() or QMessageBox.question(
                     self, "IDE Helper", "Add barryvdh/laravel-ide-helper as a dev dependency (composer require "
                     "--dev) and generate the helper files?") == QMessageBox.StandardButton.Yes:
-                runner = StepRunner(self.win, [("laravel-ide-helper", lambda: lv.install_ide_helper(
-                    self.folder(), self.php(), self.win.log), "", {})], "IDE Helper")
+                folder, php = self.folder(), self.php()
+                runner = StepRunner(self.win, [("laravel-ide-helper", Background(
+                    lambda log: lv.install_ide_helper(folder, php, log)), "", {})], "IDE Helper")
                 runner.start()
             return
         if models_only:
@@ -1049,7 +1092,20 @@ def _wrap_new_project_templates(win) -> None:
                 opts["db"] = dlg.db.currentData()
                 opts["ide_helper"] = dlg.helper.isChecked()
                 if opts["db"] != "sqlite":
-                    conn = local_db_connection(opts["db"], name, win.log)
+                    from .. import progress
+                    lines: list[str] = []
+
+                    def start_db(r, _engine=opts["db"]):
+                        def log(s):
+                            lines.append(s)
+                            r.log(s)
+                        return local_db_connection(_engine, name, log)
+                    try:
+                        conn = progress.run_blocking(win, "Starting the local database server", start_db,
+                                                     show_log=True)
+                    finally:
+                        for s in lines:
+                            win.log(s)
                     if conn is None:
                         QMessageBox.warning(win, "Laravel", "The local database server could not be started - "
                                                             "the project uses SQLite (see the Output window).")

@@ -282,24 +282,34 @@ class DockerGenerateDialog(QDialog):
         issues = dk.lint_builtin(text)
         notes = ["built-in checker"]
         tmp_dir = self.folder
-        hl = dk.hadolint_path()
-        import tempfile
-        with tempfile.TemporaryDirectory(prefix="radide-lint-") as td:
-            p = Path(td) / "Dockerfile"
-            p.write_text(text, encoding="utf-8")
-            if hl:
-                issues += dk.lint_hadolint(p, hl) or []
-                notes.append("hadolint")
-            else:
-                notes.append("hadolint not installed")
-        if use_docker is None:
-            use_docker = bool(dk.find_cli()) and (self.folder / "Dockerfile").is_file() and \
-                (self.folder / "Dockerfile").read_text(encoding="utf-8", errors="replace") == text
-        if use_docker:
-            d = dk.lint_docker_check(tmp_dir)
-            if d is not None:
-                issues += d
-                notes.append("docker build --check")
+
+        def slow(r):                       # hadolint (60 s) + docker build --check (180 s): worker thread
+            found, ran, docker = [], [], use_docker
+            hl = dk.hadolint_path()
+            import tempfile
+            with tempfile.TemporaryDirectory(prefix="radide-lint-") as td:
+                p = Path(td) / "Dockerfile"
+                p.write_text(text, encoding="utf-8")
+                if hl:
+                    r.set_text("hadolint")
+                    found += dk.lint_hadolint(p, hl) or []
+                    ran.append("hadolint")
+                else:
+                    ran.append("hadolint not installed")
+            if docker is None:
+                docker = bool(dk.find_cli()) and (self.folder / "Dockerfile").is_file() and \
+                    (self.folder / "Dockerfile").read_text(encoding="utf-8", errors="replace") == text
+            if docker:
+                r.set_text("docker build --check")
+                d = dk.lint_docker_check(tmp_dir)
+                if d is not None:
+                    found += d
+                    ran.append("docker build --check")
+            return found, ran
+        from .. import progress
+        found, ran = progress.run_blocking(self, "Lint Dockerfile", slow)
+        issues += found
+        notes += ran
         for i in issues:
             it = QTreeWidgetItem([str(i.line), i.level, i.code, i.message, i.source])
             if i.level in ("error", "warning"):
@@ -609,7 +619,9 @@ class DockerPanel(QWidget):
         if folder is None or not (folder / "Dockerfile").is_file():
             QMessageBox.information(self, "Lint", "This project has no Dockerfile yet (Generate Files...).")
             return []
-        issues, notes = dk.lint(folder, use_docker=bool(self.cli))
+        from .. import progress            # hadolint + docker build --check: off the GUI thread
+        issues, notes = progress.run_blocking(self, "Lint Dockerfile",
+                                              lambda r: dk.lint(folder, use_docker=bool(self.cli)))
         self.tabs.setCurrentWidget(self.output)
         self.output.appendPlainText(f"\nLint {folder / 'Dockerfile'} ({', '.join(notes)}):")
         for i in issues:

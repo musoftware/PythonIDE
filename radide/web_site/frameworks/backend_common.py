@@ -75,8 +75,9 @@ def which(*names: str) -> str:
     return ""
 
 
-def run(argv, cwd=None, env=None, timeout=120, log=None) -> tuple[int, str]:
-    """Run a command (no window), return (exit code, combined output). *log* gets each output line."""
+def run(argv, cwd=None, env=None, timeout=120, log=None, cancelled=None) -> tuple[int, str]:
+    """Run a command (no window), return (exit code, combined output). *log* gets each output line.
+    *cancelled* (a callable, e.g. ``reporter.cancelled`` via lambda) stops the process when it returns True."""
     full_env = dict(os.environ)
     full_env.update({k: str(v) for k, v in (env or {}).items()})
     try:
@@ -93,6 +94,15 @@ def run(argv, cwd=None, env=None, timeout=120, log=None) -> tuple[int, str]:
         timer = threading.Timer(timeout, lambda: _kill(p)) if timeout else None
         if timer:
             timer.start()
+        if cancelled is not None:
+            def watch():
+                import time
+                while p.poll() is None:
+                    if cancelled():
+                        _kill(p)
+                        return
+                    time.sleep(0.1)
+            threading.Thread(target=watch, daemon=True).start()
         for raw in iter(p.stdout.readline, b""):
             line = raw.decode("utf-8", errors="replace").rstrip()
             out.append(line)
@@ -105,6 +115,37 @@ def run(argv, cwd=None, env=None, timeout=120, log=None) -> tuple[int, str]:
         if p.poll() is None:
             _kill(p)
     return p.returncode, "\n".join(out)
+
+
+def with_progress(title: str, fn, cancellable: bool = False):
+    """Run ``fn(reporter)`` for a slow, user-initiated step (dotnet new, npx, a download ...).
+
+    On the GUI thread it runs in a worker thread behind a progress dialog (radide.progress.run_blocking, shown
+    only when it takes longer than ~400 ms) and returns its result / raises its error.  Anywhere else (worker
+    threads - e.g. inside an App Gallery progress window -, CLI, tests without a QApplication) it simply calls
+    ``fn(None)``: the caller already is off the GUI thread or has no GUI."""
+    import threading
+    try:
+        from PyQt6.QtWidgets import QApplication
+    except ImportError:
+        return fn(None)
+    app = QApplication.instance()
+    if not isinstance(app, QApplication) or threading.current_thread() is not threading.main_thread():
+        return fn(None)
+    from ...progress import Cancelled, run_blocking
+    try:
+        return run_blocking(app.activeWindow(), title, fn, cancellable=cancellable, show_log=True)
+    except Cancelled:
+        raise RuntimeError(f"{title}: cancelled.") from None
+
+
+def reporter_log(reporter):
+    """A log(line) callback for run(): the reporter's log, or None."""
+    return reporter.log if reporter is not None else None
+
+
+def reporter_cancelled(reporter):
+    return (lambda: reporter.cancelled) if reporter is not None else None
 
 
 def _kill(p) -> None:

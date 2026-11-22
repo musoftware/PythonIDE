@@ -1,0 +1,5 @@
+{"defaults": {"tier": "fast", "area": "ux", "timeout": 300, "args": ["{scratch}"],
+              "note": "UX rules: progress for every long-running operation (radide/progress.py)"},
+ "tests": {"test_progress_rule.py": {"tier": "fast", "smoke": true,
+                                     "note": "progress API (no-flicker, determinate/indeterminate, cancel, status-bar tasks, thread safety) + static scan with progress_allowlist.json"}},
+ "ignore": ["progress_rule_scan.py"]}

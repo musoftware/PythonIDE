@@ -77,7 +77,21 @@ def install_servers(win):
         win.dock_output.show()
         win.dock_output.raise_()
     win.log(f"Installing web language servers into {lsp.LSP_HOME} ...")
-    threading.Thread(target=lambda: sig.done.emit(lsp.install_web_servers(sig.line.emit)), daemon=True).start()
+    from .. import progress
+    task = progress.track("Installing web language servers", win)     # status-bar progress
+
+    def line(text):
+        task.reporter.log(str(text))
+        sig.line.emit(text)
+
+    def work():
+        ok = False
+        try:
+            ok = lsp.install_web_servers(line)
+        finally:
+            task.complete(ok)
+        sig.done.emit(ok)
+    threading.Thread(target=work, daemon=True).start()
 
 
 def install(win) -> None:

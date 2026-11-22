@@ -26,9 +26,9 @@ def _offscreen() -> bool:
     return os.environ.get("QT_QPA_PLATFORM", "") == "offscreen"
 
 
-def _background(win, fn, *args):
+def _background(win, fn, *args, title: str = "Downloading..."):
     from ..web_site.debug import _in_background
-    return _in_background(win, fn, *args)
+    return _in_background(win, fn, *args, title=title)
 
 
 def install_php_series(win, series: str) -> str:
@@ -43,7 +43,7 @@ def install_php_series(win, series: str) -> str:
     lines: list[str] = []
     win.statusBar().showMessage(f"Downloading PHP {series}...")
     try:
-        exe = _background(win, tc.install_php, series, lines.append)
+        exe = _background(win, tc.install_php, series, lines.append, title=f"Installing PHP {series}")
     except Exception as e:  # noqa: BLE001 - network / checksum errors
         for ln in lines:
             win.log(f"[php] {ln}")
@@ -61,7 +61,7 @@ def install_php_series(win, series: str) -> str:
 def install_composer(win) -> str:
     lines: list[str] = []
     try:
-        bat = _background(win, tc.install_composer, lines.append)
+        bat = _background(win, tc.install_composer, lines.append, title="Installing Composer")
     except Exception as e:  # noqa: BLE001
         for ln in lines:
             win.log(f"[composer] {ln}")
@@ -218,9 +218,14 @@ def run_composer(win, args: list[str], project=None, folder=None, wait: bool = F
     import re
     ansi = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
+    from .. import progress
+    task = progress.track_process(proc, f"composer {' '.join(args[:2])}".strip(), win)   # status bar + Cancel
+
     def read():
-        text = bytes(proc.readAllStandardOutput()).decode("utf-8", "replace")
-        win._append_output(ansi.sub("", text.replace("\r\n", "\n")))
+        text = ansi.sub("", bytes(proc.readAllStandardOutput()).decode("utf-8", "replace").replace("\r\n", "\n"))
+        win._append_output(text)
+        for line in text.splitlines()[-20:]:
+            task.reporter.log(line)
 
     def done(code, _status):
         read()

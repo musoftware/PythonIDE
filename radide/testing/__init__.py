@@ -1054,12 +1054,25 @@ class JavaAdapter(Adapter):
             return True, f"the JUnit console launcher is downloaded on the first run ({JUNIT_URL})"
         return True, ""
 
-    def ensure_jar(self, log=print) -> bool:
+    def ensure_jar(self, log=print, reporter=None) -> bool:
+        """Download the JUnit console launcher once.  With a radide.progress reporter (worker thread):
+        byte progress and Cancel."""
         jar = self.junit_jar()
         if jar.exists():
             return True
         jar.parent.mkdir(parents=True, exist_ok=True)
         log(f"Downloading {JUNIT_URL}")
+        if reporter is not None:
+            from ..progress import Cancelled, download
+            try:
+                download(JUNIT_URL, jar, reporter, timeout=120)
+                return True
+            except Cancelled:
+                log("download cancelled")
+                return False
+            except OSError as e:
+                log(f"download failed: {e}")
+                return False
         try:
             import urllib.request
             tmp = jar.with_suffix(".part")

@@ -19,8 +19,9 @@ import re
 from pathlib import Path
 
 from ..project import SiteTemplate, register_template
-from .backend_common import (FrameworkPlugin, Route, Tool, filter_prefix, join_url, line_of, read_text, run,
-                             string_context, walk_files, which, write_files)
+from .backend_common import (FrameworkPlugin, Route, Tool, filter_prefix, join_url, line_of, read_text,
+                             reporter_cancelled, reporter_log, run, string_context, walk_files, which, with_progress,
+                             write_files)
 
 DECORATOR_RE = re.compile(r"@(Get|Post|Put|Patch|Delete|All|Options|Head)\s*\(\s*(?:['\"`]([^'\"`]*)['\"`])?")
 CONTROLLER_RE = re.compile(r"@Controller\s*\(\s*(?:['\"`]([^'\"`]*)['\"`]|\{[^}]*path\s*:\s*['\"`]([^'\"`]*)['\"`])?")
@@ -194,9 +195,11 @@ def _create_builtin(folder: Path, name: str) -> dict:
 def _create_cli(folder: Path, name: str) -> dict:
     npx = npx_exe()
     if npx:
-        code, _out = run([npx, "--yes", "@nestjs/cli@11", "new", re.sub(r"[^A-Za-z0-9-]", "-", name).lower(),
-                          "--directory", ".", "--skip-install", "--skip-git", "--package-manager", "npm"],
-                         cwd=folder, timeout=600)
+        argv = [npx, "--yes", "@nestjs/cli@11", "new", re.sub(r"[^A-Za-z0-9-]", "-", name).lower(),
+                "--directory", ".", "--skip-install", "--skip-git", "--package-manager", "npm"]
+        code, _out = with_progress("Creating the project (nest new)",
+                                   lambda r: run(argv, cwd=folder, timeout=600, log=reporter_log(r),
+                                                 cancelled=reporter_cancelled(r)), cancellable=True)
         if code == 0 and (Path(folder) / "src" / "main.ts").exists():
             return {"start": "src/main.ts"}     # no "framework" key: debug.start treats that as a Vite-style app
     return _create_builtin(folder, name)

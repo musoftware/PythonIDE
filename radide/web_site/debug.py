@@ -123,14 +123,25 @@ def find_xdebug(php: str) -> str | None:
     return str(max(found, key=lambda t: _vkey(t[0]))[1])
 
 
-def _download(url: str, target: Path, log=None) -> Path:
+def _download(url: str, target: Path, log=None, reporter=None) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     if log:
         log(f"Downloading {url}")
+    reporter = reporter or background_reporter()
     req = urllib.request.Request(url, headers={"User-Agent": "RAD-IDE"})
     tmp = target.with_suffix(target.suffix + ".part")
     with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
-        shutil.copyfileobj(r, f)
+        if reporter is None:
+            shutil.copyfileobj(r, f)
+        else:                                   # byte progress (radide.progress)
+            total, done = int(r.headers.get("Content-Length") or 0), 0
+            while True:
+                chunk = r.read(1 << 16)
+                if not chunk:
+                    break
+                f.write(chunk)
+                done += len(chunk)
+                reporter.bytes(done, total, target.name)
     tmp.replace(target)
     return target
 
@@ -499,29 +510,27 @@ def _offscreen() -> bool:
     return os.environ.get("QT_QPA_PLATFORM", "") == "offscreen"
 
 
-def _in_background(win, fn, *args):
-    """Run fn(*args) in a thread while the UI keeps painting; returns its result or raises its error."""
-    from PyQt6.QtCore import QEventLoop
-    from PyQt6.QtWidgets import QApplication
-    box: dict = {}
+_tls = threading.local()
 
-    def work():
+
+def background_reporter():
+    """The radide.progress Reporter of the _in_background() work running in this thread (None elsewhere):
+    download helpers use it for byte progress without changing their signatures."""
+    return getattr(_tls, "reporter", None)
+
+
+def _in_background(win, fn, *args, title: str = "Downloading..."):
+    """Run fn(*args) in a worker thread behind a progress dialog (radide.progress, shown after ~400 ms) while
+    the UI keeps painting; returns its result or raises its error."""
+    from ..progress import run_blocking
+
+    def work(r):
+        _tls.reporter = r
         try:
-            box["result"] = fn(*args)
-        except Exception as e:  # noqa: BLE001 - reported to the caller
-            box["error"] = e
-    t = threading.Thread(target=work, daemon=True, name="radide-webdebug-download")
-    t.start()
-    QApplication.setOverrideCursor(__import__("PyQt6.QtCore", fromlist=["Qt"]).Qt.CursorShape.WaitCursor)
-    try:
-        while t.is_alive():
-            QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
-            t.join(0.05)
-    finally:
-        QApplication.restoreOverrideCursor()
-    if "error" in box:
-        raise box["error"]
-    return box.get("result")
+            return fn(*args)
+        finally:
+            _tls.reporter = None
+    return run_blocking(win, title, work, show_log=False)
 
 
 def ensure_tools(win, kind: str, php: str = "") -> bool:
@@ -546,7 +555,7 @@ def ensure_tools(win, kind: str, php: str = "") -> bool:
         win.statusBar().showMessage(f"Downloading {name}...")
         lines: list[str] = []
         try:
-            path = _in_background(win, fn, lines.append)
+            path = _in_background(win, fn, lines.append, title=f"Downloading {name}")
         except Exception as e:  # noqa: BLE001 - network / archive errors
             for ln in lines:
                 win.log(f"[debug] {ln}")

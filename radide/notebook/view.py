@@ -610,13 +610,17 @@ class NotebookView(QWidget):
         import subprocess
         self.status.setText("Installing ipykernel...")
         self.log.emit(f"[notebook] {' '.join(K.install_ipykernel_command(python))}")
-        try:
-            out = subprocess.run(K.install_ipykernel_command(python), capture_output=True, text=True, timeout=600,
-                                 creationflags=K.NO_WINDOW)
+        from .. import progress
+        try:                               # pip in a worker thread, its output in the progress dialog
+            out = progress.run_blocking(self, "Installing ipykernel", lambda r: progress.run_command(
+                K.install_ipykernel_command(python), r, timeout=600, creationflags=K.NO_WINDOW), cancellable=True)
+        except progress.Cancelled:
+            self.log.emit("[notebook] pip install ipykernel cancelled")
+            return False
         except (OSError, subprocess.SubprocessError) as e:
             self.log.emit(f"[notebook] pip failed: {e}")
             return False
-        self.log.emit((out.stdout or "")[-3000:] + (out.stderr or "")[-2000:])
+        self.log.emit((out.stdout or "")[-5000:])
         ok, _v = K.has_ipykernel(python, refresh=True)
         if not ok:
             QMessageBox.warning(self, "Notebook kernel", "ipykernel could not be installed - see the Output window.")

@@ -462,8 +462,15 @@ class AIPage(QWidget):
         self.log.appendPlainText(f"$ {title}")
         pr = QProcess(self)
         pr.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
-        pr.readyReadStandardOutput.connect(
-            lambda: self.log.appendPlainText(bytes(pr.readAllStandardOutput()).decode("utf-8", "replace").rstrip()))
+        from .. import progress
+        task = progress.track_process(pr, title, self.win)    # status-bar progress, ollama's NN% (radide/progress.py)
+
+        def out():
+            text = bytes(pr.readAllStandardOutput()).decode("utf-8", "replace").rstrip()
+            self.log.appendPlainText(text)
+            for ln in text.replace("\r", "\n").splitlines()[-3:]:
+                task.reporter.log(ln)
+        pr.readyReadStandardOutput.connect(out)
 
         def done(code, _status):
             try:

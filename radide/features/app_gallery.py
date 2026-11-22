@@ -13,7 +13,7 @@ import re
 import threading
 from pathlib import Path
 
-from PyQt6.QtCore import QEventLoop, QObject, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QHBoxLayout,
                              QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QPlainTextEdit,
@@ -49,35 +49,21 @@ def run_in_thread(fn, on_line, on_done):
 
 
 def run_with_progress(parent, title: str, fn):
-    """Run fn(log) in a thread while a modal window shows its output; return its result or raise."""
-    dlg = QDialog(parent)
-    dlg.setWindowTitle(title)
-    dlg.resize(640, 360)
-    lay = QVBoxLayout(dlg)
-    lay.addWidget(QLabel(f"<b>{title}</b> - please wait..."))
-    bar = QProgressBar()
-    bar.setRange(0, 0)
-    lay.addWidget(bar)
-    out = QPlainTextEdit()
-    out.setReadOnly(True)
-    out.setFont(QFont("Consolas", 9))
-    lay.addWidget(out, 1)
-    box = {}
-    loop = QEventLoop()
+    """Run fn(log) in a worker thread behind the IDE's progress dialog (radide.progress: status line, bar -
+    determinate when the output has 'NN%' -, elapsed time, the output); return its result or raise."""
+    from .. import progress
+    return progress.run_blocking(parent, title, lambda r: fn(r.log), show_log=True)
 
-    def finished(result, error):
-        box["result"], box["error"] = result, error
-        loop.quit()
-    run_in_thread(fn, out.appendPlainText, finished)
-    dlg.setModal(True)
-    dlg.show()
-    if "error" not in box:
-        loop.exec()
-    dlg.close()
-    dlg.deleteLater()
-    if box.get("error") is not None:
-        raise box["error"]
-    return box.get("result")
+
+def _bar_from_line(bar: QProgressBar, line: str) -> None:
+    """'... 40% of 12345 KB' makes the bar determinate; the next stage's first line makes it busy again."""
+    from ..progress import percent_in
+    pct = percent_in(line)
+    if pct is not None:
+        bar.setRange(0, 100)
+        bar.setValue(pct)
+    elif bar.maximum() and bar.value() >= 100:
+        bar.setRange(0, 0)
 
 
 def _status_detail(msg: str, ok: bool) -> str:
@@ -167,6 +153,7 @@ class AppGalleryDialog(QDialog):
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 0)
+        self.progress.setAccessibleName("Creating the site")
         self.progress.hide()
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
@@ -278,11 +265,16 @@ class AppGalleryDialog(QDialog):
             return
         self.log.clear()
         self.log.show()
+        self.progress.setRange(0, 0)
         self.progress.show()
         for w in (self.create_btn, self.list, self.name, self.location, self.cats, self.search):
             w.setEnabled(False)
         self._thread = run_in_thread(lambda log: gallery.create(t.id, folder, name, log=log),
-                                     self.log.appendPlainText, self._finished)
+                                     self._line, self._finished)
+
+    def _line(self, text: str):
+        self.log.appendPlainText(text)
+        _bar_from_line(self.progress, text)
 
     def _finished(self, result, error):
         self._thread = None

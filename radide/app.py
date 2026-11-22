@@ -467,6 +467,8 @@ class MainWindow(QMainWindow):
         self.status_pos.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_pos.hide()
         sb.addPermanentWidget(self.status_pos)
+        from .progress import install_status_progress
+        install_status_progress(self)       # background tasks (radide/progress.py)
         self._pos_timer = QTimer(self, interval=250)
         self._pos_timer.timeout.connect(self._update_cursor_pos)
         self._pos_timer.start()
@@ -1962,7 +1964,8 @@ class MainWindow(QMainWindow):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         self.statusBar().showMessage(f"Importing {src.name} (running it to read its windows)...")
         try:
-            rep = import_python_program(src, target, interp)
+            from .progress import run_blocking      # runs the program to read its windows: worker thread
+            rep = run_blocking(self, f"Importing {src.name}", lambda r: import_python_program(src, target, interp))
         finally:
             QApplication.restoreOverrideCursor()
             self.statusBar().clearMessage()

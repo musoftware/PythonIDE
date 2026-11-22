@@ -368,8 +368,21 @@ class RustSettingsDialog(QDialog):
         self.install_btn.setEnabled(False)
         self.ra.setText("installing (rustup component add rust-analyzer rust-src)...")
         lines: list[str] = []
-        threading.Thread(target=lambda: self._inst.done.emit(rt.install_rust_analyzer(lines.append),
-                                                             "\n".join(lines)), daemon=True).start()
+        from .. import progress
+        task = progress.track("Installing rust-analyzer", self.win)     # status-bar progress
+
+        def line(text):
+            lines.append(text)
+            task.reporter.log(str(text))
+
+        def work():
+            ok = False
+            try:
+                ok = rt.install_rust_analyzer(line)
+            finally:
+                task.complete(ok)
+            self._inst.done.emit(ok, "\n".join(lines))
+        threading.Thread(target=work, daemon=True).start()
 
     def _installed(self, ok: bool, text: str) -> None:
         self.win.log(text)

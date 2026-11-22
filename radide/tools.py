@@ -907,7 +907,11 @@ def build_exe(win):
     folder = p.folder
     interp = win._interpreter()
     if plugin.id.startswith("python"):
-        probe = subprocess.run([interp, "-m", "PyInstaller", "--version"], capture_output=True, text=True)
+        from .progress import run_blocking     # importing PyInstaller takes seconds: off the GUI thread
+
+        def probe_pyinstaller(_r):
+            return subprocess.run([interp, "-m", "PyInstaller", "--version"], capture_output=True, text=True)
+        probe = run_blocking(win, "Checking PyInstaller", probe_pyinstaller)
         if probe.returncode != 0:
             if QMessageBox.question(win, "Build EXE", "PyInstaller is not installed for\n" + interp +
                                     "\n\nInstall it now with pip (needs internet)?") != QMessageBox.StandardButton.Yes:

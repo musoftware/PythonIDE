@@ -700,9 +700,15 @@ class GitHubView(QWidget):
         self.b_get.setEnabled(False)
         self.prog.show()
         self.prog.setRange(0, 0)
+        from .. import progress
+        task = progress.track("Downloading GitHub CLI", self.ctl.win)     # status bar too (radide/progress.py)
 
         def work():
-            return go.download_gh(progress=lambda d, t: self.sig.progress.emit(d, t))
+            try:
+                return go.download_gh(progress=lambda d, t: (self.sig.progress.emit(d, t),
+                                                             task.reporter.bytes(d, t, "gh")))
+            finally:
+                task.complete()
 
         def done(res):
             self.prog.hide()
@@ -1963,6 +1969,8 @@ class GitFull(QObject):
             b.setEnabled(False)
         self.win.log(f"[git] git {' '.join(args)}")
         self.win.statusBar().showMessage(f"git {args[0]}...")
+        from .. import progress
+        task = progress.track_process(p, f"git {args[0]}", self.win)    # status bar too (radide/progress.py)
 
         def read():
             chunk = bytes(p.readAll()).decode("utf-8", errors="replace")
@@ -1972,6 +1980,7 @@ class GitFull(QObject):
                 self.prog.setRange(0, 100)
                 self.prog.setValue(pr[1])
                 self.prog.setFormat(f"{pr[0]} %p%")
+                task.reporter.update(pr[1], 100, str(pr[0]))
 
         def done(code, _st):
             read()

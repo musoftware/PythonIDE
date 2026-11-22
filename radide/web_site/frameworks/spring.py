@@ -28,7 +28,7 @@ from pathlib import Path
 
 from ..project import SiteTemplate, register_template
 from .backend_common import (TOOLS, FrameworkPlugin, Route, Tool, filter_prefix, join_url, line_of, read_text,
-                             safe_identifier, string_context, walk_files, which, write_files)
+                             safe_identifier, string_context, walk_files, which, with_progress, write_files)
 
 WRAPPER_DIR = Path(__file__).resolve().parent / "spring_wrapper"
 INITIALIZR = "https://start.spring.io/starter.zip"
@@ -81,7 +81,7 @@ def _package(name: str) -> str:
     return "com.example." + safe_identifier(name, "app").lower()
 
 
-def _download_initializr(folder: Path, name: str, deps: str, log=None) -> bool:
+def _download_initializr(folder: Path, name: str, deps: str, log=None, reporter=None) -> bool:
     art = safe_identifier(name, "app").lower()
     q = urllib.parse.urlencode({"type": "maven-project", "language": "java", "baseDir": art, "groupId": "com.example",
                                 "artifactId": art, "name": safe_identifier(name), "packageName": _package(name),
@@ -89,7 +89,20 @@ def _download_initializr(folder: Path, name: str, deps: str, log=None) -> bool:
     try:
         req = urllib.request.Request(f"{INITIALIZR}?{q}", headers={"User-Agent": "RAD-IDE"})
         with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
+            if reporter is None:
+                data = r.read()
+            else:                                    # byte progress (Content-Length when the server sends it)
+                total = int(r.headers.get("Content-Length") or 0)
+                buf = bytearray()
+                while True:
+                    if reporter.cancelled:
+                        return False
+                    chunk = r.read(1 << 15)
+                    if not chunk:
+                        break
+                    buf += chunk
+                    reporter.bytes(len(buf), total, "start.spring.io")
+                data = bytes(buf)
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             for info in z.infolist():
                 parts = Path(info.filename).parts
@@ -375,9 +388,13 @@ public class ProductsController {{
 def _creator(thymeleaf: bool):
     def create(folder: Path, name: str) -> dict:
         deps = "webmvc,thymeleaf,devtools" if thymeleaf else "webmvc,devtools"
-        if not _download_initializr(folder, name, deps):
-            if not _download_initializr(folder, name, deps.replace("webmvc", "web")):
-                _offline_project(folder, name, thymeleaf)
+
+        def fetch(r):
+            return (_download_initializr(folder, name, deps, reporter=r)
+                    or (not (r is not None and r.cancelled)
+                        and _download_initializr(folder, name, deps.replace("webmvc", "web"), reporter=r)))
+        if not with_progress("Downloading the project from start.spring.io", fetch, cancellable=True):
+            _offline_project(folder, name, thymeleaf)
         _app_files(folder, name, thymeleaf)
         return {"start": "/", "framework": "spring"}
     return create

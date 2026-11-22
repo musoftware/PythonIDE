@@ -297,7 +297,9 @@ def setup_steps(win, project, needs: list[str], db: str = "") -> list:
                                                *flags], str(folder), env))
         steps.append(("keep project.radproj", restore_radproj, "", {}))
         if db in ("postgresql", "mysql", "trilogy"):
-            steps.append((f"local {db} server", lambda: configure_local_db(win, project, db), "", {}))
+            from .php_frameworks import Background
+            steps.append((f"local {db} server", Background(lambda log: configure_local_db(win, project, db, log)),
+                          "", {}))
     if "bundle" in needs or "new" in needs:
         steps.append(("bundle config set --local path vendor/bundle",
                       [ruby, "-S", "bundle", "config", "set", "--local", "path", "vendor/bundle"], str(folder), env))
@@ -419,12 +421,13 @@ def ensure_database(win, project) -> None:
         win.log(f"[rails] cannot add the app's database to Databases: {e}")
 
 
-def configure_local_db(win, project, db: str) -> None:
+def configure_local_db(win, project, db: str, log=None) -> None:
     """New app with MySQL / PostgreSQL: start the IDE's local server and write its connection into
-    config/database.yml (development + test)."""
+    config/database.yml (development + test).  *log* (thread-safe) defaults to win.log."""
     from .php_frameworks import local_db_connection
+    log = log or win.log
     engine = "postgresql" if db == "postgresql" else "mysql"
-    conn = local_db_connection(engine, f"{project.name}_development", win.log)
+    conn = local_db_connection(engine, f"{project.name}_development", log)
     if conn is None:
         raise RuntimeError(f"the local {engine} server could not be started - edit config/database.yml")
     f = Path(project.folder) / "config" / "database.yml"
@@ -436,7 +439,7 @@ def configure_local_db(win, project, db: str) -> None:
     text = re.sub(r"^(development:\s*\n(?:\s+.*\n)*?\s+database:\s*)\S+", lambda m: m.group(1) + conn["database"],
                   text, count=1, flags=re.M)
     f.write_text(text, encoding="utf-8", newline="\n")
-    win.log(f"[rails] config/database.yml: {engine} on {conn['host']}:{conn['port']} database {conn['database']}")
+    log(f"[rails] config/database.yml: {engine} on {conn['host']}:{conn['port']} database {conn['database']}")
 
 
 # ============================================================================ credentials
@@ -451,7 +454,14 @@ def edit_credentials(win, project, folder=None) -> bool:
     tmpdir = Path(tempfile.gettempdir()) / "radide-rails-credentials"
     tmpdir.mkdir(parents=True, exist_ok=True)
     target = tmpdir / f"{project.name if project is not None else folder.name}.credentials.yml"
-    code, out = rl.run([ruby, "bin/rails", "credentials:show"], cwd=folder, env=rl.ruby_env(folder), timeout=120)
+    from ..web_site.frameworks.backend_common import reporter_cancelled, with_progress
+    try:
+        code, out = with_progress("bin/rails credentials:show", lambda r: rl.run(
+            [ruby, "bin/rails", "credentials:show"], cwd=folder, env=rl.ruby_env(folder), timeout=120,
+            cancelled=reporter_cancelled(r)), cancellable=True)
+    except RuntimeError as e:                   # cancelled
+        win.log(f"*** {e}")
+        return False
     if code != 0:
         if "Missing" in out or "doesn't exist" in out or not (folder / "config" / "credentials.yml.enc").exists():
             out = "# Rails credentials (encrypted into config/credentials.yml.enc when you save)\n" \
@@ -503,8 +513,16 @@ class _CredentialsWatcher(QObject):
 
     def encrypt(self) -> bool:
         rl = ruby_tools()
-        code, out = rl.run([rl.ruby_exe(), "bin/rails", "runner", self.WRITE, str(self.target)], cwd=self.folder,
-                           env=rl.ruby_env(self.folder), timeout=120)
+        argv = [rl.ruby_exe(), "bin/rails", "runner", self.WRITE, str(self.target)]
+        from ..web_site.frameworks.backend_common import with_progress
+        running = self.timer.isActive()
+        self.timer.stop()                        # no re-entrant check() while the worker runs
+        try:
+            code, out = with_progress("Encrypting the Rails credentials", lambda _r: rl.run(
+                argv, cwd=self.folder, env=rl.ruby_env(self.folder), timeout=120))
+        finally:
+            if running and self.target.exists():
+                self.timer.start(1000)
         self.win.log(("[rails] config/credentials.yml.enc updated" if code == 0 and "credentials saved" in out
                       else f"*** saving the credentials failed:\n{out[-1500:]}"))
         return code == 0
@@ -718,7 +736,15 @@ class RailsPanel(QWidget):
             return
         rl = ruby_tools()
         self.out.appendPlainText("$ bin/rails db:migrate")
-        code, out = rl.run([rl.ruby_exe(), "bin/rails", "db:migrate"], cwd=f, env=rl.ruby_env(f), timeout=600)
+        from ..web_site.frameworks.backend_common import reporter_cancelled, reporter_log, with_progress
+        argv = [rl.ruby_exe(), "bin/rails", "db:migrate"]
+        try:
+            code, out = with_progress("bin/rails db:migrate", lambda r: rl.run(
+                argv, cwd=f, env=rl.ruby_env(f), timeout=600, log=reporter_log(r), cancelled=reporter_cancelled(r)),
+                cancellable=True)
+        except RuntimeError as e:               # cancelled
+            self.out.appendPlainText(str(e))
+            return
         self.out.appendPlainText(out.strip() or f"(exit code {code})")
         ensure_database(self.win, self.project)
 

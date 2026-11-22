@@ -312,20 +312,30 @@ def _get(url: str, timeout: int = 60) -> bytes:
         return r.read()
 
 
-def _download(url: str, target: Path, log=None, sha256: str = "") -> Path:
+def _download(url: str, target: Path, log=None, sha256: str = "", reporter=None) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     if log:
         log(f"Downloading {url}")
+    if reporter is None:                        # inside the IDE's progress dialog (debug._in_background)
+        try:
+            from .debug import background_reporter
+            reporter = background_reporter()
+        except Exception:  # noqa: BLE001
+            reporter = None
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     tmp = target.with_suffix(target.suffix + ".part")
     h = hashlib.sha256()
     with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+        total, done = int(r.headers.get("Content-Length") or 0), 0
         while True:
             chunk = r.read(1 << 16)
             if not chunk:
                 break
             h.update(chunk)
             f.write(chunk)
+            done += len(chunk)
+            if reporter is not None:
+                reporter.bytes(done, total, target.name)
     if sha256 and h.hexdigest().lower() != sha256.lower():
         tmp.unlink(missing_ok=True)
         raise RuntimeError(f"SHA256 mismatch for {url}: expected {sha256}, got {h.hexdigest()}")

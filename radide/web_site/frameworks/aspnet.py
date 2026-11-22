@@ -23,7 +23,8 @@ from pathlib import Path
 
 from ..project import SiteTemplate, register_template
 from .backend_common import (TOOLS, FrameworkPlugin, Route, Tool, filter_prefix, join_url, line_of, read_text,
-                             run, safe_identifier, string_context, walk_files, which)
+                             reporter_cancelled, reporter_log, run, safe_identifier, string_context, walk_files,
+                             which, with_progress)
 
 CSHARP_LS_DIR = TOOLS / "csharp-ls"
 NETCOREDBG = TOOLS / "netcoredbg" / "netcoredbg.exe"
@@ -107,7 +108,10 @@ def _creator(short: str):
         args = [dotnet, "new", short, "-n", ident, "-o", str(folder), "--force"]
         if short in ("mvc", "razor", "webapi", "web"):
             args.append("--no-https")
-        code, out = run(args, timeout=300, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_NOLOGO": "1"})
+        code, out = with_progress(
+            f"Creating the project (dotnet new {short})",
+            lambda r: run(args, timeout=300, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_NOLOGO": "1"},
+                          log=reporter_log(r), cancelled=reporter_cancelled(r)), cancellable=True)
         if code != 0:
             raise RuntimeError(f"dotnet new {short} failed:\n{out[-1500:]}")
         gi = Path(folder) / ".gitignore"

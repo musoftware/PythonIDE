@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (QComboBox, QDockWidget, QHBoxLayout, QHeaderView, Q
                              QPlainTextEdit, QSplitter, QTabWidget, QToolBar, QToolButton, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
-from .. import editkit, testing
+from .. import editkit, progress, testing
 from .. import theme as _theme
 
 ROLE = Qt.ItemDataRole.UserRole
@@ -550,6 +550,7 @@ class TestExplorer(QWidget):
         self._t0 = time.perf_counter()
         self._cov_new = {}
         self._set_running(True)
+        self._ptask = progress.track("Running tests", self, cancellable=True, total=len(jobs), on_cancel=self.stop)
         self._next_job()
 
     def _wait_then(self, fn, tries=60):
@@ -570,11 +571,32 @@ class TestExplorer(QWidget):
             self._finish_run()
             return
         a, sel, cov = self._jobs.pop(0)
+        pt = getattr(self, "_ptask", None)
+        if pt is not None:
+            pt.reporter.update(pt.reporter.total - len(self._jobs) - 1, text=a.name)
         if isinstance(a, testing.JavaAdapter) and not (a.root / "pom.xml").exists():
+            if not a.junit_jar().exists():         # first Java run: download off the GUI thread
+                lines: list[str] = []
+
+                def then(ok, _err, a=a, sel=sel, cov=cov):
+                    for t in lines:
+                        self.log.appendPlainText(t)
+                    if not ok:
+                        self._mark_unreported(a, sel, "the JUnit console launcher could not be downloaded")
+                        self._next_job()
+                    else:
+                        self._start_job(a, sel, cov)
+                progress.run_task(lambda r: a.ensure_jar(lines.append, reporter=r),
+                                  "Downloading the JUnit console launcher", self, cancellable=True,
+                                  on_finished=then)
+                return
             if not a.ensure_jar(self.log.appendPlainText):
                 self._mark_unreported(a, sel, "the JUnit console launcher could not be downloaded")
                 self._next_job()
                 return
+        self._start_job(a, sel, cov)
+
+    def _start_job(self, a, sel, cov):
         try:
             plan = a.plan(sel, coverage=cov)
         except Exception as e:  # noqa: BLE001
@@ -724,6 +746,9 @@ class TestExplorer(QWidget):
                     n.setIcon(0, state_icon(it.state))
 
     def _finish_run(self):
+        pt, self._ptask = getattr(self, "_ptask", None), None
+        if pt is not None:
+            pt.complete()
         self._proc = None
         self._stopping = False
         self._set_running(False)

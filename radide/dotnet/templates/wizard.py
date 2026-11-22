@@ -112,7 +112,13 @@ class NewProjectWizard(QDialog):
         self.setWindowTitle("Add a new project" if add_to is not None else "Create a new project")
         self.setObjectName("dotnetNewProjectWizard")
         self.resize(1000, 640)
-        self.templates = templates if templates is not None else C.all_templates()
+        if templates is None:
+            if C._CACHE.get("cli") is None:        # first open: dotnet new list (can take a minute)
+                from ...progress import run_blocking
+                templates = run_blocking(win, "Loading .NET project templates", lambda r: C.all_templates())
+            else:
+                templates = C.all_templates()
+        self.templates = templates
         self.template: C.TemplateInfo | None = None
         self.result_info: K.NewProjectResult | None = None
         self.param_widgets: dict = {}
@@ -516,15 +522,27 @@ class NewProjectWizard(QDialog):
             return None
         req = self.request()
         self.setCursor(Qt.CursorShape.WaitCursor)
+        lines: list[str] = []
+
+        def work(r):                       # worker thread: dotnet new (+ restore) can take minutes
+            def say(t):
+                lines.append(t)
+                r.log(t)
+            return K.create(req, log=say)
+        from ...progress import run_blocking
         try:
-            res = K.create(req, log=lambda t: _log(self.win, t))
+            res = run_blocking(self, f"Creating {req.name or 'project'}", work)
         except (OSError, ValueError) as e:
+            for t in lines:
+                _log(self.win, t)
             self.unsetCursor()
             self.error.setText(str(e).splitlines()[0])
             _log(self.win, f"*** {self.windowTitle()}: {e}")
             if not OFFSCREEN:
                 QMessageBox.warning(self, self.windowTitle(), str(e)[-1500:])
             return None
+        for t in lines:
+            _log(self.win, t)
         self.unsetCursor()
         self.result_info = res
         remember(self.template, str(req.location))

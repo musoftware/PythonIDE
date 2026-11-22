@@ -330,21 +330,20 @@ def _run_bg(fn, done):
 
 def check_for_updates(parent=None, silent: bool = False) -> dict | None:
     """Help > Check for Updates (silent=True: the start-up check - says nothing unless there is an update)."""
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QApplication, QMessageBox
-    if not silent:
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+    from PyQt6.QtWidgets import QMessageBox
     try:
-        rel = latest_release()
-    except Exception as e:  # noqa: BLE001 - offline, rate limited, no release yet (404)
-        if not silent:
-            QApplication.restoreOverrideCursor()
+        if silent:
+            rel = latest_release()
+        else:                       # manual check: off the GUI thread, progress after 400 ms (radide.progress)
+            from .. import progress
+            rel = progress.run_blocking(parent, "Checking for updates", lambda r: latest_release(),
+                                        cancellable=True)
+    except Exception as e:  # noqa: BLE001 - offline, rate limited, no release yet (404), cancelled
+        if not silent and type(e).__name__ != "Cancelled":
             QMessageBox.information(parent, _tr("Check for Updates"),
                                     f"RAD IDE {__version__}\n\n" + _tr("Could not read the latest release from GitHub:")
                                     + f"\n{e}\n\n{_tr('Releases')}: {RELEASES_URL}")
         return None
-    if not silent:
-        QApplication.restoreOverrideCursor()
     st = _settings()
     st.setValue("updates/last_check", int(time.time()))
     if newer(rel["tag"]):
@@ -421,8 +420,17 @@ class UpdateDialog(_dialog_base()):
 
     def _git_pull(self):
         from PyQt6.QtWidgets import QMessageBox
-        r = subprocess.run(["git", "pull", "--ff-only"], cwd=str(app_dir()), capture_output=True, text=True,
-                           creationflags=NO_WINDOW)
+
+        from .. import progress
+        try:                        # off the GUI thread with the output in the progress dialog
+            r = progress.run_blocking(self, "git pull", lambda rep: progress.run_command(
+                ["git", "pull", "--ff-only"], rep, cwd=str(app_dir()), creationflags=NO_WINDOW),
+                cancellable=True)
+        except progress.Cancelled:
+            return
+        except OSError as e:
+            QMessageBox.warning(self, "git pull", str(e))
+            return
         QMessageBox.information(self, "git pull", (r.stdout + r.stderr).strip() or "done")
         self.accept()
 
@@ -433,36 +441,25 @@ class UpdateDialog(_dialog_base()):
 
 def install_release(win, rel: dict, owner=None) -> bool:
     """Download + verify, then close the IDE and install. True when the IDE is closing for it."""
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QApplication, QMessageBox, QProgressDialog
+    from PyQt6.QtWidgets import QMessageBox
+
+    from .. import progress
     kind = install_kind()
     if kind == "source":
         return False
     parent = owner or win
-    dlg = QProgressDialog(_tr("Downloading RAD IDE {0}...").format(rel["version"]), _tr("Cancel"), 0, 100, parent)
-    dlg.setWindowTitle(_tr("Update"))
-    dlg.setWindowModality(Qt.WindowModality.WindowModal)
-    dlg.setMinimumDuration(0)
-    state = {"done": 0, "total": 0, "cancel": False, "res": None, "err": None, "finished": False}
-    dlg.canceled.connect(lambda: state.update(cancel=True))
+    label = _tr("Downloading RAD IDE {0}...").format(rel["version"])
 
-    def work():
-        return fetch_verified(rel, kind, lambda d, t: state.update(done=d, total=t), lambda: state["cancel"])
-
-    def done(res, err):
-        state.update(res=res, err=err, finished=True)
-    _run_bg(work, done)
-    while not state["finished"]:
-        QApplication.processEvents()
-        if state["total"]:
-            dlg.setMaximum(100)
-            dlg.setValue(int(state["done"] * 100 / state["total"]))
-            dlg.setLabelText(_tr("Downloading RAD IDE {0}...").format(rel["version"])
-                             + f"\n{state['done'] / 1048576:.1f} / {state['total'] / 1048576:.1f} MB")
-        time.sleep(0.03)
-    dlg.close()
+    def work(rep):                  # worker thread; bytes + Cancel in the shared progress dialog
+        rep.set_text(label)
+        return fetch_verified(rel, kind, lambda d, t: rep.bytes(d, t, label), lambda: rep.cancelled)
+    state = {"res": None, "err": None}
+    try:
+        state["res"] = progress.run_blocking(parent, "Update", work, cancellable=True, delay_ms=0)
+    except Exception as e:  # noqa: BLE001 - reported below
+        state["err"] = e
     if state["err"] is not None:
-        if not isinstance(state["err"], Cancelled):
+        if not isinstance(state["err"], (Cancelled, progress.Cancelled)):
             QMessageBox.warning(parent, _tr("Update"), _tr("The update could not be downloaded:") + f"\n{state['err']}")
         return False
     file = state["res"]

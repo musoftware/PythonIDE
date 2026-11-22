@@ -268,6 +268,17 @@ def new_shared_project(out: Path, name: str, language: str = "C#") -> Path:
     return out / f"{name}.shproj"
 
 
+def _off_gui(win, title: str, fn):
+    """fn(reporter) in a worker thread with a progress dialog (radide.progress) when called from the GUI
+    thread; called directly otherwise (scripts, worker threads, no QApplication)."""
+    import threading
+    from PyQt6.QtWidgets import QApplication
+    if QApplication.instance() is None or threading.current_thread() is not threading.main_thread():
+        return fn(None)
+    from ...progress import run_blocking
+    return run_blocking(win, title, fn)
+
+
 def new_project(win, sln, template: str, language: str, name: str, location: Path | None = None,
                 folder_guid: str = "", framework: str = ""):
     """Add > New Project: ``dotnet new`` into <location>/<name>, then add it to the solution."""
@@ -281,7 +292,8 @@ def new_project(win, sln, template: str, language: str, name: str, location: Pat
         pf = new_shared_project(out, name, language)
     else:
         out.parent.mkdir(parents=True, exist_ok=True)
-        code, text = dotnet_new(template, language, name, out, framework)
+        code, text = _off_gui(win, f"dotnet new {template}: {name}",
+                              lambda _r: dotnet_new(template, language, name, out, framework))
         if text.strip():
             _log(win, text.rstrip())
         pf = next((p for p in out.glob(f"{name}.*proj")), None) if out.exists() else None

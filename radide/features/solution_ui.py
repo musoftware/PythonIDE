@@ -851,11 +851,17 @@ def build_solution(win, only=None, wait: bool = False):
     emit = getattr(win, "_hub_log", None)
     say = (lambda t: emit.emit(t)) if emit is not None and not wait else (lambda t: _log(win, t.rstrip("\n")))
     _log(win, f"------ Build started: solution '{sln.name}' ------")
+    task = None
+    if not wait:                          # status-bar progress: project N of M (radide/progress.py)
+        from .. import progress
+        task = progress.track("Build Solution", win, total=len(jobs) or 1)
 
     def run() -> dict:
         results: dict[str, int | None] = {}
         for p, plugin, cmd in jobs:
             name = sln.name_of(p)
+            if task is not None:
+                task.reporter.step(name)
             if not cmd:
                 results[name] = None
                 say(f"{name}: nothing to build ({plugin.display_name if plugin else p.language})\n")
@@ -877,11 +883,18 @@ def build_solution(win, only=None, wait: bool = False):
         ok = sum(1 for c in results.values() if c in (0, None))
         bad = sum(1 for c in results.values() if c not in (0, None))
         say(f"========== Build: {ok} succeeded, {bad} failed ==========\n")
+        if task is not None:
+            task.complete(results)
         return results
 
     if wait:
         return run()
-    threading.Thread(target=run, daemon=True, name="radide-build").start()
+    def run_bg():
+        try:
+            run()
+        finally:
+            task.complete()               # no-op when run() already completed it
+    threading.Thread(target=run_bg, daemon=True, name="radide-build").start()
     return None
 
 

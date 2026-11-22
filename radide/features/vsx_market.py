@@ -71,6 +71,20 @@ def run_bg(fn, done=None) -> None:
     _pool.submit(work)
 
 
+def run_bg_progress(parent, title: str, fn, done=None, name: str = "") -> None:
+    """run_bg with a status-bar task (radide/progress.py): fn(progress, log) gets a progress(done, total)
+    callback (download bytes) and a log(text) callback that becomes the task's status line."""
+    from .. import progress
+    task = progress.track(title, parent)
+
+    def work():
+        try:
+            return fn(lambda d, t: task.reporter.bytes(d, t, name), task.reporter.set_text)
+        finally:
+            task.complete()
+    run_bg(work, done)
+
+
 _icon_cache: dict[str, QPixmap] = {}
 
 
@@ -609,7 +623,9 @@ class ExtensionsView(QWidget):
             self.status.setText(_tr("Installed") + f": {names}")
             self._log(f"[vsx] installed {names}")
             self._on_changed()
-        run_bg(lambda: M.install(eid, version, force=force, log=log), done)
+        run_bg_progress(self.win, _tr("Installing...") + f" {eid}",
+                        lambda prog, say: M.install(eid, version, force=force, progress=prog,
+                                                    log=lambda t: (say(str(t)), log(t))), done, eid)
 
     def uninstall(self, eid: str) -> None:
         e = vsx.get(eid)
@@ -648,7 +664,8 @@ class ExtensionsView(QWidget):
             self.status.setText(_tr("Update failed") + f": {err}" if err else
                                 _tr("{} extensions updated").replace("{}", str(len(res or []))))
             self._on_changed()
-        run_bg(lambda: M.update_all(log=log), done)
+        run_bg_progress(self.win, "Updating extensions...",
+                        lambda prog, say: M.update_all(progress=prog, log=lambda t: (say(str(t)), log(t))), done)
 
     def install_from_vsix(self, path: str | None = None) -> None:
         if not path:
@@ -668,7 +685,9 @@ class ExtensionsView(QWidget):
             self.status.setText(_tr("Installed") + f": {names}")
             self._log(f"[vsx] installed from VSIX: {names}")
             self.tabs.setCurrentWidget(self.installed)
-        run_bg(lambda: M.install_vsix_file(path, log=log), done)
+        run_bg_progress(self.win, _tr("Installing...") + f" {Path(path).name}",
+                        lambda prog, say: M.install_vsix_file(path, progress=prog,
+                                                              log=lambda t: (say(str(t)), log(t))), done)
 
     def open_rad_extensions(self) -> None:
         try:
