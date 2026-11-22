@@ -52,11 +52,7 @@ class PeWorkbenchFeature:
     # ---------------------------------------------------------------- window glue
     def _wrap(self) -> None:
         win = self.win
-        orig_any = getattr(win, "_any_modified", None)
-        if callable(orig_any):
-            def any_modified(*a, **k):
-                return any(self._alive(d) and d.is_modified() for d in self.docs.values()) or orig_any(*a, **k)
-            win._any_modified = any_modified
+        win.extension_points.add_document_provider(self)    # the closing question (radide/extension_points.py)
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo")):
             act = getattr(win, attr, None)
             if act is not None:
@@ -93,6 +89,22 @@ class PeWorkbenchFeature:
             return True
         except RuntimeError:
             return False
+
+    # DocumentProvider (radide/extension_points.py) ------------------------------------------------------
+    def can_open(self, path: Path) -> bool:
+        return False                      # programs open by Tools > PE / MFC Workbench
+
+    def open_document(self, path: Path):
+        return None
+
+    def save_documents(self) -> None:
+        # Not saved by Save All: an edited program is always saved with Save As (never over the original
+        # without asking). NOTE: the closing question still counts it as unsaved - after "Save" the IDE
+        # closes and the edit is lost; see samples/Tests/Architecture/ExtensionPoints/test_save_participants.py
+        return None
+
+    def has_modified_documents(self) -> bool:
+        return any(self._alive(d) and d.is_modified() for d in self.docs.values())
 
     def current(self):
         from ..pe.ui import PeWorkbench
