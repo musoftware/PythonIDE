@@ -395,6 +395,7 @@ _LIVE: list = []
 
 @atexit.register
 def _close_all():
+    _SHARED.clear()
     for b in list(_LIVE):
         try:
             b.close()
@@ -654,6 +655,31 @@ def _access_odbc_driver() -> str | None:
     return None
 
 
+_SHARED: dict = {}          # connection string -> [_Ado32Bridge, open connections using it]
+
+
+class _SharedBackend:
+    """One Connection's handle on a shared _Ado32Bridge (closed with the last handle)."""
+
+    def __init__(self, key, real):
+        self._key, self._real, self._closed = key, real, False
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        ent = _SHARED.get(self._key)
+        if ent is not None and ent[0] is self._real:
+            ent[1] -= 1
+            if ent[1] > 0:
+                return
+            del _SHARED[self._key]
+        self._real.close()
+
+
 def _open_backend(connstr: str, pairs: list):
     src = _get(pairs, "data source", "dbq", "database")
     prov = _get(pairs, "provider").lower()
@@ -667,7 +693,15 @@ def _open_backend(connstr: str, pairs: list):
             pwd = _get(pairs, "jet oledb:database password", "password", "pwd")
             return _OdbcBackend(f"DRIVER={{{drv64}}};DBQ={src};" + (f"PWD={pwd};" if pwd else ""))
     if _cscript32():
-        return _Ado32Bridge(connstr)
+        # connections to the same database share one helper: in VB6 every connection lives in the program's
+        # process, so a row written through a Data control is seen at once by OpenDatabase / ADO code; Jet
+        # sessions in different helper processes would only see it after Jet's read cache expires
+        key = connstr.lower()
+        ent = _SHARED.get(key)
+        if ent is None or ent[0].p.poll() is not None:
+            ent = _SHARED[key] = [_Ado32Bridge(connstr), 0]
+        ent[1] += 1
+        return _SharedBackend(key, ent[0])
     if drv or _get(pairs, "dsn"):
         return _OdbcBackend(connstr)
     raise _err(3706, "Provider cannot be found. It may not be properly installed.")
@@ -1322,13 +1356,15 @@ class Recordset(_VBObj):
         return len(self._rows)
 
     @property
-    def AbsolutePosition(self):
-        return self._pos + 1 if 0 <= self._pos < len(self._rows) else -1
+    def AbsolutePosition(self):                      # ADO: 1-based; DAO: 0-based
+        if not 0 <= self._pos < len(self._rows):
+            return -1
+        return self._pos if self._dao else self._pos + 1
 
     @AbsolutePosition.setter
     def AbsolutePosition(self, v):
         self._commit_pending()
-        self._pos = max(0, min(len(self._rows), _to_int(v) - 1))
+        self._pos = max(0, min(len(self._rows), _to_int(v) - (0 if self._dao else 1)))
         self._notify()
 
     PercentPosition = AbsolutePosition
@@ -1520,17 +1556,23 @@ class Recordset(_VBObj):
     def MoveFirst(self):
         self._need()
         self._commit_pending()
+        self._after_delete = False
         self._pos = 0
         self._notify()
 
     def MoveLast(self):
         self._need()
         self._commit_pending()
+        self._after_delete = False
         self._pos = max(0, len(self._rows) - 1)
         self._notify()
 
     def MoveNext(self):
         self._need()
+        if getattr(self, "_after_delete", False):
+            self._after_delete = False
+            self._notify()
+            return
         if self._pos >= len(self._rows):
             raise _err(3021, "Either BOF or EOF is True, or the current record has been deleted. "
                              "Requested operation requires a current record.")
@@ -1540,6 +1582,11 @@ class Recordset(_VBObj):
 
     def MovePrevious(self):
         self._need()
+        if getattr(self, "_after_delete", False):
+            self._after_delete = False
+            self._pos -= 1
+            self._notify()
+            return
         if self._pos < 0:
             raise _err(3021, "Either BOF or EOF is True, or the current record has been deleted. "
                              "Requested operation requires a current record.")
@@ -1550,6 +1597,7 @@ class Recordset(_VBObj):
     def Move(self, n, start=None):
         self._need()
         self._commit_pending()
+        self._after_delete = False
         self._pos = max(-1, min(len(self._rows), self._pos + _to_int(n)))
         self._notify()
 
@@ -1616,6 +1664,8 @@ class Recordset(_VBObj):
             self._assign(fields, values)
             if not self._dao:
                 self.Update()
+                return
+        self._notify()                               # bound controls (Data control) show the empty record
 
     def Edit(self):                                # DAO
         self._need()
@@ -1683,8 +1733,16 @@ class Recordset(_VBObj):
                 for i, v in edit.items():
                     row[i] = v
         self._mode, self._edit = 0, None
+        self._last_modified = id(row)
         self._notify()
         return None
+
+    @property
+    def LastModified(self):                          # DAO: bookmark of the row added / changed last
+        lm = getattr(self, "_last_modified", None)
+        if lm is None:
+            raise _err(3021, "No current record.")
+        return lm
 
     def UpdateBatch(self, *a):
         return self.Update()
@@ -1706,8 +1764,9 @@ class Recordset(_VBObj):
         if self._all is not None and self._all is not self._rows:
             self._all = [r for r in self._all if r is not row]
         self._mode, self._edit = 0, None
-        if self._dao:
-            pass                                      # DAO: current record is invalid until a Move
+        # the deleted record stays "current" until a Move: MoveNext goes to the record after it (which now
+        # sits at the same index), MovePrevious to the one before it
+        self._after_delete = True
         self._notify()
 
     # -- searching

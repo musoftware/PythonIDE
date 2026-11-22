@@ -39,6 +39,9 @@ def color_to_vb(c: str) -> int:
 
 
 def vb_to_color(v) -> str:
+    if isinstance(v, str) and v.strip().startswith("#"):      # "#RRGGBB" (GUI Bridge languages, like radforms)
+        s = v.strip()
+        return s.upper() if len(s) == 7 else ""
     n = int(to_num(v))
     if n & 0x80000000:          # system colour
         return ""
@@ -636,7 +639,13 @@ class VBControl:
                     return True
         if name == "visible":
             return bool(w.winfo_manager())
-        if name == "backcolor":
+        if name in ("x1", "x2", "y1", "y2") and t == "Panel":      # VB6 Line control (drawn as a Panel)
+            if name in ("x1", "x2"):
+                left = self.vb_get("left")
+                return left if name == "x1" else left + self.vb_get("width")
+            top = self.vb_get("top")
+            return top if name == "y1" else top + self.vb_get("height")
+        if name == "backcolor" or (name in ("fillcolor", "bordercolor") and t == "Panel"):
             try:
                 return color_to_vb(self._hex(w.cget("bg")))
             except tk.TclError:
@@ -654,9 +663,13 @@ class VBControl:
                 return sel[0] if sel else -1
             return w.current()
         if name == "newindex":
-            return self.vb_get("listcount") - 1
+            return getattr(self, "_newindex", self.vb_get("listcount") - 1)
+        if name == "itemdata" and t in ("ListBox", "ComboBox"):
+            return _IndexedProp(self, "itemdata")
+        if name in ("selstart", "sellength", "seltext") and t == "TextBox":
+            return self._sel_get(name)
         if name == "selstart":
-            return w.index("insert") if t == "TextBox" and not self.ctrl.props.get("Multiline") else 0
+            return 0
         if name in ("interval",):
             return self._timer().Interval
         if name == "hwnd":
@@ -689,6 +702,80 @@ class VBControl:
 
     def _timer(self):
         return getattr(self.form.ui, self.name)
+
+    # -- TextBox SelStart / SelLength / SelText (VB offsets: a line break of a multi-line box counts 2, CR LF)
+    def _sel_range(self):
+        """(start, end) of the selection in VB offsets; no selection = (caret, caret)."""
+        w = self.w
+        if self.ctrl.props.get("Multiline"):
+            def off(idx):
+                s = w.get("1.0", idx)
+                return len(s) + s.count("\n")
+            r = w.tag_ranges("sel")
+            return (off(r[0]), off(r[1])) if r else (off("insert"),) * 2
+        try:
+            if w.selection_present():
+                return int(w.index("sel.first")), int(w.index("sel.last"))
+        except tk.TclError:
+            pass
+        i = int(w.index("insert"))
+        return i, i
+
+    def _tk_index(self, vb_off: int):
+        """VB offset -> Tk index of a multi-line box ("1.0 + N chars")."""
+        text, chars, pos = self.w.get("1.0", "end-1c"), 0, 0
+        for ch in text:
+            step = 2 if ch == "\n" else 1
+            if pos + step > vb_off:
+                break
+            pos += step
+            chars += 1
+        return f"1.0 + {chars} chars"
+
+    def _sel_get(self, name):
+        a, b = self._sel_range()
+        if name == "selstart":
+            return a
+        if name == "sellength":
+            return b - a
+        w = self.w
+        if self.ctrl.props.get("Multiline"):
+            return w.get(self._tk_index(a), self._tk_index(b)).replace("\n", "\r\n")
+        return w.get()[a:b]
+
+    def _sel_set(self, name, value):
+        w = self.w
+        multi = bool(self.ctrl.props.get("Multiline"))
+        a, b = self._sel_range()
+        if name == "seltext":
+            s = to_str(value)
+            state = str(w.cget("state"))
+            w.configure(state="normal")
+            if multi:
+                s = s.replace("\r\n", "\n")
+                w.delete(self._tk_index(a), self._tk_index(b))
+                w.insert(self._tk_index(a), s)
+                w.tag_remove("sel", "1.0", "end")
+            else:
+                w.delete(a, b)
+                w.insert(a, s)
+                w.selection_clear()
+            w.configure(state=state)
+            return
+        n = max(0, int(to_num(value)))
+        start, end = (n, n) if name == "selstart" else (a, a + n)
+        if multi:
+            w.tag_remove("sel", "1.0", "end")
+            w.mark_set("insert", self._tk_index(end if name == "sellength" else start))
+            if end > start:
+                w.tag_add("sel", self._tk_index(start), self._tk_index(end))
+                w.mark_set("insert", self._tk_index(start))   # SelStart stays the start of the selection
+            w.see("insert")
+        else:
+            w.selection_clear()
+            w.icursor(start)
+            if end > start:
+                w.selection_range(start, end)
 
     def vb_set(self, name, value):
         w, t = self.w, self.type
@@ -745,6 +832,8 @@ class VBControl:
                 if to_bool(value):
                     self.form.ui._radio.set(self.name)
                     self.form.fire(self.name, "CheckedChanged")
+                elif self.form.ui._radio.get() == self.name:      # Option1.Value = False clears it
+                    self.form.ui._radio.set("")
             elif t in ("NumericUpDown", "TrackBar"):
                 self._var().set(int(to_num(value)))
                 self.form.fire(self.name, "ValueChanged")
@@ -782,6 +871,23 @@ class VBControl:
                     self._saved_place = {k: info[k] for k in ("x", "y", "width", "height", "relx", "rely",
                                                              "relwidth", "relheight", "bordermode") if k in info}
                 w.place_forget()
+            return
+        if name in ("x1", "x2", "y1", "y2") and t == "Panel":      # VB6 Line: move one end, keep the other
+            v = to_num(value)
+            if name in ("x1", "x2"):
+                a, b = self.vb_get("x1"), self.vb_get("x2")
+                a, b = (v, b) if name == "x1" else (a, v)
+                self.vb_set("left", min(a, b))
+                self.vb_set("width", max(abs(b - a), self._unit()))
+            else:
+                a, b = self.vb_get("y1"), self.vb_get("y2")
+                a, b = (v, b) if name == "y1" else (a, v)
+                self.vb_set("top", min(a, b))
+                self.vb_set("height", max(abs(b - a), self._unit()))
+            return
+        if name in ("fillcolor", "bordercolor") and t == "Panel":     # VB6 Shape / Line (drawn as a Panel)
+            name = "backcolor"
+        if name in ("fillstyle", "backstyle", "shape", "borderwidth", "drawmode") and t == "Panel":
             return
         if name in ("backcolor", "forecolor"):
             c = vb_to_color(value)
@@ -821,6 +927,7 @@ class VBControl:
             self.ctrl.props["ToolTip"] = to_str(value)
             return
         if name == "locked":
+            self.ctrl.props["ReadOnly"] = to_bool(value)          # Locked reads back what was set
             try:
                 w.configure(state="readonly" if to_bool(value) else "normal")
             except tk.TclError:
@@ -834,6 +941,19 @@ class VBControl:
                 setattr(self.form.ui, f"{self.name}_image", img)
             else:
                 w.configure(image="")
+            return
+        if name in ("selstart", "sellength", "seltext") and t == "TextBox":
+            self._sel_set(name, value)
+            return
+        if name in ("textalign", "alignment") and t in ("Label", "Button", "CheckBox", "RadioButton"):
+            s = to_str(value).strip().lower()           # "Left" / "Center" / "Right" (+ "Top..") or VB 0 / 1 / 2
+            side = {"0": "left", "1": "right", "2": "center"}.get(s) or \
+                ("right" if "right" in s else "center" if "center" in s else "left")
+            self.ctrl.props["TextAlign"] = side.capitalize()
+            try:
+                w.configure(anchor={"left": "w", "right": "e", "center": "center"}[side], justify=side)
+            except tk.TclError:
+                pass
             return
         if name in ("selstart", "sellength", "seltext", "tabindex", "tabstop", "mousepointer", "default",
                     "cancel", "appearance", "borderstyle", "sorted", "alignment", "autosize", "wordwrap"):
@@ -856,15 +976,29 @@ class VBControl:
             return EMPTY
         if name == "additem":
             item = to_str(args[0])
+            data = self._itemdata()
             if t == "ListBox":
-                w.insert("end" if len(args) < 2 else int(to_num(args[1])), item)
+                at = int(w.size()) if len(args) < 2 or not _given(args[1]) else int(to_num(args[1]))
+                w.insert(at, item)
             else:
                 vals = list(w.cget("values") or ())
-                vals.insert(len(vals) if len(args) < 2 else int(to_num(args[1])), item)
+                at = len(vals) if len(args) < 2 or not _given(args[1]) else int(to_num(args[1]))
+                vals.insert(at, item)
                 w.configure(values=vals)
+            data.insert(at, 0)
+            self._newindex = at
             return EMPTY
+        if name == "itemdata" and t in ("ListBox", "ComboBox"):
+            i = int(to_num(args[0]))
+            data = self._itemdata()
+            if not 0 <= i < len(data):
+                raise err(381, "Invalid property array index (ItemData)")
+            return data[i]
         if name == "removeitem":
             i = int(to_num(args[0]))
+            data = self._itemdata()
+            if 0 <= i < len(data):
+                data.pop(i)
             if t == "ListBox":
                 w.delete(i)
             else:
@@ -873,6 +1007,8 @@ class VBControl:
                 w.configure(values=vals)
             return EMPTY
         if name == "clear":
+            if t in ("ListBox", "ComboBox"):
+                self._items_data = []
             if t == "ListBox":
                 w.delete(0, "end")
             elif t == "ComboBox":
@@ -1143,7 +1279,8 @@ class VBControl:
             elif name in ("initdir", "initialdirectory"):
                 w.InitialDirectory = to_str(value)
             elif name == "color":
-                w.Color = vb_to_color(value) or "#000000"
+                s = to_str(value).strip()           # "#RRGGBB" (GUI Bridge languages) or a VB colour number
+                w.Color = s.upper() if s.startswith("#") and len(s) == 7 else (vb_to_color(value) or "#000000")
             elif name == "fontname":
                 w.FontName = to_str(value)
             elif name == "fontsize":
@@ -1270,6 +1407,12 @@ class VBControl:
                 return 0
             if name == "additem":
                 cells = to_str(args[0]).split("\t")
+                # GUI Bridge clients send one cell per argument (CALL grid AddItem a<TAB>b<TAB>c): VB's
+                # AddItem has at most (Item, Index), so 3+ arguments or a non-numeric 2nd one are cells
+                if len(args) > 2 or (len(args) == 2 and _given(args[1])
+                                     and not str(args[1]).strip().lstrip("-").isdigit()):
+                    w.AddRow(*[to_str(a) for a in args])
+                    return EMPTY
                 if len(args) > 1 and _given(args[1]):
                     w.insert("", max(0, _int(args[1]) - 1), values=cells)
                 else:
@@ -1316,8 +1459,25 @@ class VBControl:
             return True
         return False
 
+    def _itemdata(self) -> list:
+        """ListBox / ComboBox ItemData(), kept the same length as the list."""
+        n = int(self.w.size()) if self.type == "ListBox" else len(self.w.cget("values") or ())
+        data = getattr(self, "_items_data", None)
+        if data is None:
+            data = self._items_data = []
+        if len(data) < n:
+            data += [0] * (n - len(data))
+        return data
+
     def vb_setindexed(self, name, args, value):
         if self.type in VB_EXT and self._ext_setindexed(name, args, value):
+            return
+        if name == "itemdata" and self.type in ("ListBox", "ComboBox"):
+            i = int(to_num(args[0]))
+            data = self._itemdata()
+            if not 0 <= i < len(data):
+                raise err(381, "Invalid property array index (ItemData)")
+            data[i] = int(to_num(value))
             return
         if name == "list":
             i = int(to_num(args[0]))
@@ -1500,7 +1660,7 @@ class VBForm:
             if name in self.controls:
                 return self.controls[name]
         root = self.ui.root
-        if name == "caption":
+        if name in ("caption", "text"):     # VB6 Caption / WinForms Text (the designer and SET Form1 Text)
             return root.title()
         if name == "name":
             return self.name
@@ -1525,10 +1685,46 @@ class VBForm:
                 if isinstance(c, VBControl) and c.w is fw:
                     return c
             return NOTHING
+        found, v = self._member(name, [])
+        if found:
+            return v
         raise err(438, f"Form doesn't support property or method '{name}'")
+
+    def _member(self, name, args, value=_NA):
+        """Public Sub / Function / Property and public variables of the form's own code (frmX.LoadGrid)."""
+        it = self.runtime.interp
+        st = it.modules.get(self.name.lower())
+        if st is None:
+            return False, None
+        procs = st.mod.procs
+        if value is not _NA:
+            is_obj = hasattr(value, "vb_get")
+            for key in ((f"set:{name}", f"let:{name}") if is_obj else (f"let:{name}", f"set:{name}")):
+                if key in procs:
+                    it.call_proc(st, procs[key], [*args, value], me=self)
+                    return True, None
+            if name in st.vars:
+                it.assign_cell(st.vars[name], value, is_set=is_obj)
+                return True, None
+            return False, None
+        for key in (name, f"get:{name}"):
+            if key in procs:
+                return True, it.call_proc(st, procs[key], list(args), me=self)
+        if name in st.vars:
+            v = st.vars[name].value
+            if args and hasattr(v, "get") and type(v).__name__ == "VBArray":
+                return True, v.get(list(args))
+            return True, v
+        return False, None
 
     def vb_set(self, name, value):
         self.load()
+        if name == "text" and not self._member(name, [])[0]:
+            name = "caption"                # WinForms Text = VB6 Caption (SET Form1 Text ... from the bridge)
+        found, _v = self._member(name, [], value)
+        if found and name not in ("caption", "width", "height", "left", "top", "backcolor", "visible",
+                                  "windowstate"):
+            return
         root = self.ui.root
         if name == "caption":
             root.title(to_str(value))
@@ -1595,8 +1791,13 @@ class VBForm:
             fx = _fx_of(self)
             ok = (fx.Begin if name == "beginanimation" else fx.Stop)(to_str(args[0]) if args else "")
             return bool(ok)
-        if name in ("cls", "print", "move", "zorder", "circle", "line", "pset"):
+        if name in ("cls", "print", "move", "zorder", "circle", "line", "pset", "arrange", "printform"):
             return EMPTY
+        if args:
+            self.load()
+            found, v = self._member(name, args)
+            if found:
+                return v
         return self.vb_get(name)
 
 
@@ -1698,7 +1899,7 @@ class Clipboard:
         self.runtime = runtime
 
     def vb_get(self, name):
-        return EMPTY
+        return self.vb_call(name, [])          # s = Clipboard.GetText / Clipboard.Clear (no parentheses)
 
     def vb_call(self, name, args):
         r = self.runtime.root
@@ -1811,6 +2012,10 @@ class Runtime:
         for name in self.project.forms:
             self._load_code(self.folder / f"{name}.bas", name, True, self.forms[name.lower()],
                             src=self.native.form_code(name) if self.native else None)
+            st = it.modules.get(name.lower())         # an MDIForm's events are MDIForm_Load, MDIForm_Unload ...
+            if st is not None:
+                for pname in [p for p in st.mod.procs if p.startswith("mdiform_")]:
+                    st.mod.procs.setdefault("form_" + pname[len("mdiform_"):], st.mod.procs[pname])
         for st in it.modules.values():
             if not st.is_form:
                 it.objects.setdefault(st.name.lower(), ModuleProxy(it, st))
@@ -1886,9 +2091,13 @@ class Runtime:
         vbev = vb_event_name("Form" if owner == "Form" else self._type_of(vf, owner), event)
         if not vbev or st is None:
             return
+        index = None
+        c = vf.model.find(owner) if owner != "Form" else None
+        if c is not None and c.props.get("ArrayName"):         # control array: optKind_Click(Index)
+            owner, index = c.props["ArrayName"], int(c.props.get("ArrayIndex", 0))
         name = f"{owner}_{vbev}"
         if name.lower() in st.mod.procs:
-            self.run_handler(vf, name, event, *args)
+            self.run_handler(vf, name, event, *args, index=index)
 
     @staticmethod
     def _type_of(vf, owner):
@@ -2000,13 +2209,17 @@ class Runtime:
         vf.loaded = False
         vf.controls.clear()
         if root is self.root:
-            others = [f for f in self.forms.values() if f.loaded and f is not vf]
-            if not others:
-                self.end()
-                return
             root.withdraw()
         else:
             root.destroy()
+        if not any(f.loaded for f in self.forms.values()):
+            # VB6 ends the program when no form is loaded AND no code runs: "Unload Me: frmNext.Show" goes on
+            try:
+                self.root.after_idle(self._end_if_no_forms)
+            except (tk.TclError, AttributeError):
+                self.end()
+
+    def _end_if_no_forms(self):
         if not any(f.loaded for f in self.forms.values()):
             self.end()
 

@@ -439,6 +439,26 @@ def vb_round(x):
     return int(round(x)) if not isinstance(x, int) else x
 
 
+def _dateserial(y, m, d):
+    """VB DateSerial: months and days outside their range roll over (DateSerial(2026, 2, 29) = 1 March 2026,
+    DateSerial(2026, 13, 1) = 1 January 2027, day 0 = the last day of the month before); years 0-29 -> 20xx,
+    30-99 -> 19xx."""
+    y, m, d = int(to_num(y)), int(to_num(m)), int(to_num(d))
+    if 0 <= y < 30:
+        y += 2000
+    elif 30 <= y < 100:
+        y += 1900
+    y += (m - 1) // 12
+    m = (m - 1) % 12 + 1
+    try:
+        return _dt.datetime(y, m, 1) + _dt.timedelta(days=d - 1)
+    except (ValueError, OverflowError):
+        raise err(5, "Invalid procedure call or argument (DateSerial)") from None
+
+
+_GROUPED = re.compile(r"[+-]?\d{1,3}(,\d{3})+(\.\d*)?")
+
+
 def to_num(v):
     if isinstance(v, bool):
         return -1 if v else 0
@@ -459,6 +479,9 @@ def to_num(v):
             f = float(s)
             return int(f) if f.is_integer() and "." not in s and "e" not in s.lower() else f
         except ValueError:
+            # CDbl("2,000.50") / IsNumeric: digit grouping of the (US) locale, as Format(x, "#,##0.00") writes it
+            if _GROUPED.fullmatch(s):
+                return to_num(s.replace(",", ""))
             raise err(13, f"Type mismatch: \"{v}\" is not a number") from None
     if hasattr(v, "vb_get"):
         return to_num(default_value(v))
@@ -656,6 +679,23 @@ CONSTANTS = {
     "vbbyte": 17, "vbarray": 8192, "vbunicode": 64, "vbfromunicode": 128, "vbformfeed": "\f",
     "vbverticaltab": "\v", "vbobjectpointer": 0,
 }
+# KeyCodeConstants (vbKeyA..vbKeyZ, vbKey0..vbKey9, vbKeyF1..vbKeyF16 ...), MDI Arrange, CommonDialog
+CONSTANTS.update({f"vbkey{chr(c).lower()}": c for c in range(ord("A"), ord("Z") + 1)})
+CONSTANTS.update({f"vbkey{n}": 48 + n for n in range(10)})
+CONSTANTS.update({f"vbkeynumpad{n}": 96 + n for n in range(10)})
+CONSTANTS.update({f"vbkeyf{n}": 111 + n for n in range(1, 17)})
+CONSTANTS.update({
+    "vbkeyshift": 16, "vbkeycontrol": 17, "vbkeymenu": 18, "vbkeypause": 19, "vbkeycapital": 20,
+    "vbkeypageup": 33, "vbkeypagedown": 34, "vbkeyend": 35, "vbkeyhome": 36, "vbkeyinsert": 45,
+    "vbkeyclear": 12, "vbkeymultiply": 106, "vbkeyadd": 107, "vbkeysubtract": 109, "vbkeydecimal": 110,
+    "vbkeydivide": 111, "vbkeynumlock": 144,
+    "vbcascade": 0, "vbtilehorizontal": 1, "vbtilevertical": 2, "vbarrangeicons": 3,
+    "cdlcancel": 32755, "cdlofnreadonly": 1, "cdlofnoverwriteprompt": 2, "cdlofnhidereadonly": 4,
+    "cdlofnnochangedir": 8, "cdlofnallowmultiselect": 512, "cdlofnextensiondifferent": 1024,
+    "cdlofnpathmustexist": 2048, "cdlofnfilemustexist": 4096, "cdlofncreateprompt": 8192,
+    "cdlofnexplorer": 524288, "cdlofnlongnames": 2097152, "cdlccrgbinit": 1, "cdlcffontsonly": 1,
+    "cdlcfscreenfonts": 1, "cdlcfprinterfonts": 2, "cdlcfboth": 3, "cdlcfeffects": 256,
+})
 try:
     from .vbapi import NULL_STRING as _NULL_STRING
     CONSTANTS["vbnullstring"] = _NULL_STRING
@@ -896,7 +936,7 @@ BUILTINS = {
     "year": lambda d: to_date(d).year, "month": lambda d: to_date(d).month, "day": lambda d: to_date(d).day,
     "hour": lambda d: to_date(d).hour, "minute": lambda d: to_date(d).minute,
     "second": lambda d: to_date(d).second, "weekday": lambda d, *_: (to_date(d).weekday() + 1) % 7 + 1,
-    "dateserial": lambda y, m, d: _dt.datetime(int(to_num(y)), int(to_num(m)), int(to_num(d))),
+    "dateserial": lambda y, m, d: _dateserial(y, m, d),
     "timeserial": lambda h, m, s: _dt.datetime(1899, 12, 30, int(to_num(h)), int(to_num(m)), int(to_num(s))),
     "dateadd": _datepart_add, "datediff": _datediff, "datevalue": to_date, "timevalue": to_date,
     "monthname": lambda m, abbr=False: _dt.date(2000, int(to_num(m)), 1).strftime("%b" if to_bool(abbr) else "%B"),
@@ -1411,6 +1451,8 @@ class Interpreter:
         name = name.lower()
         if frame is not None and name in frame.module.mod.procs:
             return frame.module, frame.module.mod.procs[name]
+        if frame is not None and f"get:{name}" in frame.module.mod.procs:     # own Property Get, unqualified
+            return frame.module, frame.module.mod.procs[f"get:{name}"]
         return self.global_procs.get(name)
 
     def call_proc(self, st: ModuleState, proc: Proc, args: list, arg_cells=None, me=None):
@@ -1919,6 +1961,11 @@ class Interpreter:
                 if obj is not None and hasattr(obj, "vb_set"):    # Text1 = "x"  (default property)
                     obj.vb_set(getattr(obj, "vb_default", "text"), value)
                     return
+                procs = frame.module.mod.procs                      # own Property Let / Set, unqualified
+                for key in ((f"set:{name}", f"let:{name}") if is_set else (f"let:{name}", f"set:{name}")):
+                    if key in procs:
+                        self.call_proc(frame.module, procs[key], [value], me=frame.me)
+                        return
                 cell = self.lookup_cell(name, frame, create=True)
             if not is_set and hasattr(cell.value, "vb_set") and not hasattr(value, "vb_get") \
                     and getattr(cell.value, "vb_default", None) and not isinstance(cell.value, (Collection, UDT)):

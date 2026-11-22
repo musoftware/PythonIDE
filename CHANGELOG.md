@@ -4,6 +4,27 @@ All notable changes to RAD IDE. Releases are published on GitHub
 (https://github.com/musoftware/PythonIDE/releases) for every tag `vX.Y.Z`; the release notes are the
 section of this file whose heading starts with `## [X.Y.Z]`.
 
+## [0.2.2] - 2026-11-22
+
+### New
+- Build > Publish of VB6 (BASIC) projects: translated to FreeBASIC with native Win32 forms - one exe of
+  28-150 KB without Python (layout identical to the designer, events with their arguments, control arrays,
+  classes, error handling, files, Format); untranslatable code falls back to the VB runtime with file(line) reasons.
+- Tool windows: Visual Studio Auto Hide (pin button, edge tabs, slide-out over the editor, Window > Auto Hide All,
+  kept across restarts).
+- Build > Publish: C, C++ and Fortran GUI programs become one small native exe (C ~80 KB) on radforms, a new
+  C runtime (Win32, themes Light / Dark / Office / Metro, owner-drawn control classes, stable C ABI usable from
+  any language, static libradforms.a and radforms.lib); existing projects build unchanged.
+- Eight complete VB6 business samples of our own (samples/VB6/Business: bank, electricity billing, finance
+  ledger, scientific calculator, clinic, logic gate lab, pharmacy, online exam) and many VB runtime fixes found
+  with them (MDI events, public form members, ItemData, DAO LastModified, Data control Reposition, ...).
+
+### Fixed
+- Rust WinForms projects: the toolbar's Run no longer runs `cargo run` (which shows no window - the forms are
+  drawn through the IDE); it runs the project with its forms like F5. Code completion no longer comes back empty
+  while rust-analyzer (or any language server) is still indexing, and the IDE's own helpers (msgbox, set, get,
+  control names) are listed next to the server's items.
+
 ## [0.2.1] - 2026-11-22
 
 ### Fixed
@@ -21,20 +42,8 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   "Arrange / align / sort / رتب" requests tick only positions and sizes.
 - Build EXE of VB6 / GUI Bridge programs: the published exe stopped at start with KeyError: 'DataGridView' (the
   built-in control packages were not bundled).
-- Build > Publish of VB6 (BASIC) projects: translated to FreeBASIC with native Win32 forms - one exe of
-  28-150 KB without Python (layout identical to the designer, events with their arguments, control arrays,
-  classes, error handling, files, Format); untranslatable code falls back to the VB runtime with file(line) reasons.
-- Tool windows: Visual Studio Auto Hide (pin button, edge tabs, slide-out over the editor, Window > Auto Hide All,
-  kept across restarts).
-- Rust WinForms projects: the toolbar's Run no longer runs `cargo run` (which shows no window - the forms are
-  drawn through the IDE); it runs the project with its forms like F5. Code completion no longer comes back empty
-  while rust-analyzer (or any language server) is still indexing, and the IDE's own helpers (msgbox, set, get,
-  control names) are listed next to the server's items.
 - View menu: choosing a tool window (Properties, Toolbox, ...) always shows it and brings it to the front, like
   Visual Studio (a window covered by another tab was hidden instead); off-screen floating windows come back.
-- Build > Publish: C, C++ and Fortran GUI programs become one small native exe (C ~80 KB) on radforms, a new
-  C runtime (Win32, themes Light / Dark / Office / Metro, owner-drawn control classes, stable C ABI usable from
-  any language, static libradforms.a and radforms.lib); existing projects build unchanged.
 - Build > Publish: C# and PowerShell programs become native WinForms exes without Python - standalone single
   file (default), framework-dependent, or a tiny .NET Framework 4.8 exe; Java becomes Swing with a trimmed
   runtime (jlink + jpackage). Unsupported controls fall back to the previous build with the reasons listed.
@@ -45,7 +54,7 @@ section of this file whose heading starts with `## [X.Y.Z]`.
 - Format > Center in Form moves the selected controls as one group (they were each centred and ended up on
   top of each other); per container, docked controls stay.
 
- - 2026-11-22
+## [0.2.0] - 2026-11-22
 
 ### Updating
 - **Help > Check for Updates** now installs the update: it downloads the setup (or the portable zip),

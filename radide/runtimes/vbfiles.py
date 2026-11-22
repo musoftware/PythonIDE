@@ -181,6 +181,8 @@ class FileManager:
         f = self.get(num)
         parts = []
         for v in values:
+            if hasattr(v, "vb_get") and getattr(v, "vb_default", None):     # rs!Field -> its value
+                v = v.vb_get(v.vb_default)
             if isinstance(v, bool):
                 parts.append("#TRUE#" if v else "#FALSE#")
             elif isinstance(v, (int, float)):

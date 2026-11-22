@@ -189,6 +189,13 @@ class DataControl:
                 vc.vb_set(_text_prop(vc), v)
             except Exception:  # noqa: BLE001
                 pass
+        # Data1_Reposition: the current record changed (VB6 fires it after the bound controls are filled)
+        pos = (rs._pos, len(rs._rows), rs._mode) if rs.State else None
+        if pos != getattr(self, "_last_pos", None):
+            self._last_pos = pos
+            st = self.vf.runtime.interp.modules.get(self.vf.name.lower())
+            if st is not None and f"{self.name.lower()}_reposition" in st.mod.procs:
+                self.vf.runtime.run_handler(self.vf, f"{self.name}_Reposition", "Reposition")
 
     def _pull(self, rs):
         """Bound control values -> the record being edited / added (before Update)."""
