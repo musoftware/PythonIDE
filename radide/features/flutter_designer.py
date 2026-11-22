@@ -479,45 +479,24 @@ class FlutterDesignerManager:
             self.open_screen(first)
 
     # ---- wrapping the window
+    # DocumentProvider (radide/extension_points.py): File > Open, Solution Explorer, Save All, closing question
+    def can_open(self, path: Path) -> bool:
+        return _is_screen(path)
+
+    def open_document(self, path: Path):
+        return self.open_screen(Path(path))
+
+    def save_documents(self) -> None:
+        self.save_screens()
+
+    def has_modified_documents(self) -> bool:
+        return self.any_modified()
+
     def wrap(self):
         win = self.win
-        orig_open_any = win.open_any_file
-        orig_open_module = win.open_module
-        orig_save_all = win.save_all
-        orig_any_modified = win._any_modified
-        orig_fill = win._fill_solution
+        win.extension_points.add_document_provider(self)
+        win.extension_points.add_solution_contributor(self.add_tree_nodes, "flutter designer")
         orig_open_project = getattr(win, "open_project", None)
-
-        def open_any_file(path, *a, **k):
-            if _is_screen(path):
-                return self.open_screen(Path(path))
-            return orig_open_any(path, *a, **k)
-
-        def open_module(filename, *a, **k):
-            if _is_screen(filename) and win.project is not None:
-                return self.open_screen(Path(win.project.folder) / filename)
-            return orig_open_module(filename, *a, **k)
-
-        def save_all(*a, **k):
-            self.save_screens()
-            return orig_save_all(*a, **k)
-
-        def any_modified(*a, **k):
-            return self.any_modified() or orig_any_modified(*a, **k)
-
-        def fill_solution(*a, **k):
-            r = orig_fill(*a, **k)
-            try:
-                self.add_tree_nodes()
-            except Exception as e:  # noqa: BLE001
-                win.log(f"[flutter designer] {e}")
-            return r
-
-        win.open_any_file = open_any_file
-        win.open_module = open_module
-        win.save_all = save_all
-        win._any_modified = any_modified
-        win._fill_solution = fill_solution
         if callable(orig_open_project):
             def open_project(*a, **k):
                 r = orig_open_project(*a, **k)

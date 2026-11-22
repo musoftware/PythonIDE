@@ -212,6 +212,24 @@ def _edit_tbl(ed) -> None:
     ed.set_modified(True)
 
 
+def _make_nb(path: Path) -> None:
+    from radide.notebook.model import Notebook
+    Notebook.new(path).save(path)
+
+
+def _edit_nb(v) -> None:
+    v.set_modified(True)
+
+
+def _make_fscreen(path: Path) -> None:
+    from radide.flutterdesign.model import Screen
+    Screen.new(path.name.split(".")[0]).save(path)
+
+
+def _edit_fscreen(ed) -> None:
+    ed.set_prop(ed.screen.tree.get("id"), "backgroundColor", "#112233")
+
+
 # name, feature attribute on win, file, make(path), editor class, edit(ed), tree check, open_module (a project
 # file opened from Solution Explorer), before_save(proj) / after_save(proj) (work Save All does afterwards)
 EDITORS = [
@@ -234,6 +252,10 @@ EDITORS = [
          cls="radide.retro.design.game.ui.GameDesigner", edit=_edit_design),
     dict(name="retro text table (.tbl)", feature="retro_gfx", file="game.tbl", make=_make_tbl,
          cls="radide.retro.gfx.ui_text.TableEditor", edit=_edit_tbl),
+    dict(name="notebook (.ipynb)", feature="notebook_feature", file="Analysis.ipynb", make=_make_nb,
+         cls="radide.notebook.view.NotebookView", edit=_edit_nb),
+    dict(name="Flutter screen designer", feature="flutter_designer", file="Home.fscreen.json", make=_make_fscreen,
+         cls="radide.flutterdesign.designer.FlutterDesigner", edit=_edit_fscreen, module=True),
     # viewers of binary files: opened (and reused), no Save All part to check (a source ROM is read-only)
     dict(name="ROM workbench (.nes)", feature="rom_workbench", file="game.nes", make=_make_nes,
          cls="radide.retro.rom.hexdoc.HexDocument", module=True, readonly=True),
