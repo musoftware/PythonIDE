@@ -203,6 +203,10 @@ def add_resources(onedir: Path, version: str) -> None:
     for s in sorted((REPO / "samples").glob("Hello*")):
         if s.is_dir():
             _copytree(s, samples / s.name)
+    if (REPO / "samples" / "Examples").is_dir():          # Help > Example Projects (radide/features/example_gallery.py)
+        _copytree(REPO / "samples" / "Examples", samples / "Examples")
+        if (REPO / "samples" / "README.md").is_file():
+            shutil.copy2(REPO / "samples" / "README.md", samples / "README.md")
     log(f"samples: {', '.join(p.name for p in sorted(samples.iterdir())) if samples.is_dir() else '-'}")
     (onedir / "VERSION.txt").write_text(version + "\n", encoding="utf-8")
 
@@ -371,6 +375,51 @@ def iss_text(onedir: Path, out: Path, version: str, iscc: str) -> str:
           "function ShouldRelaunch: Boolean;",
           "begin",
           "  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';",
+          "end;",
+          "",
+          "// RAD IDE processes started from the install folder (any version, also one without a window).",
+          "// [InstallDelete] removes {app}\\_internal before the new files are copied: if a running IDE keeps",
+          "// files open the install stops half way, so PrepareToInstall makes sure none runs first.",
+          "function AppPids(): String;",
+          "var Locator, Service, Items, Item: Variant; I: Integer; Path: String;",
+          "begin",
+          "  Result := '';",
+          "  try",
+          "    Locator := CreateOleObject('WbemScripting.SWbemLocator');",
+          "    Service := Locator.ConnectServer('.', 'root\\CIMV2');",
+          f"    Items := Service.ExecQuery('SELECT ProcessId, ExecutablePath FROM Win32_Process WHERE Name = ''{NAME}.exe''');",
+          "    for I := 0 to Items.Count - 1 do begin",
+          "      Item := Items.ItemIndex(I);",
+          "      Path := '';",
+          "      try Path := Item.ExecutablePath; except end;",
+          "      if (Path = '') or (CompareText(ExtractFileDir(Path), ExpandConstant('{app}')) = 0) then",
+          "        Result := Result + ' /PID ' + IntToStr(Item.ProcessId);",
+          "    end;",
+          "  except",
+          "    Result := '';",
+          "  end;",
+          "end;",
+          "",
+          "function PrepareToInstall(var NeedsRestart: Boolean): String;",
+          "var Pids: String; I, Code: Integer;",
+          "begin",
+          "  Result := '';",
+          "  // an update started from inside the IDE: the IDE is closing right now - wait for it",
+          "  for I := 1 to 60 do begin",
+          "    Pids := AppPids();",
+          "    if Pids = '' then Exit;",
+          "    Sleep(500);",
+          "  end;",
+          "  if not WizardSilent() then",
+          f"    if MsgBox('{APP} is still running (maybe without a window). It must be closed before it is updated.' + #13#10#13#10 +",
+          "              'Close it now? Unsaved work in it will be lost.', mbConfirmation, MB_YESNO) <> IDYES then begin",
+          f"      Result := 'Close {APP} and run the setup again. Nothing was changed.';",
+          "      Exit;",
+          "    end;",
+          "  Exec(ExpandConstant('{sys}\\taskkill.exe'), '/F' + Pids, '', SW_HIDE, ewWaitUntilTerminated, Code);",
+          "  Sleep(1000);",
+          "  if AppPids() <> '' then",
+          f"    Result := '{APP} could not be closed. Close it (Task Manager) and run the setup again. Nothing was changed.';",
           "end;",
           "", "[UninstallDelete]",
           '; __pycache__ folders written by the helper scripts that a real Python runs from _internal\\radide',

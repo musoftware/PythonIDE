@@ -20,6 +20,9 @@ section of this file whose heading starts with `## [X.Y.Z]`.
   with them (MDI events, public form members, ItemData, DAO LastModified, Data control Reposition, ...).
 
 ### Fixed
+- Setup: an update while an old RAD IDE was still running (also one without a window) could stop half way after
+  removing the old program files, leaving a broken installation. The setup now waits for RAD IDE to exit,
+  offers to close it (closes it in silent updates) and changes nothing if it cannot.
 - Build > Publish of Python games: Ursina exes stopped with "No graphics pipe is available!" (Panda3D's display
   library and Config.prc were missing) and then with "No module named 'Scene1_designer'" (scenes loaded with
   importlib) - fixed and checked by running the exes; pygame / Arcade / Kivy publish verified too.
