@@ -141,7 +141,7 @@ class InstanceServer(QObject):
 
     def _handle(self, msg: dict):
         self.received.append(msg)
-        from .app import bring_to_front
+        from .run_controller import bring_to_front
         bring_to_front(self.win)
         line = msg.get("line")
         for p in msg.get("paths") or []:

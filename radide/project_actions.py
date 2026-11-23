@@ -746,7 +746,7 @@ class ActionContext:
             if p.is_file():
                 return str(p)
         try:
-            from .app import real_python
+            from .interpreters import real_python
             exe = self.win.settings.value("interpreter/python", "") if hasattr(self.win, "settings") else ""
             if exe and Path(str(exe)).exists():
                 return str(exe)

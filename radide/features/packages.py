@@ -145,7 +145,7 @@ def is_python(plugin) -> bool:
 
 
 def venv_python(folder: Path) -> str:
-    from ..app import project_venv_python
+    from ..interpreters import project_venv_python
     return project_venv_python(folder)
 
 
@@ -698,7 +698,7 @@ class PackagesDialog(QDialog):
                 then()
             else:
                 self.status.setText("Could not create the .venv (see the log)")
-        from ..app import real_python
+        from ..interpreters import real_python
         self.runner.run([real_python(base), "-m", "venv", ".venv"], str(self.folder()), done, True)
 
     # ------------------------------------------------------------ installed
