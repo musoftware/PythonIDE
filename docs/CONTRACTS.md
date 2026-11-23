@@ -15,6 +15,9 @@ them build pieces that fit together without waiting for each other.
   `win._current_code()` (CodeView/ModuleView with `.editor`), `win._current_designer()`,
   `win._editor_for_file(name)`, `win.save_all()`, `win.open_code(form)`, `win.open_module(file)`,
   `win.dock_*` docks, `win.statusBar()`. Add docks with `win.addDockWidget` and tabify with `win.dock_output`.
+- **Never replace a MainWindow method** (`win.save_all = wrapper`, `win.closeEvent = ...`): register with
+  `win.extension_points` instead - document providers, save listeners, close guards, run handlers, events
+  (see [EXTENSION_POINTS.md](EXTENSION_POINTS.md)). A test fails when a replacement is added.
 - Keep `.venv\Scripts\python.exe -m pyflakes radide tools` clean.
 - Tests: write them in **your own scratch folder** (given in your task). Use `QT_QPA_PLATFORM=offscreen` for Qt UI
   tests. Never leave GUI windows or processes running; never kill processes you did not start.
