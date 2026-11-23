@@ -352,17 +352,10 @@ def install(win) -> None:
         win.diag_providers = providers = []
     providers.append(diag_provider)
 
-    orig = getattr(win, "_make_session", None)
-    if callable(orig):
-        def make_session(spec, debug, plugin, interp, startup=None):
-            s = orig(spec, debug, plugin, interp, startup)
-            try:
-                if s is not None and (str(getattr(plugin, "id", "")).startswith("asm-") or _asm_folder_exe(win)):
-                    _attach_session(win, s, plugin, debug)
-            except Exception:  # noqa: BLE001 - never stop F5
-                pass
-            return s
-        win._make_session = make_session
+    def on_session(s, debug, plugin) -> None:          # errors are logged, F5 goes on
+        if str(getattr(plugin, "id", "")).startswith("asm-") or _asm_folder_exe(win):
+            _attach_session(win, s, plugin, debug)
+    win.extension_points.on("session_created", on_session, "assembly")
 
     win.show_asm_toolchains = lambda: show_toolchains(win)
     tools = next((x.menu() for x in win.menuBar().actions()

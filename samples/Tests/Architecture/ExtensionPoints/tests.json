@@ -73,6 +73,17 @@
     "{scratch}"
    ],
    "note": "designer / code editor / saving events: designer open steps, damaged form reported, form + project save steps, menus, language servers for new editors, VB6 properties, title, layout, no save question for a foreign project"
+  },
+  "test_run_debug.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "F5 handlers (Expo, Flutter, Godot adapter, VS Code debugger; mobile / 3D steps first), session extras, stop / resume / end steps, Run to Cursor temporary breakpoint - the window's own steps are counters"
   }
  }
 }

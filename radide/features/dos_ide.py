@@ -576,17 +576,10 @@ def install(win) -> None:
     providers = win.__dict__.setdefault("diag_providers", [])
     if diag_provider not in providers:
         providers.append(diag_provider)
-    orig = getattr(win, "_make_session", None)
-    if callable(orig):
-        def make_session(spec, debug, plugin, interp, startup=None):
-            s = orig(spec, debug, plugin, interp, startup)
-            try:
-                if s is not None and getattr(plugin, "id", "") in DOS_LANGS:
-                    s.finished.connect(lambda *_a: refresh_errors(win))
-            except Exception:  # noqa: BLE001 - never stop F5
-                pass
-            return s
-        win._make_session = make_session
+    def on_session(s, _debug, plugin) -> None:
+        if getattr(plugin, "id", "") in DOS_LANGS:
+            s.finished.connect(lambda *_a: refresh_errors(win))
+    win.extension_points.on("session_created", on_session, "DOS")
     win.dos_build = lambda: build_program(win)
     win.dos_settings = lambda: show_settings(win)
     win.dos_toolchains = lambda: show_toolchains(win)

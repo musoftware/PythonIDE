@@ -829,19 +829,18 @@ class MobileFeature(QObject):
     # ---------------------------------------------------------------- wrapping the main window
     def _wrap(self):
         win = self.win
-        orig_run = win.run_project
-
-        def run_project(debug: bool = True):
+        def run_mobile(debug: bool) -> bool:
             if is_flutter(win):
-                return self.run_flutter(debug)
+                self.run_flutter(debug)
+                return True
             if is_mobile(win):
-                self._write_files()
-            return orig_run(debug)
+                self._write_files()        # then the window runs it
+            return False
 
         # after every successful save: project files + hot reload (radide/extension_points.py)
         win.extension_points.add_save_listener(self._after_save, "mobile", before=self._before_save)
 
-        win.run_project = run_project
+        win.extension_points.add_run_handler(run_mobile, "mobile")   # F5 (radide/extension_points.py)
         win.extension_points.on("actions_updated", lambda: self.update_ui(), "mobile")    # errors logged once
 
     def _before_save(self) -> None:

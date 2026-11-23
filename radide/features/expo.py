@@ -356,14 +356,13 @@ class ExpoFeature(QObject):
 
     def _wrap(self):
         win = self.win
-        orig_run = win.run_project
-
-        def run_project(debug: bool = True):
+        def run_expo(debug: bool) -> bool:
             if is_expo(win):
-                return self.run(debug)
-            return orig_run(debug)
+                self.run(debug)
+                return True
+            return False
 
-        win.run_project = run_project
+        win.extension_points.add_run_handler(run_expo, "expo")      # F5 (radide/extension_points.py)
         win.extension_points.on("actions_updated", lambda: self.update_ui(), "expo")      # errors logged once
 
     # ------------------------------------------------------------ run

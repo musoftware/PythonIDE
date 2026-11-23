@@ -894,26 +894,10 @@ def install(win) -> None:
     win.dock_memory = hub.docks["memory"]
     win.dock_native_stack = hub.docks["stack"]
 
-    orig_stopped, orig_resumed, orig_finished = win._on_stopped, win._on_resumed, win._on_finished
-
-    def on_stopped(info):
-        orig_stopped(info)
-        try:
-            hub.on_stopped(info)
-        except Exception as e:  # noqa: BLE001 - the windows must never break debugging
-            win.log(f"[native debug] {e}")
-    win._on_stopped = on_stopped
-
-    def on_resumed():
-        orig_resumed()
-        hub.on_resumed()
-    win._on_resumed = on_resumed
-
-    def on_finished(code, session=None):
-        orig_finished(code, session)
-        if win.session is None:
-            hub.on_finished()
-    win._on_finished = on_finished
+    ep = win.extension_points          # the native windows never break debugging: errors are logged
+    ep.on("debug_paused", lambda info: hub.on_stopped(info), "native debug")
+    ep.on("debug_resumed", lambda: hub.on_resumed(), "native debug")
+    ep.on("program_finished", lambda _code, _session: win.session is None and hub.on_finished(), "native debug")
     QTimer.singleShot(60, lambda: _build_menu(win, hub))      # after debug_views' Debug > Windows
 
 

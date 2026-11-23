@@ -251,11 +251,10 @@ def install(win) -> None:
     threads.itemDoubleClicked.connect(thread_dclick)
 
     # ---------------------------------------------------------------- stop / resume hooks
-    orig_stopped = win._on_stopped
-
-    def on_stopped(info):
+    def bump_generation(*_a) -> None:           # answers of an older stop are ignored from now on
         win._dbgx_gen = _gen(win) + 1
-        orig_stopped(info)
+
+    def on_stopped(info) -> None:               # after the window filled Locals
         refs = getattr(info, "refs", {}) or {}
         for i in range(win.locals.topLevelItemCount()):
             it = win.locals.topLevelItem(i)
@@ -263,14 +262,10 @@ def install(win) -> None:
             it.setToolTip(1, it.text(1)[:2000])
         QTimer.singleShot(0, refresh_watch)           # after debugtools' evaluate-based refresh
         show_threads(getattr(info, "thread_id", 0))
-    win._on_stopped = on_stopped
-
-    orig_resumed = win._on_resumed
-
-    def on_resumed():
-        win._dbgx_gen = _gen(win) + 1
-        orig_resumed()
-    win._on_resumed = on_resumed
+    ep = win.extension_points
+    ep.on("debug_pausing", bump_generation, "debug views")
+    ep.on("debug_paused", on_stopped, "debug views")
+    ep.on("debug_resuming", bump_generation, "debug views")
 
     def refresh_watch():
         tree = getattr(win, "watch_tree", None)

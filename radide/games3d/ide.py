@@ -70,12 +70,8 @@ class Scenes3D:
     def _wrap(self) -> None:
         win = self.win
         win.extension_points.add_document_provider(self)
-        orig_run = getattr(win, "run_project", None)
-        if callable(orig_run):
-            def run_project(*a, **k):
-                self.save_all()
-                return orig_run(*a, **k)
-            win.run_project = run_project
+        # F5: the 3D scenes are saved (their code regenerated) before the window runs the project
+        win.extension_points.add_run_handler(lambda _debug: self.save_all() and False, "3D scenes")
         win.open_scene3d = self.open_scene
         win.scenes3d = self
 

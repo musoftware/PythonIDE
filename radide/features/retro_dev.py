@@ -692,17 +692,8 @@ def install(win) -> None:
         win.diag_providers = providers = []
     providers.append(diag_provider)
 
-    orig = getattr(win, "_make_session", None)
-    if callable(orig):
-        def make_session(spec, debug, plugin, interp, startup=None):
-            s = orig(spec, debug, plugin, interp, startup)
-            try:
-                if s is not None and getattr(plugin, "retro_dev", False):
-                    _attach_session(win, s)
-            except Exception:  # noqa: BLE001 - never stop F5
-                pass
-            return s
-        win._make_session = make_session
+    win.extension_points.on("session_created", lambda s, _debug, plugin: getattr(plugin, "retro_dev", False)
+                            and _attach_session(win, s), "retro dev")
 
     win.show_retro_disassemble = lambda rom="": show_disassemble(win, rom)
     win.show_retro_toolchains = lambda: show_toolchains(win)

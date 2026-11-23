@@ -137,31 +137,10 @@ def install(win) -> None:
     win.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, hub.dock)
     hub.dock.hide()
 
-    orig_stopped, orig_resumed, orig_finished = win._on_stopped, win._on_resumed, win._on_finished
-
-    def on_stopped(info):
-        orig_stopped(info)
-        try:
-            hub.on_stopped(info)
-        except Exception as e:  # noqa: BLE001 - the CPU view must never break debugging
-            win.log(f"[cpu view] {e}")
-    win._on_stopped = on_stopped
-
-    def on_resumed():
-        orig_resumed()
-        try:
-            hub.on_resumed()
-        except Exception:  # noqa: BLE001
-            pass
-    win._on_resumed = on_resumed
-
-    def on_finished(code, session=None):
-        orig_finished(code, session)
-        try:
-            hub.on_finished()
-        except Exception:  # noqa: BLE001
-            pass
-    win._on_finished = on_finished
+    ep = win.extension_points          # the CPU view never breaks debugging: its errors are logged
+    ep.on("debug_paused", lambda info: hub.on_stopped(info), "cpu view")
+    ep.on("debug_resumed", lambda: hub.on_resumed(), "cpu view")
+    ep.on("program_finished", lambda _code, _session: hub.on_finished(), "cpu view")
 
     try:
         from ..monaco_editor import MonacoEditor

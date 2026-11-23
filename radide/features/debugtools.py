@@ -74,17 +74,14 @@ def install(win) -> None:
         tools._watch_wrapped = True
 
     # ---------------------------------------------------------------- stop hook
-    orig_stopped = win._on_stopped
-
-    def on_stopped(info):
-        orig_stopped(info)
+    def on_stopped(_info) -> None:
         if win._run_to is not None and win.session is not None:       # remove the temporary breakpoint
             f, line = win._run_to
             win._run_to = None
             if (line - 1) not in win.breakpoints.get(f, set()):
                 win.session.set_breakpoint(f, line, False)
         refresh()
-    win._on_stopped = on_stopped
+    win.extension_points.on("debug_paused", on_stopped, "debug tools")
 
     # ---------------------------------------------------------------- actions
     debug_menu = next(a.menu() for a in win.menuBar().actions() if a.text().replace("&", "") == "Debug")
@@ -132,16 +129,11 @@ def install(win) -> None:
         s = win.session
         if s is None or not s.running():
             win._run_to = (f, line + 1)
-            original = win._all_breakpoints
-
-            def with_temp():
-                bps = original()
-                return bps + [(f, line + 1, "")]
-            win._all_breakpoints = with_temp
+            win.temp_breakpoints.append((f, line + 1, ""))         # for this start only
             try:
                 win.run_project(debug=True)
             finally:
-                win._all_breakpoints = original
+                win.temp_breakpoints.clear()
             return
         win._run_to = (f, line + 1)
         s.set_breakpoint(f, line + 1, True)

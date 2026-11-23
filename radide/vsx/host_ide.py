@@ -1761,19 +1761,17 @@ def install(win) -> VsxService:
         pass
 
     # F5: an extension debugger for files the project cannot debug itself
-    orig_run = getattr(win, "run_project", None)
-    if callable(orig_run):
-        def run_project(debug: bool = True, _orig=orig_run):
-            try:
-                s = getattr(win, "session", None)
-                if debug and not (s is not None and s.running()):
-                    ed = svc.active_editor()
-                    if svc.should_debug_with_extension(ed) and svc.debug_start(ed=ed):
-                        return None
-            except Exception as e:  # noqa: BLE001 - never break F5
-                svc.log(f"debug: {e}")
-            return _orig(debug)
-        win.run_project = run_project
+    def run_with_extension(debug: bool) -> bool:
+        try:
+            s = getattr(win, "session", None)
+            if debug and not (s is not None and s.running()):
+                ed = svc.active_editor()
+                if svc.should_debug_with_extension(ed) and svc.debug_start(ed=ed):
+                    return True
+        except Exception as e:  # noqa: BLE001 - never break F5
+            svc.log(f"debug: {e}")
+        return False
+    win.extension_points.add_run_handler(run_with_extension, "VS Code debugger")
 
     try:                                        # the Error List's problems reach getDiagnostics (agents check their work)
         from .. import tools as _tools

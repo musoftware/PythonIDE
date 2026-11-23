@@ -16,9 +16,8 @@ def _is_godot(win) -> bool:
 
 
 def install(win) -> None:
-    orig_run = win.run_project
-
-    def run_project(debug: bool = True):
+    def run_godot(debug: bool) -> bool:
+        """F5 in a Godot project: Godot's debug adapter (True); otherwise the window runs it (False)."""
         if debug and _is_godot(win) and not (win.session is not None and win.session.running()) and \
                 str(win.settings.value("games/godot_dap", True)).lower() not in ("false", "0"):
             try:
@@ -31,9 +30,9 @@ def install(win) -> None:
                 try:
                     from ..games.godot_dap import start_debugging
                     start_debugging(win, godot)
-                    return None
+                    return True
                 except Exception as e:  # noqa: BLE001 - fall back to a plain run
                     win.log(f"*** Godot debug adapter: {e} - running without the debugger")
-        return orig_run(debug)
+        return False
 
-    win.run_project = run_project
+    win.extension_points.add_run_handler(run_godot, "godot")       # radide/extension_points.py
