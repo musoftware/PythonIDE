@@ -2101,8 +2101,8 @@ class MainWindow(QMainWindow):
             ep.after_save_all(ok)
 
     def _save_projects(self, providers_ok: bool) -> bool:
-        if not self.project:
-            return False
+        if not self.project:             # loose files only (an image, a notebook ...): their save is the result -
+            return providers_ok          # False here kept the IDE open after "Save changes?" -> Save
         active = self.project
         saved_libs = []
         try:

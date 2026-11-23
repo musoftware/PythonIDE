@@ -84,6 +84,17 @@
     "{scratch}"
    ],
    "note": "F5 handlers (Expo, Flutter, Godot adapter, VS Code debugger; mobile / 3D steps first), session extras, stop / resume / end steps, Run to Cursor temporary breakpoint - the window's own steps are counters"
+  },
+  "test_save_no_project.py": {
+   "tier": "fast",
+   "timeout": 300,
+   "needs": [
+    "qt"
+   ],
+   "args": [
+    "{scratch}"
+   ],
+   "note": "no project, an edited loose image: Save All succeeds; closing -> Save saves it and the IDE closes"
   }
  }
 }
