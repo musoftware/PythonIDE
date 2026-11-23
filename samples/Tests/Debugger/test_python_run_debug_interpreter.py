@@ -70,16 +70,17 @@ import debugpy  # noqa: E402  (the IDE's own, from its .venv)
 IDE_DEBUGPY = Path(debugpy.__file__).parent
 
 from radide import app as A  # noqa: E402
+from radide import interpreters as I  # noqa: E402  (debugpy_adapter_for / _has_debugpy live here)
 
 # ------------------------------------------------------------------ 1. unit: where debugpy comes from
 base = other_python()
 ok("another Python found for the project", Path(base).is_file(), base)
 venv1 = make_venv(SCRATCH / "unit_venv", base)
 ok("scratch venv created", venv1, base)
-argv, how = A.debugpy_adapter_for(sys.executable)
+argv, how = I.debugpy_adapter_for(sys.executable)
 ok("an interpreter with debugpy uses its own", argv and argv[0] == sys.executable and "this interpreter" in how,
    (argv, how))
-argv, how = A.debugpy_adapter_for(venv1)
+argv, how = I.debugpy_adapter_for(venv1)
 ok("without debugpy: the IDE's debugpy (the program still runs with its interpreter)",
    argv and os.path.normcase(argv[0]) == os.path.normcase(sys.executable) and "of the IDE" in how, (argv, how))
 calls = []
@@ -94,13 +95,13 @@ def fake_install(py):
     return True
 
 
-orig_has = A._has_debugpy
-A._has_debugpy = lambda: False                         # an IDE without debugpy (a release build without it)
+orig_has = I._has_debugpy
+I._has_debugpy = lambda: False                         # an IDE without debugpy (a release build without it)
 try:
-    argv, how = A.debugpy_adapter_for(venv1, fake_install)
+    argv, how = I.debugpy_adapter_for(venv1, fake_install)
     ok("IDE without debugpy: installed into the interpreter on demand", calls == [venv1] and argv
        and argv[0] == venv1 and "installed" in how, (calls, argv, how))
-    argv, how = A.debugpy_adapter_for(venv1, fake_install)
+    argv, how = I.debugpy_adapter_for(venv1, fake_install)
     ok("next time: the interpreter's own debugpy (no second install)", len(calls) == 1 and argv and argv[0] == venv1,
        (calls, argv))
     if PIP:
@@ -115,11 +116,11 @@ try:
 
             class dock_output:  # noqa: N801
                 show = staticmethod(lambda: None)
-        argv, how = A.debugpy_adapter_for(venv2, lambda py: A.MainWindow._install_debugpy(_W(), py))
+        argv, how = I.debugpy_adapter_for(venv2, lambda py: A.MainWindow._install_debugpy(_W(), py))
         ok("--pip: real pip install debugpy into the interpreter", argv and argv[0] == venv2, how)
 finally:
-    A._has_debugpy = orig_has
-ok("old debugpy refused for Python 3.14", not A._debugpy_supports("1.6.7", "3.14.1") and A._debugpy_supports("1.8.22",
+    I._has_debugpy = orig_has
+ok("old debugpy refused for Python 3.14", not I._debugpy_supports("1.6.7", "3.14.1") and I._debugpy_supports("1.8.22",
    "3.14.1"))
 
 # ------------------------------------------------------------------ 2. the real IDE: Run and Debug
