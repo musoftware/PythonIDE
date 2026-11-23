@@ -110,7 +110,7 @@ def take(feature, doc, key: str) -> None:
 
 for name, attr, saved_by_save_all in (("firmware workbench", "firmware_ide", True),
                                       ("firmware map editor", "firmware_maps", True),
-                                      ("PE / MFC workbench", "pe_workbench", False)):
+                                      ("PE / MFC workbench", "pe_workbench", True)):     # asks where (Save As)
     feature = getattr(win, attr, None)
     if not ok(f"{name}: feature installed (win.{attr})", feature is not None):
         continue
@@ -132,6 +132,18 @@ for name, attr, saved_by_save_all in (("firmware workbench", "firmware_ide", Tru
                doc.saves)
             ok(f"{name}: ... so the IDE still has unsaved changes", win._any_modified())
         take(feature, doc, key)
+        if attr == "pe_workbench":
+            # the user cancels the Save As of an edited program: Save All fails, so closing keeps the IDE open
+            cancel = FakeDoc()
+            cancel.save = lambda: (setattr(cancel, "saves", cancel.saves + 1), False)[1]
+            cancel.modified = True
+            put(feature, cancel, "fake-pe-cancel")
+            ok(f"{name}: Save As cancelled -> Save All reports a failure", win.save_all() is False)
+            ok(f"{name}: ... the program is still unsaved", win._any_modified())
+            ok(f"{name}: ... and closing keeps the IDE open after 'Save'",
+               (lambda q: (setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.StandardButton.Save)),
+                           not win._confirm_close_inner(), setattr(QMessageBox, "question", q))[1])(QMessageBox.question))
+            take(feature, cancel, "fake-pe-cancel")
         if attr == "firmware_ide":
             ro = FakeDoc(read_only=True)
             ro.modified = True

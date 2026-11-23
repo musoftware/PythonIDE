@@ -97,11 +97,17 @@ class PeWorkbenchFeature:
     def open_document(self, path: Path):
         return None
 
-    def save_documents(self) -> None:
-        # Not saved by Save All: an edited program is always saved with Save As (never over the original
-        # without asking). NOTE: the closing question still counts it as unsaved - after "Save" the IDE
-        # closes and the edit is lost; see samples/Tests/Architecture/ExtensionPoints/test_save_participants.py
-        return None
+    def save_documents(self) -> bool:
+        """Save All (and "Save changes?" -> Save when closing): an edited program is always saved with Save As,
+        never over the original without asking - so each one asks where. Cancelled = False: Save All reports a
+        failure and closing keeps the IDE open (it used to close and lose the edit)."""
+        ok = True
+        for wb in list(self.docs.values()):
+            if self._alive(wb) and wb.is_modified():
+                self.win._show_tab(wb, wb.windowTitle() or "PE")       # the user sees which program it is
+                if not wb.save():
+                    ok = False
+        return ok
 
     def has_modified_documents(self) -> bool:
         return any(self._alive(d) and d.is_modified() for d in self.docs.values())
