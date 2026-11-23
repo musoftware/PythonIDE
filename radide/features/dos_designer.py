@@ -82,12 +82,7 @@ class DosDesignerFeature:
 
     def _wrap(self) -> None:
         win = self.win
-        win.extension_points.add_document_provider(self)
-        # win.open_file (web_workspace) is wrapped by editor_extras / retro_rom one turn later for their hex
-        # views: wrap it again, outermost, so .tform / art files reach their editors there too.
-        # TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well.
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(0, lambda: QTimer.singleShot(0, self._wrap_outer))
+        win.extension_points.add_document_provider(self, links=True)
         win.dos_designer = self
         for attr, op in (("a_undo", "undo"), ("a_redo", "redo"), ("a_cut", "cut"), ("a_copy", "copy"),
                          ("a_paste", "paste"), ("a_delete", "delete"), ("a_select_all", "select_all")):
@@ -96,23 +91,6 @@ class DosDesignerFeature:
                 act.triggered.connect(lambda _c=False, op=op: self._edit(op))
         if getattr(win, "a_save", None) is not None:
             win.a_save.triggered.connect(lambda _c=False: self._save_current())
-
-    def _wrap_outer(self) -> None:
-        win = self.win
-        for attr in ("open_file",):
-            orig = getattr(win, attr, None)
-            if not callable(orig) or getattr(orig, "_rad_tui", False):
-                continue
-
-            def opener(path, *a, _orig=orig, **k):
-                p = Path(path)
-                if not p.is_absolute() and getattr(win, "project", None) is not None:
-                    p = Path(win.project.folder) / p
-                if self.handles(p) and p.is_file():
-                    return self.open(p)
-                return _orig(path, *a, **k)
-            opener._rad_tui = True
-            setattr(win, attr, opener)
 
     @staticmethod
     def handles(path) -> bool:

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (QDockWidget, QFileDialog, QLabel, QMessageBox, QTreeWidget, QTreeWidgetItem,
                              QVBoxLayout, QWidget)
 
@@ -116,7 +116,7 @@ class NotebookFeature:
 
     def _wrap(self) -> None:
         win = self.win
-        win.extension_points.add_document_provider(self)
+        win.extension_points.add_document_provider(self, links=True)
 
         win.extension_points.add_shutdown_step(lambda: self.shutdown_all(), "notebooks")
         win.open_notebook = self.open_notebook
@@ -128,23 +128,6 @@ class NotebookFeature:
             act = getattr(win, attr, None)
             if act is not None:
                 act.triggered.connect(lambda _c=False, op=op: self._edit(op))
-        QTimer.singleShot(0, self._wrap_open_file)      # after web_workspace installed win.open_file
-
-    def _wrap_open_file(self) -> None:
-        win = self.win
-        orig = getattr(win, "open_file", None)
-        if not callable(orig) or getattr(orig, "_rad_nb", False):
-            return
-
-        def open_file(path, *a, **k):
-            p = Path(path)
-            if not p.is_absolute() and getattr(win, "project", None) is not None:
-                p = Path(win.project.folder) / p
-            if _is_nb(p):
-                return self.open_notebook(p)
-            return orig(path, *a, **k)
-        open_file._rad_nb = True
-        win.open_file = open_file
 
     # ------------------------------------------------------------------ documents
     @staticmethod

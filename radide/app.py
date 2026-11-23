@@ -860,6 +860,22 @@ class MainWindow(QMainWindow):
         if f:
             self.open_any_file(Path(f))
 
+    def open_file(self, path, line: int | None = None):
+        """Open a file from a link - Error List, Find Results, Go to Definition, the web Solution Explorer -
+        optionally at *line* (1-based); a relative path is relative to the active project. Providers registered
+        with links=True (hex view, ROM workbench, text-mode / retro graphics designers, notebooks, Flutter
+        screens) take their files; everything else opens in the window's editors (CONTRACTS 8.1).
+        Returns the editor (None for images / binaries)."""
+        p = Path(path)
+        if not p.is_absolute() and self.project is not None:
+            p = Path(self.project.folder) / p
+        if p.is_file():
+            handled, editor = self.extension_points.open_document(p, links=True)
+            if handled:
+                return editor
+        from .features.web_workspace import open_file as open_in_editor     # TODO(stage B): into the window
+        return open_in_editor(self, path, line)
+
     def open_any_file(self, path: Path):
         handled, editor = self.extension_points.open_document(Path(path))    # image editor, designers ...
         if handled:

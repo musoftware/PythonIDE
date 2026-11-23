@@ -89,6 +89,7 @@ class ExtensionPoints:
     def __init__(self, log: Callable[[str], None] | None = None):
         self._log = log or print
         self._documents: list[tuple[int, DocumentProvider]] = []
+        self._links: set[int] = set()            # id() of the providers MainWindow.open_file asks too
         self._solution: list[tuple[str, Callable[[], None]]] = []
         self._after_save: list[tuple[str, Callable[[bool], None]]] = []
         self._before_save: list[tuple[str, Callable[[], None]]] = []
@@ -100,15 +101,21 @@ class ExtensionPoints:
         self._run_handlers: list[tuple[str, Callable[[bool], bool]]] = []
 
     # ------------------------------------------------------------ registration
-    def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
+    def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR, links: bool = False) -> None:
+        """*links*: also asked by MainWindow.open_file - the way the Error List, Find Results, Go to Definition
+        and the web Solution Explorer open a file (often at a line). Without it a link opens the file in the
+        window's own editor (e.g. an image in the image viewer, a report's JSON as text)."""
         missing = [m for m in _PROVIDER_METHODS if not callable(getattr(provider, m, None))]
         if missing:
             raise TypeError(f"{type(provider).__name__} is not a DocumentProvider: missing {', '.join(missing)}")
         if all(p is not provider for _, p in self._documents):
             self._documents.append((priority, provider))
+            if links:
+                self._links.add(id(provider))
 
     def remove_document_provider(self, provider: DocumentProvider) -> None:
         self._documents = [(pr, p) for pr, p in self._documents if p is not provider]
+        self._links.discard(id(provider))
 
     def document_providers(self) -> list[DocumentProvider]:
         """The order they are asked in: higher priority first, then latest registered first."""
@@ -205,9 +212,12 @@ class ExtensionPoints:
     def shutdown(self) -> None:
         self._run_all(self._shutdown, "shutdown")
 
-    def open_document(self, path: Path) -> tuple[bool, object]:
-        """(True, editor) when a provider took *path*; (False, None) when it is nobody's."""
+    def open_document(self, path: Path, links: bool = False) -> tuple[bool, object]:
+        """(True, editor) when a provider took *path*; (False, None) when it is nobody's. links=True: only the
+        providers registered with links=True are asked (MainWindow.open_file)."""
         for p in self.document_providers():
+            if links and id(p) not in self._links:
+                continue
             try:
                 if not p.can_open(path):
                     continue

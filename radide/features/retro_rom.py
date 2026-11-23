@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QDialog, QFileDialog, QLineEdit, QMessageBox, QPlainTextEdit, QTreeWidgetItem
 
 ROLE = Qt.ItemDataRole.UserRole
@@ -81,7 +81,7 @@ class RomFeature:
     def _wrap(self) -> None:
         win = self.win
         from ..extension_points import BINARY_VIEWER
-        win.extension_points.add_document_provider(self, BINARY_VIEWER)
+        win.extension_points.add_document_provider(self, BINARY_VIEWER, links=True)
         win.extension_points.add_solution_contributor(self._add_tree_nodes, "rom workbench")
         win.open_hex = self.open_hex
         win.rom_workbench = self
@@ -92,26 +92,6 @@ class RomFeature:
                 act.triggered.connect(lambda _c=False, op=op: self._edit(op))
         if getattr(win, "a_save", None) is not None:
             win.a_save.triggered.connect(lambda _c=False: self._save_current())
-        # after web_workspace installs win.open_file and editor_extras wraps both for its generic hex view
-        QTimer.singleShot(0, self._wrap_open_file)
-
-    def _wrap_open_file(self) -> None:
-        """win.open_file (web_workspace) of ROM files goes to the hex editor too.
-        TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well."""
-        win = self.win
-        orig = getattr(win, "open_file", None)
-        if not callable(orig) or getattr(orig, "_rad_rom", False):
-            return
-
-        def open_file(path, *a, **k):
-            p = Path(path)
-            if not p.is_absolute() and getattr(win, "project", None) is not None:
-                p = Path(win.project.folder) / p
-            if wants_hex(p) and p.is_file():
-                return self.open_hex(p)
-            return orig(path, *a, **k)
-        open_file._rad_rom = True
-        win.open_file = open_file
 
     @staticmethod
     def _alive(w) -> bool:

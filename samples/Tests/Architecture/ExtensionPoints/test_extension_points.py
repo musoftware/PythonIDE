@@ -130,6 +130,16 @@ ok("priority: the ROM viewer beats the hex fallback (.nes -> rom)", pe.open_docu
 ok("priority: an editor beats the ROM viewer (.bin art -> tform)", pe.open_document(Path("x.bin")) == (True, "tform:x.bin"))
 pe.remove_document_provider(tform)
 ok("remove_document_provider with priorities", pe.open_document(Path("x.bin")) == (True, "rom:x.bin"))
+lk = ExtensionPoints(logged.append)
+img = Prov("img", {".png"}, [])
+hx = Prov("hx", {".png", ".bin"}, [])
+lk.add_document_provider(img)
+lk.add_document_provider(hx, FALLBACK, links=True)
+ok("links: File > Open asks every provider (.png -> its editor)", lk.open_document(Path("a.png")) == (True, "img:a.png"))
+ok("links: open_file asks only links=True providers (.png -> not the editor)",
+   lk.open_document(Path("a.png"), links=True) == (True, "hx:a.png"))
+lk.remove_document_provider(hx)
+ok("links: a removed provider is not asked by links any more", lk.open_document(Path("a.bin"), links=True) == (False, None))
 
 seq: list = []
 logged.clear()

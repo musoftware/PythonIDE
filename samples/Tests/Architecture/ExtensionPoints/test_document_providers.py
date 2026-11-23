@@ -345,6 +345,27 @@ for row in EDITORS:
         traceback.print_exc()
         ok(f"{name}: part", False, e)
 
+# win.open_file (Error List, Find Results, Go to Definition, web Solution Explorer): which editor opens each file.
+# Measured before win.open_file became a MainWindow method; it must stay the same.
+LINK_EXPECT = {"logo.png": "ImageView", "Sales.rpt.json": "ReportDesigner", "Level1.scene": "SceneEditor",
+               "World.scene3d": "Scene3DEditor", "index.html": "ModuleView", "Main.tform": "TuiDesigner",
+               "Map1.gbmap": "GameDesigner", "game.tbl": "TableEditor", "Analysis.ipynb": "NotebookView",
+               "Home.fscreen.json": "FlutterDesigner", "game.nes": "HexDocument", "blob.xyz": "HexEditorView",
+               "arrow.cur": "HexEditorView"}
+seen_links = {}
+for fname, want in LINK_EXPECT.items():
+    try:
+        if win.tabs.count():
+            win.tabs.setCurrentIndex(0)
+        win.open_file(proj / fname)
+        pump()
+        got = type(win.tabs.currentWidget()).__name__
+        seen_links[fname] = got
+        ok(f"open_file({fname}) opens {want}", got == want, got)
+    except Exception as e:  # noqa: BLE001
+        ok(f"open_file({fname})", False, repr(e))
+print("LINKS", seen_links)
+
 # a file that is nobody's: the code editor
 try:
     py = proj / "helper.py"

@@ -1528,7 +1528,6 @@ def install(win) -> None:
     win.dock_web_requests = d
     win.dock_output.raise_()
     # API on the window
-    win.open_file = lambda path, line=None: open_file(win, path, line)
     win.run_website = lambda project=None, **kw: run_website(win, project, **kw)
     win.stop_website = lambda: stop_website(win)
     # Solution Explorer: lazy folders + remembered expansion

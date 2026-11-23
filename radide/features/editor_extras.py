@@ -2140,28 +2140,6 @@ class HexFallback:
         return False
 
 
-def _wrap_open(win):
-    """win.open_file (web_workspace, installed later) of binary files goes to the hex editor too.
-    TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well."""
-    if getattr(win, "_hex_open_wrapped", False):
-        return
-    win._hex_open_wrapped = True
-    orig_file = getattr(win, "open_file", None)
-    if callable(orig_file):
-        def open_file(path, *a, **k):
-            try:
-                p = Path(path)
-                if not p.is_absolute() and getattr(win, "project", None) is not None:
-                    p = Path(win.project.folder) / p
-                if should_open_hex(p):
-                    open_hex(win, p)
-                    return None
-            except OSError:
-                pass
-            return orig_file(path, *a, **k)
-        win.open_file = open_file
-
-
 def _on_editor_ready(ed):
     win = _win_for(ed)
     ext = _ext(win) if win is not None else None
@@ -2256,8 +2234,7 @@ def install(win) -> None:
                 act.setChecked(kid == ext.keymap)
         kmm.aboutToShow.connect(sync)
     from ..extension_points import FALLBACK
-    win.extension_points.add_document_provider(HexFallback(win), FALLBACK)
-    QTimer.singleShot(0, lambda: _wrap_open(win))   # after web_workspace installed win.open_file
+    win.extension_points.add_document_provider(HexFallback(win), FALLBACK, links=True)
 
 
 __all__ = ["install", "DiffView", "DiffSide", "open_diff", "compare_files", "compare_with_clipboard",

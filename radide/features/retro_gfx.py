@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QFileDialog
 
 OPEN_EXTS = {".chr": "tiles", ".tbl": "table", ".rtmap": "map", ".rtpf": "playfield"}
@@ -66,29 +65,7 @@ class RetroGfx:
         return ok
 
     def _wrap(self) -> None:
-        self.win.extension_points.add_document_provider(self)
-        # win.open_file (web_workspace) is wrapped by the hex views from a 0 ms timer: wrap it again after
-        # them so .chr / .tbl / .rtmap / .rtpf reach these editors there too.
-        # TODO(stage B): one way to open files in MainWindow; then this wrapper goes as well.
-        QTimer.singleShot(0, self._wrap_late)
-
-    def _wrap_late(self) -> None:
-        win = self.win
-        for name in ("open_file",):
-            orig = getattr(win, name, None)
-            if not callable(orig) or getattr(orig, "_retro_gfx", False):
-                continue
-
-            def opener(path, *a, _orig=orig, **k):
-                p = Path(path)
-                if not p.is_absolute() and getattr(win, "project", None) is not None:
-                    p = Path(win.project.folder) / p
-                kind = OPEN_EXTS.get(p.suffix.lower())
-                if kind is not None and p.is_file():
-                    return self.open_path(p, kind)
-                return _orig(path, *a, **k)
-            opener._retro_gfx = True
-            setattr(win, name, opener)
+        self.win.extension_points.add_document_provider(self, links=True)
 
     @staticmethod
     def _alive(w) -> bool:

@@ -494,14 +494,13 @@ class FlutterDesignerManager:
 
     def wrap(self):
         win = self.win
-        win.extension_points.add_document_provider(self)
+        win.extension_points.add_document_provider(self, links=True)
         win.extension_points.add_solution_contributor(self.add_tree_nodes, "flutter designer")
         win.extension_points.on("project_opened", lambda: QTimer.singleShot(0, self._safe_start), "flutter designer")
         win.extension_points.on("actions_updated", self._edit_commands, "flutter designer")
         win.open_flutter_screen = self.open_screen
         win.add_flutter_screen = self.add_screen
         win.flutter_designer = self
-        QTimer.singleShot(0, self._wrap_open_file)
 
     def _edit_commands(self) -> None:
         """Edit menu commands of the current screen designer (after the window set its own)."""
@@ -521,22 +520,6 @@ class FlutterDesignerManager:
             self.open_start_screen()
         except Exception as e:  # noqa: BLE001
             self.win.log(f"[flutter designer] {e}")
-
-    def _wrap_open_file(self):
-        win = self.win
-        orig = getattr(win, "open_file", None)
-        if not callable(orig) or getattr(orig, "_rad_fscreen", False):
-            return
-
-        def open_file(path, *a, **k):
-            p = Path(path)
-            if not p.is_absolute() and getattr(win, "project", None) is not None:
-                p = Path(win.project.folder) / p
-            if _is_screen(p):
-                return self.open_screen(p)
-            return orig(path, *a, **k)
-        open_file._rad_fscreen = True
-        win.open_file = open_file
 
 
 def _project_menu(win):
