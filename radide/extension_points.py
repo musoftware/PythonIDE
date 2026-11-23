@@ -72,6 +72,12 @@ EVENTS = {
     "title_updated": "_update_title finished",
     "layout_restored": "restoreState (the dock layout) was applied",
     "output_logged": "a line went to the Output window - fn(text); errors here go to stderr, not the Output",
+    "session_created": "_make_session made a debug / run session - fn(session, debug: bool, plugin)",
+    "debug_pausing": "the program stopped (breakpoint / step), before the window shows it - fn(info)",
+    "debug_paused": "the window showed the stop (current line, Locals, Call Stack) - fn(info)",
+    "debug_resuming": "the program continues, before the window updates",
+    "debug_resumed": "the window shows the program running again",
+    "program_finished": "the program ended and the window showed it - fn(exit_code, session or None)",
 }
 
 EDITOR = 0            # the editor of a file type (.png, .rpt.json, .scene, .tform ...)
@@ -91,6 +97,7 @@ class ExtensionPoints:
         self._events: dict[str, list[tuple[str, Callable]]] = {name: [] for name in EVENTS}
         self._logged: set[tuple] = set()           # (handler, step, error) already in the Output window
         self._properties: list[tuple[str, Callable[[object], bool]]] = []
+        self._run_handlers: list[tuple[str, Callable[[bool], bool]]] = []
 
     # ------------------------------------------------------------ registration
     def add_document_provider(self, provider: DocumentProvider, priority: int = EDITOR) -> None:
@@ -144,6 +151,12 @@ class ExtensionPoints:
     def has_handlers(self, event: str) -> bool:
         return bool(self._events[event])
 
+    def add_run_handler(self, fn: Callable[[bool], bool], name: str = "") -> None:
+        """*fn(debug)* is asked on F5 / Ctrl+F5 before the window runs the project; True = this feature ran it
+        (Expo, flutter run, Godot's debug adapter, a VS Code debugger), False = not its project (it may still
+        do a step first, e.g. write project files). Latest registered first, like the outermost wrapper was."""
+        self._run_handlers.append((name or getattr(fn, "__qualname__", "run handler"), fn))
+
     def add_properties_dialog(self, fn: Callable[[object], bool], name: str = "") -> None:
         """*fn(project)* may show its own Project > Properties for that project and return True (a VB6 mirror
         project shows the VB6 dialog); False lets the next one / the window's dialog show. Latest first."""
@@ -159,6 +172,16 @@ class ExtensionPoints:
                     traceback.print_exc()
             return
         self._run_all(self._events[event], event, *args)
+
+    def run(self, debug: bool) -> bool:
+        """True when a feature ran the project itself (the window must not run it too)."""
+        for name, fn in reversed(self._run_handlers):
+            try:
+                if fn(debug):
+                    return True
+            except Exception:  # noqa: BLE001 - F5 still runs the project the usual way
+                self._log(f"[{name}] run failed:\n{traceback.format_exc()}")
+        return False
 
     def show_properties(self, project) -> bool:
         """True when a feature showed its own Project > Properties for *project*."""

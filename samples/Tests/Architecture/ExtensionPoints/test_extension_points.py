@@ -196,6 +196,19 @@ pe2.emit("output_logged", "hello")
 ok("output_logged: sinks get the text; a failing sink is NOT logged to the Output (no endless loop)",
    sink == ["hello"] and not logged, (sink, logged))
 
+rh: list = []
+logged.clear()
+re_ = ExtensionPoints(logged.append)
+re_.add_run_handler(lambda debug: rh.append(("first", debug)) or False, "first")
+re_.add_run_handler(lambda debug: 1 / 0, "broken")
+re_.add_run_handler(lambda debug: rh.append(("step", debug)) or False, "step")
+ok("run handlers: latest first, a raising one logged, nobody runs it -> False (the window runs it)",
+   re_.run(True) is False and rh == [("step", True), ("first", True)] and any("[broken]" in m for m in logged), rh)
+rh.clear()
+re_.add_run_handler(lambda debug: rh.append(("mine", debug)) or True, "mine")
+ok("run handlers: the first True stops (earlier handlers are not asked)", re_.run(False) is True
+   and rh == [("mine", False)], rh)
+
 order: list[str] = []
 logged.clear()
 ep.add_solution_contributor(lambda: order.append("first"), "first")

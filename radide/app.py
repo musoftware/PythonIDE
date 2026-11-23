@@ -414,6 +414,7 @@ class MainWindow(QMainWindow):
         self.session: Session | None = None
         self.stopped_at: tuple[str, int] | None = None
         self._no_save_questions = 0      # > 0: no "Save changes?" question (see no_save_questions)
+        self.temp_breakpoints: list[tuple[str, int, str]] = []   # (file, 1-based line, condition): Run to Cursor
         # how features take part in File > Open / Save All / Solution Explorer ... (radide/extension_points.py)
         self.extension_points = ExtensionPoints(lambda text: self.log(text))
 
@@ -2256,7 +2257,8 @@ class MainWindow(QMainWindow):
     def _all_breakpoints(self) -> list[tuple[str, int]]:
         self._sync_breakpoints()
         conds = getattr(self, "bp_conditions", {})
-        return [(f, ln + 1, conds.get((f, ln), "")) for f, lines in self.breakpoints.items() for ln in lines]
+        return [(f, ln + 1, conds.get((f, ln), "")) for f, lines in self.breakpoints.items() for ln in lines] + \
+            list(self.temp_breakpoints)
 
     # ================================================================ run / debug
     def project_venv_python(self, project=None) -> str:
@@ -2338,6 +2340,13 @@ class MainWindow(QMainWindow):
             self.run_project(debug=True)
 
     def run_project(self, debug: bool = True):
+        """F5 / Ctrl+F5: a feature may run the project itself (Expo, flutter run, Godot's debug adapter, a VS
+        Code debugger: radide/extension_points.py run handlers); otherwise the window runs it."""
+        if self.extension_points.run(debug):
+            return None
+        return self._run_project(debug)
+
+    def _run_project(self, debug: bool = True):
         if not self.project or (self.session is not None and self.session.running()):
             return
         if self.save_all() is False:             # disk full / locked file: the message is shown, no run of old code
@@ -2408,6 +2417,14 @@ class MainWindow(QMainWindow):
         self._update_actions()
 
     def _make_session(self, spec, debug, plugin, interp, startup=None):
+        """The session that runs / debugs the program (emits session_created: assembly / DOS / retro tools
+        add their views)."""
+        s = self._create_session(spec, debug, plugin, interp, startup)
+        if s is not None:
+            self.extension_points.emit("session_created", s, debug, plugin)
+        return s
+
+    def _create_session(self, spec, debug, plugin, interp, startup=None):
         """Python debugging uses debugpy (DAP) when installed: conditional breakpoints and
         break on exception come ready-made. Everything else uses the plugin's own agent."""
         factory = getattr(plugin, "make_session", None)      # foreign projects (radide/foreign/*): own toolchain
@@ -2553,6 +2570,11 @@ class MainWindow(QMainWindow):
         return None
 
     def _on_stopped(self, info: StopInfo):
+        self.extension_points.emit("debug_pausing", info)
+        self._show_stopped(info)
+        self.extension_points.emit("debug_paused", info)      # Watch, CPU view, native windows ...
+
+    def _show_stopped(self, info: StopInfo):
         self._clear_current_line()
         ed = self._editor_for_file(info.file)
         if ed is not None:
@@ -2599,6 +2621,11 @@ class MainWindow(QMainWindow):
             lbl.setText(text)
 
     def _on_resumed(self):
+        self.extension_points.emit("debug_resuming")
+        self._show_resumed()
+        self.extension_points.emit("debug_resumed")
+
+    def _show_resumed(self):
         self._clear_current_line()
         self._set_run_state("Running...")
         self._update_actions()
@@ -2614,6 +2641,10 @@ class MainWindow(QMainWindow):
         if session is None:
             snd = self.sender()
             session = snd if snd is not None and hasattr(snd, "user_stopped") else None
+        self._show_finished(code, session)
+        self.extension_points.emit("program_finished", code, session)
+
+    def _show_finished(self, code, session=None):
         if session is not None and self.session is not None and session is not self.session:
             return      # an earlier (stopped) session ended after F5 started a new one: keep the new one
         self._clear_current_line()
