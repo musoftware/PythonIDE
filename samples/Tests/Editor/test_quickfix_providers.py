@@ -187,7 +187,9 @@ ok("python: light bulb (cheap) still finds np", first(acts(write("pyproj/e.py", 
 
 # ============================================================================ C# / VB
 rad = SCRATCH / "RadCs"
-write("RadCs/project.radproj", json.dumps({"name": "RadCs", "language": "csharp-bridge", "forms": ["Form1"]}))
+# GUI Bridge mode (the IDE draws the form, the program is a console process): no WinForms types
+write("RadCs/project.radproj", json.dumps({"name": "RadCs", "language": "csharp-bridge", "forms": ["Form1"],
+                                          "dotnetRuntime": "bridge"}))
 cs = ('public static partial class Form1\n{\n    static void RmButton1_Click(RadEvent e)\n    {\n'
       '        MessageBox.Show("Hello", "Title");\n    }\n}\n')
 f = write("RadCs/Form1.cs", cs)
@@ -238,6 +240,18 @@ ok("RAD C#: a call of an own method (not a type) -> no NuGet search",
 ok("RAD C#: light bulb (cheap) does not offer the network search",
    not first(acts(f, cs.replace('MessageBox.Show("Hello", "Title");', "FooBarWidget w;"), 4, 10, cheap=True),
              "Search"))
+# native mode (the default: a real WinForms exe, radide/dotnet/native_project.py): WinForms types are real types
+write("RadNat/project.radproj", json.dumps({"name": "RadNat", "language": "csharp-bridge", "forms": ["Form1"]}))
+fn = write("RadNat/Form1.cs", cs)
+r = acts(fn, cs, 4, 10, diag)
+ok("RAD C# native: MessageBox -> no RAD helper rewrite, nothing 'not available', no NuGet search",
+   not [a for a in r if "MsgBox" in a.title or "not available" in a.title or "NuGet" in a.title], titles(r))
+src_n = cs.replace('MessageBox.Show("Hello", "Title");', "var sb = new StringBuilder();")
+r = acts(fn, src_n, 4, 24)
+ok("RAD C# native: StringBuilder -> using System.Text;", r and r[0].title == "using System.Text;", titles(r))
+r = acts(fn, cs.replace('MessageBox.Show("Hello", "Title");', "var c = new Button();"), 4, 22)
+ok("RAD C# native: Button needs nothing (implicit usings of a WinForms project)",
+   not [a for a in r if "using" in a.title or "NuGet" in a.title], titles(r))
 loose = "class A\n{\n    void F() { var l = new List<int>(); }\n}\n"
 f = write("loose/A.cs", loose)
 r = acts(f, loose, 2, 28)

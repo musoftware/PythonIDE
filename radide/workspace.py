@@ -67,7 +67,18 @@ def write_lsp_manifest(folder, server: str | None = None) -> bool:
             init_manifest(folder)
             return (folder / "Cargo.toml").is_file()
         if server in (None, "csharp") and "csharp-bridge" in langs:
-            from .languages.csharp_bridge import CSPROJ, build_dir, ensure_build_dir
+            from .languages.csharp_bridge import CSPROJ, build_dir, ensure_build_dir, native_mode
+            if native_mode(folder):
+                # a WinForms exe: csharp-ls needs RadIDE.Runtime.dll (built once, in the background - it only
+                # takes seconds the first time) and the current csproj / generated designers
+                from .dotnet import native_project, runtime_lib
+                if not runtime_lib.is_built():
+                    import threading
+                    threading.Thread(target=runtime_lib.build, kwargs={"log": lambda _s: None}, daemon=True).start()
+                existed = (build_dir(folder) / CSPROJ).is_file()
+                native_project.generate(folder, build_dir(folder))
+                ensure_build_dir(folder)
+                return not existed
             if not (build_dir(folder) / CSPROJ).is_file():
                 ensure_build_dir(folder)
                 return True

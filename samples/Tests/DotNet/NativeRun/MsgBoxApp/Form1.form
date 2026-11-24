@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "props": {
+    "Name": "Form1",
+    "Text": "Hello - C# (.NET)",
+    "Width": 440,
+    "Height": 330,
+    "BackColor": "",
+    "StartPosition": "CenterScreen",
+    "FormBorderStyle": "Sizable",
+    "TopMost": false,
+    "WindowState": "Normal",
+    "Icon": "",
+    "ScaleMode": "Pixel"
+  },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "props": {
+        "Name": "MenuStrip1",
+        "Items": [
+          {
+            "Text": "File",
+            "Name": "mnuFile",
+            "Items": [
+              {
+                "Text": "Clear",
+                "Name": "mnuFileClear"
+              },
+              {
+                "Text": "-"
+              },
+              {
+                "Text": "Exit",
+                "Name": "mnuFileExit"
+              }
+            ]
+          },
+          {
+            "Text": "Help",
+            "Name": "mnuHelp",
+            "Items": [
+              {
+                "Text": "About",
+                "Name": "mnuHelpAbout"
+              }
+            ]
+          }
+        ],
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblName",
+        "Text": "Your name:",
+        "Left": 12,
+        "Top": 36,
+        "Width": 80,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "TextBox",
+      "props": {
+        "Name": "txtName",
+        "Text": "World",
+        "Left": 96,
+        "Top": 33,
+        "Width": 200,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Multiline": false,
+        "ReadOnly": false,
+        "PasswordChar": "",
+        "MaxLength": 0,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Button",
+      "props": {
+        "Name": "btnGreet",
+        "Text": "Greet",
+        "Left": 308,
+        "Top": 31,
+        "Width": 100,
+        "Height": 23,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 1,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "CheckBox",
+      "props": {
+        "Name": "chkShout",
+        "Text": "Shout (upper case)",
+        "Left": 96,
+        "Top": 62,
+        "Width": 200,
+        "Height": 20,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Checked": false,
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblGreeting",
+        "Text": "",
+        "Left": 12,
+        "Top": 92,
+        "Width": 400,
+        "Height": 24,
+        "BackColor": "",
+        "ForeColor": "#1F4E9E",
+        "FontName": "Segoe UI",
+        "FontSize": 12,
+        "FontBold": true,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "ListBox",
+      "props": {
+        "Name": "lstHistory",
+        "Left": 12,
+        "Top": 124,
+        "Width": 396,
+        "Height": 130,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "Items": "",
+        "Parent": ""
+      }
+    },
+    {
+      "type": "Label",
+      "props": {
+        "Name": "lblCount",
+        "Text": "0 greetings",
+        "Left": 12,
+        "Top": 262,
+        "Width": 396,
+        "Height": 17,
+        "BackColor": "",
+        "ForeColor": "",
+        "FontName": "Segoe UI",
+        "FontSize": 9,
+        "FontBold": false,
+        "FontItalic": false,
+        "Enabled": true,
+        "Visible": true,
+        "ToolTip": "",
+        "TabIndex": 0,
+        "Anchor": "Top, Left",
+        "Dock": "None",
+        "TextAlign": "Left",
+        "Parent": ""
+      }
+    }
+  ]
+}

@@ -447,6 +447,9 @@ def main(argv=None):
         build = argv[argv.index("--build") + 1]
     program = argv[argv.index("--") + 1:] if "--" in argv else []
     handlers = set(filter(None, os.environ.get("RAD_HANDLERS", "").split(",")))
+    note = os.environ.get("RAD_HOST_NOTE", "")
+    if note and "console program" not in note:   # why the native forms host (radbridge.exe) is not used
+        print(f"[forms host] Python / Tk host: {note}", flush=True)
     try:        # console mode: a project without forms (its own main) runs as a plain console program
         from ..model import Project
         console = not Project.load(folder).forms

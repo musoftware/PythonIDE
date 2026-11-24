@@ -458,6 +458,19 @@
    ]
   },
   {
+   "path": "DotNet/NativeRun/test_native_run.py",
+   "tier": "toolchain:dotnet",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 1200,
+   "needs": [
+    "dotnet",
+    "desktop"
+   ],
+   "note": "RAD C# native mode: RadIDE.Runtime.dll, WinExe build, F5 host, debug handshake, mode switch"
+  },
+  {
    "path": "DotNet/NuGetTests/test_nuget_backend.py",
    "tier": "toolchain:dotnet",
    "needs": [
@@ -919,6 +932,19 @@
     "gfortran"
    ],
    "note": "Fortran GUI Bridge template -> native exe after F5 / Error List (stale radgui.mod)"
+  },
+  {
+   "path": "NativeHost/test_native_host.py",
+   "tier": "toolchain:mingw",
+   "args": [
+    "{scratch}"
+   ],
+   "timeout": 2400,
+   "needs": [
+    "mingw",
+    "desktop"
+   ],
+   "note": "radbridge.exe (native forms host) runs one example of every GUI Bridge language; missing language tools are skipped"
   },
   {
    "path": "Web/test_webengine_devtools_port.py",

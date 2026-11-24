@@ -150,13 +150,28 @@ class BridgeLanguagePlugin(LanguagePlugin):
         if not self.tool():
             build = f"echo {self.display_name}: required tool not found ({', '.join(self.tool_names)}). " \
                     f"{self.install_hint} && exit 1"
+        from ..paths import ansi_env              # the build step runs ANSI tools (gcc ...): TEMP they can open
+        env = ansi_env(dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
+                            RAD_HANDLERS=",".join(self.handlers_in_project(folder, project))))
+        # the native forms host (radide/runtimes/native_host.py, radbridge.exe: C + radforms, no Python) when the
+        # project's forms allow it; otherwise the Python host below, and the reason goes to the Output window
+        why = "the program's tool is missing" if not self.tool() else ""
+        if not why:
+            from ..runtimes import native_host as NH
+            try:
+                why = NH.why_not(folder, project, self)
+                if not why:
+                    forms = NH.write_forms(folder, project)
+                    env["RAD_BASE_DIR"] = str(folder)
+                    return RunSpec(str(NH.host_path()),
+                                   NH.radbridge_args(forms, build, self.run_command(folder, project)), folder, env)
+            except Exception as e:  # noqa: BLE001 - never stop F5: the Python host still runs it
+                why = f"native forms host: {e}"
+        env["RAD_HOST_NOTE"] = why
         args = ["-u", "-m", "radide.runtimes.bridge", str(folder)]
         if build:
             args += ["--build", build]
         args += ["--"] + self.run_command(folder, project)
-        from ..paths import ansi_env              # the build step runs ANSI tools (gcc ...): TEMP they can open
-        env = ansi_env(dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8",
-                            RAD_HANDLERS=",".join(self.handlers_in_project(folder, project))))
         return RunSpec(sys.executable, args, folder, env)
 
     def debug_spec(self, folder: Path, startup_form: str, interpreter: str, breakpoints) -> RunSpec:

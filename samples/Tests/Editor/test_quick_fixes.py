@@ -5,7 +5,7 @@
 * loose C# file: List<int> -> Alt+Enter -> "using System.Collections.Generic;" (preferred, selected), the preview
   shows the added line, Enter/trigger applies it; a mocked language server offering the same using -> it is shown
   once (dedup), its own action is applied through codeAction; Ctrl+. opens the same menu
-* RAD C# form (csharp-bridge): MessageBox.Show("Hello") with a CS0103 squiggle -> the light bulb appears on the
+* RAD C# form (csharp-bridge, GUI Bridge mode): MessageBox.Show("Hello") with a CS0103 squiggle -> the light bulb appears on the
   line, Alt+Enter -> "Use the RAD helper MsgBox(...)" first and "using System.Windows.Forms;" greyed out with the
   reason; applying rewrites the call and the squiggle goes away; the editor's right-click menu has the entry
 * Python form: np.array -> "import numpy as np"; import yaml in a project with its own .venv -> "Install 'PyYAML'
@@ -272,6 +272,8 @@ ok("Rust: use std::collections::HashMap; added", red.text().startswith("use std:
 rad = SCRATCH / "RadCs"
 try:
     workspace.create_project(rad, "RadCs", "csharp-bridge")
+    from radide.dotnet import native_project as _NP      # these checks are about the GUI Bridge mode (no WinForms);
+    _NP.set_mode(rad, _NP.BRIDGE)                       # native mode: samples/Tests/Editor/test_quickfix_providers.py
     win.open_project(rad, ask=False)
     pump(1.0)
     win.open_code("Form1")

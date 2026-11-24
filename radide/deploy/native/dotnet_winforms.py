@@ -57,6 +57,8 @@ FRAMEWORK_REFS = ("mscorlib.dll", "System.dll", "System.Core.dll", "System.Drawi
                   "System.Net.Http.dll", "System.Numerics.dll", "System.Runtime.Serialization.dll")
 GLOBAL_USINGS = ("System", "System.Collections.Generic", "System.IO", "System.Linq", "System.Net.Http",
                  "System.Threading", "System.Threading.Tasks")
+# C#: the implicit usings of a WinForms project (F5 in native mode compiles the same code: radide/dotnet/native_project.py)
+CS_GLOBAL_USINGS = GLOBAL_USINGS + ("System.Drawing", "System.Windows.Forms")
 # members of Form / Control a field must not hide (such controls get a c_ prefix)
 RESERVED = {"Text", "Name", "Left", "Top", "Width", "Height", "Size", "Location", "Controls", "Font", "Icon", "Menu",
             "Visible", "Enabled", "Tag", "Parent", "Handle", "Client", "Tips", "Items", "RadName", "Close", "Show",
@@ -929,13 +931,15 @@ def build(folder, project: Project, cfg, work, log, variant: str = "auto", trim:
     shutil.copy2(HERE / "RadWinForms.cs", src / "RadWinForms.cs")
     _write(src / "RadForms.g.cs", forms_code(forms, set(handlers), control_map(folder)))
     _write(src / "AssemblyInfo.g.cs", assembly_info(cfg, project))
-    _write(src / "GlobalUsings.g.cs", "\n".join(f"global using {u};" for u in GLOBAL_USINGS) + "\nglobal using static Rad;\n")
+    usings = CS_GLOBAL_USINGS if lang == "csharp-bridge" else GLOBAL_USINGS
+    _write(src / "GlobalUsings.g.cs", "\n".join(f"global using {u};" for u in usings) + "\nglobal using static Rad;\n")
     resources: list[tuple[Path, str]] = []
     extra_refs: list[str] = []
     notes: list[str] = []
     if lang == "csharp-bridge":
-        for p in sorted(folder.glob("*.cs")):
-            if not p.name.lower().endswith("_designer.cs"):
+        from ...dotnet.native_project import is_generated_designer
+        for p in sorted(folder.glob("*.cs")):       # the designers are generated again below (RadForms.g.cs ...)
+            if not p.name.lower().endswith("_designer.cs") and not is_generated_designer(p):
                 shutil.copy2(p, src / p.name)
         _designers(folder, project, lang, src, forms)
         _write(src / "RadProgram.g.cs", program_cs(project, cfg, forms, None, handlers))

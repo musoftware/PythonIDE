@@ -1226,6 +1226,12 @@ class MainWindow(QMainWindow):
         self.save_all()
         fp = self.plugin_for_form(form_name)
         path = self.project.folder / fp.designer_file(form_name)
+        native = getattr(fp, "native_designer_file", None)     # C# native mode: <Form>.Designer.cs (WinForms code)
+        if callable(native):
+            try:
+                path = native(self.project.folder, form_name) or path
+            except Exception as e:  # noqa: BLE001 - show the RadControl designer instead
+                self.log(f"*** {form_name}.Designer.cs: {e}")
         from .editor import make_editor
         ed = make_editor(fp, path)
         ed.setText(path.read_text(encoding="utf-8") if path.exists() else "")

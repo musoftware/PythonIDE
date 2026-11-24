@@ -1,0 +1,38 @@
+<!--
+  RadIDE.Runtime - the RAD IDE runtime for WinForms programs as a class library.
+  (c) 2026 Musoftware - https://musoftwares.com - MIT License
+
+  The same source the native publish compiles into the exe (radide/deploy/native/dotnet/RadWinForms.cs):
+  Rad.MsgBox / InputBox / Show / Hide / End / radcall, RadControl (lblOut.Text = "Hi"), RadEvent, and the
+  RadNative.RadApp / RadFormBase host of the forms generated from .form files.
+
+  RAD C# projects run natively (F5 = a real WinForms exe) against RadIDE.Runtime.dll. Any other C# project can
+  use it too:  <Reference Include="RadIDE.Runtime"><HintPath>path\RadIDE.Runtime.dll</HintPath></Reference>
+  (or a ProjectReference to this file). Tools > "Build RadIDE.Runtime.dll" / radide/dotnet/runtime_lib.py builds
+  it into %LOCALAPPDATA%\RADIDE\runtime\<version>\<tfm>\.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks Condition="'$(RadIDERuntimeTargets)' == ''">net8.0-windows;net48</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RadIDERuntimeTargets)' != ''">$(RadIDERuntimeTargets)</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>RadNative</RootNamespace>
+    <AssemblyName>RadIDE.Runtime</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Musoftware</Company>
+    <Product>RadIDE.Runtime</Product>
+    <Description>RAD IDE runtime for WinForms: MsgBox, InputBox, Show/Hide, RadControl, RadEvent, radcall, form host.</Description>
+    <Copyright>(c) 2026 Musoftware - MIT License</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1416;CS1591;CS1573;CS1572;CS0168;CS0219;CS0414;CS0649;CS0169;WFO1000;WFAC010</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\deploy\native\dotnet\RadWinForms.cs" Link="RadWinForms.cs" />
+  </ItemGroup>
+</Project>

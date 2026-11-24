@@ -904,9 +904,14 @@ static void *rf_gp_image(const char *path) {
         if (!w) return NULL;
         if (w[0] && w[1] != L':' && w[0] != L'\\' && w[0] != L'/') {
             wchar_t *slash;
-            GetModuleFileNameW(NULL, full, MAX_PATH);
-            slash = wcsrchr(full, L'\\');
-            if (slash) slash[1] = 0;
+            DWORD nb = GetEnvironmentVariableW(L"RAD_BASE_DIR", full, MAX_PATH);    /* radbridge: the project */
+            if (nb > 0 && nb < MAX_PATH - 1) {
+                if (full[nb - 1] != L'\\' && full[nb - 1] != L'/') { full[nb] = L'\\'; full[nb + 1] = 0; }
+            } else {
+                GetModuleFileNameW(NULL, full, MAX_PATH);
+                slash = wcsrchr(full, L'\\');
+                if (slash) slash[1] = 0;
+            }
             wcsncat(full, w, MAX_PATH - 1);
         } else {
             wcsncpy(full, w, MAX_PATH * 2 - 1);

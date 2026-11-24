@@ -7,8 +7,11 @@ well-known package type -> "Install package 'Z'"; else "Search NuGet.org for 'T'
 quickfix.py has the rules, this module turns them into Actions with previews). Without an SDK a static table of
 the common BCL / WinForms / WPF types is used.
 
-RAD C# projects (GUI Bridge, project.radproj + _build/csharp/RadApp.csproj): the IDE draws the form and the
-program is a console process, so WinForms / WPF types are not referenced. ``MessageBox.Show("Hi")`` ->
+RAD C# projects (project.radproj + _build/csharp/RadApp.csproj), native mode (the default,
+radide/dotnet/native_project.py): a real WinForms exe - System.Windows.Forms / System.Drawing are referenced and in
+the implicit usings, MessageBox.Show(...) is fine, Windows types get "using X;" like any project.
+GUI Bridge mode ("dotnetRuntime": "bridge"): the IDE draws the form and the program is a console process, so
+WinForms / WPF types are not referenced. ``MessageBox.Show("Hi")`` ->
 "Use the RAD helper MsgBox(...)" (Rad.cs: ``global using static Rad``: MsgBox, InputBox, End ...), and the
 "using System.Windows.Forms;" entry is shown greyed out with the reason. NuGet packages go into
 _build/csharp/RadApp.csproj (the project's NuGet manifest, same as Project > Packages).
@@ -26,6 +29,7 @@ from .tables import CS_TYPES, CS_WPF_ALTERNATIVES, RAD_CS_EQUIVALENTS
 WINDOWS_NS = ("System.Windows", "System.Drawing", "Microsoft.VisualBasic")
 RAD_IMPLICIT = {"System", "System.Collections.Generic", "System.IO", "System.Linq", "System.Net.Http",
                 "System.Threading", "System.Threading.Tasks"}
+RAD_NATIVE_IMPLICIT = RAD_IMPLICIT | {"System.Windows.Forms", "System.Drawing"}
 _NUGET_CACHE: dict[str, list] = {}
 
 
@@ -279,13 +283,15 @@ def _rad_actions(ctx: Context, name: str, folder: Path) -> list[Action]:
     if not name[:1].isupper():
         return out
     proj = _rad_csproj(folder)
-    visible = dq.file_usings(ctx.text) | RAD_IMPLICIT
+    from ..dotnet.native_project import is_native
+    native = is_native(folder)                # a WinForms exe: Windows types are real types there
+    visible = dq.file_usings(ctx.text) | (RAD_NATIVE_IMPLICIT if native else RAD_IMPLICIT)
     named = name in ctx.diag_names() or any(n.split("<")[0] == name for n in ctx.diag_names())
     if not named and not type_like(ctx, name):
         return out                            # a method / control / variable name, not a missing type
     if not named and name in rad_declared(folder):
         return out
-    if name in RAD_CS_EQUIVALENTS:
+    if name in RAD_CS_EQUIVALENTS and not native:
         a = rad_helper_action(ctx, name)
         if a is not None:
             out.append(a)
@@ -297,12 +303,13 @@ def _rad_actions(ctx: Context, name: str, folder: Path) -> list[Action]:
                                        f"use the RAD helpers (MsgBox, InputBox, Set/Get/Call, Show, End)"))
         return out
     nss = _index_lookup(proj if proj.is_file() else None, name, ctx.cheap)
-    if nss is None:
+    if nss is None or (native and not nss):   # native: an index without the csproj has no WinForms types
         nss = [CS_TYPES[name]] if name in CS_TYPES else []
-    nss = [ns for ns in nss if not ns.startswith(WINDOWS_NS)] or nss
+    if not native:
+        nss = [ns for ns in nss if not ns.startswith(WINDOWS_NS)] or nss
     if nss and any(ns in visible for ns in nss):
         return out
-    usable = [ns for ns in nss if not ns.startswith(WINDOWS_NS)]
+    usable = nss if native else [ns for ns in nss if not ns.startswith(WINDOWS_NS)]
     if usable:
         out += using_actions(ctx, name, usable, False)
     elif nss:

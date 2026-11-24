@@ -1,9 +1,14 @@
-"""C# language plugin (GUI Bridge + .NET SDK).
+"""C# language plugin (native WinForms or GUI Bridge, .NET SDK).
 
 The project folder holds the user's files (Form1.cs, Form1_designer.cs, Helpers.cs ...).
-A small console project is kept in <project>/_build/csharp:
-    RadApp.csproj   compiles ../../*.cs + the client (Rad.cs, RadMain.cs); also the NuGet manifest
-    bin/RadApp.dll  the program ("dotnet RadApp.dll", or "--worker <Module>" for the RAD Hub)
+The build project is kept in <project>/_build/csharp (RadApp.csproj is also the NuGet manifest). Two modes
+(project.radproj "dotnetRuntime", radide/dotnet/native_project.py):
+
+  native (default)  RadApp.csproj is a WinExe that references RadIDE.Runtime.dll; Form1.Designer.cs (WinForms
+                    InitializeComponent) is generated from Form1.form; F5 runs bin/native/<Name>.exe - Windows
+                    draws the forms (radide/dotnet/native_run.py).
+  bridge            a console project: ../../*.cs + the client (Rad.cs, RadMain.cs) -> bin/RadApp.dll, the IDE
+                    draws the form ("dotnet RadApp.dll", or "--worker <Module>" for the RAD Hub).
 Builds are skipped when nothing changed and use --no-restore when the packages are already restored.
 """
 from __future__ import annotations
@@ -46,7 +51,7 @@ CSPROJ_TEMPLATE = """<Project Sdk="Microsoft.NET.Sdk">
     <NoWarn>$(NoWarn);CS0168;CS0219;CS8981</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../*.cs" />
+    <Compile Include="../../*.cs" Exclude="../../*.Designer.cs" />
     <Compile Include="Rad.cs;RadMain.cs" />
   </ItemGroup>
 </Project>
@@ -127,13 +132,35 @@ def program_dll(folder: Path) -> Path:
     return build_dir(folder) / "bin" / "RadApp.dll"
 
 
+def native_mode(folder: Path) -> bool:
+    from ..dotnet import native_project
+    return native_project.is_native(folder)
+
+
 def ensure_build_dir(folder: Path) -> Path:
-    """Create _build/csharp with the csproj (kept: it holds the NuGet packages) and fresh client sources."""
+    """Create _build/csharp with the csproj (its NuGet packages are kept when it is rewritten for the other mode or
+    a new RadIDE.Runtime.dll) and fresh client sources."""
+    from ..dotnet import native_project as NP
     b = build_dir(folder)
     b.mkdir(parents=True, exist_ok=True)
     proj = b / CSPROJ
-    if not proj.exists():
-        proj.write_text(CSPROJ_TEMPLATE.format(tfm=target_framework()), encoding="utf-8")
+    old = proj.read_text(encoding="utf-8", errors="replace") if proj.exists() else ""
+    if NP.is_native(folder):
+        from ..dotnet import runtime_lib
+        forms = ()
+        try:
+            from ..deploy.native._forms import load_forms
+            forms = load_forms(Path(folder), Project.load(Path(folder)), "csharp-bridge")
+        except Exception:  # noqa: BLE001 - a broken .form must not stop here (the build reports it)
+            pass
+        new = NP.csproj_text(folder, target_framework(), runtime_lib.dll_path(), NP.packages_xml(old), forms)
+        if new != old:
+            proj.write_text(new, encoding="utf-8")
+    else:
+        NP.remove_generated(folder)
+        if not old or NP.csproj_is_native(old):
+            proj.write_text(NP.with_packages(CSPROJ_TEMPLATE.format(tfm=target_framework()), NP.packages_xml(old)),
+                            encoding="utf-8")
     for name in CLIENT_SOURCES:
         src, dst = CLIENT_DIR / name, b / name
         if not dst.exists() or dst.read_bytes() != src.read_bytes():
@@ -146,6 +173,11 @@ def ensure_build_dir(folder: Path) -> Path:
 
 def _inputs(folder: Path) -> list[Path]:
     b = build_dir(folder)
+    if native_mode(folder):
+        from ..dotnet import native_project as NP
+        from ..dotnet import runtime_lib
+        return (sorted(Path(folder).glob("*.cs")) + sorted((b / NP.GEN_DIR).glob("*.cs")) + NP.form_inputs(folder)
+                + [b / CSPROJ, runtime_lib.dll_path()])
     return sorted(Path(folder).glob("*.cs")) + [b / n for n in CLIENT_SOURCES] + [b / CSPROJ]
 
 
@@ -160,9 +192,17 @@ def _fingerprint(folder: Path) -> str:
     return h.hexdigest()
 
 
+def program_file(folder: Path) -> Path:
+    """What the build makes: bin/native/<Name>.exe (native mode) or bin/RadApp.dll (GUI Bridge)."""
+    if native_mode(folder):
+        from ..dotnet import native_project
+        return native_project.exe_path(folder, build_dir(folder))
+    return program_dll(folder)
+
+
 def up_to_date(folder: Path) -> bool:
     stamp = build_dir(folder) / ".inputs"
-    return program_dll(folder).exists() and stamp.exists() and \
+    return program_file(folder).exists() and stamp.exists() and \
         stamp.read_text(encoding="utf-8").strip() == _fingerprint(folder)
 
 
@@ -175,6 +215,16 @@ def build(folder: Path, out=None, force: bool = False) -> int:
         print("C#: the .NET SDK was not found. Install it from https://dotnet.microsoft.com/download "
               "(winget install Microsoft.DotNet.SDK.9) and restart the IDE.", file=out, flush=True)
         return 1
+    if native_mode(folder):
+        from ..dotnet import native_project, runtime_lib
+        if runtime_lib.build(log=lambda s: print(s, file=out, flush=True)) is None:
+            return 1
+        try:
+            for note in native_project.generate(folder, build_dir(folder)):
+                print("Motion: " + note, file=out, flush=True)
+        except Exception as e:  # noqa: BLE001
+            print(f"C#: generating the WinForms designer code failed: {e}", file=out, flush=True)
+            return 1
     proj = ensure_build_dir(folder)
     if not force and up_to_date(folder):
         print("C#: up to date", file=out, flush=True)
@@ -385,8 +435,32 @@ class CSharpBridgePlugin(BridgeLanguagePlugin):
     def run_command(self, folder: Path, project: Project) -> list[str]:
         return [dotnet() or "dotnet", str(program_dll(Path(os.path.abspath(folder))))]
 
+    def native_designer_file(self, folder: Path, form_name: str) -> Path | None:
+        """Native mode: <Form>.Designer.cs, the WinForms InitializeComponent of the form (generated now, so it shows
+        the saved form). None in GUI Bridge mode (the IDE then shows <Form>_designer.cs)."""
+        if not native_mode(folder):
+            return None
+        from ..dotnet import native_project
+        native_project.generate(folder, build_dir(folder))
+        p = native_project.designer_path(folder, form_name)
+        return p if p.is_file() else None
+
+    def run_spec(self, folder: Path, startup_form: str, interpreter: str):
+        """Native mode: radide/dotnet/native_run.py builds and runs the WinForms exe (Windows draws the forms)."""
+        if not native_mode(folder):
+            return super().run_spec(folder, startup_form, interpreter)
+        from .base import RunSpec
+        from .bridgebase import IDE_ROOT
+        folder = Path(os.path.abspath(folder))
+        env = dict(os.environ, PYTHONPATH=str(IDE_ROOT), PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
+        return RunSpec(sys.executable, ["-u", "-m", "radide.dotnet.native_run", str(folder)], folder, env)
+
     def worker_command(self, folder: Path, module_file: str) -> list[str] | None:
         folder = Path(os.path.abspath(folder))
+        if native_mode(folder):
+            msg = (f"C# worker: {folder.name} runs as a native WinForms exe; calls from other languages (radcall) "
+                   f"need the GUI Bridge mode (\"dotnetRuntime\": \"bridge\" in project.radproj)")
+            return [sys.executable, "-c", f"import sys; sys.stderr.write({msg!r} + '\\n'); sys.exit(1)"]
         if build(folder, sys.stderr) != 0 or not program_dll(folder).exists():
             msg = f"C# worker: building {folder.name} failed (see the build output)"
             return [sys.executable, "-c", f"import sys; sys.stderr.write({msg!r} + '\\n'); sys.exit(1)"]

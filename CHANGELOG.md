@@ -4,6 +4,26 @@ All notable changes to RAD IDE. Releases are published on GitHub
 (https://github.com/musoftware/PythonIDE/releases) for every tag `vX.Y.Z`; the release notes are the
 section of this file whose heading starts with `## [X.Y.Z]`.
 
+## [Unreleased]
+
+### New
+- **C# projects run as real WinForms programs**: F5 builds a native exe (Windows draws the forms, no Python, no
+  GUI Bridge) against **RadIDE.Runtime.dll** - the RAD runtime (MsgBox, InputBox, Show, RadControl, RadEvent,
+  radcall) as a class library. `MessageBox.Show`, `Button`, `Color` ... work as in Visual Studio
+  (System.Windows.Forms / System.Drawing are implicit usings); every form gets a read-only `<Form>.Designer.cs`
+  (WinForms `InitializeComponent`, View Generated Code). Breakpoints, stepping, Locals, Watch and Break on
+  Exceptions work on the native exe (netcoredbg). Project > Run as Native WinForms exe switches a project back to
+  the GUI Bridge; class libraries, console programs and mixed-language programs keep the bridge.
+- **Native forms for every GUI Bridge language (no Python at run time)**: F5 of C, C++, Fortran, Rust, Go, Lua,
+  Ruby, Perl, Java, Dart, JavaScript, TypeScript and PowerShell programs runs them under **radbridge.exe**, a
+  native host (C + radforms, Win32 controls) that draws the forms instead of the IDE's Python / Tk host - same
+  protocol, same build step, debugger attach and simulated events. It is built once with MinGW-w64 (in the
+  background, F5 never waits) and cached in %LOCALAPPDATA%\RADIDE\radbridge. Forms radforms cannot draw yet
+  (DataGridView, data binding ...), mixed-language programs, console programs and machines without MinGW-w64 keep
+  the Python host, and the Output window says why. Project > Native Forms Host (no Python) turns it off per project.
+- **RadIDE.Runtime.dll for any C# project**: Tools > RadIDE.Runtime.dll > Copy to Folder (.NET 8 or .NET
+  Framework 4.8), then add a `<Reference>` to it (`python -m radide.dotnet.runtime_lib [--copy <folder>]`).
+
 ## [0.2.3] - 2026-11-22
 
 ### New

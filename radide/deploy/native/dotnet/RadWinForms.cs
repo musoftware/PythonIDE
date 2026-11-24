@@ -41,7 +41,7 @@ public class RadEvent
         return e;
     }
 
-    internal string MakeArgs()
+    public string MakeArgs()
     {
         Args = (X + " " + Y + " " + Button + " " + KeyCode + " " + KeyChar).Trim();
         return Args;
@@ -209,9 +209,9 @@ namespace RadNative
         public readonly Dictionary<string, object> Items = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         /// <summary>the design client area (below the menu)</summary>
         protected readonly Panel Client = new Panel();
-        internal Panel ClientPanel { get { return Client; } }
+        public Panel ClientPanel { get { return Client; } }
         protected readonly ToolTip Tips = new ToolTip();
-        internal bool Closing2;
+        public bool Closing2;
 
         public RadFormBase(string name)
         {
@@ -229,19 +229,19 @@ namespace RadNative
             return MainMenuStrip != null && MainMenuStrip.Visible ? MainMenuStrip.Height : 0;
         }
 
-        internal int ClientHeight() { return ClientSize.Height - MenuHeight(); }
+        public int ClientHeight() { return ClientSize.Height - MenuHeight(); }
 
-        internal void SetClientHeight(int h) { ClientSize = new Size(ClientSize.Width, h + MenuHeight()); }
+        public void SetClientHeight(int h) { ClientSize = new Size(ClientSize.Width, h + MenuHeight()); }
 
-        internal void SetBack(Color c)
+        public void SetBack(Color c)
         {
             BackColor = c.IsEmpty ? SystemColors.Control : c;
             Client.BackColor = BackColor;
         }
 
-        internal string TipFor(Control c) { return Tips.GetToolTip(c) ?? ""; }
+        public string TipFor(Control c) { return Tips.GetToolTip(c) ?? ""; }
 
-        internal void SetTip(Control c, string text) { Tips.SetToolTip(c, text); }
+        public void SetTip(Control c, string text) { Tips.SetToolTip(c, text); }
 
         protected void Register(string name, object item)
         {
@@ -266,7 +266,7 @@ namespace RadNative
         }
 
         /// <summary>animations / visual states / layout variants of the form (null = it has none)</summary>
-        internal RadMotion Motion;
+        public RadMotion Motion;
         string motionPlan;
 
         /// <summary>the native_plan records of the form (generated code; only forms that use motion call it)</summary>
@@ -1567,7 +1567,7 @@ namespace RadNative
         }
 
         /// <summary>Visible set by the program: "On show" / "On hide" play (true = handled here; hide ends hidden)</summary>
-        internal bool SetHook(Control c, bool on)
+        public bool SetHook(Control c, bool on)
         {
             if (closed || quiet > 0 || c == null) return false;
             if (on == RadApp.IsShown(c)) return false;
@@ -1595,7 +1595,7 @@ namespace RadNative
             return ctl != null ? ctl.FindForm() as RadFormBase : null;
         }
 
-        internal static bool TryCall(object o, string method, string[] args, out string r)
+        public static bool TryCall(object o, string method, string[] args, out string r)
         {
             r = null;
             var m = (method ?? "").Trim().ToLowerInvariant();
@@ -1627,7 +1627,7 @@ namespace RadNative
             }
         }
 
-        internal static bool TryGet(object o, string prop, out string r)
+        public static bool TryGet(object o, string prop, out string r)
         {
             r = null;
             var p = (prop ?? "").Trim();
@@ -1723,9 +1723,18 @@ namespace RadNative
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.ThreadException += (s, a) => ReportError("", a.Exception);
+            WaitForDebugger();
             startup = GetForm(startupForm);
             Application.Run(startup);
             return 0;
+        }
+
+        /// <summary>F5 in the IDE (radide/dotnet/native_run.py) with breakpoints: RAD_WAIT_GO=1, the IDE attaches
+        /// netcoredbg, sets the breakpoints and then writes "go" on stdin - only then the forms are created (Form_Load).</summary>
+        static void WaitForDebugger()
+        {
+            if (Environment.GetEnvironmentVariable("RAD_WAIT_GO") != "1") return;
+            try { Console.In.ReadLine(); } catch (Exception) { }
         }
 
         public static RadFormBase GetForm(string name)
@@ -1852,14 +1861,14 @@ namespace RadNative
 
         static string FromColor(Color c) { return ColorTranslator.ToOle(c).ToString(CultureInfo.InvariantCulture); }
 
-        internal static bool IsShown(object o)
+        public static bool IsShown(object o)
         {
             bool v;
             return !shown.TryGetValue(o, out v) || v;
         }
 
         /// <summary>Visible of a control without the "On show" / "On hide" animations (RadMotion's own writes)</summary>
-        internal static void SetVisibleRaw(Control c, bool v)
+        public static void SetVisibleRaw(Control c, bool v)
         {
             shown[c] = v;
             c.Visible = v;
@@ -1878,7 +1887,7 @@ namespace RadNative
         }
 
         /// <summary>a property of an object (no path; RadMotion): library controls first, then the common ones</summary>
-        internal static string GetOn(object o, string prop)
+        public static string GetOn(object o, string prop)
         {
             try
             {
@@ -1889,7 +1898,7 @@ namespace RadNative
             catch (Exception ex) { Warn(prop + ": " + ex.Message); return ""; }
         }
 
-        internal static void SetOn(object o, string prop, string value)
+        public static void SetOn(object o, string prop, string value)
         {
             try
             {
@@ -2094,7 +2103,7 @@ namespace RadNative
         /// they are loaded from there when the runtime asks for them.</summary>
         public static void LoadEmbedded()
         {
-            var exe = typeof(RadApp).Assembly;
+            var exe = Assembly.GetEntryAssembly() ?? typeof(RadApp).Assembly;     // the program (RadIDE.Runtime.dll: not this)
             if (!exe.GetManifestResourceNames().Any(n => n.StartsWith("radlib.", StringComparison.Ordinal))) return;
             var loaded = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
             AppDomain.CurrentDomain.AssemblyResolve += (s, a) =>
