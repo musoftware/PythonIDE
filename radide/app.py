@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QInputDialo
 from .controls import CONTROL_TYPES, event_args
 from .debugger import Session, StopInfo
 from .designer import DesignerView
-from .dialogs import AddItemDialog, NewProjectDialog
+from .dialogs import AddItemDialog
 from .document import FormDocument
 from .editor import CodeView
 from .extension_points import ExtensionPoints
@@ -24,13 +24,11 @@ from .interpreters import project_venv_python
 from .immediate_window import ImmediateWindow
 from .module_view import ModuleView
 from .run_controller import RunController
+from .solution_controller import SolutionController
 from .start_page import StartPage
 from .languages import code_extensions, get_plugin, language_label
-from .languages import plugin_for_form as _form_plugin
-from .languages import plugin_for_module as _module_plugin
 from .model import FORM_LOAD_ERRORS, Form, Project, write_text_safe
 from .properties import PropertiesPanel, valid_identifier
-from .solution import EXT as SOLUTION_EXT
 from .solution import Solution
 from .toolbox import TOOL_STATE, Toolbox
 from .workspace import add_module, create_form, delete_form, delete_module, rename_form
@@ -91,6 +89,7 @@ class MainWindow(QMainWindow):
         self._no_save_questions = 0      # > 0: no "Save changes?" question (see no_save_questions)
         self.temp_breakpoints: list[tuple[str, int, str]] = []   # (file, 1-based line, condition): Run to Cursor
         self.run_controller = RunController(self)       # run / debug (radide/run_controller.py)
+        self.solution_controller = SolutionController(self)
         # how features take part in File > Open / Save All / Solution Explorer ... (radide/extension_points.py)
         self.extension_points = ExtensionPoints(lambda text: self.log(text))
 
@@ -438,103 +437,32 @@ class MainWindow(QMainWindow):
         a.setToolTip(f"{text} ({keys})" if keys else text)
 
     def _fill_recent_menu(self):
-        m = self.recent_menu
-        m.clear()
-        items = self.recent_projects()
-        for i, path in enumerate(items, 1):
-            p = Path(path)
-            label = f"&{i}  {p.stem if p.suffix.lower() == SOLUTION_EXT else p.name}  -  {path}"
-            m.addAction(label, lambda f=path: self.open_project(Path(f)))
-        if not items:
-            a = m.addAction("(no recent projects)")
-            a.setEnabled(False)
-        else:
-            m.addSeparator()
-            m.addAction("Clear List", lambda: (self.settings.remove("recent"), self._refresh_recent()))
+        return self.solution_controller._fill_recent_menu()
 
     def _refresh_recent(self):
-        for i in range(self.tabs.count()):
-            w = self.tabs.widget(i)
-            if isinstance(w, StartPage):
-                w.refresh()
+        return self.solution_controller._refresh_recent()
 
     # ================================================================ project
     def recent_projects(self) -> list[str]:
-        """Recent solutions (.radsln files) and bare projects (folders), newest first."""
-        items = self.settings.value("recent", []) or []
-        if isinstance(items, str):
-            items = [items]
-        tmp = str(Path(os.environ.get("TEMP", "~"))).lower()
-
-        def ok(p: str) -> bool:
-            path = Path(p)
-            if p.lower().startswith(tmp):
-                return False
-            if path.suffix.lower() == SOLUTION_EXT:
-                return path.is_file()
-            return (path / Project.FILE).exists()
-        return [p for p in items if ok(p)][:8]
+        return self.solution_controller.recent_projects()
 
     def _remember(self, path: Path):
-        items = [str(path)] + [p for p in self.recent_projects() if p.lower() != str(path).lower()]
-        self.settings.setValue("recent", items[:8])
-        self._refresh_recent()
+        return self.solution_controller._remember(path)
 
     def new_project(self):
-        """File > New Project: create a project in a new solution or add it to the open one."""
-        dlg = NewProjectDialog(self)
-        if not dlg.exec():
-            return None
-        self._pending_template = None           # templates are applied here (also Class Library)
-        from .features.solution_ui import create_project_from_dialog
-        return create_project_from_dialog(self, dlg)
+        return self.solution_controller.new_project()
 
     def open_project_dialog(self):
-        filters = f"RAD IDE solution or project (*{SOLUTION_EXT} {Project.FILE})"
-        try:                     # projects of other IDEs, opened in place (radide/features/foreign_projects.py)
-            from .features.foreign_projects import file_filter
-            filters = (f"All supported projects (*{SOLUTION_EXT} {Project.FILE} "
-                       f"{file_filter(patterns_only=True)});;{filters};;{file_filter()}")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"[foreign projects] {e}")
-        f, _ = QFileDialog.getOpenFileName(self, "Open Project/Solution", "", filters)
-        if f:
-            self.open_project(Path(f))
+        return self.solution_controller.open_project_dialog()
 
     def new_window(self):
-        """File > New Window: start another, independent RAD IDE window (its own process)."""
-        import subprocess
-        if getattr(sys, "frozen", False):
-            argv = [sys.executable, "--new-window"]
-        else:
-            exe = Path(sys.executable)
-            pyw = exe.with_name("pythonw.exe")
-            argv = [str(pyw if pyw.exists() else exe), "-m", "radide", "--new-window"]
-        try:
-            subprocess.Popen(argv, cwd=str(Path(__file__).resolve().parent.parent),
-                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if not getattr(
-                                 sys, "frozen", False) else 0)
-            self.statusBar().showMessage("Opening a new RAD IDE window...", 4000)
-        except OSError as e:
-            QMessageBox.warning(self, "New Window", f"Cannot start a new window:\n{e}")
+        return self.solution_controller.new_window()
 
     def open_folder_dialog(self):
-        """File > Open Folder...: a RAD IDE project/solution folder, a foreign project folder (Visual Studio,
-        VB6, Cargo, Laravel ...) opened in place, or any folder as a folder workspace (like VS Code)."""
-        start = str(self.project.folder.parent) if self.project is not None else ""
-        d = QFileDialog.getExistingDirectory(self, "Open Folder", start)
-        if not d:
-            return
-        from .single_instance import open_target
-        open_target(self, Path(d))
-        self._remember(str(Path(d)))
+        return self.solution_controller.open_folder_dialog()
 
     def open_file_dialog(self):
-        """File > Open File...: any file in an editor tab (the project's own editors for its code files)."""
-        start = str(self.project.folder) if self.project is not None else ""
-        f, _ = QFileDialog.getOpenFileName(self, "Open File", start, "All files (*)")
-        if f:
-            self.open_any_file(Path(f))
+        return self.solution_controller.open_file_dialog()
 
     def open_file(self, path, line: int | None = None):
         """Open a file from a link - Error List, Find Results, Go to Definition, the web Solution Explorer -
@@ -653,27 +581,7 @@ class MainWindow(QMainWindow):
         return True
 
     def close_solution(self):
-        """File > Close Solution: close every project (asks to save) and show the Start Page."""
-        if self.project is None and self.sln is None:
-            return
-        if not self._confirm_close_project():
-            return
-        active = self.project
-        for st in list(self._pstates.values()):
-            self.activate_project(st["project"])
-            self._save_breakpoints()
-        if active is not None:
-            self.activate_project(active)
-        self.stop_project()
-        self._reset()
-        self.sln, self.project, self.plugin = None, None, None
-        self._fill_solution()
-        self.solution.clear()
-        self.tabs.addTab(StartPage(self), "Start Page")
-        self.toolbox.setEnabled(False)
-        self._update_title()
-        self._update_actions()
-        self.log("Solution closed")
+        return self.solution_controller.close_solution()
 
     def open_project(self, folder: Path, ask: bool = True, activate=None):
         """Open a solution (.radsln), a project (project.radproj) or a folder that holds one.
@@ -686,61 +594,7 @@ class MainWindow(QMainWindow):
         return result
 
     def _open_project(self, folder: Path, ask: bool, activate):
-        path = Path(folder).resolve()
-        try:                     # .sln / .csproj / .vbp / .dpr / pom.xml ... opened in place (foreign_projects.py)
-            from .features.foreign_projects import is_foreign, open_foreign
-            if is_foreign(path):
-                if open_foreign(self, path, ask=ask):
-                    return
-        except Exception as e:  # noqa: BLE001 - fall back to the RAD IDE formats
-            self.log(f"*** cannot open {path.name} as a foreign project: {e}")
-        if ask and not self._confirm_close_project():
-            return
-        try:
-            sln = Solution.open_any(path)
-            projects = sln.all_projects()
-            if not projects:
-                raise ValueError(f"solution '{sln.name}' has no project that can be opened")
-            for p in projects:
-                get_plugin(p.language)
-        except Exception as e:  # noqa: BLE001 - show any load error to the user
-            QMessageBox.critical(self, APP_NAME, f"Cannot open project:\n{e}")
-            return
-        self.stop_project()
-        self._reset()
-        self.sln = sln
-        for p in projects:
-            self._state_for(p)
-        target = None
-        if activate is not None:
-            target = sln.project(activate) if isinstance(activate, str) else sln.project_for_folder(Path(activate))
-        if target is None and path.is_dir() and (path / Project.FILE).exists():
-            target = sln.project_for_folder(path)          # the project the user asked for
-        target = target or sln.startup_project() or projects[0]
-        self.activate_project(target)
-        self._remember(sln.file if sln.file is not None else Path(target.folder).resolve())
-        self._fill_solution()
-        project = self.project
-        present = [f for f in project.forms if f not in project.missing_forms()]
-        if present:
-            self.open_designer(project.startup if project.startup in present else present[0])
-        elif project.modules:
-            self.open_module(project.modules[0])
-        self._update_title()
-        self._update_actions()
-        if len(projects) > 1 or not sln.implicit:
-            self.log(f"Opened solution '{sln.name}' ({len(projects)} project{'s' if len(projects) != 1 else ''})")
-        else:
-            self.log(f"Opened project '{project.name}' ({self.plugin.display_name})")
-        missing = [e.name for e in sln.projects if sln.project(e.name) is None]
-        if missing:
-            self.log(f"*** Projects that could not be loaded: {', '.join(missing)}")
-        for p in projects:                         # forms listed in project.radproj but not on disk
-            for f in p.missing_forms():
-                self.log(f"*** Warning: {p.name}: the form file '{f}.form' was not found "
-                         f"(right-click it in Solution Explorer > Remove from Project)")
-        from .tools import offer_restore
-        offer_restore(self)
+        return self.solution_controller._open_project(folder, ask, activate)
 
     def _reset(self):
         self.extension_points.emit("projects_reset")      # language servers, diagnostics ... first
@@ -760,20 +614,13 @@ class MainWindow(QMainWindow):
         return os.path.normcase(str(Path(project.folder).resolve()))
 
     def _state_for(self, project) -> dict:
-        key = self._pkey(project)
-        st = self._pstates.get(key)
-        if st is None:
-            st = {"project": project, "plugin": get_plugin(project.language), "docs": {}, "designers": {},
-                  "codeviews": {}, "modviews": {}, "breakpoints": None}
-            self._pstates[key] = st
-        return st
+        return self.solution_controller._state_for(project)
 
     def project_states(self) -> list[dict]:
-        """State of every open project: {"project", "plugin", "docs", "designers", "codeviews", ...}."""
-        return list(self._pstates.values())
+        return self.solution_controller.project_states()
 
     def projects(self) -> list[Project]:
-        return [st["project"] for st in self._pstates.values()]
+        return self.solution_controller.projects()
 
     def activate_project(self, project) -> bool:
         """Make *project* (a Project, or a project name of the solution) the active project:
@@ -784,83 +631,29 @@ class MainWindow(QMainWindow):
         return result
 
     def _activate_project(self, project) -> bool:
-        if isinstance(project, str):
-            project = self.sln.project(project) if self.sln is not None else None
-        if project is None:
-            return False
-        key = self._pkey(project)
-        if key == self._active_key and self.project is not None:
-            return True
-        st = self._state_for(project)
-        self._active_key = key
-        self.project, self.plugin = st["project"], st["plugin"]
-        self.docs, self.designers = st["docs"], st["designers"]
-        self.codeviews, self.modviews = st["codeviews"], st["modviews"]
-        if st["breakpoints"] is None:
-            self._load_breakpoints()
-            st["breakpoints"] = self.breakpoints
-        else:
-            self.breakpoints = st["breakpoints"]
-        self._update_title()
-        return True
+        return self.solution_controller._activate_project(project)
 
     def project_of_widget(self, w) -> Project | None:
-        key = w.property("radProject") if w is not None else None
-        st = self._pstates.get(key) if key else None
-        return st["project"] if st else None
+        return self.solution_controller.project_of_widget(w)
 
     def startup_project(self) -> Project | None:
-        return self.sln.startup_project() if self.sln is not None else self.project
+        return self.solution_controller.startup_project()
 
     def _forget_project(self, project) -> None:
-        """Close the tabs of a project and drop its state (Remove from solution)."""
-        key = self._pkey(project)
-        for i in reversed(range(self.tabs.count())):
-            w = self.tabs.widget(i)
-            if w.property("radProject") == key:
-                self.tabs.removeTab(i)
-                w.deleteLater()
-        self._pstates.pop(key, None)
-        if key == self._active_key:
-            self._active_key, self.project = None, None
-            nxt = self.startup_project()
-            if nxt is not None and self._pkey(nxt) in self._pstates:
-                self.activate_project(nxt)
-            elif self._pstates:
-                self.activate_project(next(iter(self._pstates.values()))["project"])
-            else:
-                self.plugin = None
-                self.docs, self.designers, self.codeviews, self.modviews = {}, {}, {}, {}
-                self.breakpoints = {}
+        return self.solution_controller._forget_project(project)
 
     # ---------------------------------------------------------- languages (multi-language projects)
     def plugin_for_form(self, name: str):
-        """Language plugin of a form (project.form_languages, else the project language)."""
-        return _form_plugin(self.project, name) if self.project else self.plugin
+        return self.solution_controller.plugin_for_form(name)
 
     def plugin_for_file(self, filename: str):
-        """Language plugin of a code file of the project (form code, designer or module)."""
-        if not self.project:
-            return self.plugin
-        base = Path(filename).name.lower()
-        for name in self.project.forms:
-            fp = self.plugin_for_form(name)
-            if base in (fp.code_file(name).lower(), fp.designer_file(name).lower()):
-                return fp
-        return _module_plugin(self.project, base)
+        return self.solution_controller.plugin_for_file(filename)
 
     def run_plugin(self):
-        """The startup form's plugin: it runs and debugs the program."""
-        if not self.project:
-            return self.plugin
-        return self.plugin_for_form(self.project.startup) if self.project.startup else self.plugin
+        return self.solution_controller.run_plugin()
 
     def is_multi_language(self) -> bool:
-        if not self.project:
-            return False
-        ids = {self.plugin_for_form(f).id for f in self.project.forms}
-        ids |= {self.plugin_for_file(m).id for m in self.project.modules}
-        return len(ids) > 1
+        return self.solution_controller.is_multi_language()
 
     @contextlib.contextmanager
     def no_save_questions(self):
