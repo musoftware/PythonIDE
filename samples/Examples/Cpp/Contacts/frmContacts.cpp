@@ -159,7 +159,7 @@ void btnFind_Click()
 
 void txtSearch_KeyPress()
 {
-    if (rad::arg(3) == "Return") btnFind_Click();
+    if (rad::arg(3) == "13" || rad::arg(3) == "Return") btnFind_Click();
 }
 
 void btnShowAll_Click()

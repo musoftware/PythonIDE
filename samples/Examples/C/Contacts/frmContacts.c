@@ -223,7 +223,7 @@ void btnFind_Click(void)
 
 void txtSearch_KeyPress(void)
 {
-    if (strcmp(rad_arg(3), "Return") == 0) btnFind_Click();
+    if (strcmp(rad_arg(3), "13") == 0 || strcmp(rad_arg(3), "Return") == 0) btnFind_Click();
 }
 
 void btnShowAll_Click(void)

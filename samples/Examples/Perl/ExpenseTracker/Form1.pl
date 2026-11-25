@@ -34,7 +34,7 @@ sub cmdAdd_Click {
 # Enter in the amount box adds the expense
 sub txtAmount_KeyPress {
     my ($e) = @_;
-    cmdAdd_Click() if $e->{args} =~ /\bReturn\b/;
+    cmdAdd_Click() if $e->{args} =~ /^\S+ \S+ \S+ 13\b/ || $e->{args} =~ /\bReturn\b/;
 }
 
 sub cmdDelete_Click {

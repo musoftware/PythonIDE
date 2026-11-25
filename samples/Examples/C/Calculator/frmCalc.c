@@ -162,7 +162,7 @@ void btnMR_Click(void) { if (!error) { set_number(memory); fresh = 1; show(); } 
 void btnMPlus_Click(void) { if (!error) { memory += rad_num(display); fresh = 1; show(); } }
 
 /* ------------------------------------------------------------------ keyboard
- * KeyPress args: "X Y Button KeyCode KeyChar"; KeyCode is the key name (Return, Escape, BackSpace, 7 ...) */
+ * KeyPress args: "X Y Button KeyCode KeyChar"; KeyCode is the Windows key code (13 Enter, 27 Esc, 8 Backspace ...) */
 void frmCalc_KeyPress(void)
 {
     const char *key = rad_arg(3), *ch = rad_arg(4);
@@ -172,7 +172,7 @@ void frmCalc_KeyPress(void)
     else if (strcmp(ch, "-") == 0) operation('-');
     else if (strcmp(ch, "*") == 0) operation('*');
     else if (strcmp(ch, "/") == 0) operation('/');
-    else if (strcmp(ch, "=") == 0 || strcmp(key, "Return") == 0) equals();
-    else if (strcmp(key, "Escape") == 0) clear_all();
-    else if (strcmp(key, "BackSpace") == 0) btnBack_Click();
+    else if (strcmp(ch, "=") == 0 || strcmp(key, "13") == 0 || strcmp(key, "Return") == 0) equals();
+    else if (strcmp(key, "27") == 0 || strcmp(key, "Escape") == 0) clear_all();
+    else if (strcmp(key, "8") == 0 || strcmp(key, "BackSpace") == 0) btnBack_Click();
 }

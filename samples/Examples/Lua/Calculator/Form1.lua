@@ -65,11 +65,13 @@ function cmdBack_Click(e)
 end
 
 -- keyboard: the display is read-only, its KeyPress gets every key (e.args = "X Y Button KeyCode KeyChar")
-local KEYS = { Return = "=", KP_Enter = "=", BackSpace = "back", Escape = "clear",
+-- KeyCode = the Windows key code (13 Enter, 8 Backspace, 27 Esc); the character (KeyChar) gives the rest
+local KEYS = { ["13"] = "=", ["8"] = "back", ["27"] = "clear", Return = "=", BackSpace = "back", Escape = "clear",
   plus = "+", minus = "-", asterisk = "*", slash = "/", period = ".", parenleft = "(", parenright = ")" }
 function txtDisplay_KeyPress(e)
-  local keysym = (e.args or ""):match("^%S+ %S+ %S+ (%S+)") or ""
-  local k = KEYS[keysym] or (keysym:match("^%d$") and keysym)
+  local keysym, ch = (e.args or ""):match("^%S+ %S+ %S+ (%S+) ?(%S*)")
+  keysym, ch = keysym or "", ch or ""
+  local k = KEYS[keysym] or (ch == "=" and "=") or (ch:match("^[%d%.%+%-%*/%(%)]$") and ch) or KEYS[ch]
   if k == "=" then equals()
   elseif k == "back" then cmdBack_Click()
   elseif k == "clear" then cmdClear_Click()

@@ -242,7 +242,7 @@ contains
     call refresh()
   end subroutine btnMPlus_Click
 
-  ! KeyPress: rad_arg(4) = key name (Return, Escape, BackSpace, 7 ...), rad_arg(5) = the character
+  ! KeyPress: rad_arg(4) = Windows key code (13 Enter, 27 Esc, 8 Backspace), rad_arg(5) = the character
   subroutine frmCalc_KeyPress()
     character(len=:), allocatable :: key, ch
     key = rad_arg(4)
@@ -253,11 +253,11 @@ contains
       call digit('.')
     else if (len(ch) == 1 .and. index('+-*/', ch) > 0) then
       call operation(ch)
-    else if (ch == '=' .or. key == 'Return') then
+    else if (ch == '=' .or. key == '13' .or. key == 'Return') then
       call equals()
-    else if (key == 'Escape') then
+    else if (key == '27' .or. key == 'Escape') then
       call clear_all()
-    else if (key == 'BackSpace') then
+    else if (key == '8' .or. key == 'BackSpace') then
       call back_space()
     end if
   end subroutine frmCalc_KeyPress

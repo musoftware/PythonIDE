@@ -42,10 +42,10 @@ sub cmdFind_Click {
     status(scalar(@found) . " match(es) for /$pattern/");
 }
 
-# Enter in the pattern box runs Find (KeyCode carries the key name, e.g. "Return")
+# Enter in the pattern box runs Find (KeyCode = the Windows key code, 13 = Enter)
 sub txtPattern_KeyPress {
     my ($e) = @_;
-    cmdFind_Click() if $e->{args} =~ /\bReturn\b/;
+    cmdFind_Click() if $e->{args} =~ /^\S+ \S+ \S+ 13\b/ || $e->{args} =~ /\bReturn\b/;
 }
 
 sub mnuFileOpen_Click {

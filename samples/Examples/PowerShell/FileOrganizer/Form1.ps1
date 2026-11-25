@@ -38,7 +38,7 @@ function cmdScan_Click($e) {
 }
 
 function txtFolder_KeyPress($e) {
-    if ($e.Args -match "Return") { cmdScan_Click $e }
+    if ($e.Args -match "^\S+ \S+ \S+ 13\b" -or $e.Args -match "Return") { cmdScan_Click $e }
 }
 
 function mnuFileExport_Click($e) {

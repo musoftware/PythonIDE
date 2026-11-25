@@ -164,7 +164,7 @@ void btnMC_Click() { act([] { calc.memory = 0; }); }
 void btnMR_Click() { act([] { calc.memory_recall(); }); }
 void btnMPlus_Click() { act([] { calc.memory_add(); }); }
 
-// KeyPress args: "X Y Button KeyCode KeyChar" - KeyCode is the key name (Return, Escape, BackSpace ...)
+// KeyPress args: "X Y Button KeyCode KeyChar" - KeyCode is the Windows key code (13 Enter, 27 Esc, 8 Backspace)
 void frmCalc_KeyPress()
 {
     const std::string key = rad::arg(3), ch = rad::arg(4);
@@ -172,8 +172,8 @@ void frmCalc_KeyPress()
         if (ch.size() == 1 && ch[0] >= '0' && ch[0] <= '9') calc.digit(ch);
         else if (ch == "." || ch == ",") calc.digit(".");
         else if (ch == "+" || ch == "-" || ch == "*" || ch == "/") calc.operation(ch[0]);
-        else if (ch == "=" || key == "Return") calc.equals();
-        else if (key == "Escape") calc.clear();
-        else if (key == "BackSpace") calc.back();
+        else if (ch == "=" || key == "13" || key == "Return") calc.equals();
+        else if (key == "27" || key == "Escape") calc.clear();
+        else if (key == "8" || key == "BackSpace") calc.back();
     });
 }

@@ -63,7 +63,7 @@ def cmdConvert_Click(e)
 end
 
 def txtValue_KeyPress(e)
-  cmdConvert_Click(e) if e.args.include?("Return")
+  cmdConvert_Click(e) if e.args.split(" ")[3] == "13" || e.args.include?("Return")
 end
 
 def cmdSwap_Click(e)

@@ -28,5 +28,5 @@ function cmdCancel_Click(e)
 end
 
 function txtFind_KeyPress(e)
-  if (e.args or ""):find("Return") then cmdOK_Click(e) end
+  if (e.args or ""):match("^%S+ %S+ %S+ 13") or (e.args or ""):find("Return") then cmdOK_Click(e) end
 end

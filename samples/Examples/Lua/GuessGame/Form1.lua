@@ -83,7 +83,7 @@ function cmdGuess_Click(e)
 end
 
 function txtGuess_KeyPress(e)
-  if (e.args or ""):find("Return") then cmdGuess_Click(e) end
+  if (e.args or ""):match("^%S+ %S+ %S+ 13") or (e.args or ""):find("Return") then cmdGuess_Click(e) end
 end
 
 function tmrClock_Tick(e)

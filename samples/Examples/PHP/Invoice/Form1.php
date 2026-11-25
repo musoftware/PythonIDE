@@ -39,7 +39,7 @@ function cmdAddLine_Click($e)
 
 function txtPrice_KeyPress($e)
 {
-    if ((explode(' ', $e['args'])[3] ?? '') === 'Return') {      // Enter = Add Line
+    if (in_array(explode(' ', $e['args'])[3] ?? '', ['13', 'Return'], true)) {   // Enter (key code 13) = Add Line
         cmdAddLine_Click($e);
     }
 }

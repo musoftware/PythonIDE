@@ -25,7 +25,7 @@ function cmdAdd_Click(e: RadEvent): void {
 }
 
 function txtTask_KeyPress(e: RadEvent): void {
-    if (String(e.args).split(' ')[3] === 'Return') cmdAdd_Click(e);       // Enter adds the task
+    if (['13', 'Return'].includes(String(e.args).split(' ')[3])) cmdAdd_Click(e);       // Enter adds the task
 }
 
 // ------------------------------------------------------------------ editing

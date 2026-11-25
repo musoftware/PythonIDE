@@ -334,6 +334,12 @@ class BridgeDriver:
         tkinter.Misc.grab_set = lambda self: None
         self.folder = folder = Path(folder)
         project = Project.load(folder)
+        if project.language == "csharp-bridge":
+            # this driver is the GUI Bridge host: a C# program is driven in its bridge mode (F5's native WinForms
+            # exe is tested by samples/Tests/DotNet/NativeRun)
+            from radide.dotnet import native_project as NP
+            NP.set_mode(folder, NP.BRIDGE)
+            project = Project.load(folder)
         plugin = get_plugin(project.form_languages.get(project.startup, project.language)
                             if project.startup else project.language)
         self.plugin = plugin

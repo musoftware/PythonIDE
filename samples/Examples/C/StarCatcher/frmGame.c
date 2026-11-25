@@ -140,20 +140,20 @@ void tmrGame_Tick(void)
     set_int("lblRock", "Top", rock_y);
 }
 
-/* KeyDown / KeyUp args: "X Y Button KeyCode KeyChar"; KeyCode = key name (Left, Right, p ...) */
+/* KeyDown / KeyUp args: "X Y Button KeyCode KeyChar"; KeyCode = Windows key code (37 Left, 39 Right, 80 P) */
 void frmGame_KeyDown(void)
 {
     const char *k = rad_arg(3);
-    if (strcmp(k, "Left") == 0) left_down = 1;
-    else if (strcmp(k, "Right") == 0) right_down = 1;
-    else if (strcmp(k, "p") == 0 || strcmp(k, "P") == 0) btnPause_Click();
+    if (strcmp(k, "37") == 0 || strcmp(k, "Left") == 0) left_down = 1;
+    else if (strcmp(k, "39") == 0 || strcmp(k, "Right") == 0) right_down = 1;
+    else if (strcmp(k, "80") == 0 || strcmp(k, "p") == 0 || strcmp(k, "P") == 0) btnPause_Click();
 }
 
 void frmGame_KeyUp(void)
 {
     const char *k = rad_arg(3);
-    if (strcmp(k, "Left") == 0) left_down = 0;
-    else if (strcmp(k, "Right") == 0) right_down = 0;
+    if (strcmp(k, "37") == 0 || strcmp(k, "Left") == 0) left_down = 0;
+    else if (strcmp(k, "39") == 0 || strcmp(k, "Right") == 0) right_down = 0;
 }
 
 /* the mouse moves the paddle too (X is relative to pnlField) */

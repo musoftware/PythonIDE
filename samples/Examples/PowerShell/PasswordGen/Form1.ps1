@@ -31,7 +31,7 @@ function Form1_Load($e) { cmdGenerate_Click $e }
 # typing your own password shows its strength
 function txtPassword_TextChanged($e) { Show-Strength $txtPassword.Text }
 
-function nudLength_KeyPress($e) { if ($e.Args -match "Return") { cmdGenerate_Click $e } }
+function nudLength_KeyPress($e) { if ($e.Args -match "^\S+ \S+ \S+ 13\b" -or $e.Args -match "Return") { cmdGenerate_Click $e } }
 
 function cmdCopy_Click($e) {
     $pw = $txtPassword.Text

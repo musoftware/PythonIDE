@@ -162,15 +162,15 @@ contains
     call rad_set('lblRock', 'Top', num(rock%y))
   end subroutine tmrGame_Tick
 
-  ! KeyDown / KeyUp: rad_arg(4) = key name (Left, Right, p ...)
+  ! KeyDown / KeyUp: rad_arg(4) = Windows key code (37 Left, 39 Right, 80 P)
   subroutine frmGame_KeyDown()
     character(len=:), allocatable :: k
     k = rad_arg(4)
-    if (k == 'Left') then
+    if (k == '37' .or. k == 'Left') then
       left_key = .true.
-    else if (k == 'Right') then
+    else if (k == '39' .or. k == 'Right') then
       right_key = .true.
-    else if (k == 'p' .or. k == 'P') then
+    else if (k == '80' .or. k == 'p' .or. k == 'P') then
       call btnPause_Click()
     end if
   end subroutine frmGame_KeyDown
@@ -178,8 +178,8 @@ contains
   subroutine frmGame_KeyUp()
     character(len=:), allocatable :: k
     k = rad_arg(4)
-    if (k == 'Left') left_key = .false.
-    if (k == 'Right') right_key = .false.
+    if (k == '37' .or. k == 'Left') left_key = .false.
+    if (k == '39' .or. k == 'Right') right_key = .false.
   end subroutine frmGame_KeyUp
 
   ! the mouse moves the paddle too (X is relative to pnlField)

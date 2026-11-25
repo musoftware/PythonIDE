@@ -134,20 +134,20 @@ void tmrGame_Tick()
     rock.draw();
 }
 
-// KeyDown / KeyUp args: "X Y Button KeyCode KeyChar"; KeyCode = key name (Left, Right, p ...)
+// KeyDown / KeyUp args: "X Y Button KeyCode KeyChar"; KeyCode = Windows key code (37 Left, 39 Right, 80 P)
 void frmGame_KeyDown()
 {
     std::string k = rad::arg(3);
-    if (k == "Left") left_key = true;
-    else if (k == "Right") right_key = true;
-    else if (k == "p" || k == "P") btnPause_Click();
+    if (k == "37" || k == "Left") left_key = true;
+    else if (k == "39" || k == "Right") right_key = true;
+    else if (k == "80" || k == "p" || k == "P") btnPause_Click();
 }
 
 void frmGame_KeyUp()
 {
     std::string k = rad::arg(3);
-    if (k == "Left") left_key = false;
-    else if (k == "Right") right_key = false;
+    if (k == "37" || k == "Left") left_key = false;
+    else if (k == "39" || k == "Right") right_key = false;
 }
 
 void pnlField_MouseMove()
